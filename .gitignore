@@ -1,0 +1,65 @@
+# dependencies (bun install)
+node_modules
+.turbo
+tmp
+
+# IA
+.agent
+.claude
+
+# output
+dist
+*.tgz
+
+# code coverage / mutation
+coverage
+*.lcov
+mutation.*
+coverage.*
+reports/
+.stryker-tmp/
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# compiled MDX pages (generated docs artifact)
+.compiled/
+
+# IntelliJ based IDEs
+.idea
+.vscode
+
+# Finder (MacOS) folder config
+.DS_Store
+
+playground
+
+# Benchmark baselines — machine- and moment-specific by nature. Comparing a
+# baseline recorded elsewhere is exactly the measurement error to avoid.
+apps/bench/results/*.json
+
+# …except the ratio baseline. It records @vincle/core *relative to* each
+# reference implementation, both measured in the same run — the part that does
+# survive changing machines, because the machine's mood is common to both terms
+# and divides out. It is what gates CI, so it has to travel with the code.
+!apps/bench/results/ratios.json
+
+# Gate output — a run artifact, uploaded by CI, not a record.
+apps/bench/results/gate.txt
+
+# CPU profiles — a diagnostic, tied to one machine and one moment.
+*.cpuprofile
