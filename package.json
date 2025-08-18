@@ -1,0 +1,9 @@
+{
+  "name": "@vincle/vincle",
+  "private": true,
+  "type": "module",
+  "workspaces": {
+    "packages": ["apps/*", "packages/*"]
+  },
+  "packageManager": "bun@1.1.30"
+}
