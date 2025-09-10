@@ -1,0 +1,10 @@
+# Séquentiel : les deux jobs invoquent `turbo` et font construire
+# `@vincle/core`, dont le build supprime ses sorties avant de les réécrire.
+# Deux `turbo` concurrents sur les mêmes répertoires, pour gagner 50 ms.
+pre-commit:
+  parallel: false
+  jobs:
+    - name: lint
+      run: bun run lint
+    - name: check
+      run: bun run check
