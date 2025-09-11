@@ -1,0 +1,108 @@
+{
+  "name": "@vincle/core",
+  "version": "0.9.0",
+  "description": "JSX to HTML strings. Escapes by default, zero dependencies.",
+  "keywords": [
+    "escape",
+    "html",
+    "jsx",
+    "render",
+    "server-side-rendering",
+    "ssr",
+    "template",
+    "typescript",
+    "xss"
+  ],
+  "homepage": "https://vincle.cjean.fr",
+  "bugs": {
+    "url": "https://github.com/cjean-fr/vincle/issues"
+  },
+  "license": "MIT",
+  "author": "Christophe Jean",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cjean-fr/vincle.git",
+    "directory": "packages/core"
+  },
+  "files": [
+    "dist",
+    "index.ts",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "dist": "./dist/index.mjs",
+      "bun": "./index.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./html": {
+      "types": "./dist/html.d.mts",
+      "dist": "./dist/html.mjs",
+      "bun": "./src/html.ts",
+      "import": "./dist/html.mjs",
+      "default": "./dist/html.mjs"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.mts",
+      "dist": "./dist/jsx-runtime.mjs",
+      "bun": "./src/jsx-runtime.ts",
+      "import": "./dist/jsx-runtime.mjs",
+      "default": "./dist/jsx-runtime.mjs"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-dev-runtime.d.mts",
+      "dist": "./dist/jsx-dev-runtime.mjs",
+      "bun": "./src/jsx-dev-runtime.ts",
+      "import": "./dist/jsx-dev-runtime.mjs",
+      "default": "./dist/jsx-dev-runtime.mjs"
+    },
+    "./jsx-precompile-runtime": {
+      "types": "./dist/jsx-precompile-runtime.d.mts",
+      "dist": "./dist/jsx-precompile-runtime.mjs",
+      "bun": "./src/jsx-precompile-runtime.ts",
+      "import": "./dist/jsx-precompile-runtime.mjs",
+      "default": "./dist/jsx-precompile-runtime.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc --noEmit",
+    "coverage": "bun test --coverage --coverage-reporter=lcov",
+    "format": "oxfmt",
+    "mutation": "stryker run",
+    "test": "bun test",
+    "conformance": "bun run conformance:bun && bun run conformance:node && bun run conformance:deno && bun run conformance:workerd",
+    "conformance:bun": "bun --conditions=dist run conformance/run.ts",
+    "conformance:node": "node conformance/run.ts",
+    "conformance:deno": "deno run --allow-read --allow-env conformance/run.ts",
+    "conformance:workerd": "./conformance/run-workerd.sh"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@types/bun": "catalog:",
+    "@types/react": "catalog:",
+    "oxc-parser": "^0.139.0",
+    "tsdown": "catalog:"
+  },
+  "peerDependencies": {
+    "@types/react": "^19",
+    "typescript": ">=5.5"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

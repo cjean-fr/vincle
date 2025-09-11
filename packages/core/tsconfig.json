@@ -1,0 +1,19 @@
+{
+  "extends": "../typescript-config/react.json",
+  "compilerOptions": {
+    "jsxImportSource": "./src",
+    "outDir": "./dist",
+    "rootDir": "./",
+    "types": ["bun"],
+    // `conformance/` s'auto-référence par le nom du paquet, ce que la carte
+    // `exports` résout vers `dist/*.d.mts` — donc vers un dossier que `tsdown`
+    // efface avant de le régénérer. `check` se mettrait à dépendre de `build`,
+    // et à perdre la course contre lui. Le type-check lit les sources ; c'est
+    // d'elles que `tsdown` dérive ces mêmes `.d.mts`. L'exécution, elle, passe
+    // toujours par `exports` — c'est tout l'intérêt de ces fichiers.
+    "paths": {
+      "@vincle/core": ["./index.ts"],
+      "@vincle/core/*": ["./src/*.ts"]
+    }
+  }
+}
