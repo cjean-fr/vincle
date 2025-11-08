@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "bun test src"
+  },
+  "mutate": ["index.ts", "src/**/*.ts", "!src/**/*.test.ts", "!src/jsx-namespace.ts"],
+  "mutator": {
+    "excludedMutations": ["BlockStatement"]
+  },
+  "concurrency": 4,
+  "coverageAnalysis": "off",
+  "reporters": ["html", "clear-text", "progress"],
+  "thresholds": {
+    "high": 85,
+    "low": 72,
+    "break": 72
+  },
+  "timeoutMS": 30000
+}
