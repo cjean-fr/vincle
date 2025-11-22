@@ -1,0 +1,94 @@
+{
+  "name": "@vincle/flow",
+  "version": "0.9.0",
+  "description": "HTML document orchestration layer for @vincle/core",
+  "keywords": [
+    "deferred",
+    "dom-patching",
+    "esi",
+    "fragments",
+    "html",
+    "htmx",
+    "jsx",
+    "ssr",
+    "streaming",
+    "turbo"
+  ],
+  "homepage": "https://vincle.cjean.fr",
+  "bugs": {
+    "url": "https://github.com/cjean-fr/vincle/issues"
+  },
+  "license": "MIT",
+  "author": "Christophe Jean",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cjean-fr/vincle.git",
+    "directory": "packages/flow"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "default": "./dist/adapters/index.js"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "default": "./dist/components/index.js"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "default": "./dist/http.js"
+    },
+    "./utils": {
+      "types": "./dist/utils.d.ts",
+      "default": "./dist/utils.js"
+    },
+    "./context": {
+      "types": "./dist/context.d.ts",
+      "default": "./dist/context.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc --noEmit",
+    "coverage": "bun test --coverage --coverage-reporter=lcov",
+    "format": "oxfmt",
+    "mutation": "stryker run",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@types/bun": "catalog:",
+    "@types/react": "^19.2.17",
+    "@vincle/core": "workspace:*",
+    "oxc-parser": "^0.139.0",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "@types/react": "^19",
+    "@vincle/core": "^0.9.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
