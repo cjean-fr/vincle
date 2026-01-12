@@ -1,0 +1,107 @@
+import {
+  VOID_ELEMENTS,
+  URL_ATTRIBUTES,
+  RAWTEXT_TAGS,
+  isRawtextTag,
+  resolveAttrName,
+  escapeContent,
+  escapeAttr,
+  escapeRawTagContent,
+  isValidAttrName,
+  attrMeta,
+} from "@vincle/core/html";
+import { decodeHTMLStrict } from "entities";
+
+export {
+  VOID_ELEMENTS,
+  URL_ATTRIBUTES,
+  RAWTEXT_TAGS,
+  isRawtextTag,
+  resolveAttrName,
+  escapeContent,
+  escapeAttr,
+  escapeRawTagContent,
+  isValidAttrName,
+  attrMeta,
+};
+
+export const RUNTIME_SOURCE = "@vincle/core/jsx-runtime";
+
+/**
+ * Decode the HTML entities in a JSX text node the way the JS compilers do
+ * (Babel/TS/esbuild/Bun), so precompiled static text matches the string the
+ * runtime path receives. Uses strict (semicolon-required) decoding: named
+ * references need a trailing `;`, unknown references (`&notreal;`) are left
+ * verbatim — verified byte-identical to Bun's JSX transform.
+ *
+ * Only for **non-rawtext** content: inside `<script>`/`<style>` the HTML
+ * parser never decodes entities, and Deno's precompile keeps them literal, so
+ * rawtext text must be emitted verbatim (see `isRawtextTag`).
+ */
+export function decodeJsxEntities(text: string): string {
+  return decodeHTMLStrict(text);
+}
+
+export function isLowercaseTag(name: string): boolean {
+  return (
+    name[0] !== undefined && name[0] === name[0].toLowerCase() && name[0] !== name[0].toUpperCase()
+  );
+}
+
+/**
+ * Collapse the whitespace of a JSX text child the way the standard JSX
+ * transform (Babel/TS/esbuild) does, so precompiled output matches what the
+ * runtime path would render:
+ *   - lines are split on newlines;
+ *   - leading whitespace is stripped from every line but the first;
+ *   - trailing whitespace is stripped from every line but the last;
+ *   - blank lines are dropped, non-blank lines are joined with a single space;
+ *   - tabs are treated as spaces.
+ * A text node that is entirely whitespace spanning a newline collapses to "".
+ */
+export function collapseJsxWhitespace(text: string): string {
+  const lines = text.split(/\r\n|\n|\r/);
+
+  let lastNonEmptyLine = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (/[^ \t]/.test(lines[i] ?? "")) lastNonEmptyLine = i;
+  }
+
+  let out = "";
+  for (let i = 0; i < lines.length; i++) {
+    let line = (lines[i] ?? "").replace(/\t/g, " ");
+    if (i !== 0) line = line.replace(/^ +/, "");
+    if (i !== lines.length - 1) line = line.replace(/ +$/, "");
+    if (line) {
+      if (i !== lastNonEmptyLine) line += " ";
+      out += line;
+    }
+  }
+  return out;
+}
+
+export interface AttrBrief {
+  kind: "attribute" | "spread";
+  name?: string;
+}
+
+export function hasSpreadOrInnerHTML(attrs: Iterable<AttrBrief>): boolean {
+  for (const a of attrs) {
+    if (a.kind === "spread") return true;
+    if (a.name === "dangerouslySetInnerHTML") return true;
+  }
+  return false;
+}
+
+export function isVoidElement(tag: string): boolean {
+  return VOID_ELEMENTS.has(tag);
+}
+
+/**
+ * Rewrite a JSX attribute name to its HTML form (`className` → `class`, …).
+ * Names not in the map are returned unchanged. The transform applies this at
+ * build time so static attributes stay inlined — same as Deno's precompile.
+ */
+export function remapAttrName(name: string): string {
+  return resolveAttrName(name);
+}
