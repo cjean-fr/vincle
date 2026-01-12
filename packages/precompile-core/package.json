@@ -1,0 +1,54 @@
+{
+  "name": "@vincle/precompile-core",
+  "version": "0.9.0",
+  "description": "Shared helpers for @vincle/core JSX precompile transforms",
+  "keywords": [
+    "ast",
+    "jsx",
+    "precompile",
+    "transform",
+    "vite"
+  ],
+  "homepage": "https://vincle.cjean.fr",
+  "bugs": {
+    "url": "https://github.com/cjean-fr/vincle/issues"
+  },
+  "license": "MIT",
+  "author": "Christophe Jean",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cjean-fr/vincle.git",
+    "directory": "packages/precompile-core"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "coverage": "bun test --coverage --coverage-reporter=lcov",
+    "format": "oxfmt",
+    "mutation": "stryker run",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@vincle/core": "workspace:^",
+    "entities": "^8.0.0"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}
