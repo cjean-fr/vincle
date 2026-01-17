@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner_comment": [
+    "The `command` runner, like core's — because core's works and this package's",
+    "had never run. It used `stryker-mutator-bun-runner` with a top-level",
+    "`testFiles`, which is the runner's option and not Stryker's, so it was",
+    "silently ignored: the runner fell back to its default `*.spec.*` patterns,",
+    "this package uses `*.test.*`, nothing matched, and Stryker exited with",
+    "`No tests were executed`. No report had ever been produced."
+  ],
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "bun test src"
+  },
+  "commandRunner_comment": [
+    "`bun test src`, pas `bun test`. La mutation tourne dans un bac à sable :",
+    "une copie du seul paquet, sources instrumentées, cwd déplacé. Aucune autre",
+    "commande ne s exécute là. Un test qui dépend d autre chose que du code muté",
+    "— un manifeste voisin, la mise en page du dépôt, le transpileur — y échoue,",
+    "et nulle part ailleurs : vert en local, rouge en CI, deux fois de suite.",
+    "Restreindre aux tests qui vivent à côté du code muté ferme la classe par",
+    "construction, sans énumérer quoi que ce soit. Les tests de racine restent",
+    "dans `bun test` et dans la CI ; ils ne tuent simplement aucun mutant."
+  ],
+  "mutate": ["src/**/*.ts", "!src/**/*.test.ts"],
+  "excludedMutations_comment": [
+    "Aligned with core: only BlockStatement is excluded. The previous list turned",
+    "off nine mutators — ConditionalExpression, EqualityOperator, LogicalOperator,",
+    "BooleanLiteral, StringLiteral and four more — which are exactly the ones that",
+    "ask whether a branch is really tested."
+  ],
+  "mutator": {
+    "excludedMutations": ["BlockStatement"]
+  },
+  "concurrency": 4,
+  "coverageAnalysis": "off",
+  "reporters": ["html", "clear-text", "progress"],
+  "timeoutMS": 30000,
+  "thresholds": {
+    "high": 85,
+    "low": 77,
+    "break": 77
+  },
+  "thresholds_comment": [
+    "Mesuré le 2026-08-13, tous mutateurs actifs sauf BlockStatement : 82.26 % (49 tués, 2 timeouts, 11 survivants, 0 non couverts).",
+    "C'est le premier chiffre jamais produit pour ce package — la config précédente",
+    "ne trouvait aucun test et Stryker sortait en erreur.",
+    "`break` à 77 laisse ~5 points de marge, comme le précédent de core (77,31 mesuré,",
+    "break à 72). C'est un cliquet : quand le score monte, ce nombre monte avec lui."
+  ]
+}
