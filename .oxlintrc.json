@@ -38,6 +38,24 @@
   },
   "overrides": [
     {
+      "files": ["apps/**"],
+      "rules": {
+        "no-explicit-any": "off",
+        "no-unsafe-assignment": "off",
+        "no-unsafe-member-access": "off",
+        "no-unsafe-argument": "off",
+        "no-unsafe-return": "off",
+        "no-unsafe-call": "off",
+        "restrict-template-expressions": "off",
+        "no-base-to-string": "off",
+        "no-non-null-assertion": "off",
+        "no-confusing-void-expression": "off",
+        "vincle/no-react-imports": "off",
+        "vincle/no-react-hooks": "off",
+        "vincle/no-global-jsx-namespace": "off"
+      }
+    },
+    {
       "files": ["packages/core/type-contract.tsx"],
       "rules": {
         "vincle/no-unsafe-event-handlers": "off",
