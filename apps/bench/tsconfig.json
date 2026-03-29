@@ -1,0 +1,7 @@
+{
+  "extends": "../../packages/typescript-config/react.json",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": ["src"]
+}
