@@ -1,0 +1,29 @@
+{
+  "name": "@vincle/bench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "NODE_ENV=production bun --conditions=dist run src/bench.js",
+    "bench:gate": "mkdir -p results && bun --conditions=dist run src/stats.js --runs 8 --gate results/ratios.json | tee results/gate.txt",
+    "format": "oxfmt",
+    "bench:stats": "bun --conditions=dist run src/stats.js",
+    "test": "NODE_ENV=production bun test"
+  },
+  "dependencies": {
+    "@kitajs/html": "^5.0.0-next.1",
+    "@vincle/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "hono": "^4",
+    "mitata": "^1",
+    "preact": "^10",
+    "preact-render-to-string": "^6",
+    "react": "^19",
+    "react-dom": "^19",
+    "typescript": "catalog:"
+  }
+}
