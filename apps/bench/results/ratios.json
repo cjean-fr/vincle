@@ -1,0 +1,91 @@
+{
+  "recordedAt": "2026-08-11T14:03:17.505Z",
+  "runs": 8,
+  "note": "Ratios of @vincle/core against each competitor, measured in the same run. Machine-independent enough to gate CI; refresh from a CI run, not a laptop, when the hardware baseline shifts.",
+  "entries": [
+    {
+      "case": "text",
+      "name": "react (renderToStaticMarkup)",
+      "mean": 8.273798975068797,
+      "sd": 0.42357986160980793,
+      "n": 8
+    },
+    {
+      "case": "text",
+      "name": "preact (render)",
+      "mean": 2.1412931232087615,
+      "sd": 0.061332851138792506,
+      "n": 8
+    },
+    {
+      "case": "text",
+      "name": "hono/jsx (toString)",
+      "mean": 9.31501380935479,
+      "sd": 0.3173794973594567,
+      "n": 8
+    },
+    {
+      "case": "text",
+      "name": "@kitajs/html",
+      "mean": 0.6682156635084987,
+      "sd": 0.09204650147318119,
+      "n": 8
+    },
+    {
+      "case": "stack",
+      "name": "react (renderToStaticMarkup)",
+      "mean": 3.253562092972537,
+      "sd": 0.05901097242271989,
+      "n": 8
+    },
+    {
+      "case": "stack",
+      "name": "preact (render)",
+      "mean": 2.687415454549462,
+      "sd": 0.09151712008679866,
+      "n": 8
+    },
+    {
+      "case": "stack",
+      "name": "hono/jsx (toString)",
+      "mean": 5.8891063479822865,
+      "sd": 0.22566355162927082,
+      "n": 8
+    },
+    {
+      "case": "stack",
+      "name": "@kitajs/html",
+      "mean": 0.5432531117467905,
+      "sd": 0.016501159694185148,
+      "n": 8
+    },
+    {
+      "case": "realworld",
+      "name": "react (renderToStaticMarkup)",
+      "mean": 1.930972962234654,
+      "sd": 0.0623832051191852,
+      "n": 8
+    },
+    {
+      "case": "realworld",
+      "name": "preact (render)",
+      "mean": 1.8393943206108903,
+      "sd": 0.0533621454242083,
+      "n": 8
+    },
+    {
+      "case": "realworld",
+      "name": "hono/jsx (toString)",
+      "mean": 4.024461261141634,
+      "sd": 0.16788816005277146,
+      "n": 8
+    },
+    {
+      "case": "realworld",
+      "name": "@kitajs/html",
+      "mean": 0.6905753075117504,
+      "sd": 0.024497668984113145,
+      "n": 8
+    }
+  ]
+}
