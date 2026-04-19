@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vincle-core-conformance",
+  "main": "worker.ts",
+  "compatibility_date": "2026-08-16",
+  // `nodejs_compat` est le sujet, pas un détail de configuration : c'est lui qui
+  // donne `AsyncLocalStorage` à workerd, donc lui qui décide si `@vincle/core`
+  // isole les scopes concurrents ou refuse de les départager.
+  "compatibility_flags": ["nodejs_compat"]
+}
