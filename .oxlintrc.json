@@ -56,6 +56,13 @@
       }
     },
     {
+      "files": ["apps/docs/docs-src/examples/**"],
+      "rules": {
+        "no-unused-vars": "off",
+        "no-await-in-loop": "off"
+      }
+    },
+    {
       "files": ["packages/core/type-contract.tsx"],
       "rules": {
         "vincle/no-unsafe-event-handlers": "off",
