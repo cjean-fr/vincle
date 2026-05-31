@@ -1,0 +1,94 @@
+---
+title: TypeScript setup
+---
+
+# TypeScript setup
+
+Vincle uses standard JSX — the same transform React, Preact, and Solid use.
+Configure it once in your `tsconfig.json` (or build tool) and every `.tsx`
+file picks it up.
+
+## tsconfig.json
+
+```json
+//tsconfig.json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core"
+  }
+}
+```
+
+With `jsxImportSource` set, your JSX files never need an explicit import —
+the compiler injects the runtime calls for you.
+
+## Deno
+
+`@vincle/core` works with Deno's built-in JSX transform. Configure the import
+source in `deno.json` so you don't need explicit imports in every file:
+
+<CodeExample src="guide/getting-started/deno.json" meta="title=deno.json" />
+
+Deno also supports `jsx: "precompile"` — Deno's own compile-time JSX transform.
+When enabled, Vincle exports the `jsxTemplate` and `jsxAttr`
+helpers it needs. Note that `dangerouslySetInnerHTML` is **dropped in precompile
+mode** — use `{raw(html)}` as a child instead.
+
+## Vite / esbuild
+
+Set the import source in your build config instead of `tsconfig.json`:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  esbuild: { jsx: "automatic", jsxImportSource: "@vincle/core" },
+});
+```
+
+Vite reads either `tsconfig.json` or its own `esbuild` option — they are
+equivalent.
+
+### Precompile plugin (recommended for production)
+
+For faster rendering and smaller bundles, add the precompile plugin. It
+rewrites JSX into tagged template literals — less allocations, less GC
+pressure, faster rendering:
+
+```ts
+import precompile from "@vincle/vite-plugin-precompile";
+
+export default defineConfig({
+  esbuild: { jsx: "automatic", jsxImportSource: "@vincle/core" },
+  plugins: [precompile()],
+});
+```
+
+**Static attribute sanitization is enabled by default** — literal
+`href="javascript:…"` and unsafe CSS are blocked at build time, before
+they ever reach the bundle. See [Precompile transform → Build-time
+sanitization](/integration/precompile#build-time-sanitization-secure-mode).
+
+## Optional: attribute autocomplete
+
+Installing `@types/react` (without React itself) gives you per-element attribute
+types: `src` on `<img>`, `href` on `<a>`, `colSpan` on `<td>`, and so on. It is
+optional in the sense that the library compiles and renders without it — but
+without it, attributes are unchecked, so `<div clas="card">` passes silently.
+Install it. Nothing is imported from React at runtime.
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core",
+    "types": ["@types/react"]
+  }
+}
+```
+
+## Where to next
+
+- [First render](/guide/getting-started/first-render) — your first component
+- [Elements & attributes](/guide/jsx/elements-attributes) — `class`, `style`, booleans

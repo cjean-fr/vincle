@@ -1,0 +1,163 @@
+---
+title: Comparison
+description: How @vincle/core compares to kitajs/html, preact-render-to-string, hono/jsx and react-dom/server — measured, with the method and the losses.
+---
+
+# Comparison
+
+Every number on this page comes from a benchmark in this repository, and every
+behaviour is a rendered output you can reproduce in one command. Where Vincle
+loses, it says so.
+
+Measured against `@kitajs/html` 5.0.0-next.1, `preact-render-to-string` 6.7.0,
+`react-dom` 19.2.8 and `hono` 4.12.32.
+
+## Escaping is not a setting
+
+The most consequential difference between these libraries has nothing to do with
+speed. Given the string `<img src=x onerror="alert(1)">` as a text child:
+
+| Renderer                  | Output                                               |
+| ------------------------- | ---------------------------------------------------- |
+| `@vincle/core`            | `<div>&lt;img src=x onerror="alert(1)"&gt;</div>`    |
+| `react-dom/server`        | `<div>&lt;img src=x onerror=&quot;…&quot;&gt;</div>` |
+| `preact-render-to-string` | `<div>&lt;img src=x onerror=&quot;…&quot;></div>`    |
+| `hono/jsx`                | `<div>&lt;img src=x onerror=&quot;…&quot;&gt;</div>` |
+| `@kitajs/html`            | `<div><img src=x onerror="alert(1)"></div>`          |
+
+`@kitajs/html` does not escape text children unless you ask it to, with a `safe`
+attribute or its `escape` helper. This is deliberate on their part, and they
+ship [`@kitajs/ts-html-plugin`](https://github.com/kitajs/ts-html-plugin) — an
+editor plugin and CLI — to catch unescaped interpolations before they reach
+production. Verified identical on 4.2.13 and 5.0.0-next.1.
+
+Vincle takes the other side of that trade: escaping is not reachable from the
+component API at all. There is exactly one way to emit unescaped markup, and it
+is named after what it does:
+
+```tsx
+import { raw } from "@vincle/core";
+
+<div>{userInput}</div>        {/* always escaped */}
+<div>{raw(trustedHtml)}</div> {/* the only escape hatch, and it is greppable */}
+```
+
+Which is the better design is a real argument, and it is not settled by this
+page. What it does settle is that a benchmark comparing the two defaults is not
+comparing the same work — see below.
+
+## Performance
+
+Ratios, not milliseconds. Each competitor is measured in the same process as
+Vincle, so the machine's mood is common to both terms and divides out; that is
+what makes the number survive a change of hardware, and it is what gates CI.
+Recorded over 8 runs.
+
+**Higher is better for Vincle. Below 1 means Vincle is slower.**
+
+| Case        | vs `@kitajs/html` | vs `preact` | vs `react` | vs `hono/jsx` |
+| ----------- | ----------------: | ----------: | ---------: | ------------: |
+| `text`      |             0.67× |       2.14× |      8.27× |         9.32× |
+| `stack`     |             0.54× |       2.69× |      3.25× |         5.89× |
+| `realworld` |             0.69× |       1.84× |      1.93× |         4.02× |
+
+Against React, Preact and Hono the comparison is like-for-like: all three escape
+by default, all three build a tree, and the outputs match. Vincle is between
+1.8× and 9.3× faster.
+
+### Reading the kitajs column
+
+Two differences compound in that column, and neither is an implementation
+detail.
+
+**It renders a different string.** `realworld` happens to contain no character
+needing an escape, so there the comparison is fair — 0.69× is a real number for
+a real page. On any input carrying `&` or `<`, the two produce different bytes,
+and Vincle is doing work kitajs is not.
+
+**It uses a different architecture.** `@kitajs/html`'s `createElement` returns a
+string immediately. Vincle's `jsx()` builds a node, and `renderToString` walks
+it. Comparing them measures the tree, not the renderer.
+
+Vincle has a path with no tree — the [precompile
+transform](/integration/precompile) emits `jsxTemplate` calls the way kitajs
+emits concatenations. Measured on the same 100-row list, output verified
+identical byte for byte before timing, over 7 fresh processes:
+
+| Renderer                    |               µs |                                          |
+| --------------------------- | ---------------: | ---------------------------------------- |
+| `@vincle/core` (precompile) | **11.24 ± 0.32** | escapes                                  |
+| `@kitajs/html` (`safe`)     |     18.70 ± 0.83 | escapes → Vincle **1.67× ± 0.10** faster |
+| `@kitajs/html` (default)    |      7.17 ± 0.58 | does not escape                          |
+
+So: on the tree-walking path Vincle is slower than kitajs, and on the
+comparable path it is faster. Both are true, and neither on its own is the
+whole picture.
+
+## Feature surface
+
+|                                       | vincle  | kitajs  |  preact  |   hono   |  react   |
+| ------------------------------------- | :-----: | :-----: | :------: | :------: | :------: |
+| Escapes text children by default      |   yes   | **no**  |   yes    |   yes    |   yes    |
+| A component may return a `Promise`    | **yes** | **yes** |    no    |    no    |    no    |
+| Context API                           | scoped  | **no**  | provider | provider | provider |
+| Also renders to the DOM (hydration)   |   no    |   no    |   yes    |   yes    |   yes    |
+| Compile-time transform                |   yes   |    —    |    —     |    —     |    —     |
+| Dependencies of the rendering package |    0    |    1    |    0¹    |    0     |    1²    |
+
+Every row was checked by running it. Rendering `<div><Async /></div>` where
+`Async` returns `Promise.resolve("hello")`:
+
+```text
+@vincle/core     <div>hello</div>
+@kitajs/html     <div>hello</div>
+preact           <div></div>        ← content dropped, no error
+hono/jsx         throws "No default value"
+react-dom        throws React error #426
+```
+
+Preact's `renderToStringAsync` does not change that result: its async support is
+for components that _throw_ a promise, not ones that return one. React and Hono
+both support async rendering through their streaming entry points
+(`renderToReadableStream`, `hono/jsx/streaming`) — the row is about the plain
+string API.
+
+¹ `preact-render-to-string` declares no dependency but requires `preact`.
+² `react-dom`, on `scheduler`.
+
+The context row is a difference in kind, not a checkbox. Preact, Hono and React
+scope a value to a **position in the tree**: a `<Provider>` wraps the subtree
+allowed to read it. Vincle scopes it to the **execution** — `withScope()` opens
+an `AsyncLocalStorage` scope, `setContext()` writes into the current one from
+anywhere in the render, and everything rendered afterwards reads it, a sibling
+rendered later included, not only children. Concurrent renders never see each
+other's values, since each one holds its own scope. There is no provider
+component to place, and no subtree to wrap. See [`context`](/api/core/context).
+
+`@kitajs/html` documents [why it has no context
+API](https://github.com/kitajs/html#why-there-is-no-context-api).
+
+Streaming, deferred fragments and DOM patching are not in `@vincle/core`; they
+live in [`@vincle/flow`](/integration/streaming), a separate install.
+
+## When to choose something else
+
+- **You render to the DOM, not to a string.** Vincle has no client runtime, no
+  hydration and no reconciler, and none is planned. Preact or React.
+- **You need every last microsecond and control your inputs.** `@kitajs/html`
+  without `safe` is faster than anything here, including Vincle's precompile
+  path, because it does less. With their TypeScript plugin wired into CI, that
+  is a defensible position.
+- **You are already inside a framework's rendering pipeline.** `hono/jsx` inside
+  a Hono app costs you nothing to keep.
+
+## Reproducing this
+
+```bash
+bun run --filter=@vincle/bench bench
+```
+
+The ratio table comes from `bench:gate`, which writes
+`apps/bench/results/ratios.json` and fails CI on a regression. The like-for-like
+kitajs measurement is `apps/bench/src/ab-precompile-kita.js`; it refuses to
+report a number if the two outputs differ by a single byte.

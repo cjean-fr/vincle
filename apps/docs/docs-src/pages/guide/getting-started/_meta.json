@@ -1,0 +1,5 @@
+{
+  "installation": { "title": "Installation", "order": 1 },
+  "first-render": { "title": "First render", "order": 2 },
+  "typescript-setup": { "title": "TypeScript setup", "order": 3 }
+}
