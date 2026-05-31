@@ -1,0 +1,79 @@
+---
+title: Installation
+---
+
+# Installation
+
+`@vincle/core` has zero runtime dependencies. Install it and configure
+TypeScript — that's all.
+
+## Package manager
+
+<Tabs
+  syncKey="pkg-manager"
+  tabs={[
+    {
+      label: "npm",
+      content: <CodeBlock code="npm install @vincle/core" language="bash" />,
+    },
+    {
+      label: "bun",
+      content: <CodeBlock code="bun add @vincle/core" language="bash" />,
+    },
+  ]}
+/>
+
+## TypeScript configuration
+
+Set `jsxImportSource` in your `tsconfig.json` so that JSX files don't need any
+explicit import:
+
+<CodeExample src="guide/getting-started/tsconfig.json" meta="tsconfig.json" />
+
+## Optional: @types/react
+
+Installing `@types/react` gives you per-element attribute autocomplete (e.g.
+`src` on `<img>`, `href` on `<a>`). It is not required — `@vincle/core` works
+without it.
+
+<CodeExample src="guide/getting-started/tsconfig-with-react.json" />
+
+## What you get
+
+### Runtime
+
+| Export                            | Purpose                                   |
+| --------------------------------- | ----------------------------------------- |
+| `renderToString(node)`            | Renders a JSX tree to an HTML string      |
+| `raw(str)`                        | Marks a trusted HTML string (no escaping) |
+| `Fragment`                        | Standard JSX fragment (`<>…</>`)          |
+| `context`, `setContext`           | Scoped context for per-request isolation  |
+| `useContext`, `withScope`         | ...                                       |
+| `snapshot`                        | Captures current scope for child scopes   |
+| `jsx-runtime` / `jsx-dev-runtime` | JSX transform entry points (auto-wired)   |
+
+### Types
+
+| Export          | Purpose                                                   |
+| --------------- | --------------------------------------------------------- |
+| `Renderable`    | Everything the renderers can render                       |
+| `VNode`         | The engine's element representation — a class, exported as a value |
+| `RawString`     | Branded type for pre-escaped HTML                         |
+| `Awaitable<T>`  | `T` or a promise of `T`                                   |
+| `CSSProperties` | Type for inline `style` objects                           |
+| `ClassValue`    | What a `class` attribute accepts                          |
+| `FromReact<T>`  | React props → Vincle attribute props                      |
+| `JSX`           | The JSX namespace                                         |
+| `ContextKey<T>` | Branded context key type                                  |
+| `ContextMap`    | Raw context map type                                      |
+
+Element attributes are typed per element, from `@types/react` — see
+[JSX types](/api/core/jsx-types).
+
+Everything else is internal. There is no plugin registry, no provider tree, no
+config object to maintain.
+
+## Where to next
+
+- [First render](/guide/getting-started/first-render) — your first component
+- [TypeScript setup](/guide/getting-started/typescript-setup) — Deno, esbuild

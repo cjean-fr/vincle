@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "npm:@vincle/core"
+  },
+  "imports": {
+    "@vincle/core": "npm:@vincle/core"
+  }
+}
