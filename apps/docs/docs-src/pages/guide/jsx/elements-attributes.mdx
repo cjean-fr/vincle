@@ -1,0 +1,102 @@
+---
+title: Elements & attributes
+---
+
+# Elements & attributes
+
+How JSX elements and attributes map to HTML.
+
+## Lowercase elements are HTML
+
+Any lowercase tag is rendered as an HTML element. Vincle knows which tags are
+[void elements](https://developer.mozilla.org/en-US/docs/Glossary/Void_element)
+(`img`, `br`, `input`, …) and renders them without a closing tag.
+
+<CodeExample src="guide/jsx/void-elements.tsx" output />
+
+Uppercase tags are treated as **components** (functions).
+
+## Attributes
+
+Attributes become HTML attributes. Most names pass through unchanged. A few
+camelCase names are remapped to match the HTML spec, so you can use the names
+you're used to from React:
+
+| JSX name        | HTML attribute   |
+| --------------- | ---------------- |
+| `className`     | `class`          |
+| `htmlFor`       | `for`            |
+| `tabIndex`      | `tabindex`       |
+| `readOnly`      | `readonly`       |
+| `autoComplete`  | `autocomplete`   |
+| `colSpan`       | `colspan`        |
+| `httpEquiv`     | `http-equiv`     |
+| `acceptCharset` | `accept-charset` |
+
+### Conflict resolution: HTML name wins
+
+When both the React-style name (`className`, `htmlFor`, `tabIndex`, …) and the
+HTML-native name (`class`, `for`, `tabindex`, …) appear on the same element,
+the **HTML name wins** and the React name is silently dropped — no merge, no
+warning. This holds for every entry in the remapping table above.
+
+Writing both is only possible for `class`/`className`, the one pair typed in
+both spellings. For the others, only the camelCase name is typed, so a
+conflict reaches an element through a spread — where the same rule applies.
+
+<CodeExample src="guide/jsx/attribute-conflicts.tsx" output />
+
+The rationale: Vincle renders HTML, not React — the HTML-native form is the
+canonical output. React merges both values (classNames together, etc.), but
+Vincle does not. If you use both by accident, the HTML name silently wins.
+
+> **Prefer the HTML-native name** (`class`, `for`, `tabindex`, …) in your
+> codebase. The React aliases are accepted for migration convenience, but the
+> HTML names are unambiguous and match the output.
+
+## Boolean and falsy values
+
+Falsy attribute values (`false`, `null`, `undefined`) are omitted entirely.
+The literal `true` renders the attribute as a bare name (HTML boolean syntax).
+
+```tsx
+<button disabled={isBusy}>Save</button>
+// isBusy true  → <button disabled>Save</button>
+// isBusy false → <button>Save</button>
+```
+
+## The `style` attribute
+
+`style` accepts either a string or a `CSSProperties` object. Object values use
+camelCase keys (like React) and are converted to kebab-case CSS properties.
+
+<CodeExample src="guide/jsx/style-attribute.tsx" />
+
+CSS values are HTML-escaped (`&`, `<`, `>`, `"`) to prevent attribute
+breakout. CSS syntax is not additionally validated — the attack
+vectors that motivated CSS value filtering (`expression()`,
+`url(javascript:)`) are no longer relevant on modern browsers.
+See the [security model](/guide/security).
+
+## Event handlers
+
+A function-valued attribute **throws** at render time — a function has no HTML
+form, and there is no client runtime to attach it to. Nothing is special-cased
+about `on*`: `title={fn}` fails the same way, with the same message. The
+[`no-unsafe-event-handlers`](https://github.com/cjean-fr/vincle/tree/main/packages/eslint-plugin)
+rule flags the practice at the source, before a render can.
+
+String-valued handlers (`onClick="doThing()"`) are allowed and HTML-escaped,
+but the JavaScript inside is **not** sanitized — never interpolate user data
+there.
+
+## Custom attributes
+
+Unknown attribute names are allowed and rendered as-is, as long as they are
+valid (no whitespace, quotes, `<`, `>`, `/`, `=`, or control characters). This
+covers `data-*`, `aria-*`, and framework-specific attributes like `hx-get`.
+
+## Where to next
+
+- [First render](/guide/getting-started/first-render) — your first component
+- [Security model](/guide/security) — the URL allowlist

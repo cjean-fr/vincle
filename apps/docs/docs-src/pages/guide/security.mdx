@@ -1,0 +1,276 @@
+---
+title: Security
+---
+
+# Security
+
+Vincle's security model has one job: **prevent HTML injection (XSS) at
+every possible surface**. You do not need to opt in, configure, or remember
+to escape — it happens automatically for every string, attribute, and URL.
+
+## Auto-escaping
+
+Every value embedded in JSX — text content, attributes, style values — is
+HTML-escaped before it reaches the output. This is not a mode you enable; it
+is the only mode.
+
+<table>
+  <thead>
+    <tr>
+      <th>Context</th>
+      <th>Characters escaped</th>
+      <th>Function</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Text content</td>
+      <td>
+        <code>&amp;</code> <code>&lt;</code> <code>&gt;</code>
+      </td>
+      <td>
+        <code>escapeContent</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Attribute values</td>
+      <td>
+        <code>&amp;</code> <code>&lt;</code> <code>&quot;</code>
+        <br />
+        <small>
+          <code>&gt;</code> is deliberately skipped — it can't end a double-quoted value
+        </small>
+      </td>
+      <td>
+        <code>escapeAttr</code>
+      </td>
+    </tr>
+    <tr>
+      <td>URL attributes</td>
+      <td>
+        Executable schemes replaced with <code>#blocked</code>
+      </td>
+      <td>
+        <code>isSafeScheme</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Event handlers (<code>on*</code>)
+      </td>
+      <td>
+        String-valued: escaped like any attribute, but the JS inside is not sanitized;
+        function-valued: throws
+      </td>
+      <td>
+        <code>buildAttrs</code> / <code>jsxAttr</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Rawtext content
+        <br />
+        <small>
+          (<code>script</code>, <code>style</code>)
+        </small>
+      </td>
+      <td>
+        <code>\u003c/script&gt;</code> in <code>script</code>, <code>&lt;\/style&gt;</code> in{" "}
+        <code>style</code>
+        <br />
+        <small>scripts escaped (unlike Preact), styles too (unlike React)</small>
+      </td>
+      <td>
+        <code>escapeRawTagContent</code>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<CodeExample src="guide/getting-started/escaping.tsx" output />
+
+### Escaping inside `<script>` and `<style>`
+
+Rawtext elements have no HTML escaping at all: the parser decodes nothing
+between `<script>` and its closing tag, it only scans for the sequence that
+ends the element. Entity-escaping there — what React does — protects nothing
+and corrupts the code, since `a &amp;&amp; b` is not JavaScript.
+
+The escape therefore has to be borrowed from the language _inside_ the
+element, in a form that language reads back as the original text:
+
+| Element    | Sub-language                        | Escape           | Why it round-trips                             |
+| ---------- | ----------------------------------- | ---------------- | ---------------------------------------------- |
+| `<style>`  | CSS, always — `type` is obsolete    | `<\/style>`      | in CSS, `\` before a non-hex char is that char |
+| `<script>` | JavaScript, or JSON in a data block | `\u003c/script>` | a unicode escape both languages decode to `<`  |
+
+`<script>` is a container, not a language. With no `type`, a JavaScript MIME
+type, or `module`, it holds JavaScript; with any other `type` it is a _data
+block_, and the data blocks that occur in practice hold JSON —
+`application/ld+json`, `importmap`, `speculationrules`. A unicode escape is the
+one form both read back, which is why JSON needs no special handling:
+
+```tsx
+<script type="application/ld+json">
+  {JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: title,
+  })}
+</script>
+```
+
+That block stays parseable whatever the data contains: a `</script>` inside a
+value is emitted as `\u003c/script>`, which `JSON.parse` decodes back to the
+original string. The HTML spec suggests `<\/script>` instead, but that is a
+_JavaScript_ escape — `"\s"` is `"s"` — and JSON rejects it, so it would break
+every JSON data block.
+
+**A data block in a third language is not covered.** A Mustache source in
+`<script type="text/template">` holds HTML, which has no escape to borrow:
+neither form reads back there, and `</script` cannot appear in such a template
+at all. That content is yours to guarantee — pass it through
+[`raw()`](#the-raw-escape-hatch).
+
+## What the compiler guarantees (and what it doesn't)
+
+A common question: if the JSX compiler already turned `<div>` into a `jsx()`
+call, why re-escape anything? Because **there is no semantic specification of
+the JSX transform.** The [JSX spec](https://facebook.github.io/jsx/) defines
+_syntax_ only — it opens with _"JSX is an XML-like syntax extension to
+ECMAScript without any defined semantics."_ The `jsx`/`jsxs` protocol is a
+React convention (RFC #107), and every toolchain — TypeScript, esbuild, SWC,
+Bun, oxc — **reimplemented it from scratch**, aligning on Babel's behavior by
+testing, not by a standard. So the runtime cannot assume any particular
+compiler ran, or that it behaved a certain way.
+
+The dividing line is sharp: **the compiler guarantees the _shape_ of the
+calls, never the _content_ of the values.**
+
+| Guaranteed by the grammar / transform                | Guaranteed by nothing — the runtime must enforce it            |
+| ---------------------------------------------------- | -------------------------------------------------------------- |
+| A tag/attribute name _written in JSX_ is well-formed | Names coming from a `{...spread}` (may be attacker-controlled) |
+| A literal `<` cannot appear raw in JSX _source_ text | The string values themselves — including static text           |
+| Components are ordinary function calls               | Attribute _values_ (URL schemes, `on*` payloads, `style`)      |
+| `key` is lifted out of props (3rd `jsx` argument)    | Anything reaching `jsx(dynamicTag, …)` called programmatically |
+
+The subtle trap is **HTML entities**: the compiler _decodes_ them, so
+`<div>a &amp; b &lt;script&gt;</div>` in your source arrives at the runtime as
+the literal string `a & b <script>` — the raw `<script>` is back. This is
+verified behavior across Bun, TypeScript, and esbuild. Escaping static text is
+therefore not redundant; it is the only thing standing between that decoded
+string and the output.
+
+And critically, `jsx("div", props)` is a **public API**: the runtime cannot
+distinguish a call the compiler emitted from a hand-written
+`jsx(userInput, …)`. Any "the compiler already checked this" assumption would
+be unverifiable — which is why vincle validates tag/attribute names and escapes
+every value regardless of origin.
+
+> **Classic-runtime fallback.** For the (deprecated) `<div {...p} key={k} />`
+> pattern, TypeScript emits `createElement` imported from the
+> `jsxImportSource` root. `@vincle/core` exports a `createElement` compatible
+> with that shape so the pattern renders instead of failing on a missing
+> import; it folds trailing children into `props.children` and strips
+> `key`/`ref`, exactly like the automatic runtime.
+
+## The `raw()` Escape Hatch
+
+`raw()` is the **only** way to inject unescaped HTML:
+
+<CodeExample src="safety/raw.tsx" output />
+
+Use `raw()` only when you **know** the value is safe HTML — typically the
+output of a trusted Markdown renderer, a template engine, or your own
+hardcoded markup. Never pass user input directly to `raw()`.
+
+<CodeExample src="safety/one-rule.tsx" output />
+
+## Defense in Depth
+
+Seven independent layers protect your output. No single bypass — except
+`raw()` — can defeat all of them.
+
+|   # | Layer                   | Mechanism                                          | Stops                                                    |
+| --: | ----------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+|   1 | Type System             | `RawString` branded type — explicit trust boundary | Accidental trust of untrusted strings                    |
+|   2 | HTML Escaping           | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>` in text; `&`, `<`, `"` in attributes       |
+|   3 | URL Filtering           | `isSafeScheme` — blocks executable schemes         | `javascript:`, `vbscript:`, unsafe `data:` URIs          |
+|   4 | Unserializable values   | Any function value throws; a string is emitted     | A closure silently vanishing instead of becoming markup  |
+|   5 | Build-time Sanitization | `@vincle/vite-plugin-precompile` defaults to       | Literal `javascript:`, unsafe CSS, `on*` — at build time |
+|     |                         | `secure: true` — static attributes run through     | before the browser parses any HTML                       |
+|     |                         | the same `jsxAttr` as dynamic values, at build     |                                                          |
+|     |                         | time, not at runtime                               |                                                          |
+|   6 | Tag & Attr Validation   | `isValidTag` / `isValidAttrName`                   | Injection through malformed tag or attribute names       |
+|   7 | Rawtext Escaping        | `escapeRawTagContent` — sub-language, not entities | `</script>`/`</style>` breakout — unlike Preact/React    |
+
+Each layer is independently verifyable — see [Invariants](#invariants).
+
+## Security Boundaries
+
+What Vincle protects and what it does not:
+
+| Protected                                         | Not covered                                           |
+| ------------------------------------------------- | ----------------------------------------------------- |
+| HTML injection via text content, attributes, URLs | Input sanitization (use DOMPurify for untrusted HTML) |
+| Event handler attribute injection                 | HTTP headers / CSP (set by your server)               |
+| Malformed tag / attribute names                   | CSRF tokens, authentication, session management       |
+| CSS injection via a `style` object's property names | CSS injection via a `style` object's **values** — `style={{ color: untrusted }}` can still emit arbitrary declarations |
+
+If you need to render untrusted user-generated HTML, run it through a
+sanitizer first, then pass the result via `raw()`. The same applies to a
+`style` value built from untrusted input: only the property name is checked,
+not the value.
+
+## Best Practices
+
+1. **Never pass user input to `raw()`.** If you need to render user HTML,
+   sanitize it with a dedicated library (DOMPurify, sanitize-html) first.
+2. **Prefer JSX string values over `raw()`.** Default escaping is safe.
+3. **Use `RawString` only as a return type** for functions that generate
+   trusted HTML (Markdown renderers, helpers).
+4. **Enable the ESLint plugin** to catch unsafe `raw()` calls and inline event
+   handlers at the source, before they are a render-time error.
+
+## Invariants
+
+Each invariant is enforced by property-based (fuzz) or unit tests:
+
+|  #   | Guarantee                                                        | Enforced by                                    |
+| :--: | ---------------------------------------------------------------- | ---------------------------------------------- |
+| I-01 | No raw `<` or `>` from untrusted input                           | `escape.test.ts`                               |
+| I-02 | No executable URL scheme passes through, obfuscated or not       | `escape.test.ts` — differential vs `new URL()` |
+| I-03 | A function-valued attribute throws on both paths, `on*` or not   | `jsx-precompile-runtime.test.ts`               |
+| I-04 | Precompile ≡ VNode path, value kind by value kind                | `precompile-equivalence.test.ts` (1000 values) |
+| I-05 | Static fold ≡ tree walk — byte-identical                         | `path-equivalence.test.ts` (1000 trees)        |
+| I-06 | Concurrent renders isolated — no cross-request leakage           | `context.test.ts`, `execution-order.test.ts`   |
+| I-07 | The document never depends on component latency                  | `execution-order.test.ts`                      |
+| I-08 | No implicit `RawString` creation                                 | Code review                                    |
+| I-09 | Invalid tag names fail fast, at construction (throw `TypeError`) | `static-fold.test.ts`                          |
+| I-10 | Every production regex is declared, safe, and matches the source | `redos-audit.test.ts`                          |
+
+## ASVS Compliance
+
+Vincle targets **ASVS Level 3** (OWASP Application Security Verification
+Standard). Each row below is held by the tests listed in
+[Invariants](#invariants).
+
+|      # | Requirement                                          |  Lvl  | Status |
+| -----: | ---------------------------------------------------- | :---: | :----: |
+|  1.1.2 | Output encoding as final step                        |   2   |   ✅   |
+|  1.2.1 | Context-relevant output encoding (HTML, attr, URL)   |   1   |   ✅   |
+|  1.2.2 | Safe URL protocols only                              |   1   |   ✅   |
+|  1.2.3 | JS context — `</script>` breakout prevention         |   1   |   ✅   |
+|  1.3.7 | Template injection protection — no dynamic templates |   2   |   ✅   |
+| 1.3.12 | ReDoS-free regex — inventory derived from the source | **3** |   ✅   |
+| 15.1.4 | Zero runtime dependencies                            | **3** |   ✅   |
+| 15.1.5 | `raw()` documented as dangerous                      | **3** |   ✅   |
+| 16.5.4 | Fail-stop on error — no partial/corrupted output     | **3** |   ✅   |
+
+## References
+
+- [OWASP ASVS 5.0](https://asvs.dev/)
+- [V1 — Encoding and Sanitization](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x10-V1-Encoding-and-Sanitization.md)
+- [V15 — Secure Coding](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x1B-V15-Secure-Coding-and-Architecture.md)
+- [V16 — Error Handling](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x1C-V16-Logging-and-Error-Handling.md)
+- [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
