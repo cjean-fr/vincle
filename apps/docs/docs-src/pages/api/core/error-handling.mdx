@@ -1,0 +1,56 @@
+---
+title: Error handling
+sidebar:
+  label: Error handling
+  group: API
+  order: 5
+---
+
+# Error handling
+
+Errors throw or reject bare. There is no component-level boundary that catches
+them mid-tree.
+
+## Rationale
+
+Server-side rendering is fundamentally different from client-side React, and a
+boundary component has little to catch:
+
+- **No recovery after output** — once HTML is sent, a boundary can't
+  retroactively replace it. The server's only choice is what to send next.
+- **SSR errors are exceptional** — a server error usually means a 500, not
+  a graceful partial fallback.
+- **Streaming recovery is per-fragment** — `@vincle/flow` provides `onError`
+  for the streaming case, which is more granular than a boundary.
+
+## Top-level errors
+
+Wrap `renderToString` in try/catch for a global fallback:
+
+```tsx
+import { renderToString } from "@vincle/core";
+
+try {
+  const html = await renderToString(<Page />);
+  // send html to client
+} catch (error) {
+  console.error("Page render failed:", error);
+  // send a 500 or fallback page
+}
+```
+
+## Per-fragment errors (streaming)
+
+For streaming renders, `@vincle/flow` provides `onError` on the
+`serve()` options and individual `<Template>`s:
+
+```tsx
+serve(req, () => <Page />, NativeAdapter, {
+  onError: (error, { id, kind }) => {
+    console.error(`Fragment ${id} failed:`, error);
+    return <p>This section failed to load.</p>;
+  },
+});
+```
+
+See the [Flow streaming API](/api/flow/renderToStream) for details.
