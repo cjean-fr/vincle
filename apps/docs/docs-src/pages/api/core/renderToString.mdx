@@ -1,0 +1,80 @@
+---
+title: renderToString
+sidebar:
+  group: API
+  order: 1
+---
+
+# renderToString
+
+Renders a JSX tree into an HTML string. Always returns a `Promise<string>`.
+
+## Signature
+
+Accepts a single JSX node — a component, an element, a fragment, or a
+primitive. The parameter is typed `unknown`: JSX's own typing (`JSX.Element`)
+already constrains what compiles, so `renderToString` doesn't re-narrow it —
+it dispatches at runtime on what it actually receives.
+
+<CodeExample src="api/renderToString/signature.ts" />
+
+## Basic usage
+
+Pass JSX directly. The tree is traversed once, depth-first, and concatenated
+into a string — no virtual DOM, no intermediate allocations.
+
+<CodeExample src="api/renderToString/basic.tsx" output />
+
+## With a page component
+
+Wrap your document layout in a component that receives props. This is the
+recommended pattern for real applications — every page shares the same shell
+while passing different content and metadata.
+
+<CodeExample src="api/renderToString/with-component.tsx" />
+
+Note how `title` and `children` flow as typed props. The layout component is
+just a function — no provider, no context wrapper required.
+
+## Async components
+
+Any component in the tree can be `async`. `renderToString` walks the tree
+depth-first and awaits every async component it encounters. The component that
+needs data is the component that fetches it — no top-level loader, no
+prop-drilling.
+
+<CodeExample src="api/renderToString/async-tree.tsx" />
+
+Sibling async branches run in document order, one at a time — never in
+parallel. A sibling never starts before the one before it has finished, so two
+branches that both touch context (`setContext`/`useContext`) can never race.
+The returned `Promise<string>` resolves once every branch has rendered.
+
+## Concurrent renders
+
+Multiple concurrent calls to `renderToString` are safe, even when components
+use context (`setContext`/`useContext`) inside `withScope`. Each call gets its
+own isolated `AsyncLocalStorage` scope — no cross-request leakage.
+
+<CodeExample src="api/renderToString/concurrent.tsx" />
+
+This makes Vincle suitable for HTTP servers that handle multiple requests
+in parallel on the same thread, without request-scoped singletons or request
+intermediation.
+
+## VNode vs Renderable
+
+`VNode` is a concrete class — one JSX element, holding its tag, attributes,
+and children. `jsx()` is the only way to make one; it's exported as a **value**
+(not just a type), because the precompile runtime tests for it with
+`instanceof`.
+
+What a component may actually *return* is broader than a single `VNode` —
+elements, fragments, strings, numbers, bigints, booleans, `null`, `undefined`,
+`RawString` (from `raw()`), promises and (async) iterables of any of those.
+That broader union is `Renderable`, the type `renderToString` really accepts:
+
+<CodeExample src="api/renderToString/vincle-node.ts" />
+
+To render multiple sibling elements without a single wrapping `VNode`, use a
+fragment (`<></>`) — it's still one JSX node.

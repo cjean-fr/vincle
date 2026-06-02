@@ -1,0 +1,226 @@
+---
+title: JSX types
+sidebar:
+  group: API
+  order: 3
+---
+
+# JSX types
+
+The type system that powers Vincle — `Renderable`, `VNode`, and the `JSX`
+namespace.
+
+Every HTML and SVG element is typed per element, so a typo is a compile error:
+
+```tsx
+<dvi clas="card" />
+//^ error: 'dvi' does not exist
+//     ^ error: 'clas' does not exist on <div>. Did you mean 'class'?
+```
+
+That typing comes from `@types/react`, which Vincle uses as an **optional,
+type-only** peer dependency — nothing is imported from React at runtime. Without
+it, JSX still compiles and renders; attributes are simply unchecked.
+
+## Renderable
+
+Everything a component may return, and everything the renderers know how to
+render.
+
+<CodeExample src="api/renderToString/vincle-node.ts" />
+
+### What each branch means
+
+| Type                             | Example                          | Behaviour                               |
+| -------------------------------- | -------------------------------- | --------------------------------------- |
+| `string`                         | `"a & b"`                        | HTML-escaped and rendered as text       |
+| `number` / `bigint`              | `42`, `100n`                     | Rendered as text                        |
+| `boolean` / `null` / `undefined` | `true`, `null`                   | Renders nothing                         |
+| `RawString`                      | `raw("<b>bold</b>")`             | Passes through verbatim, no escaping    |
+| `Promise<Renderable>`            | `Promise.resolve(<p>hi</p>)`     | Awaited                                 |
+| `Renderable[]`                   | `[<a/>, <b/>]`                   | Rendered in order, nesting flattened    |
+| `Iterable<Renderable>`           | `Set`, `Map.values()`, generator | Drained, then rendered in order         |
+| `AsyncIterable<Renderable>`      | `AsyncGenerator`                 | Awaited per item, flushed between items |
+
+Anything else — a plain object, a `Date`, a `URL` — is rendered through its
+string form. A function or a symbol is a type error.
+
+## VNode
+
+The engine's internal representation of an element: a tag, its props, its
+children. It is exported **as a type only** — `jsx()` is the only way to make
+one, and nothing outside the engine needs to.
+
+Use it to annotate a value that holds an element built by JSX. To annotate
+something that merely _renders_, `Renderable` is the type you want; it is much
+wider, and it is what a component is allowed to return.
+
+## Components
+
+A component is a plain function. There is no `Component<P>` type to apply, and
+nothing to import:
+
+```tsx
+interface GreetingProps {
+  name: string;
+}
+
+const Greeting = ({ name }: GreetingProps) => <h1>Hello, {name}!</h1>;
+```
+
+`async` works with no ceremony — the renderer awaits it:
+
+```tsx
+const AsyncGreeting = async ({ id }: { id: string }) => {
+  const user = await db.users.find(id);
+  return <h1>Hello {user.name}</h1>;
+};
+```
+
+A component may return anything in `Renderable`, not just an element:
+
+```tsx
+const Label = () => "just text";
+const Items = () => [<li>a</li>, <li>b</li>];
+const Rows = async function* () {
+  for await (const row of stream) yield <tr>{row}</tr>;
+};
+```
+
+To accept children, declare them — `Renderable` is the honest type:
+
+```tsx
+import type { Renderable } from "@vincle/core";
+
+const Card = ({ children }: { children?: Renderable }) => <div class="card">{children}</div>;
+```
+
+## Attributes
+
+Attribute names use React's camelCase spelling; the engine maps each one to its
+HTML name.
+
+| You write     | The document carries |
+| ------------- | -------------------- |
+| `className`   | `class`              |
+| `htmlFor`     | `for`                |
+| `tabIndex`    | `tabindex`           |
+| `httpEquiv`   | `http-equiv`         |
+| `strokeWidth` | `stroke-width`       |
+| `xlinkHref`   | `xlink:href`         |
+| `viewBox`     | `viewBox`            |
+
+`class` and `style` are accepted under their HTML names too, and any name that is
+not a plain identifier — `data-*`, `aria-*`, `http-equiv`, `xlink:href` — can be
+written directly.
+
+Values may be a string, a number, a boolean, a [`raw()`](/api/core/raw) string, or
+a **promise** of any of those:
+
+```tsx
+<a href={resolveUrl(slug)} class={["btn", active && "btn-active"]}>
+  link
+</a>
+```
+
+Boolean HTML attributes render as the bare name: `<input disabled />` becomes
+`<input disabled>`.
+
+### Event handlers
+
+Handlers are **strings**, not functions — Vincle emits HTML:
+
+```tsx
+<button onclick="submit()">Click me</button>
+<button onClick="submit()">Both spellings work</button>
+```
+
+A function throws at render time, because a function cannot be serialized. The
+[`no-unsafe-event-handlers`](https://github.com/cjean-fr/vincle/tree/main/packages/eslint-plugin)
+rule flags the practice at the source if you would rather avoid inline handlers
+entirely.
+
+## JSX namespace
+
+Vincle declares its own `JSX` namespace so the compiler knows how to type-check
+JSX. It is re-exported by each JSX runtime entry point, because that is where
+TypeScript looks it up — the module named in your `jsxImportSource`.
+
+| Member                         | Purpose                                                      |
+| ------------------------------ | ------------------------------------------------------------ |
+| `JSX.Element`                  | What `jsx()` produces                                        |
+| `JSX.ElementType`              | What may appear as a tag — a string, or a component function |
+| `JSX.IntrinsicElements`        | Attribute types per element, plus open custom elements       |
+| `JSX.IntrinsicAttributes`      | Props every element accepts without being attributes (`key`) |
+| `JSX.ElementChildrenAttribute` | Names the prop JSX children are written into                 |
+
+You rarely touch these directly — they are wired by the `jsxImportSource` in your
+`tsconfig.json`.
+
+### Custom elements
+
+Any name containing a hyphen is a custom element and stays open, because no type
+can know what it accepts:
+
+```tsx
+<my-widget theme="dark" data-id="7">
+  content
+</my-widget>
+```
+
+To type one properly, augment `React.JSX.IntrinsicElements` — Vincle derives its
+own list from it, so the declaration flows through. This is how `@vincle/flow`
+registers `<turbo-frame>`:
+
+```tsx
+declare global {
+  namespace React.JSX {
+    interface IntrinsicElements {
+      "turbo-frame": { src?: string; target?: string; children?: unknown };
+    }
+  }
+}
+```
+
+## FromReact\<T\>
+
+The transformation applied to React's props to obtain Vincle's: React-only props
+removed, `on*` handlers turned into strings, and every value widened to accept a
+`RawString` or a promise. Exported for library authors who need to derive
+attribute types the same way Vincle does.
+
+## CSSProperties
+
+Style objects use camelCase properties, converted to kebab-case on output:
+
+```tsx
+const styles = {
+  backgroundColor: "#fff",
+  fontSize: "14px",
+  "--custom-var": "value", // CSS variables supported
+} satisfies CSSProperties;
+```
+
+Property _names_ are validated: one carrying `:`, `;` or `{` is dropped, so keys
+coming from data cannot smuggle extra declarations into the attribute. Values are
+left alone.
+
+## ClassValue
+
+What the `class` attribute accepts: a string, or a flat list whose falsy entries
+are dropped — so no helper is needed for a conditional class.
+
+```tsx
+<div class={["card", isActive && "card-active", null]} />
+// => <div class="card card-active">
+```
+
+## When to use each type
+
+| Type            | Use case                                               |
+| --------------- | ------------------------------------------------------ |
+| `Renderable`    | A `children` prop, or the return type of a helper      |
+| `VNode`         | A value that specifically holds an element             |
+| `CSSProperties` | Typing an inline `style` object                        |
+| `ClassValue`    | Typing a `class` prop you forward                      |
+| `FromReact<T>`  | Deriving attribute types for your own element wrappers |
