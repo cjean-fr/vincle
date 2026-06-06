@@ -1,0 +1,135 @@
+---
+title: Components
+sidebar:
+  group: Integration
+  order: 2
+---
+
+# Components
+
+Three primitives split the concern between declaring a placeholder and pushing
+deferred content:
+
+- **`<Slot>`** — a named hole with fallback content rendered immediately in the
+  shell
+- **`<Template>`** — pushes content into a slot, sync or lazy
+- **`<Include>`** — client-side fetch placeholder
+
+## `<Slot>` — named insertion point
+
+Declares a named hole in the shell. Its `children` are rendered **immediately**
+as placeholder content — visible until a `<Template>` replaces them. An empty
+slot renders an empty placeholder.
+
+```tsx
+import { Slot } from "@vincle/flow";
+
+<Slot name="comments">
+  <p>Loading comments…</p>
+</Slot>;
+```
+
+A `Slot` registers nothing in the pending store — it is purely a passive hole.
+
+`Slot` is the recommended way to define the layout's insertion points. The
+`name` is **required** and must be a valid fragment id
+(`/^[a-zA-Z][a-zA-Z0-9_-]*$/`).
+
+## `<Template>` — fill a slot (sync or lazy)
+
+Pushes content into an existing slot by name. **Unified** — one component for
+both synchronous and deferred content. The behaviour
+depends on `children`:
+
+| `children` type | `fallback` | Behaviour                                  |
+| --------------- | ---------- | ------------------------------------------ |
+| Plain JSX       | —          | Registers content, no placeholder rendered |
+| Plain JSX       | provided   | Dev warning: `fallback` ignored for sync   |
+| `(signal) => …` | —          | Lazy content, no placeholder               |
+| `(signal) => …` | provided   | Lazy content with placeholder + fallback   |
+
+### Sync — push content, no placeholder
+
+`children` is deferred automatically — plain JSX works:
+
+```tsx
+<Template target="page">
+  <h1>Hello</h1>
+</Template>
+```
+
+### Lazy — with placeholder
+
+Declares a deferred region with a placeholder in the shell. The `fallback` prop
+defines the content shown immediately:
+
+```tsx
+import { Template } from "@vincle/flow";
+
+<Template target="dashboard" fallback={<p>Loading dashboard…</p>}>
+  <HeavyDashboard />
+</Template>;
+```
+
+Pass a factory when you need the `AbortSignal` — it fires when the client
+disconnects, or when the fragment's `timeout` elapses. Forward it to your own
+cancelable work (e.g. `fetch(url, { signal })`) so that work stops early:
+
+```tsx
+<Template target="dashboard" fallback={<p>Loading dashboard…</p>}>
+  {(signal) => <HeavyDashboard signal={signal} />}
+</Template>
+```
+
+The signal firing doesn't cut the render itself short — Vincle still renders
+whatever the factory returns. What it does control is the *outcome*: if the
+signal has already fired by the time the render finishes, the result is
+discarded and routed to `onError` instead of being emitted.
+
+### Merge types
+
+`merge` controls how the content applies to the target element:
+
+| `merge`     | Effect                                    |
+| ----------- | ----------------------------------------- |
+| `"replace"` | Target element is replaced (default)      |
+| `"append"`  | Content inserted as last child of target  |
+| `"prepend"` | Content inserted as first child of target |
+| `"before"`  | Content inserted as previous sibling      |
+| `"after"`   | Content inserted as next sibling          |
+
+Not every adapter supports all merge types — an unsupported merge is rejected
+at registration with a clear error.
+
+## `<Include>` — client-side fetch
+
+Browser fetches the fragment from a URL after the shell lands. No server-push
+required — works with any static file server.
+
+<CodeExample src="flow/deferred-src.tsx" />
+
+## Return types
+
+The return type of a factory — or of a plain JSX child — determines the
+behaviour:
+
+| Return type            | Behaviour                                                |
+| ---------------------- | -------------------------------------------------------- |
+| A renderable JSX node       | One-shot patch — renders once and resolves               |
+| `Promise<JSX.Element>`      | Resolves asynchronously, then patches in                 |
+| `AsyncIterable<JSX.Element>`| A **stream** — one patch per item, as each item resolves |
+
+The runtime unwraps `Promise` and `AsyncIterable` automatically inside the
+factory — you never need to call `.then()` or `for await` yourself.
+
+## Common props
+
+| Prop       | Applies to | Meaning                                                   |
+| ---------- | ---------- | --------------------------------------------------------- |
+| `name`     | `Slot`     | id of the placeholder (required)                          |
+| `target`   | `Template` | target slot id to push content into                       |
+| `fallback` | `Template` | placeholder content shown in the shell (lazy only)        |
+| `merge`    | `Template` | how content applies to its target (default `"replace"`)   |
+| `timeout`  | `Template` | per-fragment render timeout in ms                         |
+| `onError`  | `Template` | per-fragment error handler, overriding the renderer's one |
+| `src`      | `Include`  | URL the browser fetches for the fragment content          |
