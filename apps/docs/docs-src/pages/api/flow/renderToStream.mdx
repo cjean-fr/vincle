@@ -1,0 +1,70 @@
+---
+title: renderToStream
+sidebar:
+  group: Flow API
+  order: 3
+---
+
+# renderToStream
+
+Returns a `ReadableStream<string>`. The shell is streamed first, in as many chunks as it takes; fragment chunks follow as they resolve.
+
+## Signature
+
+```tsx
+import { renderToStream } from "@vincle/flow";
+
+function renderToStream(page: () => VNode, options?: StreamOptions): ReadableStream<string>;
+```
+
+## Options
+
+| Option    | Type          | Default         | Description                                   |
+| --------- | ------------- | --------------- | --------------------------------------------- |
+| `adapter` | `Adapter`     | `NativeAdapter` | Adapter for encoding placeholders and patches |
+| `signal`  | `AbortSignal` | —               | Signal to abort the stream                    |
+
+## Usage
+
+<CodeExample src="flow/deferred-stream.tsx" />
+
+The stream never buffers: each chunk is written as soon as it is available. The response `Content-Type` is `text/html` with chunked transfer encoding.
+
+## The shell streams too
+
+The shell is not held back until it is complete. It is written out at every point where rendering has to wait, so a `<head>` reaches the browser while a slow component further down the `<body>` is still pending — the browser starts fetching stylesheets and fonts instead of waiting on your database.
+
+```tsx
+const Slow = async () => <p>{await fetchSomething()}</p>;
+
+renderToStream(() => (
+  <html>
+    <head>
+      <link rel="stylesheet" href="/app.css" /> {/* sent immediately */}
+    </head>
+    <body>
+      <Slow /> {/* the stream waits here, having already sent the head */}
+    </body>
+  </html>
+));
+```
+
+Chunk boundaries fall on suspension points and nowhere else: a fully synchronous page is still written as a single chunk.
+
+Async siblings resolve in document order rather than concurrently, because the bytes have to come out in that order anyway. When you want independent regions to render in parallel, that is what [`<Template>` and `<Slot>`](/api/flow/components) are for — they render out of order and patch into place as they land.
+
+> **An adapter that declares `transformShell` opts out.** A transform that takes the whole document cannot be applied to a prefix of it, so such an adapter's shell is buffered as before. `NativeAdapter` is in this case — it decides whether to inject its polyfill from state that only the end of the render settles. `TurboAdapter`, `HtmxAdapter` and `WebPlatformAdapter` all stream.
+
+## Node HTTP server
+
+Pipe the stream into any Node.js `http.ServerResponse`. Each chunk is written as it becomes ready.
+
+<CodeExample src="flow/node-server.tsx" />
+
+## Async iterables — streaming sequences
+
+An `AsyncIterable` returned by the factory streams one patch per yielded item. Each `yield` produces an independent patch with the configured `merge` type.
+
+<CodeExample src="flow/stream-iterable.tsx" />
+
+The stream stays open until the iterable exhausts or the client disconnects.
