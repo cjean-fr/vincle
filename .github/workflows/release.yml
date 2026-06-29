@@ -1,0 +1,72 @@
+name: Manuel Release (Bun)
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Select the package to publish"
+        required: true
+        type: choice
+        options:
+          - core
+          - flow
+          - eslint-plugin
+          - vite-plugin
+          - vite-plugin-precompile
+          - precompile-core
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Extract Version
+        id: meta
+        run: |
+          PACKAGE_DIR="packages/${{ github.event.inputs.package }}"
+          PACKAGE_NAME=$(jq -r '.name' "$PACKAGE_DIR/package.json")
+          VERSION=$(jq -r '.version' "$PACKAGE_DIR/package.json")
+          TAG="${{ github.event.inputs.package }}@$VERSION"
+          echo "package_dir=$PACKAGE_DIR" >> $GITHUB_OUTPUT
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Check if Tag Exists
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          if git show-ref --tags --verify --quiet "refs/tags/$TAG" || \
+             git ls-remote --exit-code --tags --refs origin "refs/tags/$TAG" >/dev/null; then
+            echo "Erreur : Le tag ${{ steps.meta.outputs.tag }} existe déjà sur local ou distant."
+            echo "Veuillez incrémenter la version dans le package.json localement avant de relancer."
+            exit 1
+          fi
+
+      - name: Build Package
+        run: bun run build --filter="${{ steps.meta.outputs.package_name }}"
+
+      - name: Setup Node (for OIDC support)
+        uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Publish to NPM
+        run: |
+          cd "${{ steps.meta.outputs.package_dir }}"
+          bun pm pack
+          npm publish *.tgz --provenance

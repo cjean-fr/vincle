@@ -1,0 +1,104 @@
+{
+  "name": "@vincle/flow",
+  "version": "0.9.0",
+  "description": "HTML document orchestration layer for @vincle/core",
+  "author": "Christophe Jean",
+  "license": "MIT",
+  "homepage": "https://vincle.cjean.fr",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vincle/vincle.git",
+    "directory": "packages/flow"
+  },
+  "bugs": {
+    "url": "https://github.com/vincle/vincle/issues"
+  },
+  "keywords": [
+    "jsx",
+    "html",
+    "ssr",
+    "streaming",
+    "fragments",
+    "deferred",
+    "htmx",
+    "turbo",
+    "esi",
+    "dom-patching"
+  ],
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "default": "./dist/adapters/index.js"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "default": "./dist/components/index.js"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "default": "./dist/http.js"
+    },
+    "./utils": {
+      "types": "./dist/utils.d.ts",
+      "default": "./dist/utils.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./context": {
+      "types": "./dist/context.d.ts",
+      "default": "./dist/context.js"
+    },
+    "./assets": {
+      "types": "./dist/assets.d.ts",
+      "default": "./dist/assets.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "pkgroll --clean-dist --minify",
+    "check": "tsc --noEmit",
+    "coverage": "bun test --coverage --coverage-reporter=lcov",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "mutation": "stryker run",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@vincle/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/typescript-checker": "^9.6.1",
+    "@types/bun": "catalog:",
+    "@types/react": "^19.2.17",
+    "pkgroll": "catalog:",
+    "stryker-mutator-bun-runner": "^0.4.0",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "@types/react": "^19"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}

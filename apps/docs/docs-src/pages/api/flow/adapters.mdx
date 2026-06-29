@@ -1,0 +1,45 @@
+---
+title: Adapters
+sidebar:
+  group: Flow API
+  order: 2
+---
+
+# Adapters
+
+An adapter controls how placeholders and patches are encoded in the HTML shell. Import from `@vincle/flow/adapters`.
+
+<CodeExample src="flow/adapters.ts" />
+
+## Built-in adapters
+
+| Adapter              | Target                                             | Merge support                           | Size           |
+| -------------------- | -------------------------------------------------- | --------------------------------------- | -------------- |
+| `NativeAdapter`      | Inline polyfill via `<template for>`               | replace, append, prepend, before, after | ~550B polyfill |
+| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | replace, append, prepend, before        | —              |
+| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | replace, append, prepend, before, after | —              |
+| `WebPlatformAdapter` | WICG declarative partial updates                   | replace only                            | —              |
+| `EsiAdapter`         | CDN edge composition via `esi:include`             | replace                                 | —              |
+
+## Usage
+
+Pass an adapter to `renderStream` or `renderToStatic`. When omitted, `NativeAdapter` is the default:
+
+```tsx
+import { renderStream } from "@vincle/flow";
+
+const stream = renderStream(() => <Page />);
+// Defaults to NativeAdapter
+```
+
+## Merge types
+
+| `merge`     | Effect                                    |
+| ----------- | ----------------------------------------- |
+| `"replace"` | Target element is replaced (default)      |
+| `"append"`  | Content inserted as last child of target  |
+| `"prepend"` | Content inserted as first child of target |
+| `"before"`  | Content inserted as previous sibling      |
+| `"after"`   | Content inserted as next sibling          |
+
+Not every adapter supports all merge types — an unsupported merge is rejected at registration with a clear error.

@@ -1,0 +1,61 @@
+---
+title: Static generation
+sidebar:
+  group: Integration
+  order: 4
+---
+
+# Static generation
+
+Build HTML files at compile time. `renderToStatic` gives you a context to
+render all your pages, then emit fragment files if any page uses `<Defer>`.
+Fragments are fetched by the browser after the shell page loads — no streaming
+connection required.
+
+## When to use static generation
+
+Static generation is the right choice when:
+
+- Your content is known at build time (docs, blogs, marketing sites)
+- You deploy to a CDN or static file server (S3, Nginx, Cloudflare Pages)
+- You want zero server infrastructure for serving pages
+- Fragments can be fetched lazily by the client
+
+If you need fragments to arrive in the same HTTP response as the shell, use
+[Streaming](/integration/streaming) instead.
+
+## Pure static
+
+No `<Defer>` in your pages? Call `renderToStatic` without an adapter.
+`ctx.renderPage` applies any configured shell transforms and returns the full
+HTML string — ready to write to a file.
+
+<CodeExample src="flow/pure-static.tsx" />
+
+Each call to `ctx.renderPage` produces a complete HTML document. The context
+tracks which pages have been rendered; use a build script to iterate over your
+routes and write each result to disk.
+
+## With deferred fragments
+
+Pass an adapter and call `ctx.emitFragments` after rendering all pages. Each
+deferred fragment is rendered and passed to your callback with its id, its URL
+(from `generatePath`, default: `/fragments/{id}.html`), and its HTML content.
+
+<CodeExample src="flow/deferred-static.tsx" />
+
+The browser loads the shell page first, then fetches each fragment URL
+independently using `<ClientFetch>`. Fragment files can be cached aggressively
+— they are static HTML files with predictable URLs.
+
+## Fragment file naming
+
+The `generatePath` option controls where fragments are written:
+
+| Option         | Default                             | Description                |
+| -------------- | ----------------------------------- | -------------------------- |
+| `generatePath` | `(id) => \`/fragments/${id}.html\`` | URL path for each fragment |
+
+The same path must be declared in the page's `<ClientFetch src="...">` so the
+browser knows where to find each fragment. Use a consistent convention across
+your build script and templates to keep them in sync.

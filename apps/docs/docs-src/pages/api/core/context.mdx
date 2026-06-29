@@ -1,0 +1,106 @@
+---
+title: Context API
+sidebar:
+  label: Context
+  group: API
+  order: 2
+---
+
+# Context API
+
+Pass data through a component tree without prop-drilling. Built on
+`AsyncLocalStorage` — concurrent renders are fully isolated.
+
+## When to use context
+
+Context solves one problem: **passing data to deeply nested components without
+threading it through every intermediate layer**. Use it for:
+
+- Request-scoped state (current user, locale, theme)
+- Service instances (database, cache, logger)
+- Per-render configuration that many components need
+
+If data only flows from parent to immediate child, pass it as a prop. Context
+adds indirection — use it only when the middle layers don't need the value.
+
+## API signatures
+
+The API consists of four functions: `context` creates a typed key,
+`setContext` writes a value, `useContext` reads it, and `withScope` creates
+the isolation boundary. `snapshot` captures the current scope for seeding
+nested scopes.
+
+<CodeExample src="api/context/signatures.ts" />
+
+### context(key)
+
+Creates a `Context<T>` key. The `key` argument must be a non-empty namespaced
+string (e.g. `"@org/pkg:purpose"`). This ensures same-name contexts across
+module boundaries share a Symbol instance. The type parameter `T` enforces
+type safety at both write and read sites.
+
+### setContext(ctx, value)
+
+Writes a value into the current scope. Must be called inside a `withScope`
+callback — throws if no scope is active. The value is scoped to the enclosing
+`withScope` call and all renders spawned inside it.
+
+### useContext(ctx)
+
+Reads the value set by the nearest `setContext` call in the current scope.
+Throws if `setContext` for the given key has not been called — this is
+intentional: the absence of a required value is a programming error, not a
+runtime condition to silently ignore.
+
+### withScope(fn, options?)
+
+Creates an isolated `AsyncLocalStorage` scope. Every `setContext` call inside
+`fn` is contained within this scope. Render subtrees started inside the scope
+inherit the same context. The optional `seed` parameter pre-populates the
+scope with values from a parent scope (see `snapshot` below).
+
+## Basic example
+
+Create a context key once at module level — one declaration, shared across all
+files that need it. Provide a value with `setContext` inside a `withScope`,
+and read it anywhere in the tree with `useContext`.
+
+<CodeExample src="api/context/basic.tsx" />
+
+The `ThemeContext` key is created once and exported. `Layout` sets the value in
+a `withScope`. `Header` and `Button` read it independently, each receiving the
+same value because they render inside the same scope.
+
+## Concurrent renders
+
+Each `withScope` call creates an isolated `AsyncLocalStorage` store. Two
+renders running in parallel — even with different context values — never leak
+or interfere.
+
+<CodeExample src="api/context/concurrent.tsx" />
+
+This is the key difference from a global variable or a module-level store:
+context is tied to the render call, not to the process.
+
+## snapshot()
+
+Captures all context values currently set in the active scope. Pass the result
+as `seed` to a new `withScope` to fork a child scope that inherits all parent
+values.
+
+<CodeExample src="api/context/snapshot.tsx" />
+
+Useful when you need to spawn a sub-render (e.g. rendering an email template
+during a page request) that sees the same context as its parent.
+
+## Per-request context
+
+The common pattern for HTTP servers: extract request metadata at the handler
+level, set it in context, and let any component read it without passing
+`req` through every intermediate component.
+
+<CodeExample src="api/context/per-request.tsx" />
+
+This pattern keeps your components framework-agnostic: they depend on a
+context key, not on the HTTP server library, framework, request object, or
+middleware chain.

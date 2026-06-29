@@ -1,0 +1,132 @@
+---
+title: Components
+sidebar:
+  group: Integration
+  order: 2
+---
+
+# Components
+
+Three primitives split the concern between declaring a placeholder and pushing
+deferred content:
+
+- **`<Slot>`** — a named hole with fallback content rendered immediately in the
+  shell
+- **`<Fill>`** — pushes deferred content into a slot, overriding its fallback
+- **`<Defer>`** — a deferred region with a placeholder and fallback in one
+  component
+- **`<ClientFetch>`** — client-side fetch placeholder.
+
+## `<Slot>` — named insertion point
+
+Declares a named hole in the shell. Its `children` are rendered **immediately**
+as placeholder content — visible until a `<Fill>` replaces them. An empty slot
+renders an empty placeholder.
+
+```tsx
+import { Slot } from "@vincle/flow";
+
+<Slot name="comments">
+  <p>Loading comments…</p>
+</Slot>;
+```
+
+A `Slot` registers nothing in the pending store — it is purely a passive hole.
+
+`Slot` is the recommended way to define the layout's insertion points. The
+`name` is **required** and must be a valid fragment id
+(`/^[a-zA-Z][a-zA-Z0-9_-]*$/`).
+
+## `<Fill>` — push content
+
+Pushes deferred content into an existing slot by name. Renders nothing itself
+(returns `null`). The `children` must be a factory
+`(signal: AbortSignal) => VincleNode` — the runtime calls it when ready.
+
+<CodeExample src="flow/fill.tsx" />
+
+### Merge types
+
+`merge` controls how the content applies to the target element:
+
+| `merge`     | Effect                                    |
+| ----------- | ----------------------------------------- |
+| `"replace"` | Target element is replaced (default)      |
+| `"append"`  | Content inserted as last child of target  |
+| `"prepend"` | Content inserted as first child of target |
+| `"before"`  | Content inserted as previous sibling      |
+| `"after"`   | Content inserted as next sibling          |
+
+Not every adapter supports all merge types — an unsupported merge is rejected
+at registration with a clear error.
+
+## `<Defer>` — deferred region with placeholder
+
+Declares a deferred region with a placeholder in the shell. The `fallback` prop
+defines the content shown immediately. The `children` must be a factory
+`(signal: AbortSignal) => VincleNode` — this is what renders asynchronously and
+patches the placeholder when ready.
+
+```tsx
+import { Defer } from "@vincle/flow";
+
+<Defer name="dashboard" fallback={<p>Loading dashboard…</p>}>
+  {(signal) => <HeavyDashboard signal={signal} />}
+</Defer>;
+```
+
+`<Defer>` is equivalent to a `<Slot>` + `<Fill>` pair, but in a single
+declaration. It is useful when a component needs its own placeholder without
+relying on an external layout slot.
+
+## `<ClientFetch>` — client-side fetch
+
+Browser fetches the fragment from a URL after the shell lands. No server-push
+required — works with any static file server.
+
+<CodeExample src="flow/deferred-src.tsx" />
+
+## The `(signal) => VincleNode` factory
+
+Both `<Fill>` and `<Defer>` accept `children` as a factory function instead of a
+static node. The factory receives an `AbortSignal` tied to:
+
+- The **request lifetime** — if the client disconnects, the signal aborts and
+  any pending work can stop
+- A **per-fragment timeout** — if the factory takes longer than `timeout` ms,
+  the signal aborts with a timeout error
+
+Pass the signal to `fetch()` or any async API that accepts `AbortSignal`:
+
+<CodeExample src="flow/defer-signal.tsx" />
+
+The factory is invoked lazily — only when the fragment is about to render.
+This means the async work inside the factory starts after the shell has already
+been sent. Combine with a `timeout` to set an upper bound:
+
+<CodeExample src="flow/fill-signal.tsx" />
+
+### One-shot vs stream
+
+The factory can return:
+
+| Return type                 | Behaviour                                                |
+| --------------------------- | -------------------------------------------------------- |
+| A renderable JSX node       | One-shot patch — renders once and resolves               |
+| `Promise<VincleNode>`       | Resolves asynchronously, then patches in                 |
+| `AsyncIterable<VincleNode>` | A **stream** — one patch per item, as each item resolves |
+
+The runtime unwraps `Promise` and `AsyncIterable` automatically inside the
+factory — you never need to call `.then()` or `for await` yourself.
+
+## Common props
+
+| Prop       | Applies to      | Meaning                                                   |
+| ---------- | --------------- | --------------------------------------------------------- |
+| `name`     | `Slot`          | id of the placeholder (required)                          |
+| `name`     | `Defer`         | id of the placeholder (auto-generated if omitted)         |
+| `target`   | `Fill`          | target slot id to push content into                       |
+| `fallback` | `Defer`         | placeholder content shown in the shell                    |
+| `merge`    | `Defer`, `Fill` | how content applies to its target (default `"replace"`)   |
+| `timeout`  | `Defer`, `Fill` | per-fragment render timeout in ms                         |
+| `onError`  | `Defer`, `Fill` | per-fragment error handler, overriding the renderer's one |

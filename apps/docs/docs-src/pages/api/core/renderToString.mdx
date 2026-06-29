@@ -1,0 +1,73 @@
+---
+title: renderToString
+sidebar:
+  group: API
+  order: 1
+---
+
+# renderToString
+
+Renders a JSX tree into an HTML string. Always returns a `Promise<string>`.
+
+## Signature
+
+Accepts a single JSX node — a component, an element, a fragment, or a
+primitive. `VincleNode` is the union of every value a JSX expression can produce.
+
+<CodeExample src="api/renderToString/signature.ts" />
+
+## Basic usage
+
+Pass JSX directly. The tree is traversed once, depth-first, and concatenated
+into a string — no virtual DOM, no intermediate allocations.
+
+<CodeExample src="api/renderToString/basic.tsx" />
+
+## With a page component
+
+Wrap your document layout in a component that receives props. This is the
+recommended pattern for real applications — every page shares the same shell
+while passing different content and metadata.
+
+<CodeExample src="api/renderToString/with-component.tsx" />
+
+Note how `title` and `children` flow as typed props. The layout component is
+just a function — no provider, no context wrapper required.
+
+## Async components
+
+Any component in the tree can be `async`. `renderToString` walks the tree
+depth-first and awaits every async component it encounters. The component that
+needs data is the component that fetches it — no top-level loader, no
+prop-drilling.
+
+<CodeExample src="api/renderToString/async-tree.tsx" />
+
+Sibling async branches run concurrently. The returned `Promise<string>`
+resolves when every branch has finished rendering.
+
+## Concurrent renders
+
+Multiple concurrent calls to `renderToString` are safe, even when components
+use context (`setContext`/`useContext`) inside `withScope`. Each call gets its
+own isolated `AsyncLocalStorage` scope — no cross-request leakage.
+
+<CodeExample src="api/renderToString/concurrent.tsx" />
+
+This makes Vincle suitable for HTTP servers that handle multiple requests
+in parallel on the same thread, without request-scoped singletons or request
+intermediation.
+
+## VincleNode type
+
+`VincleNode` is the return type of any JSX expression. It accepts elements,
+components, fragments, strings, numbers, booleans, `null`, `undefined`,
+`Stringifiable` (any object with `toString()`, including `RawString` from
+`raw()`), `Promise<VincleNode>`, `VincleNode[]`, `Iterable<VincleNode>`, and
+`AsyncIterable<VincleNode>` — the union of everything `renderToString` can
+consume.
+
+<CodeExample src="api/renderToString/vincle-node.ts" />
+
+`renderToString` expects exactly one `VincleNode`. To render multiple sibling
+elements, wrap them in a fragment (`<></>`).

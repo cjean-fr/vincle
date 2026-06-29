@@ -1,0 +1,71 @@
+---
+title: renderToStatic
+sidebar:
+  group: Flow API
+  order: 4
+---
+
+# renderToStatic
+
+Build HTML files at compile time. Gives you a context to render all your pages, then emit fragment files if any page uses `Defer`.
+
+## Signature
+
+```tsx
+import { renderToStatic } from "@vincle/flow";
+
+// Pure static — no adapter, no emitFragments
+function renderToStatic(
+  fn: (ctx: PureStaticContext) => Promise<void>,
+): Promise<void>;
+
+// With deferred fragments — adapter required
+function renderToStatic(
+  fn: (ctx: StaticContext) => Promise<void>,
+  options: StaticOptions,
+): Promise<void>;
+```
+
+## Options
+
+| Option         | Type                     | Default                             | Description                              |
+| -------------- | ------------------------ | ----------------------------------- | ---------------------------------------- |
+| `adapter`      | `Adapter`                | — (required)                        | Wire-format adapter for fragment framing |
+| `generatePath` | `(id: string) => string` | `(id) => \`/fragments/${id}.html\`` | URL path for each fragment               |
+
+## Contexts
+
+### PureStaticContext
+
+| Method       | Signature                                     | Description                                   |
+| ------------ | --------------------------------------------- | --------------------------------------------- |
+| `renderPage` | `(page: () => VincleNode) => Promise<string>` | Renders a page returning the full HTML string |
+
+### StaticContext
+
+| Method          | Signature                                                                  | Description                                              |
+| --------------- | -------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `renderPage`    | `(page: () => VincleNode) => Promise<string>`                              | Renders a page returning the full HTML string            |
+| `emitFragments` | `(emit: (id: string, url: string, html: string) => void) => Promise<void>` | Materializes deferred fragments, passes each to callback |
+
+## Pure static
+
+No `Defer` in your pages? Call `renderToStatic` without arguments. The handler receives a `PureStaticContext` — `emitFragments` does not exist, so the type system prevents accidental use.
+
+<CodeExample src="flow/pure-static.tsx" />
+
+## With deferred fragments
+
+Pass `{ adapter }` as the second argument. The handler receives a `StaticContext` with `emitFragments`. Each deferred fragment is rendered and passed to your callback.
+
+<CodeExample src="flow/deferred-static.tsx" />
+
+## Fragment file naming
+
+The `generatePath` option controls where fragments are written:
+
+| Option         | Default                             | Description                |
+| -------------- | ----------------------------------- | -------------------------- |
+| `generatePath` | `(id) => \`/fragments/${id}.html\`` | URL path for each fragment |
+
+The same path must be declared in the page's `ClientFetch src` so the browser knows where to find each fragment.

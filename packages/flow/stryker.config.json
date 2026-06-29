@@ -1,0 +1,46 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "npm",
+  "testRunner": "bun",
+  "plugins": ["stryker-mutator-bun-runner"],
+  "mutate": [
+    "src/pending-store.ts",
+    "src/assets.ts",
+    "src/render.ts",
+    "src/static.ts",
+    "src/streamFlow.ts",
+    "src/fragment-runner.ts",
+    "src/context.ts",
+    "src/http.ts",
+    "src/utils.ts",
+    "src/adapters/index.ts",
+    "src/adapters/shared.ts",
+    "src/adapters/esi.ts",
+    "src/adapters/htmx.ts",
+    "src/adapters/turbo.ts",
+    "src/adapters/native.ts"
+  ],
+  "mutator": {
+    "excludedMutations": [
+      "BlockStatement",
+      "BooleanLiteral",
+      "ConditionalExpression",
+      "EqualityOperator",
+      "LogicalOperator",
+      "StringLiteral",
+      "UnaryOperator",
+      "UpdateOperator",
+      "PrefixUnaryExpression"
+    ]
+  },
+  "concurrency": 4,
+  "coverageAnalysis": "off",
+  "reporters": ["html", "clear-text", "progress"],
+  "thresholds": {
+    "high": 90,
+    "low": 75,
+    "break": 75
+  },
+  "testFiles": ["src/**/*.test.ts", "src/**/*.test.tsx"],
+  "timeoutMS": 30000
+}

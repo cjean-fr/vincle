@@ -1,0 +1,243 @@
+---
+title: FAQ
+---
+
+import { raw } from "@vincle/core";
+
+{
+raw(`<script type="application/ld+json">${JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is Vincle and when should I use it?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Vincle is a JSX-to-HTML renderer designed exclusively for server-side use. You should use it whenever the output you want is an HTML string — static sites, email templates, SSR responses, API HTML fragments, PDF sources. It is not for client-side rendering or hydration."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How is Vincle different from React?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "React ships a virtual DOM, a reconciler, and a hydration contract — none of which help when the only output is a string. Vincle is built exclusively for server-side HTML generation: zero dependencies (~3 KB gzip), no virtual DOM, async-native rendering, security by default, and no client runtime."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I use Vincle with React components?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Vincle uses its own JSX runtime and does not support React hooks, refs, or the React ecosystem. The JSX syntax is the same, but the runtime is incompatible. If you need React ecosystem libraries (MUI, Radix, React Router), use React's own server renderer."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Vincle work with TypeScript?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Vincle is written in TypeScript and provides full type inference. Set jsxImportSource to '@vincle/core' in your tsconfig.json and JSX expressions are fully typed. For per-element attribute autocomplete, install @types/react as an optional dev dependency."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What runtimes does Vincle support?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Node.js 20+, Bun, Deno, and Cloudflare Workers (with nodejs_compat_v2 flag). No DOM shim or polyfill required — Vincle has zero browser dependencies."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I handle async data fetching in Vincle?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Any component can be async. renderToString walks the tree depth-first and awaits every async component it encounters. Sibling async branches run concurrently. The component that needs data is the component that fetches it — no top-level loader, no prop-drilling."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How does security work in Vincle?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Security is the default, not an opt-in. Every value embedded in JSX is HTML-escaped: text content, attribute values, style properties. Dangerous URL schemes (javascript:, vbscript:, data:) are blocked. Event handler functions are silently dropped. The only escape hatch is raw(), which is explicit and opt-in."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I use Vincle for streaming HTML?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, with the @vincle/flow package. It adds deferred fragments, streaming, and DOM patching — the shell is sent immediately while heavy fragments render concurrently. Adapters are available for Turbo Streams, HTMX, the WICG Native API, and ESI-based CDN composition."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the bundle size of Vincle?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "@vincle/core is approximately 3 KB gzipped with zero runtime dependencies. For comparison, react-dom/server is around 140 KB. The @vincle/flow package for streaming and fragments adds roughly 2 KB."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I debug rendering issues?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Vincle logs warnings for common mistakes: invalid tag names, dropped event handler functions, and missing context values. TypeScript catches type errors at build time. For runtime issues, wrap components in try/catch — onError handlers are available in @vincle/flow for per-fragment error recovery."
+        }
+      }
+    ]
+  })}</script>`)
+}
+
+# FAQ
+
+## What is Vincle and when should I use it?
+
+Vincle is a JSX-to-HTML renderer designed exclusively for server-side use.
+Use it whenever the output you want is an HTML string:
+
+- **Static sites** — render pages to `.html` files at build time
+- **Email templates** — compose rich HTML without a template language
+- **SSR responses** — serve HTML from any HTTP framework
+- **API responses** — return HTML fragments from an endpoint
+- **PDF sources** — generate HTML to feed into a headless browser
+
+Vincle is **not** for client-side rendering or hydration. If you need
+interactive components in the browser, pair it with HTMX, Turbo, Alpine.js,
+or a dedicated frontend framework.
+
+## How is Vincle different from React?
+
+React's renderers carry a virtual DOM, a reconciler, and a hydration
+contract. Vincle is built exclusively for server-side HTML generation:
+
+|                | Vincle                              | react-dom/server |
+| -------------- | ----------------------------------- | ---------------- |
+| Bundle size    | ~3 KB gzip                          | ~140 KB          |
+| Dependencies   | 0                                   | React runtime    |
+| Async          | Native `await`                      | Suspense-only    |
+| Virtual DOM    | None                                | Full             |
+| Client runtime | None                                | Hydration        |
+| Security       | Escape + URL block + handler filter | Escape only      |
+
+## Can I use Vincle with React components?
+
+No. Vincle uses its own [JSX runtime](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/JSX)
+and does not support React hooks, refs, or the React ecosystem. The syntax
+is the same — the runtime is incompatible.
+
+If you need React ecosystem libraries (MUI, Radix, React Router, TanStack),
+use React's own server renderer. Vincle is for projects where you control
+the component tree and don't need client-side interactivity.
+
+## What runtimes does Vincle support?
+
+| Runtime                | Support | Notes                               |
+| ---------------------- | ------- | ----------------------------------- |
+| **Node.js 20+**        | ✅ Full | Native `AsyncLocalStorage`          |
+| **Bun**                | ✅ Full | Node-compatible `AsyncLocalStorage` |
+| **Deno**               | ✅ Full | Node-compatible `AsyncLocalStorage` |
+| **Cloudflare Workers** | ✅ Full | Requires `nodejs_compat_v2` flag    |
+
+No DOM shim, no polyfill, no browser build step. Vincle works wherever
+JavaScript runs.
+
+## How do I handle async data fetching?
+
+Any component can be `async`. `renderToString` walks the tree depth-first
+and awaits every async component it encounters:
+
+```tsx
+async function Page() {
+  const user = await db.users.find(id);
+  const posts = await db.posts.findByUser(id);
+  return (
+    <html>
+      <body>
+        <h1>{user.name}</h1>
+        {posts.map((post) => (
+          <Post key={post.id} {...post} />
+        ))}
+      </body>
+    </html>
+  );
+}
+
+const html = await renderToString(<Page id="42" />);
+```
+
+Sibling async branches run concurrently. The returned `Promise<string>`
+resolves when every branch has finished rendering. No prop-drilling, no
+top-level loader — the component that needs data is the component that
+fetches it.
+
+## How does security work in Vincle?
+
+Security is the default, not an opt-in. Every value embedded in JSX is
+automatically sanitised:
+
+- **Text content** — `&`, `<`, `>` escaped
+- **Attribute values** — also `"` escaped
+- **URL attributes** — `javascript:`, `vbscript:`, `data:` blocked
+- **Event handlers** — functions silently dropped
+- **CSS values** — `expression()`, `javascript:` blocked
+
+The only escape hatch is `raw()`, which is explicit and opt-in. See the
+[Security model](/guide/security) for the full details.
+
+## Can I use Vincle for streaming HTML?
+
+Yes. The [`@vincle/flow`](/integration/overview) package adds deferred
+fragments and streaming. The shell is sent immediately while slow
+components render concurrently. Five adapters let you choose your
+client mechanism:
+
+- **NativeAdapter** — WICG spec with a ~550 B polyfill
+- **TurboAdapter** — Hotwire Turbo Streams
+- **HtmxAdapter** — HTMX OOB swaps
+- **WebPlatformAdapter** — native browser support, no JS
+- **EsiAdapter** — CDN-level ESI composition
+
+All adapters work in both streaming and static generation modes.
+
+## What is the bundle size?
+
+| Package        | Size (gzip) | Dependencies        |
+| -------------- | ----------- | ------------------- |
+| `@vincle/core` | ~3 KB       | 0                   |
+| `@vincle/flow` | ~2 KB       | 0 (depends on core) |
+
+No hidden dependencies, no runtime you don't need. Every byte is accounted
+for.
+
+## How do I debug rendering issues?
+
+Vincle logs warnings for:
+
+- **Invalid tag names** — element omitted from output
+- **Dropped event handlers** — function values on `on*` props
+- **Missing context values** — `useContext` called before `setContext`
+- **Invalid URL schemes** — blocked and replaced with `#blocked`
+
+TypeScript catches type errors at build time. For runtime issues in
+streaming, `@vincle/flow` provides `onError` handlers for per-fragment
+error recovery:
+
+```tsx
+serve(req, () => <Page />, NativeAdapter, {
+  onError: (error, { id, kind }) => {
+    console.error(`Fragment ${id} failed:`, error);
+    return <p>This section failed to load.</p>;
+  },
+});
+```
+
+## Where can I get help?
+
+- **GitHub Issues** — [github.com/vincle/vincle/issues](https://github.com/vincle/vincle/issues)
+- **Documentation** — the rest of this site
+- **GitHub Discussions** — coming soon

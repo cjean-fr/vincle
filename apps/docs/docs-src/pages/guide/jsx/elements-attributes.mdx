@@ -1,0 +1,82 @@
+---
+title: Elements & attributes
+---
+
+# Elements & attributes
+
+How JSX elements and attributes map to HTML.
+
+## Lowercase elements are HTML
+
+Any lowercase tag is rendered as an HTML element. Vincle knows which tags are
+[void elements](https://developer.mozilla.org/en-US/docs/Glossary/Void_element)
+(`img`, `br`, `input`, …) and renders them without a closing tag.
+
+```tsx
+<input type="text" />
+<br />
+// → <input type="text"><br>
+```
+
+Uppercase tags are treated as **components** (functions).
+
+## Attributes
+
+Attributes become HTML attributes. Most names pass through unchanged. A few
+camelCase names are remapped to match the HTML spec, so you can use the names
+you're used to from React:
+
+| JSX name        | HTML attribute   |
+| --------------- | ---------------- |
+| `className`     | `class`          |
+| `htmlFor`       | `for`            |
+| `tabIndex`      | `tabindex`       |
+| `readOnly`      | `readonly`       |
+| `autoComplete`  | `autocomplete`   |
+| `colSpan`       | `colspan`        |
+| `httpEquiv`     | `http-equiv`     |
+| `acceptCharset` | `accept-charset` |
+
+`class` and `className` are **not merged** — they are separate keys. Pick one.
+This differs from React (which merges them) and matches what most server-rendered
+HTML expects.
+
+## Boolean and falsy values
+
+Falsy attribute values (`false`, `null`, `undefined`) are omitted entirely.
+The literal `true` renders the attribute as a bare name (HTML boolean syntax).
+
+```tsx
+<button disabled={isBusy}>Save</button>
+// isBusy true  → <button disabled>Save</button>
+// isBusy false → <button>Save</button>
+```
+
+## The `style` attribute
+
+`style` accepts either a string or a `CSSProperties` object. Object values use
+camelCase keys (like React) and are converted to kebab-case CSS properties.
+
+<CodeExample src="guide/jsx/style-attribute.tsx" />
+
+Dangerous CSS values — `expression()`, `javascript:`, and unsafe `url()` — are
+blocked automatically. See the [security model](/guide/security).
+
+## Event handlers
+
+Function-valued event handlers (`onClick`, `onChange`, …) are **dropped**
+silently at render time — they make no sense in a static HTML string. The ESLint
+plugin flags them. String-valued handlers (`onClick="doThing()"`) are allowed
+and HTML-escaped, but the JavaScript inside is **not** sanitized — never
+interpolate user data there.
+
+## Custom attributes
+
+Unknown attribute names are allowed and rendered as-is, as long as they are
+valid (no whitespace, quotes, `<`, `>`, `/`, `=`, or control characters). This
+covers `data-*`, `aria-*`, and framework-specific attributes like `hx-get`.
+
+## Where to next
+
+- [First render](/guide/getting-started/first-render) — your first component
+- [Security model](/guide/security) — the URL allowlist

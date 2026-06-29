@@ -1,0 +1,10 @@
+{
+  "extends": "../../packages/typescript-config/react.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core",
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src/**/*"]
+}

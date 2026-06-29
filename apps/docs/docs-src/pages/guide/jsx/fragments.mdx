@@ -1,0 +1,69 @@
+---
+title: Fragments
+---
+
+# Fragments
+
+Fragments let you group multiple children without adding an extra DOM node.
+
+## Syntax
+
+Two forms are available:
+
+<CodeExample src="guide/quick-start/fragment.tsx" />
+
+The shorthand `<>...</>` is emitted by the JSX transform when you have multiple root elements. The explicit `Fragment` import is useful when you need a key or prefer the long form:
+
+```tsx
+import { Fragment } from "@vincle/core";
+
+function List() {
+  return (
+    <Fragment>
+      <li>One</li>
+      <li>Two</li>
+      <li>Three</li>
+    </Fragment>
+  );
+}
+```
+
+## When to use fragments
+
+Fragments are useful when a component needs to return multiple elements without a wrapping `<div>`:
+
+```tsx
+function Breadcrumbs() {
+  return (
+    <>
+      <a href="/">Home</a>
+      <span>/</span>
+      <a href="/docs">Docs</a>
+      <span>/</span>
+      <span>Components</span>
+    </>
+  );
+}
+```
+
+## How it works
+
+`Fragment` is a plain function that returns its `children` prop unchanged. No wrapper element is created — the children are flattened directly into the parent during rendering.
+
+```tsx
+import { Fragment, type VincleNode } from "@vincle/core";
+
+export function Fragment({
+  children,
+}: {
+  children?: VincleNode;
+}): VincleNode | undefined {
+  return children;
+}
+```
+
+## Where to next
+
+- [Components](/guide/jsx/components) — functions that return JSX
+- [Elements & attributes](/guide/jsx/elements-attributes) — how JSX maps to HTML
+- [First render](/guide/getting-started/first-render) — your first component

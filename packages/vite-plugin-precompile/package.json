@@ -1,0 +1,65 @@
+{
+  "name": "@vincle/vite-plugin-precompile",
+  "version": "1.0.0",
+  "description": "Vite plugin for @vincle/core JSX precompile transform",
+  "keywords": [
+    "jsx",
+    "plugin",
+    "precompile",
+    "template-literals",
+    "transform",
+    "vite",
+    "vite-plugin"
+  ],
+  "homepage": "https://vincle.cjean.fr",
+  "license": "MIT",
+  "author": "Christophe Jean",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vincle/vincle.git",
+    "directory": "packages/vite-plugin-precompile"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./transformer": {
+      "types": "./dist/transformer.d.ts",
+      "default": "./dist/transformer.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun run build.ts",
+    "check": "tsc --noEmit",
+    "coverage": "bun test --coverage --coverage-reporter=lcov",
+    "mutation": "stryker run",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@vincle/precompile-core": "workspace:*",
+    "magic-string": "^0.30.21",
+    "oxc-parser": "^0.135.0"
+  },
+  "devDependencies": {
+    "@jridgewell/trace-mapping": "^0.3.31",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/typescript-checker": "^9.6.1",
+    "@vincle/core": "workspace:*",
+    "stryker-mutator-bun-runner": "^0.4.0",
+    "typescript": "^7.0.1-rc",
+    "vite": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": "^5 || ^6 || ^7 || ^8"
+  }
+}

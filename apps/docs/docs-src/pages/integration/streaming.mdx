@@ -1,0 +1,91 @@
+---
+title: Streaming
+sidebar:
+  group: Integration
+  order: 3
+---
+
+# Streaming
+
+Send the HTML shell immediately and stream deferred fragments inline in the
+same HTTP response. One connection, progressive delivery — no client-side fetch
+logic required.
+
+## When to stream
+
+Streaming is the right choice when:
+
+- Time-to-first-byte matters (the shell paints before slow queries finish)
+- Fragments depend on request-time data (user-specific content, live results)
+- You want a single HTTP connection from shell through last fragment
+- The client has no JS runtime (or you want to minimise it)
+
+If your content is known at build time and you want zero server infrastructure,
+use [Static generation](/integration/static) instead.
+
+## renderStream
+
+Returns a `ReadableStream<string>`. The shell chunk is emitted first; fragment
+chunks follow as they resolve. The adapter is optional — it defaults to
+`NativeAdapter` (a ~550B polyfill is injected only when fragments are present).
+
+<CodeExample src="flow/deferred-stream.tsx" />
+
+The stream never buffers: each chunk is written as soon as it is available.
+The response `Content-Type` is `text/html` with `chunked` transfer encoding.
+
+## Node HTTP server
+
+Pipe the stream into any Node.js `http.ServerResponse` with `for await`. Each
+chunk is written as it becomes ready — the shell flushes immediately, deferred
+fragments arrive as they resolve.
+
+<CodeExample src="flow/node-server.tsx" />
+
+The example uses `http.createServer`, but the same pattern works with
+**Express**, **Fastify**, **Hono**, or any framework built on `node:http`.
+The key is consuming the `ReadableStream` chunk by chunk and writing each one
+to the response without buffering.
+
+## Framework adapters
+
+For a higher-level API, use the `serve` helper:
+
+```tsx
+import { serve } from "@vincle/flow/http";
+
+Bun.serve({
+  port: 3000,
+  fetch(req) {
+    return serve(req, { page: HomePage, adapter: "native" });
+  },
+});
+```
+
+`serve` builds a `Response` from a page function with optional content
+negotiation for HTMX and Unpoly clients.
+
+## Async iterables — streaming sequences
+
+An `AsyncIterable` returned by the factory streams one patch per yielded item.
+Each `yield` produces an independent patch with the configured `merge` type:
+
+<CodeExample src="flow/stream-iterable.tsx" />
+
+This is useful for real-time feeds, progress indicators, or any scenario where
+data arrives in multiple batches. The stream stays open until the iterable
+exhausts or the client disconnects.
+
+## Merge types during streaming
+
+| `merge`     | Effect                                    |
+| ----------- | ----------------------------------------- |
+| `"replace"` | Target element is replaced (default)      |
+| `"append"`  | Content inserted as last child of target  |
+| `"prepend"` | Content inserted as first child of target |
+| `"before"`  | Content inserted as previous sibling      |
+| `"after"`   | Content inserted as next sibling          |
+
+Each patch in a streaming sequence carries its own merge type. First item can
+`"replace"` the placeholder; subsequent items can `"append"` to the same
+target.

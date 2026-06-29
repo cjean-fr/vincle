@@ -1,0 +1,10 @@
+{
+  "extends": "../../packages/typescript-config/react.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core",
+    "types": ["vite/client", "bun"]
+  },
+  "include": ["docs-src", "vite.config.ts"],
+  "exclude": ["docs-src/examples"]
+}

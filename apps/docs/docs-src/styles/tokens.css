@@ -1,0 +1,52 @@
+:root {
+  color-scheme: light;
+
+  --docs-color-bg: #ffffff;
+  --docs-color-text: #111827;
+  --docs-color-text-body: #4b5563;
+  --docs-color-text-secondary: #6b7280;
+  --docs-color-code-inline-bg: #f3f4f6;
+  --docs-color-accent: #6366f1;
+  --docs-color-accent-hover: #4f46e5;
+  --docs-color-accent-soft: #eef2ff;
+  --docs-color-border: #e5e7eb;
+  --docs-color-surface: #f9fafb;
+
+  --docs-code-bg: #030712;
+  --docs-code-text: #f3f4f6;
+  --docs-code-border: #1f2937;
+
+  --docs-font-body:
+    "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --docs-font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  --docs-shell-max-width: 80rem;
+  --docs-sidebar-width: 16rem;
+  --docs-header-height: 3rem;
+  --docs-content-padding: 1.5rem;
+
+  --docs-transition-fast: 150ms ease;
+  --docs-transition-normal: 200ms ease;
+  --docs-transition-slow: 300ms ease;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --docs-color-bg: #0b0d14;
+  --docs-color-text: #f3f4f6;
+  --docs-color-text-body: #9ca3af;
+  --docs-color-text-secondary: #9ca3af;
+  --docs-color-code-inline-bg: #1f2937;
+  --docs-color-accent: #818cf8;
+  --docs-color-accent-hover: #a5b4fc;
+  --docs-color-accent-soft: #1e1b4b;
+  --docs-color-border: #1f2937;
+  --docs-color-surface: #111827;
+
+  --docs-code-bg: #111827;
+  --docs-code-border: #1f2937;
+}

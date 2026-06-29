@@ -1,0 +1,158 @@
+---
+title: Overview
+sidebar:
+  group: Integration
+  order: 1
+---
+
+# Integration
+
+**The shell is instant. Slow parts wait.**
+
+Traditional SSR holds the entire response until every `await` resolves — the
+slowest query sets your time-to-first-byte. Integration breaks that coupling.
+
+You mark slow subtrees with `<Defer>` / `<Fill>`. The page shell ships
+immediately. Fragments arrive later, each as soon as it resolves. No JavaScript
+framework. No hydration. Just HTML in chunks.
+
+## How it works
+
+<div class="not-prose my-8 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+  <div class="border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-medium text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+    Page response
+  </div>
+  <div class="grid grid-cols-1 divide-y divide-gray-100 dark:divide-gray-800 sm:grid-cols-[1fr_auto_1fr] sm:divide-x sm:divide-y-0">
+    <div class="space-y-2 p-5">
+      <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 dark:border-blue-900 dark:bg-blue-950">
+        <p class="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+          Shell — immediate
+        </p>
+        <p class="mt-1.5 font-mono text-xs text-gray-600 dark:text-gray-400">
+          &lt;nav&gt;, &lt;header&gt;, layout…
+        </p>
+      </div>
+      <div class="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-3 dark:border-amber-800 dark:bg-amber-950/40">
+        <p class="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+          Fragment — deferred
+        </p>
+        <p class="mt-1.5 font-mono text-xs text-gray-500 dark:text-gray-500">
+          &lt;Slot&gt; placeholder
+        </p>
+      </div>
+      <div class="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-3 dark:border-amber-800 dark:bg-amber-950/40">
+        <p class="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+          Fragment — deferred
+        </p>
+        <p class="mt-1.5 font-mono text-xs text-gray-500 dark:text-gray-500">
+          &lt;Slot&gt; placeholder
+        </p>
+      </div>
+    </div>
+    <div class="flex items-center justify-center px-4 py-4 sm:py-0">
+      <svg
+        class="h-6 w-6 rotate-90 text-gray-300 dark:text-gray-700 sm:rotate-0"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.5"
+          d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+        />
+      </svg>
+    </div>
+    <div class="flex flex-col justify-center gap-2 p-5">
+      <div class="flex items-start gap-2">
+        <div class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-blue-500"></div>
+        <p class="text-xs text-gray-600 dark:text-gray-400">
+          Shell flushed → browser starts painting
+        </p>
+      </div>
+      <div class="ml-1 h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
+      <div class="flex items-start gap-2">
+        <div class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400"></div>
+        <p class="text-xs text-gray-600 dark:text-gray-400">
+          Fragment A resolves → injected into placeholder
+        </p>
+      </div>
+      <div class="ml-1 h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
+      <div class="flex items-start gap-2">
+        <div class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400"></div>
+        <p class="text-xs text-gray-600 dark:text-gray-400">
+          Fragment B resolves → injected independently
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<CodeExample src="flow/deferred-stream.tsx" />
+
+## Two rendering modes
+
+<div class="not-prose mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+  <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+    <div class="border-b border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">
+        Streaming
+      </p>
+    </div>
+    <div class="space-y-3 p-4">
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        Fragments arrive in the{" "}
+        <strong class="text-gray-900 dark:text-white">
+          same HTTP response
+        </strong>{" "}
+        after the shell. One connection, progressive delivery.
+      </p>
+      <p class="font-mono text-xs text-gray-500 dark:text-gray-500">
+        renderStream()
+      </p>
+    </div>
+  </div>
+  <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+    <div class="border-b border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900">
+      <p class="text-sm font-semibold text-gray-900 dark:text-white">
+        Static generation
+      </p>
+    </div>
+    <div class="space-y-3 p-4">
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        Fragments are emitted as{" "}
+        <strong class="text-gray-900 dark:text-white">
+          separate HTML files
+        </strong>{" "}
+        at build time. The browser fetches them on load.
+      </p>
+      <p class="font-mono text-xs text-gray-500 dark:text-gray-500">
+        renderToStatic()
+      </p>
+    </div>
+  </div>
+</div>
+
+## Install
+
+<Tabs
+  syncKey="pkg-manager"
+  tabs={[
+    {
+      label: "npm",
+      content: <CodeBlock code="npm install @vincle/flow" language="bash" />,
+    },
+    {
+      label: "bun",
+      content: <CodeBlock code="bun add @vincle/flow" language="bash" />,
+    },
+  ]}
+/>
+
+## Adapters
+
+An adapter controls how placeholders and patches are encoded in the HTML shell.
+Integration ships five built-in adapters:
+
+<CodeExample src="flow/adapters.ts" />

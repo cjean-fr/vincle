@@ -1,0 +1,80 @@
+---
+title: Components
+sidebar:
+  group: Flow API
+  order: 1
+---
+
+# Components
+
+Components for deferring content in the HTML shell. Imported from `@vincle/flow`.
+
+## Slot
+
+Declares a named insertion point in the shell. Its children render immediately as placeholder content, visible until a `Fill` replaces them.
+
+<CodeExample src="flow/fill-signal.tsx" />
+
+**Props:**
+
+| Prop       | Type         | Default | Description                                                    |
+| ---------- | ------------ | ------- | -------------------------------------------------------------- |
+| `name`     | `string`     | —       | Fragment id, required. Must match `/^[a-zA-Z][a-zA-Z0-9_-]*$/` |
+| `children` | `VincleNode` | —       | Fallback content rendered immediately in the shell             |
+
+## Fill
+
+Pushes deferred content into an existing slot by name. Renders nothing itself.
+
+<CodeExample src="flow/fill.tsx" />
+
+**Props:**
+
+| Prop       | Type                                                        | Default     | Description                               |
+| ---------- | ----------------------------------------------------------- | ----------- | ----------------------------------------- |
+| `target`   | `string`                                                    | —           | Target slot id to push content into       |
+| `children` | `(signal: AbortSignal) => VincleNode`                       | —           | Factory returning the deferred content    |
+| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target element |
+| `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms         |
+| `onError`  | `(error: Error) => VincleNode`                              | —           | Per-fragment error handler                |
+
+## Defer
+
+Declares a deferred region with a placeholder and content in one component. Equivalent to a `Slot` + `Fill` pair.
+
+<CodeExample src="flow/defer-signal.tsx" />
+
+**Props:**
+
+| Prop       | Type                                                        | Default        | Description                            |
+| ---------- | ----------------------------------------------------------- | -------------- | -------------------------------------- |
+| `name`     | `string`                                                    | auto-generated | Fragment id                            |
+| `fallback` | `VincleNode`                                                | —              | Placeholder content shown in the shell |
+| `children` | `(signal: AbortSignal) => VincleNode`                       | —              | Factory returning the deferred content |
+| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"`    | How content applies to the target      |
+| `timeout`  | `number`                                                    | —              | Per-fragment render timeout in ms      |
+| `onError`  | `(error: Error) => VincleNode`                              | —              | Per-fragment error handler             |
+
+## ClientFetch
+
+Browser fetches a fragment from a URL after the shell lands. No server-push required — works with any static file server.
+
+<CodeExample src="flow/deferred-src.tsx" />
+
+**Props:**
+
+| Prop  | Type     | Default | Description                            |
+| ----- | -------- | ------- | -------------------------------------- |
+| `src` | `string` | —       | URL of the fragment HTML file to fetch |
+
+## Factory function
+
+Both `Fill` and `Defer` accept `children` as a factory `(signal: AbortSignal) => VincleNode`. The factory receives an `AbortSignal` tied to the request lifetime and per-fragment timeout.
+
+**Return types:**
+
+| Return type                 | Behaviour                                            |
+| --------------------------- | ---------------------------------------------------- |
+| A renderable JSX node       | One-shot patch — renders once and resolves           |
+| `Promise<VincleNode>`       | Resolves asynchronously, then patches in             |
+| `AsyncIterable<VincleNode>` | A stream — one patch per item, as each item resolves |

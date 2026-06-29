@@ -1,0 +1,48 @@
+---
+title: serve
+sidebar:
+  group: Flow API
+  order: 5
+---
+
+# serve
+
+Higher-level HTTP helper that builds a `Response` from a page function. Supports content negotiation for HTMX and Unpoly clients.
+
+## Signature
+
+```tsx
+import { serve } from "@vincle/flow/http";
+
+function serve(
+  req: Request,
+  page: (n: Negotiation) => VincleNode,
+  adapter: StreamingAdapter,
+  opts?: ServeOptions,
+): Promise<Response>;
+```
+
+## Parameters
+
+| Param     | Type                             | Description                          |
+| --------- | -------------------------------- | ------------------------------------ |
+| `req`     | `Request`                        | Incoming HTTP request                |
+| `page`    | `(n: Negotiation) => VincleNode` | Page component function              |
+| `adapter` | `StreamingAdapter`               | Adapter for encoding fragments       |
+| `opts`    | `ServeOptions`                   | Optional flow options, headers, mode |
+
+## Usage
+
+```tsx
+import { serve } from "@vincle/flow/http";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+Bun.serve({
+  port: 3000,
+  fetch(req) {
+    return serve(req, () => <HomePage />, NativeAdapter);
+  },
+});
+```
+
+`serve` builds a `Response` from a page function with optional content negotiation for HTMX and Unpoly clients. It wraps `renderStream` internally.

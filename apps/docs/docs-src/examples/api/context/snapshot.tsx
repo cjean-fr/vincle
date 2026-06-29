@@ -1,0 +1,22 @@
+import {
+  snapshot,
+  withScope,
+  useContext,
+  renderToString,
+  type Context,
+} from "@vincle/core";
+
+declare const themeCtx: Context<"light" | "dark">;
+const ChildPage = () => <div />;
+
+// Capture current context values and pass them to a child scope
+const seed = snapshot();
+
+const childHtml = await withScope(
+  async () => {
+    // Inherits all values from the parent scope
+    const theme = useContext(themeCtx); // still works
+    return renderToString(<ChildPage />);
+  },
+  { seed },
+);

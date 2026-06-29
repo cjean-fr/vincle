@@ -1,0 +1,63 @@
+{
+  "name": "@vincle/eslint-plugin",
+  "version": "0.9.0",
+  "description": "ESLint plugin for @vincle/core — static rendering safety",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "jsx",
+    "lint",
+    "security",
+    "static-rendering",
+    "xss-prevention"
+  ],
+  "homepage": "https://vincle.cjean.fr",
+  "bugs": {
+    "url": "https://github.com/vincle/vincle/issues"
+  },
+  "license": "MIT",
+  "author": "Christophe Jean",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vincle/vincle.git",
+    "directory": "packages/eslint-plugin"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "check": "tsc --noEmit",
+    "format": "prettier --write \"**/*.{ts,json,md}\""
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@typescript-eslint/parser": "catalog:",
+    "@typescript-eslint/rule-tester": "catalog:",
+    "@typescript-eslint/utils": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "@vincle/core": "workspace:*",
+    "eslint": ">=8"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

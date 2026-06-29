@@ -1,0 +1,620 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@import "./tokens.css";
+@import "./prose.css" layer(components);
+
+/* === Global focus styles === */
+:focus-visible {
+  outline: 2px solid var(--docs-color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.docs-search-input:focus-visible {
+  outline: 2px solid var(--docs-color-accent);
+  outline-offset: -1px;
+  border-radius: 4px;
+}
+
+/* === Skip to content === */
+.docs-skip-link {
+  position: fixed;
+  top: -100%;
+  left: 1rem;
+  z-index: 10000;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background: var(--docs-color-accent);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top var(--docs-transition-fast);
+}
+
+.docs-skip-link:focus {
+  top: 1rem;
+}
+
+/* === Smooth scroll & color transition === */
+html {
+  scroll-behavior: smooth;
+}
+
+/* === Themed text selection === */
+::selection {
+  background: color-mix(in srgb, var(--docs-color-accent) 25%, transparent);
+}
+
+/* === Anchor targets must clear the sticky header === */
+:is(h1, h2, h3, h4, h5, h6)[id] {
+  scroll-margin-top: calc(var(--docs-header-height) + 1.25rem);
+}
+
+/* === Heading permalinks (injected post-render) === */
+.docs-heading-anchor {
+  margin-left: 0.4em;
+  color: var(--docs-color-text-secondary);
+  text-decoration: none;
+  opacity: 0;
+  transition:
+    opacity var(--docs-transition-fast),
+    color var(--docs-transition-fast);
+}
+
+:is(h2, h3, h4):hover > .docs-heading-anchor,
+.docs-heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+.docs-heading-anchor:hover {
+  color: var(--docs-color-accent);
+  text-decoration: none;
+}
+
+/* No hover on touch devices — keep the permalink discoverable */
+@media (hover: none) {
+  .docs-heading-anchor {
+    opacity: 0.4;
+  }
+}
+
+/* === Subtle thin scrollbars on secondary scroll regions === */
+.docs-nav,
+.docs-toc-column,
+.docs-code-block,
+.docs-search-results {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(
+      in srgb,
+      var(--docs-color-text-secondary) 35%,
+      transparent
+    )
+    transparent;
+}
+
+.docs-body {
+  transition:
+    background-color var(--docs-transition-slow),
+    color var(--docs-transition-slow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* === Print styles === */
+@media print {
+  /* Hide interactive chrome */
+  header,
+  .docs-nav,
+  .docs-nav-backdrop,
+  .docs-toc-column,
+  .docs-toc-track,
+  .docs-search-dialog,
+  [data-search-trigger],
+  [data-docs-theme-toggle],
+  .docs-nav-toggle,
+  .docs-skip-link,
+  .docs-heading-anchor,
+  .docs-page-footer-edit,
+  .docs-page-nav,
+  .docs-home .docs-card-glow,
+  .docs-home [src*="badge"],
+  .docs-home [src*="shields"],
+  .docs-home [src*="badge-size"] {
+    display: none !important;
+  }
+
+  /* Reset backgrounds, shadows, gradients — ink is expensive */
+  * {
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .docs-body {
+    color: #000 !important;
+    transition: none !important;
+  }
+
+  .docs-home-hero::before {
+    display: none !important;
+  }
+
+  .docs-home .bg-gradient-to-r {
+    background: none !important;
+    -webkit-text-fill-color: #000 !important;
+    color: #000 !important;
+  }
+
+  /* Force all text to black */
+  .docs-home h1,
+  .docs-home h2,
+  .docs-home h3,
+  .docs-home p,
+  .docs-home strong,
+  .docs-home span {
+    color: #000 !important;
+  }
+
+  .docs-home [class*="text-"] {
+    color: #000 !important;
+  }
+
+  /* Cards need visible borders */
+  .docs-home [class*="border"],
+  .docs-feature-card,
+  .docs-usecase-card,
+  .docs-stat-card {
+    border-color: #ccc !important;
+  }
+
+  .docs-stat-card {
+    border: 1px solid #ccc !important;
+  }
+
+  /* Use case cards: badges en noir */
+  .docs-usecase-card [class*="bg-red"],
+  .docs-usecase-card [class*="bg-green"] {
+    background: transparent !important;
+    border: 1px solid #000 !important;
+    color: #000 !important;
+  }
+
+  .docs-usecase-card [class*="text-red"],
+  .docs-usecase-card [class*="text-green"] {
+    color: #000 !important;
+  }
+
+  /* Links: show URL */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.75rem;
+    color: #666 !important;
+    font-weight: 400;
+  }
+
+  a[href^="/"]::after {
+    content: " (https://vincle.netlify.app" attr(href) ")";
+  }
+
+  a[href^="#"]::after,
+  a[href^="javascript"]::after {
+    content: none;
+  }
+
+  .docs-shell {
+    max-width: 100% !important;
+    min-height: auto !important;
+  }
+
+  .docs-home {
+    max-width: 100% !important;
+    padding: 1in 0 !important;
+  }
+
+  .docs-main {
+    padding-top: 0 !important;
+  }
+
+  /* Code blocks: light bg + black text, never split across pages */
+  .docs-code-block {
+    border: 1px solid #ccc !important;
+    background: #fafafa !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .docs-code-block * {
+    color: #000 !important;
+  }
+
+  .docs-code-block [style*="color"] {
+    color: #000 !important;
+  }
+
+  /* Avoid page breaks in the middle of cards */
+  .docs-use-case-grid,
+  .docs-feature-card,
+  .docs-usecase-card,
+  .docs-stat-card,
+  .docs-home .docs-code-example {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Tables */
+  .docs-prose table {
+    border-collapse: collapse !important;
+  }
+
+  .docs-prose th,
+  .docs-prose td {
+    border: 1px solid #ccc !important;
+    background: transparent !important;
+  }
+
+  .docs-prose thead {
+    background: transparent !important;
+  }
+
+  .docs-page-footer {
+    border-top: 1px solid #ccc !important;
+  }
+
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    page-break-after: avoid;
+  }
+
+  pre,
+  code {
+    page-break-inside: avoid;
+  }
+}
+
+/* === Forced colours mode === */
+@media (forced-colors: active) {
+  .docs-nav-link-current {
+    outline: 2px solid ButtonText;
+    outline-offset: -2px;
+  }
+
+  .docs-code-block {
+    border: 1px solid ButtonText;
+  }
+
+  .docs-feature-card {
+    border: 1px solid ButtonText;
+  }
+
+  :focus-visible {
+    outline: 3px solid CanvasText;
+    outline-offset: 2px;
+  }
+
+  .docs-skip-link:focus {
+    outline: 3px solid CanvasText;
+  }
+}
+
+/* === Prevent layout shift from scrollbar === */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* === Tabs bar in header (hide scroll affordance, keep touch/scroll-wheel scrolling) === */
+.docs-tabs-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.docs-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* === Sidebar nav === */
+.docs-nav {
+  transition:
+    transform var(--docs-transition-slow),
+    opacity var(--docs-transition-slow);
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.docs-nav[data-open] {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .docs-nav {
+    transform: translateZ(0);
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity var(--docs-transition-slow);
+  }
+}
+
+.docs-nav-backdrop {
+  transition: opacity var(--docs-transition-slow);
+  pointer-events: none;
+}
+
+.docs-nav-backdrop[data-open] {
+  pointer-events: auto;
+}
+
+/* === Code blocks: consistent spacing, never overflow === */
+.docs-code-block,
+.expressive-code {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.docs-code-block pre,
+.expressive-code pre {
+  overflow-x: auto;
+}
+
+.docs-prose .docs-code-block,
+.docs-prose .expressive-code {
+  margin-block: 1.5rem;
+}
+
+.expressive-code .frame:not(.has-title):not(.is-terminal) pre code {
+  padding-block: 1rem;
+}
+
+/* === Feature cards === */
+.docs-feature-card {
+  transition:
+    border-color var(--docs-transition-fast),
+    box-shadow var(--docs-transition-fast);
+}
+
+/* === Home page gradient text === */
+.docs-home .bg-gradient-to-r {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* === Card glow effect === */
+.docs-card-glow {
+  transition: opacity var(--docs-transition-slow);
+}
+
+/* === Home page stats === */
+.docs-home .stat-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* === Home page hero badges === */
+.docs-home .badge-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* === Home page hero glow === */
+.docs-home-hero {
+  position: relative;
+}
+
+.docs-home-hero::before {
+  content: "";
+  position: absolute;
+  inset: -40% -20% -20% -20%;
+  background: radial-gradient(
+    ellipse 70% 50% at 50% 0%,
+    color-mix(in srgb, var(--docs-color-accent) 12%, transparent) 0%,
+    color-mix(in srgb, var(--docs-color-accent) 5%, transparent) 40%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.docs-home-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* === Home page section divider === */
+.docs-section-accent {
+  display: inline-block;
+  width: 1.5rem;
+  height: 3px;
+  border-radius: 9999px;
+  background: var(--docs-color-accent);
+  margin-bottom: 0.5rem;
+}
+
+/* === Feature card hover lift === */
+.docs-feature-card {
+  transition:
+    border-color var(--docs-transition-fast),
+    box-shadow var(--docs-transition-fast),
+    transform var(--docs-transition-fast);
+}
+
+.docs-feature-card:hover {
+  transform: translateY(-2px);
+}
+
+.docs-feature-card:hover .docs-feature-card-icon {
+  background: color-mix(in srgb, var(--docs-color-accent) 15%, transparent);
+}
+
+/* === Use case card hover === */
+.docs-usecase-card {
+  transition:
+    border-color var(--docs-transition-fast),
+    box-shadow var(--docs-transition-fast),
+    transform var(--docs-transition-fast);
+}
+
+.docs-usecase-card:hover {
+  box-shadow: 0 8px 30px
+    color-mix(in srgb, var(--docs-color-accent) 12%, transparent);
+}
+
+/* === Stat card hover === */
+.docs-stat-card {
+  transition:
+    border-color var(--docs-transition-fast),
+    box-shadow var(--docs-transition-fast),
+    transform var(--docs-transition-fast);
+}
+
+.docs-stat-card:hover {
+  border-color: color-mix(in srgb, var(--docs-color-accent) 40%, transparent);
+  transform: translateY(-1px);
+}
+
+/* === MDX content tabs (state driven by aria-selected, toggled in tabs/client.ts) === */
+.docs-tab {
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--docs-color-text-secondary);
+  transition:
+    color var(--docs-transition-fast),
+    border-color var(--docs-transition-fast);
+}
+
+.docs-tab:hover {
+  color: var(--docs-color-text);
+}
+
+.docs-tab[aria-selected="true"] {
+  border-bottom-color: var(--docs-color-accent);
+  color: var(--docs-color-accent);
+}
+
+/* === Table of contents === */
+.docs-toc-track {
+  position: relative;
+}
+
+.docs-toc-marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  background: var(--docs-color-accent);
+  border-radius: 1px;
+  pointer-events: none;
+  transition: top var(--docs-transition-normal);
+  z-index: 1;
+}
+
+.docs-toc-track.is-animating .docs-toc-marker {
+  transition: none;
+}
+
+.docs-toc-link.is-active {
+  color: var(--docs-color-accent);
+}
+
+.docs-toc-sublist {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height var(--docs-transition-normal),
+    opacity var(--docs-transition-normal);
+}
+
+.docs-toc-entry:has(.is-active) > .docs-toc-sublist {
+  max-height: 1000px;
+  opacity: 1;
+}
+
+/* === Force GPU compositing to prevent 1px sticky jitter on scroll === */
+.docs-toc-column {
+  transform: translateZ(0);
+}
+
+/* === Theme toggle === */
+.docs-theme-toggle-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  grid-area: 1 / 1;
+  pointer-events: none;
+  transition:
+    opacity var(--docs-transition-slow),
+    scale var(--docs-transition-slow),
+    rotate var(--docs-transition-slow);
+}
+
+.docs-theme-toggle-sun {
+  opacity: 0;
+  scale: 0.5;
+  rotate: 90deg;
+}
+
+.docs-theme-toggle-moon {
+  opacity: 1;
+}
+
+.dark .docs-theme-toggle-sun {
+  opacity: 1;
+  scale: 1;
+  rotate: 0deg;
+}
+
+.dark .docs-theme-toggle-moon {
+  opacity: 0;
+  scale: 0.5;
+  rotate: -90deg;
+}
+
+/* === Search dialog: morph from trigger (open) / fade back (close) === */
+.docs-search-dialog {
+  transform-origin: top right;
+  transition:
+    opacity var(--docs-transition-normal),
+    scale var(--docs-transition-normal);
+  opacity: 0;
+  scale: 0.9;
+}
+.docs-search-dialog[open] {
+  opacity: 1;
+  scale: 1;
+}
+.docs-search-dialog.closing {
+  opacity: 0;
+  scale: 0.9;
+}
+
+.docs-search-dialog::backdrop {
+  opacity: 0;
+  transition: opacity var(--docs-transition-normal);
+}
+.docs-search-dialog[open]::backdrop {
+  opacity: 1;
+}
+.docs-search-dialog.closing::backdrop {
+  opacity: 0;
+}

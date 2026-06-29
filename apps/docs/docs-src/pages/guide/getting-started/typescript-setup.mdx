@@ -1,0 +1,73 @@
+---
+title: TypeScript setup
+---
+
+# TypeScript setup
+
+Vincle uses standard JSX — the same transform React, Preact, and Solid use.
+Configure it once in your `tsconfig.json` (or build tool) and every `.tsx`
+file picks it up.
+
+## tsconfig.json
+
+```json
+//tsconfig.json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core"
+  }
+}
+```
+
+With `jsxImportSource` set, your JSX files never need an explicit import —
+the compiler injects the runtime calls for you.
+
+## Deno
+
+`@vincle/core` works with Deno's built-in JSX transform. Configure the import
+source in `deno.json` so you don't need explicit imports in every file:
+
+<CodeExample src="guide/getting-started/deno.json" meta="title=deno.json" />
+
+Deno also supports `jsx: "precompile"` — Deno's own compile-time JSX transform.
+When enabled, Vincle exports the `jsxTemplate`, `jsxAttr`, and `jsxEscape`
+helpers it needs. Note that `dangerouslySetInnerHTML` is **dropped in precompile
+mode** — use `{raw(html)}` as a child instead.
+
+## Vite / esbuild
+
+Set the import source in your build config instead of `tsconfig.json`:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  esbuild: { jsx: "automatic", jsxImportSource: "@vincle/core" },
+});
+```
+
+Vite reads either `tsconfig.json` or its own `esbuild` option — they are
+equivalent.
+
+## Optional: attribute autocomplete
+
+Installing `@types/react` (without React itself) gives you per-element attribute
+types: `src` on `<img>`, `href` on `<a>`, `colSpan` on `<td>`, and so on. It is
+optional — Vincle's own `HTMLAttributes` is a permissive type that accepts any
+key, so the library works without it.
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core",
+    "types": ["@types/react"]
+  }
+}
+```
+
+## Where to next
+
+- [First render](/guide/getting-started/first-render) — your first component
+- [Elements & attributes](/guide/jsx/elements-attributes) — `class`, `style`, booleans

@@ -1,0 +1,200 @@
+---
+title: Adapters
+sidebar:
+  group: Integration
+  order: 5
+---
+
+# Adapters
+
+An adapter controls how placeholders and patches are encoded in the HTML.
+Each adapter produces markup that a specific client library can recognise
+and act on.
+
+Vincle ships five built-in adapters. Import from `@vincle/flow/adapters`:
+
+<CodeExample src="flow/adapters.ts" />
+
+## Choosing an adapter
+
+<table>
+  <thead>
+    <tr>
+      <th>Adapter</th>
+      <th>Client runtime</th>
+      <th>Streaming</th>
+      <th>Merge types</th>
+      <th>Best for</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <strong>NativeAdapter</strong>
+      </td>
+      <td>~550 B polyfill (auto-injected)</td>
+      <td>
+        <CheckIcon />
+      </td>
+      <td>all 5</td>
+      <td>General purpose, no extra JS</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>TurboAdapter</strong>
+      </td>
+      <td>Hotwire Turbo</td>
+      <td>
+        <CheckIcon />
+      </td>
+      <td>all 5</td>
+      <td>Rails / Hotwire stack</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>HtmxAdapter</strong>
+      </td>
+      <td>HTMX</td>
+      <td>
+        <CheckIcon />
+      </td>
+      <td>all 5</td>
+      <td>Django / Laravel / any backend</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>WebPlatformAdapter</strong>
+      </td>
+      <td>None (WICG spec)</td>
+      <td>
+        <XIcon />
+      </td>
+      <td>replace only</td>
+      <td>Browsers with declarative partial updates</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>EsiAdapter</strong>
+      </td>
+      <td>None (CDN-level)</td>
+      <td>
+        <XIcon />
+      </td>
+      <td>replace only</td>
+      <td>Varnish / CDN edge composition</td>
+    </tr>
+  </tbody>
+</table>
+
+### NativeAdapter (default)
+
+Uses the [WICG Declarative Partial Updates](https://github.com/WICG/declarative-partial-updates) proposal
+with a bundled ~550 B MutationObserver polyfill that is **automatically injected**
+only when fragments are pending. Pure-static pages stay polyfill-free.
+
+- All merge types supported (`replace`, `append`, `prepend`, `before`, `after`)
+- Zero client configuration — the polyfill just works when present
+- Recommended for most applications
+
+```tsx
+import { NativeAdapter } from "@vincle/flow/adapters";
+```
+
+### TurboAdapter
+
+Encodes placeholders as `<turbo-frame>` elements and patches as
+`<turbo-stream>` elements. Designed for use with
+[Hotwire Turbo](https://turbo.hotwired.dev/).
+
+```tsx
+import { TurboAdapter } from "@vincle/flow/adapters";
+
+// Placeholder in shell:
+//   <turbo-frame id="comments">Loading…</turbo-frame>
+
+// Patch:
+//   <turbo-stream action="replace" target="comments">
+//     <template>…</template>
+//   </turbo-stream>
+```
+
+### HtmxAdapter
+
+Encodes placeholders with `hx-get` attributes and patches as
+`hx-swap-oob` elements. Designed for use with [HTMX](https://htmx.org/).
+
+```tsx
+import { HtmxAdapter } from "@vincle/flow/adapters";
+
+// Placeholder in shell:
+//   <div hx-get="/_fragments/comments" hx-trigger="load">Loading…</div>
+
+// Patch:
+//   <div hx-swap-oob="replace:#comments">…</div>
+```
+
+HTMX negotiation is available via `negotiateHtmx` — see
+[HTTP serving](/integration/http-serving) for details.
+
+### WebPlatformAdapter
+
+Implements the [WICG declarative partial updates](https://github.com/WICG/declarative-partial-updates)
+spec using `<?start?>` / `<?end?>` processing instructions and
+`<template for="id">` elements.
+
+- No client runtime required (native browser support)
+- `replace` merge only
+- Best for browsers that implement the spec natively
+
+```tsx
+import { WebPlatformAdapter } from "@vincle/flow/adapters";
+```
+
+### EsiAdapter
+
+Encodes placeholders as `<esi:include>` elements. The actual content is
+fetched and inserted by an ESI-capable CDN or reverse proxy (Varnish, Akamai,
+Fastly).
+
+- Static only (`streaming: false`)
+- `replace` merge only
+- Ideal for CDN-level composition where the origin server emits a single HTML
+  template and the edge fills in the dynamic parts
+
+```tsx
+import { EsiAdapter } from "@vincle/flow/adapters";
+```
+
+## Custom adapters
+
+An adapter is an object that implements three components and an encoder:
+
+| Export           | Purpose                                                         |
+| ---------------- | --------------------------------------------------------------- |
+| `Placeholder`    | Renders the shell placeholder for a deferred fragment           |
+| `Patch`          | Wraps a resolved fragment for injection into the DOM            |
+| `Frame`          | Wraps a static fragment file for SSG output                     |
+| `encode`         | Transforms `FlowEvent` objects into wire-format strings         |
+| `capabilities`   | Declares supported merge types and streaming support            |
+| `transformShell` | (Optional) Post-processes the shell before it enters the stream |
+
+Use `createAdapter` from `@vincle/flow/adapters` to build your own:
+
+```tsx
+import { createAdapter } from "@vincle/flow/adapters";
+
+const MyAdapter = createAdapter({
+  Placeholder: ({ id, children }) => <div data-defer={id}>{children}</div>,
+  Patch: ({ id, children, merge }) => (
+    <div data-patch={id} data-merge={merge}>
+      {children}
+    </div>
+  ),
+  Frame: ({ id, children }) => <div data-frame={id}>{children}</div>,
+  capabilities: { streaming: true, merges: ["replace", "append"] },
+});
+```
+
+The `transformShell` hook lets you inject a client runtime or modify the
+shell HTML based on the actual fragment state. It receives the `FlowContext`
+so you can check `ctx.pendingStore.size` and inject scripts only when needed.

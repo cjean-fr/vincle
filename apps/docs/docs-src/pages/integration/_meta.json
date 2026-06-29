@@ -1,0 +1,8 @@
+{
+  "overview": { "title": "Overview", "order": 1 },
+  "components": { "title": "Components", "order": 2 },
+  "streaming": { "title": "Streaming", "order": 3 },
+  "static": { "title": "Static generation", "order": 4 },
+  "adapters": { "title": "Adapters", "order": 5 },
+  "http-serving": { "title": "HTTP serving", "order": 6 }
+}

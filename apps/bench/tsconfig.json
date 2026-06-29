@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "types": ["bun", "react", "react-dom"]
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,180 @@
+---
+title: Coming from React
+---
+
+# Coming from React
+
+If you know React, you already know Vincle. The JSX is the same. Components
+are functions. Props are typed. The difference is what happens **next**: no
+virtual DOM, no hydration, no client runtime.
+
+## What stays the same
+
+| Concept                 | React                     | Vincle |
+| ----------------------- | ------------------------- | ------ |
+| JSX syntax              | `<div>{value}</div>`      | Same   |
+| Components as functions | `function Comp({ prop })` | Same   |
+| Props                   | `<Comp prop="value" />`   | Same   |
+| `children`              | `{children}`              | Same   |
+| Fragments               | `<>…</>`                  | Same   |
+| `className` → `class`   | Auto-converted            | Same   |
+| `style` objects         | `{{ color: "red" }}`      | Same   |
+| TypeScript props        | `interface Props`         | Same   |
+
+## What changes
+
+### No client runtime
+
+React components hydrate on the client. Vincle components run once, produce
+a string, and stop. There is no JavaScript shipped to the browser unless you
+explicitly add it.
+
+```tsx
+// React — ships React runtime + component code to browser
+export function Page() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount((c) => c + 1)}>{count}</button>;
+}
+
+// Vincle — renders HTML once, zero JS shipped
+export function Page() {
+  return renderToString(
+    <button onclick="let c=0;this.onclick=()=>this.textContent=++c">0</button>,
+  );
+}
+```
+
+### Async is native, not Suspense
+
+React requires `Suspense` boundaries and a streaming API for async data.
+Vincle lets any component be `async` directly:
+
+```tsx
+// React — Suspense + fallback
+function Comments() {
+  const data = use(fetchComments()); // use() requires Suspense
+  return <ul>{data.map(/* … */)}</ul>;
+}
+
+// Vincle — just async
+async function Comments() {
+  const data = await fetchComments();
+  return <ul>{data.map(/* … */)}</ul>;
+}
+```
+
+No `Suspense` boundaries, no fallback declarations — the `await` is the
+boundary. Sibling async branches run concurrently; the `Promise<string>`
+resolves when every branch finishes.
+
+### Context is scoped, not provider-based
+
+React uses a provider tree: every context value must be wrapped in a
+`<Context.Provider>` component, and nested providers create a chain of
+React elements in the tree.
+
+Vincle uses `AsyncLocalStorage`-backed scopes. Values are set with
+`setContext()` inside a `withScope()` callback — no provider components,
+no wrapper elements.
+
+```tsx
+// React — provider wraps the tree
+<AuthProvider value={{ user }}>
+  <ThemeProvider value="dark">
+    <Page />
+  </ThemeProvider>
+</AuthProvider>;
+
+// Vincle — context is set imperatively, no wrapper components
+await withScope(() => {
+  setContext(Auth, { user });
+  setContext(Theme, "dark");
+  return renderToString(<Page />);
+});
+```
+
+Each `withScope` is fully isolated — concurrent renders never leak or
+interfere, even when they set different context values.
+
+### Event handlers are strings, not closures
+
+React handlers are JavaScript closures that capture scope. Vincle handlers
+are HTML attribute strings — because there is no client runtime to attach
+them.
+
+```tsx
+// React — closure
+<button onClick={() => handleDelete(id)}>Delete</button>
+
+// Vincle — string, rendered as HTML attribute
+<button onclick={`handleDelete("${id}")`}>Delete</button>
+```
+
+Function-valued handlers are silently dropped (with a warning). This is a
+security feature — handler strings are HTML-escaped, but the JavaScript
+inside them is not sanitised. Never interpolate untrusted data.
+
+### No `useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`
+
+None of these exist. There is no state, no lifecycle, no re-rendering.
+Every render is a fresh, deterministic function call.
+
+```tsx
+// React — hooks for state and effects
+function Timer() {
+  const [time, setTime] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTime((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <p>{time}s</p>;
+}
+
+// Vincle — the time is whatever it is at render time
+function Timer({ time }: { time: number }) {
+  return <p>{time}s</p>;
+}
+```
+
+## Migration checklist
+
+| React pattern             | Vincle equivalent                                          |
+| ------------------------- | ---------------------------------------------------------- |
+| `useState`                | Props or context — state lives outside the render          |
+| `useEffect`               | Not needed — no client lifecycle                           |
+| `useRef`                  | Not needed — no DOM access                                 |
+| `useMemo` / `useCallback` | Not needed — no re-renders                                 |
+| `useContext`              | `useContext` (same name, scoped instead of provider-based) |
+| `createContext`           | `context(key)` — typed, scoped, no provider component      |
+| `React.memo`              | Not needed — every render is a fresh call                  |
+| `Suspense`                | Async component + `<Defer>` from `@vincle/flow`            |
+| `dangerouslySetInnerHTML` | Same API — also `raw(html)` as child                       |
+| `onClick={() => fn()}`    | `onclick="fn()"` as string                                 |
+| `className` / `class`     | Both work — not merged, pick one                           |
+| `htmlFor` → `for`         | Same remapping as React                                    |
+| `@types/react`            | Optional — install it for attribute autocomplete           |
+
+## What you lose
+
+- **Hydration** — Vincle does not hydrate. If you need interactive components,
+  pair it with HTMX, Turbo, Alpine.js, or a client-side framework
+- **React ecosystem** — MUI, Radix, TanStack Table, React Router all require
+  the React runtime
+- **React Server Components** — not RSC-aware; use Next.js App Router for
+  RSC workloads
+
+## What you gain
+
+- **~3 KB** instead of ~140 KB — zero runtime dependencies
+- **8–14× faster** than `react-dom/server` in rendering
+- **Security by default** — URL scheme blocking, event handler filtering,
+  content escaping — no opt-in required
+- **Scoped context** — per-request isolation without provider components
+- **Any runtime** — Node, Bun, Deno, Cloudflare Workers — no DOM shim needed
+
+## Next steps
+
+- [Introduction](/guide/introduction) — the five principles
+- [First render](/guide/getting-started/first-render) — your first component
+- [Elements & attributes](/guide/jsx/elements-attributes) — `class`, `style`, booleans
+- [Security model](/guide/security) — XSS defences in depth

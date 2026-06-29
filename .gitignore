@@ -1,0 +1,47 @@
+# dependencies (bun install)
+node_modules
+.turbo
+
+# IA
+.agent
+.claude
+
+# output
+dist
+*.tgz
+
+# code coverage / mutation
+coverage
+*.lcov
+mutation.*
+coverage.*
+reports/
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# compiled MDX pages (generated docs artifact)
+.compiled/
+
+# IntelliJ based IDEs
+.idea
+.vscode
+
+# Finder (MacOS) folder config
+.DS_Store
+
+playground

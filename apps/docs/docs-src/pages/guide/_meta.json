@@ -1,0 +1,25 @@
+{
+  "introduction": { "title": "Introduction", "order": 0 },
+  "getting-started": {
+    "title": "Getting Started",
+    "collapsed": false,
+    "order": 1
+  },
+  "jsx": {
+    "title": "JSX",
+    "collapsed": false,
+    "order": 2
+  },
+  "security": {
+    "title": "Security model",
+    "order": 3
+  },
+  "coming-from-react": {
+    "title": "Coming from React",
+    "order": 4
+  },
+  "faq": {
+    "title": "FAQ",
+    "order": 5
+  }
+}

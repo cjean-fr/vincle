@@ -1,0 +1,70 @@
+---
+title: Components
+---
+
+# Components
+
+Components are plain functions that return JSX. No classes, no hooks, no lifecycle — just props in, string out.
+
+## Basics
+
+A component receives props as its first argument and returns JSX:
+
+<CodeExample src="guide/quick-start/component.tsx" />
+
+## Typed props
+
+Props are typed with standard TypeScript interfaces:
+
+```tsx
+interface CardProps {
+  title: string;
+  children: VincleNode;
+}
+
+function Card({ title, children }: CardProps) {
+  return (
+    <div class="card">
+      <h2>{title}</h2>
+      {children}
+    </div>
+  );
+}
+```
+
+## Composition
+
+Components compose naturally — pass one component's output as another's children:
+
+<CodeExample src="guide/jsx/component.tsx" />
+
+## Async components
+
+Any component can be `async`. The whole tree is awaited by `renderToString`:
+
+```tsx
+async function Profile({ id }: { id: string }) {
+  const user = await db.users.find(id);
+  return (
+    <div class="profile">
+      <h1>{user.name}</h1>
+      <p>{user.bio}</p>
+    </div>
+  );
+}
+```
+
+Sibling async branches run concurrently — `renderToString` resolves only when every branch finishes.
+
+## What you don't need
+
+- **State** — there is no re-rendering. State lives outside the render (database, request context).
+- **Effects** — no client lifecycle. Render once, produce a string, done.
+- **Context providers** — Vincle uses scoped context via `withScope`, not wrapper components.
+- **`React.memo`** — every render is a fresh call. Memoization is meaningless.
+
+## Where to next
+
+- [Fragments](/guide/jsx/fragments) — grouping children without a DOM wrapper
+- [Elements & attributes](/guide/jsx/elements-attributes) — how JSX maps to HTML
+- [First render](/guide/getting-started/first-render) — your first component

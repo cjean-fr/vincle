@@ -1,0 +1,7 @@
+{
+  "components": { "title": "Components", "order": 1 },
+  "adapters": { "title": "Adapters", "order": 2 },
+  "renderStream": { "title": "renderStream", "order": 3 },
+  "renderToStatic": { "title": "renderToStatic", "order": 4 },
+  "serve": { "title": "serve", "order": 5 }
+}

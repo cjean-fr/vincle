@@ -1,0 +1,128 @@
+---
+title: HTTP serving
+sidebar:
+  group: Integration
+  order: 6
+---
+
+# HTTP serving
+
+Serve Vincle-rendered pages over HTTP — with streaming, negotiation, and
+minimal boilerplate.
+
+## Using `serve()`
+
+The `serve()` helper creates a `Response` from a page component and an
+adapter. It handles streaming, headers, and content negotiation in one call.
+
+```tsx
+import { serve } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+Bun.serve({
+  port: 3000,
+  async fetch(req) {
+    return serve(req, () => <Page />, NativeAdapter);
+  },
+});
+```
+
+The response is a `ReadableStream<Uint8Array>` with `Transfer-Encoding: chunked`.
+The shell is flushed immediately — the browser starts parsing HTML while
+fragments are still rendering.
+
+### Signature
+
+```tsx
+serve(
+  req: Request,
+  page: (negotiation: Negotiation) => VincleNode,
+  adapter: StreamingAdapter,
+  options?: FlowOptions & ResponseInit & {
+    negotiate?: Negotiate;
+    mode?: "full" | "fragment";
+  },
+): Promise<Response>
+```
+
+### Options
+
+| Option           | Type                                  | Default  | Description                       |
+| ---------------- | ------------------------------------- | -------- | --------------------------------- |
+| `signal`         | `AbortSignal`                         | —        | Abort all pending renders         |
+| `onError`        | `(error, info) => VincleNode \| void` | —        | Per-fragment error handler        |
+| `defaultTimeout` | `number`                              | —        | Per-fragment timeout (ms)         |
+| `negotiate`      | `(req: Request) => Negotiation`       | —        | Extract per-request hints         |
+| `mode`           | `"full" \| "fragment"`                | `"full"` | Render full page or fragment-only |
+| `headers`        | `HeadersInit`                         | —        | Additional response headers       |
+| `status`         | `number`                              | `200`    | Response status code              |
+| `statusText`     | `string`                              | —        | Response status text              |
+
+## Using Node.js `http`
+
+For environments where `Response` is not available, use `renderStream`
+directly and pipe the chunks to your response.
+
+<CodeExample src="flow/node-server.tsx" />
+
+The shell is the first chunk — `res.write()` flushes it immediately. Each
+fragment follows as soon as it resolves.
+
+## HTMX negotiation
+
+HTMX sends headers like `HX-Target` to indicate which fragment a request
+expects. Vincle provides `negotiateHtmx` to handle this automatically:
+
+```tsx
+import { serve, negotiateHtmx } from "@vincle/flow";
+import { HtmxAdapter } from "@vincle/flow/adapters";
+
+Bun.serve({
+  port: 3000,
+  async fetch(req) {
+    return serve(req, () => <Page />, HtmxAdapter, {
+      negotiate: negotiateHtmx,
+    });
+  },
+});
+```
+
+The response includes `Vary: HX-Target` so shared caches never serve a
+fragment response to a full-page navigation, or vice versa.
+
+### Custom negotiation
+
+Write your own negotiator for any client library that uses custom headers:
+
+```tsx
+import type { Negotiate } from "@vincle/flow";
+
+const negotiateMyLib: Negotiate = (req) => {
+  const fragment = req.headers.get("X-Fragment-Id") ?? undefined;
+  return {
+    headers: { Vary: "X-Fragment-Id" },
+    target: fragment,
+  };
+};
+```
+
+## Static generation
+
+For pre-rendered content, use `renderToStatic` instead of `serve()` —
+see [Static generation](/integration/static).
+
+## Full-page vs fragment mode
+
+By default, every request renders the full page: shell + all deferred
+fragments. Use `mode: "fragment"` to suppress the shell and render only
+the targeted fragment's content. This is useful when a client library
+fetches a single fragment independently (e.g. HTMX `hx-get` on a
+`<turbo-frame>`).
+
+```tsx
+serve(req, () => <Page />, NativeAdapter, { mode: "fragment" });
+```
+
+When `mode` is set in both `options` and the negotiation result, the
+negotiation value takes precedence — this lets the request header
+override the server default.

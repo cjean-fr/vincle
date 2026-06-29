@@ -1,0 +1,160 @@
+---
+title: Introduction
+---
+
+# Vincle
+
+Vincle is the library for rendering **JSX to HTML strings** — on the server, at
+build time, or anywhere JavaScript runs.
+
+If you have written a React component, you already know how to write a Vincle
+component. The difference is what happens next: there is no browser, no virtual
+DOM, no hydration. Your component runs once, produces a string, and stops.
+
+```tsx
+import { renderToString } from "@vincle/core";
+
+const html = await renderToString(
+  <html lang="en">
+    <head>
+      <title>Hello</title>
+    </head>
+    <body>
+      <h1>Hello, world!</h1>
+    </body>
+  </html>,
+);
+```
+
+That's the whole mental model. Everything else in these docs is about making
+that model **safe**, **async-friendly**, and **fast**.
+
+## What Vincle is for
+
+Use Vincle whenever the output you want is an HTML string:
+
+- **Static sites** — render pages to `.html` files at build time
+- **Email templates** — compose rich HTML without a template language
+- **SSR responses** — serve HTML from any HTTP framework
+- **PDF sources** — generate HTML to feed into a headless browser or PDF engine
+- **API responses** — return HTML fragments from an endpoint
+
+If you need to hydrate a client-side app, Vincle is not the tool. It renders
+HTML and nothing else — there is no runtime in the browser.
+
+## Why another JSX renderer?
+
+React, Preact, and Solid all have a server-rendering story, but it is secondary
+to their client architecture. Their renderers carry a virtual DOM, a reconciler,
+and a hydration contract. None of that helps when the only output is a string.
+
+Vincle is designed exclusively for server-side HTML generation. That lets it
+make different trade-offs:
+
+- **Zero dependencies** — nothing ships that you didn't write (~3 kB gzipped)
+- **No virtual DOM** — the tree is walked once and concatenated
+- **Safe by default** — every value is escaped; dangerous URLs are blocked
+- **Async-native** — any component can be `async`, and the whole tree is awaited
+- **No reactivity** — no hooks, no state, no reconciliation, just functions
+- **Fully typed** — JSX and props carry TypeScript types end to end
+
+## The five principles
+
+1. **[Server-first](#server-first)** — your JSX runs on the server, not in the browser
+2. **[Safe by default](#safe-by-default)** — security is built in, not bolted on
+3. **[No overhead](#no-overhead)** — nothing between your JSX and a string of HTML
+4. **[Async-native](#async-native)** — data fetching is a first-class feature
+5. **[Familiar](#familiar)** — the same JSX syntax you already know
+
+---
+
+### Server-first
+
+JSX was invented for browsers. Vincle brings it to the server.
+
+There is no client build and no runtime in the browser. Every value the renderer
+emits is trusted HTML sent to a client. This removes an entire class of
+problems — no hydration mismatches, no bundle to ship, no reconciler to feed.
+
+### Safe by default
+
+Security is not a configuration option. It is the only mode.
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
+  <div class="rounded-xl border border-red-200 dark:border-red-900 p-5">
+    <p class="text-xs font-semibold text-red-600 dark:text-red-400 mb-3">
+      Without Vincle
+    </p>
+    <CodeBlock
+      code={`// 🚨 XSS if name contains HTML
+const html = \`<h1>Hello, \${name}!</h1>\`;`}
+      language="ts"
+    />
+  </div>
+  <div class="rounded-xl border border-green-200 dark:border-green-900 p-5">
+    <p class="text-xs font-semibold text-green-600 dark:text-green-400 mb-3">
+      With Vincle
+    </p>
+    <CodeBlock
+      code={`// ✅ name is always escaped
+const html = await renderToString(
+  <h1>Hello, {name}!</h1>
+);`}
+      language="tsx"
+    />
+  </div>
+</div>
+
+Text content, attribute values, and dangerous URL schemes are all handled
+automatically. The only escape hatch is `raw()`,
+which is explicit and opt-in. See [Security](/guide/security) for
+the full model.
+
+### No overhead
+
+Zero runtime dependencies. No virtual DOM. No reconciliation.
+
+Most JSX runtimes allocate virtual DOM nodes, build a tree, diff it, and only
+then produce HTML. Vincle skips every one of those steps: it walks the JSX tree
+once and concatenates strings. A component is a function, `renderToString`
+calls it, and you get a string.
+
+### Async-native
+
+Any component can be `async`. `renderToString` awaits the whole tree.
+
+The component that needs data is the component that fetches it — no prop-drilling
+from a top-level loader. Sibling subtrees are evaluated concurrently, and the
+result is a single `Promise<string>` that resolves when the full document is
+ready.
+
+<CodeExample src="guide/async/async-component.tsx" />
+
+For cases where you want the HTML shell immediately and deferred content to
+arrive later, see [Integration](/integration/overview) — an optional companion that adds
+streaming and static fragment generation.
+
+### Familiar
+
+The JSX you already know. No new language to learn.
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core"
+  }
+}
+```
+
+Components are plain functions. Props are plain TypeScript interfaces. Children
+are passed the same way. The only difference: no state, no effects, no hooks —
+on the server, you don't need them.
+
+## Next steps
+
+- [Installation](/guide/getting-started/installation) — install and configure
+- [First render](/guide/getting-started/first-render) — your first component
+- [Elements & attributes](/guide/jsx/elements-attributes) — how Vincle maps JSX to HTML
+- [Security model](/guide/security) — the XSS model, in depth

@@ -1,0 +1,56 @@
+---
+title: First render
+---
+
+# First render
+
+Everything you need to render your first JSX to an HTML string.
+
+## Hello world
+
+`renderToString` always returns a `Promise<string>`, even for synchronous
+trees. The simplest render outputs a complete HTML document.
+
+<CodeExample src="guide/getting-started/hello-world.tsx" />
+
+The returned string is ready to send over HTTP, write to a file, or embed in
+any response pipeline.
+
+## Components are functions
+
+Components are plain functions — no classes, no hooks, no lifecycle. Props are
+typed with standard TypeScript interfaces. Children are passed via the
+`children` prop or as JSX children, giving you the same composition model as
+React but without the overhead.
+
+<CodeExample src="guide/jsx/component.tsx" />
+
+Because there is no state or re-rendering, components are fully deterministic:
+same props, same output. This makes them trivially testable and cacheable.
+
+## Values are escaped
+
+**Every** value embedded in JSX — text content, attribute values, style
+properties — is HTML-escaped before it reaches the output. There is no
+escape-by-default opt-out. This covers `&`, `<`, `>`, and `"` across all
+rendering surfaces.
+
+<CodeExample src="guide/getting-started/escaping.tsx" />
+
+The only way to inject unescaped HTML is `raw()`, an explicit opt-in wrapper
+for trusted content.
+
+## Async works directly
+
+Any component can be an `async` function. `renderToString` awaits the whole
+tree, so the component that needs data is the component that fetches it.
+
+<CodeExample src="guide/async/async-component.tsx" />
+
+This is covered in the [introduction](/guide/introduction#async-native).
+
+## Where to next
+
+- [Elements & attributes](/guide/jsx/elements-attributes) — `class`, `style`, booleans
+- [Introduction](/guide/introduction) — components are functions
+- [Async-native](/guide/introduction#async-native) — `await` inside render

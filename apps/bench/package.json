@@ -1,0 +1,25 @@
+{
+  "name": "@vincle/bench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "NODE_ENV=production bun run src/bench.ts"
+  },
+  "dependencies": {
+    "@vincle/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@kitajs/html": "5.0.0-next.1",
+    "@types/bun": "catalog:",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "hono": "^4",
+    "mitata": "^1",
+    "preact": "^10",
+    "preact-render-to-string": "^6",
+    "react": "^19",
+    "react-dom": "^19",
+    "typescript": "catalog:"
+  }
+}

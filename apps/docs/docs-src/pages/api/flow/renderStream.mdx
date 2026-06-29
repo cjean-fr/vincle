@@ -1,0 +1,48 @@
+---
+title: renderStream
+sidebar:
+  group: Flow API
+  order: 3
+---
+
+# renderStream
+
+Returns a `ReadableStream<string>`. The shell chunk is emitted first; fragment chunks follow as they resolve.
+
+## Signature
+
+```tsx
+import { renderStream } from "@vincle/flow";
+
+function renderStream(
+  page: () => VincleNode,
+  options?: StreamOptions,
+): ReadableStream<string>;
+```
+
+## Options
+
+| Option    | Type          | Default         | Description                                   |
+| --------- | ------------- | --------------- | --------------------------------------------- |
+| `adapter` | `Adapter`     | `NativeAdapter` | Adapter for encoding placeholders and patches |
+| `signal`  | `AbortSignal` | —               | Signal to abort the stream                    |
+
+## Usage
+
+<CodeExample src="flow/deferred-stream.tsx" />
+
+The stream never buffers: each chunk is written as soon as it is available. The response `Content-Type` is `text/html` with chunked transfer encoding.
+
+## Node HTTP server
+
+Pipe the stream into any Node.js `http.ServerResponse`. Each chunk is written as it becomes ready.
+
+<CodeExample src="flow/node-server.tsx" />
+
+## Async iterables — streaming sequences
+
+An `AsyncIterable` returned by the factory streams one patch per yielded item. Each `yield` produces an independent patch with the configured `merge` type.
+
+<CodeExample src="flow/stream-iterable.tsx" />
+
+The stream stays open until the iterable exhausts or the client disconnects.

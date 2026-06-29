@@ -1,0 +1,173 @@
+---
+title: Security
+---
+
+# Security
+
+Vincle's security model has one job: **prevent HTML injection (XSS) at
+every possible surface**. You do not need to opt in, configure, or remember
+to escape — it happens automatically for every string, attribute, and URL.
+
+## Auto-escaping
+
+Every value embedded in JSX — text content, attributes, style values — is
+HTML-escaped before it reaches the output. This is not a mode you enable; it
+is the only mode.
+
+<table>
+  <thead>
+    <tr>
+      <th>Context</th>
+      <th>Characters escaped</th>
+      <th>Function</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Text content</td>
+      <td>
+        <code>&amp;</code> <code>&lt;</code> <code>&gt;</code>
+      </td>
+      <td>
+        <code>escapeContent</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Attribute values</td>
+      <td>
+        <code>&amp;</code> <code>&lt;</code> <code>&gt;</code>{" "}
+        <code>&quot;</code>
+      </td>
+      <td>
+        <code>escapeAttr</code>
+      </td>
+    </tr>
+    <tr>
+      <td>URL attributes</td>
+      <td>Scheme allowlist enforced</td>
+      <td>
+        <code>isSafeUrl</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        Event handlers (<code>on*</code>)
+      </td>
+      <td>Silently dropped from output</td>
+      <td>Filter at render time</td>
+    </tr>
+    <tr>
+      <td>
+        Rawtext content<br />
+        <small>(<code>script</code>, <code>style</code>, …)</small>
+      </td>
+      <td>
+        <code>&lt;\/script&gt;</code> backslash break<br />
+        <small>scripts escaped (unlike Preact), styles too (unlike React)</small>
+      </td>
+      <td>
+        <code>escapeRawText</code>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<CodeExample src="guide/quick-start/escaping.tsx" />
+
+## The `raw()` Escape Hatch
+
+`raw()` is the **only** way to inject unescaped HTML:
+
+```tsx
+import { raw } from "@vincle/core";
+
+// Raw strings pass through verbatim — no escaping applied
+const html = await renderToString(<div>{raw("<strong>Bold</strong>")}</div>);
+// → '<div><strong>Bold</strong></div>'
+```
+
+Use `raw()` only when you **know** the value is safe HTML — typically the
+output of a trusted Markdown renderer, a template engine, or your own
+hardcoded markup. Never pass user input directly to `raw()`.
+
+<CodeExample src="safety/one-rule.tsx" />
+
+## Defense in Depth
+
+Six independent layers protect your output. No single bypass — except
+`raw()` — can defeat all of them.
+
+|   # | Layer                 | Mechanism                                          | Stops                                                   |
+| --: | --------------------- | -------------------------------------------------- | ------------------------------------------------------- |
+|   1 | Type System           | `RawString` branded type — explicit trust boundary | Accidental trust of untrusted strings                   |
+|   2 | HTML Escaping         | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>`, `"` injection in text and attributes     |
+|   3 | URL Filtering         | `isSafeUrl` — allowlist of safe schemes            | `javascript:`, `vbscript:`, unsafe `data:` URIs         |
+|   4 | Event Handler Filter  | `on*` attributes stripped at render time           | XSS via <code>onclick</code>, <code>onload</code>, etc. |
+|   5 | Tag & Attr Validation | `isValidTagName` / `isValidAttrName`               | Injection through malformed tag or attribute names      |
+|   6 | Rawtext Escaping      | `escapeRawText` — backslash `<\/tag>` not entities | `</script>`/`</style>` breakout — unlike Preact/React |
+
+Each layer is independently verifyable — see [Invariants](#invariants).
+
+## Security Boundaries
+
+What Vincle protects and what it does not:
+
+| Protected                                         | Not covered                                           |
+| ------------------------------------------------- | ----------------------------------------------------- |
+| HTML injection via text content, attributes, URLs | Input sanitization (use DOMPurify for untrusted HTML) |
+| Event handler attribute injection                 | HTTP headers / CSP (set by your server)               |
+| Malformed tag / attribute names                   | CSRF tokens, authentication, session management       |
+
+If you need to render untrusted user-generated HTML, run it through a
+sanitizer first, then pass the result via `raw()`.
+
+## Best Practices
+
+1. **Never pass user input to `raw()`.** If you need to render user HTML,
+   sanitize it with a dedicated library (DOMPurify, sanitize-html) first.
+2. **Prefer JSX string values over `raw()`.** Default escaping is safe.
+3. **Use `RawString` only as a return type** for functions that generate
+   trusted HTML (Markdown renderers, helpers).
+4. **Enable the ESLint plugin** to catch unsafe `raw()` calls and silent
+   event handler drops automatically.
+
+## Invariants
+
+Each invariant is enforced by property-based (fuzz) or unit tests:
+
+|  #   | Guarantee                                              | Enforced by                              |
+| :--: | ------------------------------------------------------ | ---------------------------------------- |
+| I-01 | No raw `<` or `>` from untrusted input                 | `escape.fuzz.test.ts`, `escape.test.ts`  |
+| I-02 | No dangerous URL schemes pass through                  | `escape.fuzz.test.ts` (2000+ fuzz cases) |
+| I-03 | No `on*` event handler attributes leak to HTML         | `render-attributes.test.ts`              |
+| I-04 | Precompile ≡ dynamic path — byte-identical in non-rawtext contexts (see note on rawtext limitation) | `precompile.fuzz.test.ts` |
+| I-05 | Content escaping is reversible (injective)             | `escape.fuzz.test.ts`                    |
+| I-06 | Concurrent renders isolated — no cross-request leakage | `context.test.ts`                        |
+| I-07 | No implicit `RawString` creation                       | Code review                              |
+| I-08 | Invalid tag names fail fast (throw TypeError)          | `render-element.test.ts`                 |
+
+## ASVS Compliance
+
+Vincle targets **ASVS Level 3** (OWASP Application Security Verification
+Standard). The full compliance matrix is maintained in the test suite under
+`asvs-compliance.test.tsx`.
+
+|      # | Requirement                                                  |  Lvl  | Status |
+| -----: | ------------------------------------------------------------ | :---: | :----: |
+|  1.1.2 | Output encoding as final step                                |   2   |   ✅   |
+|  1.2.1 | Context-relevant output encoding (HTML, attr, URL) |   1   |   ✅   |
+|  1.2.2 | Safe URL protocols only                                      |   1   |   ✅   |
+|  1.2.3 | JS context — `</script>` breakout prevention, `on*` stripped |   1   |   ✅   |
+|  1.3.7 | Template injection protection — no dynamic templates         |   2   |   ✅   |
+| 1.3.12 | ReDoS-free regex — all 13 regexes audited safe               | **3** |   ✅   |
+| 15.1.4 | Zero runtime dependencies                                    | **3** |   ✅   |
+| 15.1.5 | `raw()` documented as dangerous                              | **3** |   ✅   |
+| 16.5.4 | Fail-stop on error — no partial/corrupted output             | **3** |   ✅   |
+
+## References
+
+- [OWASP ASVS 5.0](https://asvs.dev/)
+- [V1 — Encoding and Sanitization](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x10-V1-Encoding-and-Sanitization.md)
+- [V15 — Secure Coding](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x1B-V15-Secure-Coding-and-Architecture.md)
+- [V16 — Error Handling](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x1C-V16-Logging-and-Error-Handling.md)
+- [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
