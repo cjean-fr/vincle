@@ -1,4 +1,9 @@
-import { RawString, type Awaitable, type JSX } from "./core/types.js";
+import {
+  RawString,
+  isDescriptor,
+  type Awaitable,
+  type JSX,
+} from "./core/types.js";
 import { renderAttribute } from "./utils/render-attributes.js";
 import { renderChild } from "./utils/render-child.js";
 
@@ -37,9 +42,9 @@ export function jsxAttr(name: string, value: unknown): Awaitable<string> {
  * Promise inside a sub-array surfaces as a Promise here too (the array descent
  * returns one), so it is awaited rather than stringified to "[object Promise]".
  *
- * When `parentTag` is set to a rawtext element (script, style, etc.), string
- * children use {@link escapeRawText} instead of {@link escapeContent}, preventing
- * `</tagName>` breakout without corrupting the content with HTML entities.
+ * When inside a rawtext element (script, style, etc.), string children use
+ * {@link escapeRawText} instead of {@link escapeContent},
+ * preventing `</tagName>` breakout without corrupting the content with HTML entities.
  *
  * **Known limitation (precompile mode):** Deno's native precompile transform
  * calls `jsxEscape` with a single argument, so the parent element context is
@@ -78,18 +83,18 @@ type Interpolation = JSX.Element | Awaitable<string>;
 export function jsxTemplate(
   templates: ArrayLike<string>,
   ...values: Interpolation[]
-): JSX.Element {
-  for (let i = 0; i < values.length; i++) {
-    if (values[i] instanceof Promise) {
-      return Promise.all(values).then(
-        (resolved) =>
-          new RawString(
-            assemble(templates, resolved as (string | RawString)[]),
-          ),
+): RawString | Promise<RawString> {
+  const resolved = values.map((v) =>
+    isDescriptor(v) ? renderChild(v) : v,
+  ) as Interpolation[];
+  for (let i = 0; i < resolved.length; i++) {
+    if (resolved[i] instanceof Promise) {
+      return Promise.all(resolved).then(
+        (r) => new RawString(assemble(templates, r as (string | RawString)[])),
       );
     }
   }
-  return new RawString(assemble(templates, values as (string | RawString)[]));
+  return new RawString(assemble(templates, resolved as (string | RawString)[]));
 }
 
 /**

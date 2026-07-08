@@ -14,30 +14,30 @@ describe("renderChild", () => {
     expect(result).toBe("<b>safe</b>raw &amp; text<i>also safe</i>plain");
   });
 
-  it("handles a direct Promise child", async () => {
+  it("resolves a Promise child and renders its value", async () => {
     const result = await renderChild(Promise.resolve("async text"));
     expect(result).toBe("async text");
   });
 
-  it("handles a direct RawString child", () => {
+  it("renders RawString verbatim without escaping", () => {
     const result = renderChild(raw("<b>raw</b>"));
     expect(result).toBe("<b>raw</b>");
   });
 
-  it("escapes a plain string child", () => {
+  it("escapes HTML special chars in plain string children", () => {
     expect(renderChild("hello")).toBe("hello");
     expect(renderChild("<b>")).toBe("&lt;b&gt;");
   });
 
-  it("handles a number child", () => {
+  it("coerces number 0 to string (not falsy-drop)", () => {
     expect(renderChild(42)).toBe("42");
   });
 
-  it("handles an empty array", () => {
+  it("produces empty string from an empty array", () => {
     expect(renderChild([])).toBe("");
   });
 
-  it("handles a fully synchronous array", () => {
+  it("joins synchronous array children in order", () => {
     expect(renderChild(["a", "b", new RawString("<c>")])).toBe("ab<c>");
   });
 

@@ -36,7 +36,7 @@ export type PendingStore = {
   clear(): void;
 };
 
-const storeMaps = new Map<PendingStore, Map<string, Pending>>();
+const storeMaps = new WeakMap<PendingStore, Map<string, Pending>>();
 
 export function createPendingStore(config: FlowConfig): PendingStore {
   const map = new Map<string, Pending>();

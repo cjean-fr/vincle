@@ -3,10 +3,10 @@ import {
   withScope,
   useContext,
   renderToString,
-  type Context,
+  type ContextKey,
 } from "@vincle/core";
 
-declare const themeCtx: Context<"light" | "dark">;
+declare const themeCtx: ContextKey<"light" | "dark">;
 const ChildPage = () => <div />;
 
 // Capture current context values and pass them to a child scope

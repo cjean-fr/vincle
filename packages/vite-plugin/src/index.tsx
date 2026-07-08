@@ -23,7 +23,7 @@ import {
   context,
   setContext,
   useContext,
-  type Context,
+  type ContextKey,
   type VincleNode,
 } from "@vincle/core";
 import { readFile, access } from "node:fs/promises";
@@ -51,7 +51,7 @@ interface ViteScope {
   base: string;
 }
 
-const ViteContext: Context<ViteScope> =
+const ViteContext: ContextKey<ViteScope> =
   context<ViteScope>("@vincle/vite:scope");
 
 /**

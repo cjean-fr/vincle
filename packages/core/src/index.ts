@@ -1,9 +1,12 @@
 import type { VincleNode } from "./core/types.js";
 import { RawString } from "./core/types.js";
 import { renderChild } from "./utils/render-child.js";
+import { withScope } from "./core/context.js";
+import { createBoundarySeed } from "./error-boundary.js";
 
 export { raw } from "./core/types.js";
 export { Fragment } from "./jsx-runtime.js";
+export { ErrorBoundary } from "./error-boundary.js";
 export type {
   RawString,
   CSSProperties,
@@ -21,7 +24,7 @@ export {
   useContext,
   withScope,
   snapshot,
-  type Context,
+  type ContextKey,
   type ScopeOptions,
 } from "./core/context.js";
 
@@ -50,10 +53,14 @@ export {
  * ```
  */
 export async function renderToString(node: VincleNode): Promise<string> {
-  if (node instanceof RawString) return node.value;
-  if (node instanceof Promise)
-    return node.then((r) =>
-      r instanceof RawString ? r.value : renderChild(r),
-    );
-  return renderChild(node);
+  const doRender = () => {
+    if (node instanceof RawString) return node.value;
+    if (node instanceof Promise)
+      return node.then((r) =>
+        r instanceof RawString ? r.value : renderChild(r),
+      );
+    return renderChild(node);
+  };
+
+  return withScope(doRender, { seed: createBoundarySeed() });
 }

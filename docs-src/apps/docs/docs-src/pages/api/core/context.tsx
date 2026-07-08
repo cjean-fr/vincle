@@ -106,7 +106,7 @@ function _createMdxContent(props) {
       _jsxs(_components.p, {
         children: [
           "Creates a ",
-          _jsx(_components.code, { children: "Context<T>" }),
+          _jsx(_components.code, { children: "ContextKey<T>" }),
           " key. The ",
           _jsx(_components.code, { children: "key" }),
           " argument must be a non-empty namespaced\nstring (e.g. ",

@@ -137,7 +137,7 @@ describe("Style + Script — integration with resolveAssets", () => {
       const { assets } = strictFlow();
       const resolved = await resolveAssets(html, assets);
       expect(resolved).toBe(
-        '<script type="module" data-name="ec/init">console.log(\'init\')</script>',
+        '<script data-name="ec/init" type="module">console.log(\'init\')</script>',
       );
     });
   });
@@ -151,7 +151,7 @@ describe("Style + Script — integration with resolveAssets", () => {
       const { assets } = strictFlow();
       const resolved = await resolveAssets(html, assets);
       expect(resolved).toBe(
-        '<script src="/vendor/jquery.js" data-name="jquery"></script>',
+        '<script data-name="jquery" src="/vendor/jquery.js"></script>',
       );
     });
   });
@@ -170,7 +170,7 @@ describe("Style + Script — integration with resolveAssets", () => {
       const { assets } = strictFlow();
       const resolved = await resolveAssets(html, assets);
       expect(resolved).toContain('<style data-name="base">');
-      expect(resolved).toContain('<script type="module" data-name="init">');
+      expect(resolved).toContain('<script data-name="init" type="module">');
     });
   });
 });

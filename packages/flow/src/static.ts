@@ -104,12 +104,10 @@ export async function renderToStatic<T>(
               initFlowAssets();
               const html = await renderToString(node());
               const { assets } = useContext(Flow);
-              return resolveAssets(
-                adapter?.transformShell
-                  ? adapter.transformShell(html, ctx)
-                  : html,
-                assets,
-              );
+              const transformed = adapter?.transformShell
+                ? await adapter.transformShell(html, ctx)
+                : html;
+              return resolveAssets(transformed, assets);
             },
             { seed: snapshot() },
           ),

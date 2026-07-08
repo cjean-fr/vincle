@@ -21,7 +21,7 @@ export type Adapter = {
    * inject a client runtime only when `ctx.pendingStore.size > 0` (fragments
    * exist). Always called inside the flow scope, after the shell node renders.
    */
-  transformShell?(shell: string, ctx: FlowContext): string;
+  transformShell?(shell: string, ctx: FlowContext): string | Promise<string>;
   encode(): TransformStream<FlowEvent, string>;
 };
 

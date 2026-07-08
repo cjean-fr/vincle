@@ -34,7 +34,7 @@ nested scopes.
 
 ### context(key)
 
-Creates a `Context<T>` key. The `key` argument must be a non-empty namespaced
+Creates a `ContextKey<T>` key. The `key` argument must be a non-empty namespaced
 string (e.g. `"@org/pkg:purpose"`). This ensures same-name contexts across
 module boundaries share a Symbol instance. The type parameter `T` enforces
 type safety at both write and read sites.

@@ -34,6 +34,15 @@ describe("streamFlow", () => {
       expect(results[0]!.html).toContain("Hello");
   });
 
+  it("emits a fragment for plain JSX content (no factory)", async () => {
+    const store = createPendingStore(cfg);
+    store.defer("t2", { content: <div>Plain</div>, merge: "replace" });
+    const results = await drain(store);
+    expect(results).toHaveLength(1);
+    if (results[0]!.type === "fragment")
+      expect(results[0]!.html).toContain("Plain");
+  });
+
   it("streams each item of an async-iterable entry", async () => {
     async function* rows() {
       yield <li>a</li>;
@@ -48,7 +57,7 @@ describe("streamFlow", () => {
 
   it("catches a factory throw and continues other entries", async () => {
     const store = createPendingStore(cfg);
-    store.defer("good", { content: () => <div>OK</div>, merge: "replace" });
+    store.defer("plain", { content: <div>Plain</div>, merge: "replace" });
     store.defer("bad", {
       content: () => {
         throw new Error("fail");
@@ -57,7 +66,7 @@ describe("streamFlow", () => {
     });
     const results = await drain(store);
     expect(results).toHaveLength(1);
-    if (results[0]!.type === "fragment") expect(results[0]!.id).toBe("good");
+    if (results[0]!.type === "fragment") expect(results[0]!.id).toBe("plain");
   });
 
   it("emits an error fallback fragment when onError returns a node", async () => {
@@ -263,5 +272,3 @@ describe("edge cases — streaming", () => {
     expect(errors[0]!.kind).toBe("stream");
   });
 });
-
-

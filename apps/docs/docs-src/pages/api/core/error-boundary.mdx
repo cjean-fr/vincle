@@ -1,0 +1,144 @@
+---
+title: ErrorBoundary
+sidebar:
+  label: ErrorBoundary
+  group: API
+  order: 5
+---
+
+# ErrorBoundary
+
+Catch rendering errors from child components and display a fallback instead.
+React-style: errors bubble up to the nearest boundary.
+
+## When to use
+
+Error boundaries let one part of your page fail without crashing the whole
+render:
+
+- A side panel that fetches from an unreliable API
+- A user profile whose data might be missing
+- A dashboard with independent widgets
+
+Without a boundary, any error anywhere in the tree rejects the entire
+`renderToString` promise — you get no HTML at all.
+
+## Import
+
+```tsx
+import { ErrorBoundary } from "@vincle/core";
+```
+
+## Signature
+
+```tsx
+<ErrorBoundary fallback={(error: unknown) => VincleNode}>
+  {children}
+</ErrorBoundary>
+```
+
+`fallback` is a function that receives the caught error and returns any
+renderable value. The children that the boundary wraps can be a single
+element, a component, or a fragment.
+
+## Basic usage
+
+```tsx
+const Profile = async ({ id }: { id: string }) => {
+  const user = await db.users.find(id);
+  return <h1>{user.name}</h1>;
+};
+
+const Page = ({ id }: { id: string }) => (
+  <html>
+    <body>
+      <ErrorBoundary fallback={(e) => <p>Failed: {(e as Error).message}</p>}>
+        <Profile id={id} />
+      </ErrorBoundary>
+    </body>
+  </html>
+);
+
+const html = await renderToString(<Page id="42" />);
+// On success:  <html><body><h1>Alice</h1></body></html>
+// On error:    <html><body><p>Failed: not found</p></body></html>
+```
+
+`fallback` replaces the entire boundary content — the children that failed
+are not rendered at all.
+
+## Nested boundaries
+
+Boundaries can be nested. The innermost boundary that catches the error
+renders its fallback. If the fallback itself throws, the error propagates
+to the enclosing boundary.
+
+```tsx
+<ErrorBoundary fallback={() => <p>Widget section unavailable</p>}>
+  <aside>
+    <ErrorBoundary fallback={() => <p>Profile card failed</p>}>
+      <ProfileCard id={id} />
+    </ErrorBoundary>
+    <ErrorBoundary fallback={() => <p>Activity feed failed</p>}>
+      <ActivityFeed id={id} />
+    </ErrorBoundary>
+  </aside>
+</ErrorBoundary>
+```
+
+Each boundary operates independently. A failure in `ProfileCard` renders
+"Profile card failed" but does not affect `ActivityFeed` or the outer
+"Widget section unavailable" fallback.
+
+## Error annotation
+
+When a component throws, Vincle annotates the error message with the
+component's display name:
+
+```tsx
+const Profile = () => { throw new Error("not found"); };
+await renderToString(
+  <ErrorBoundary fallback={(e) => <p>{(e as Error).message}</p>}>
+    <Profile />
+  </ErrorBoundary>,
+);
+// fallback receives: Error("[Profile] not found")
+```
+
+For function declarations (`function Profile() {}`) the name is inferred
+automatically. For arrow functions assigned to a `const`, use
+`Profile.displayName = "Profile"` to ensure correct annotation.
+
+## Without a boundary
+
+Errors not caught by any `ErrorBoundary` reject the `renderToString`
+promise. Wrap `renderToString` in a try/catch for a global fallback:
+
+```tsx
+try {
+  const html = await renderToString(<Page />);
+  // send html to client
+} catch (error) {
+  console.error("Page render failed:", error);
+  // send a 500 or fallback page
+}
+```
+
+## How it works
+
+JSX expressions produce **lazy descriptors** — plain objects with
+`{ type, props, key }` — instead of eagerly rendering to strings.
+`renderToString` walks these descriptors at render time, which lets
+`ErrorBoundary` wrap child execution in a try/catch.
+
+`ErrorBoundary` produces no HTML of its own — not even a comment. It is
+identified by an internal symbol, not by the exported name.
+
+## Type signature
+
+```ts
+interface ErrorBoundaryProps {
+  children?: VincleNode;
+  fallback: (error: unknown) => VincleNode;
+}
+```

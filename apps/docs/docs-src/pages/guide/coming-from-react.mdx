@@ -148,6 +148,7 @@ function Timer({ time }: { time: number }) {
 | `createContext`           | `context(key)` — typed, scoped, no provider component      |
 | `React.memo`              | Not needed — every render is a fresh call                  |
 | `Suspense`                | Async component + `<Defer>` from `@vincle/flow`            |
+| `ErrorBoundary`           | Same concept — catches child render errors                 |
 | `dangerouslySetInnerHTML` | Same API — also `raw(html)` as child                       |
 | `onClick={() => fn()}`    | `onclick="fn()"` as string                                 |
 | `className` / `class`     | Both work — not merged, pick one                           |

@@ -11,6 +11,7 @@ import {
   sanitize,
   URL_ATTRIBUTES,
 } from "./escape.js";
+import { renderCache } from "./render-cache.js";
 
 const REGEX_CAMEL_TO_KEBAB = /[A-Z]/g;
 
@@ -21,15 +22,6 @@ const INTERNAL_PROPS = new Set<string>([
   "ref",
 ]);
 
-/**
- * Serialize a CSS properties object into an inline CSS declaration string.
- *
- * Converts camelCase property names to kebab-case, preserves CSS custom properties
- * (keys starting with `--`) as-is, and omits entries whose values are `null` or `undefined`.
- *
- * @param style - An object mapping CSS property names to values
- * @returns A semicolon-delimited CSS declaration string (e.g., `color:red;margin-top:1px`)
- */
 export function renderStyle(style: CSSProperties): string {
   let out = "";
   for (const key in style) {
@@ -44,27 +36,6 @@ export function renderStyle(style: CSSProperties): string {
   }
   return out;
 }
-
-/**
- * Name-derived attribute metadata. Everything in attribute serialization that
- * depends ONLY on the name — validation, camelCase→kebab remap, event-handler
- * detection, style/URL classification — is computed once per distinct name and
- * cached. The value-dependent work (escaping, URL/CSS safety) is never cached.
- *
- * `urlKind`: 0 = plain, 1 = URL attribute, 2 = srcset.
- * A cached `null` means "skip this attribute" (internal prop or invalid name).
- */
-type AttrMeta = {
-  name: string;
-  isEvent: boolean;
-  isStyle: boolean;
-  urlKind: 0 | 1 | 2;
-};
-
-// Keyed by attribute name. Names come from a small, bounded vocabulary — the
-// same assumption that lets VALID_TAGS cache tag validation.
-const ATTR_META_CACHE = new Map<string, AttrMeta | null>();
-const WARNED_EVENT_HANDLERS = new Set<string>();
 
 export const ATTRIBUTE_NAME_MAP: Map<string, string> = new Map([
   ["htmlFor", "for"],
@@ -103,7 +74,9 @@ const isEventHandler = (attrName: string): boolean => {
   );
 };
 
-function computeAttrMeta(name: string): AttrMeta | null {
+function computeAttrMeta(
+  name: string,
+): import("./render-cache.js").AttrMeta | null {
   if (INTERNAL_PROPS.has(name)) return null;
 
   let attrName = name;
@@ -130,11 +103,13 @@ function computeAttrMeta(name: string): AttrMeta | null {
   return { name: attrName, isEvent, isStyle: false, urlKind };
 }
 
-function getAttrMeta(name: string): AttrMeta | null {
-  const cached = ATTR_META_CACHE.get(name);
+function getAttrMeta(
+  name: string,
+): import("./render-cache.js").AttrMeta | null {
+  const cached = renderCache.attrMeta.get(name);
   if (cached !== undefined) return cached;
   const meta = computeAttrMeta(name);
-  ATTR_META_CACHE.set(name, meta);
+  renderCache.attrMeta.set(name, meta);
   return meta;
 }
 
@@ -189,8 +164,8 @@ export function renderAttributeSync(name: string, value: unknown): string {
 
   if (meta.isEvent) {
     if (typeof value === "function") {
-      if (!WARNED_EVENT_HANDLERS.has(name)) {
-        WARNED_EVENT_HANDLERS.add(name);
+      if (!renderCache.warnedEventHandlers.has(name)) {
+        renderCache.warnedEventHandlers.add(name);
         console.warn(
           `[vincle/core] Event handler "${name}" was passed a function. ` +
             `This is not supported in static HTML rendering. Use a string instead.`,

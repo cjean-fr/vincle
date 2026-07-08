@@ -1,8 +1,13 @@
 import { renderToString } from "./index.js";
 import { jsx } from "./jsx-runtime.js";
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeAll } from "bun:test";
+import { renderCache } from "./utils/render-cache.js";
 
 const DIV = jsx("div", { class: "foo", children: "hello" });
+
+beforeAll(() => {
+  renderCache.clear();
+});
 
 describe("renderToString — no major regression", () => {
   const N = 5000;

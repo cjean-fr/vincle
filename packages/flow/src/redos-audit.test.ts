@@ -44,15 +44,6 @@ const ALL_REGEXES: RegexEntry[] = [
   },
   {
     id: 3,
-    file: "assets.ts",
-    name: "REGEX_SCRIPT_CLOSE",
-    pattern: "<\\/script",
-    flags: "gi",
-    purpose: "Escape </script in script content to prevent breakout.",
-    whySafe: "Fixed literal with no quantifiers — linear scan only.",
-  },
-  {
-    id: 4,
     file: "utils.ts",
     name: "REGEX_FRAGMENT_ID",
     pattern: "^[a-zA-Z][a-zA-Z0-9_-]*$",
@@ -151,24 +142,19 @@ describe("ReDoS behavioral contract", () => {
 
   it("[2] REGEX_MARKER finds asset markers", () => {
     // g flag mutates lastIndex — fresh regex per assertion
-    expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:style:ec/base -->")).toBe(true);
-    expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:script:jquery -->")).toBe(true);
+    expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:style:ec/base -->")).toBe(
+      true,
+    );
+    expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:script:jquery -->")).toBe(
+      true,
+    );
     expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:style:a/b -->")).toBe(true);
     expect(rx(ALL_REGEXES[1]!).test("plain text")).toBe(false);
     expect(rx(ALL_REGEXES[1]!).test("<!-- other -->")).toBe(false);
   });
 
-  it("[3] REGEX_SCRIPT_CLOSE matches </script", () => {
-    // gi flag mutates lastIndex — fresh regex per assertion
-    expect(rx(ALL_REGEXES[2]!).test("</script>")).toBe(true);
-    expect(rx(ALL_REGEXES[2]!).test("</script")).toBe(true);
-    expect(rx(ALL_REGEXES[2]!).test("</SCRIPT>")).toBe(true);
-    expect(rx(ALL_REGEXES[2]!).test("console.log('ok')")).toBe(false);
-    expect(rx(ALL_REGEXES[2]!).test("")).toBe(false);
-  });
-
-  it("[4] REGEX_FRAGMENT_ID validates fragment ids", () => {
-    const r = rx(ALL_REGEXES[3]!);
+  it("[3] REGEX_FRAGMENT_ID validates fragment ids", () => {
+    const r = rx(ALL_REGEXES[2]!);
     expect(r.test("my-id")).toBe(true);
     expect(r.test("section_1")).toBe(true);
     expect(r.test("a")).toBe(true);
@@ -183,8 +169,8 @@ describe("ReDoS behavioral contract", () => {
 // Consistency
 // ─────────────────────────────────────────────────────────────────────────────
 
-it("all 4 production regexes are audited", () => {
-  expect(ALL_REGEXES.length).toBe(4);
+it("all 3 production regexes are audited", () => {
+  expect(ALL_REGEXES.length).toBe(3);
 });
 
 it("no duplicate IDs or names", () => {

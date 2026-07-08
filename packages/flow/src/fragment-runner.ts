@@ -1,10 +1,14 @@
 import type { Pending } from "./pending-store.js";
 import { resolveAssets, type AssetState } from "./assets.js";
-import type { FlowEvent, FlowOptions } from "./types.js";
+import type { DeferContent, FlowEvent, FlowOptions } from "./types.js";
 import { renderToString, type VincleNode } from "@vincle/core";
+import { createTimeoutSignal } from "./timeout.js";
 
 const isAsyncIterable = (v: unknown): v is AsyncIterable<VincleNode> =>
   v != null && typeof (v as any)[Symbol.asyncIterator] === "function";
+
+const isFactory = (c: DeferContent): c is (signal: AbortSignal) => VincleNode =>
+  typeof c === "function";
 
 type ClassificationResult =
   | { kind: "value"; value: VincleNode }
@@ -13,12 +17,12 @@ type ClassificationResult =
 
 function classifyEntry(
   entry: Pending,
-  factorySignal: AbortSignal | undefined,
+  factorySignal: AbortSignal,
 ): ClassificationResult {
   try {
-    const value = (entry.content as (s: AbortSignal | undefined) => VincleNode)(
-      factorySignal,
-    );
+    const value = isFactory(entry.content)
+      ? entry.content(factorySignal)
+      : entry.content;
     if (isAsyncIterable(value)) return { kind: "stream", iterable: value };
     return { kind: "value", value };
   } catch (error) {
@@ -57,7 +61,8 @@ export type FragmentResult = { stream: boolean; done: Promise<void> };
  *
  * @example
  * const emit = async (ev) => { /* … *\/ };
- * const { done } = runFragment("my-id", { content: () => <span>hi<\/span>, merge: "replace" }, emit, {});
+ * // Plain JSX (deferred automatically) or a factory function:
+ * const { done } = runFragment("my-id", { content: <span>hi<\/span>, merge: "replace" }, emit, {});
  * await done;
  */
 export function runFragment(
@@ -68,34 +73,24 @@ export function runFragment(
   assets?: AssetState | null,
 ): FragmentResult {
   const handle = entry.onError ?? opts.onError;
-
-  // Per-entry timeout fires its own controller; combine it with the request
-  // signal so the factory aborts on whichever comes first.
-  const ms = entry.timeout ?? opts.defaultTimeout;
-  const timer = ms != null ? new AbortController() : null;
-  const timeout = timer
-    ? setTimeout(
-        () => timer.abort(new Error(`Defer "${id}" timed out after ${ms}ms`)),
-        ms,
-      )
-    : null;
-  const factorySignal =
-    opts.signal && timer
-      ? AbortSignal.any([opts.signal, timer.signal])
-      : (opts.signal ?? timer?.signal);
+  const { factorySignal, cleanup } = createTimeoutSignal(
+    entry.timeout ?? opts.defaultTimeout,
+    opts.signal,
+    id,
+  );
 
   const classification = classifyEntry(entry, factorySignal);
 
   switch (classification.kind) {
     case "sync-error": {
-      if (timeout) clearTimeout(timeout);
+      cleanup();
       return {
         stream: false,
         done: emitError(emit, handle, id, "fragment", classification.error),
       };
     }
     case "stream": {
-      if (timeout) clearTimeout(timeout);
+      cleanup();
       // Streams are long-lived; the per-entry timeout doesn't apply to them.
       return {
         stream: true,
@@ -124,7 +119,7 @@ export function runFragment(
         } catch (error) {
           await emitError(emit, handle, id, "fragment", error);
         } finally {
-          if (timeout) clearTimeout(timeout);
+          cleanup();
         }
       })();
       return { stream: false, done };

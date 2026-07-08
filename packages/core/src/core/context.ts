@@ -1,10 +1,9 @@
-import type { AsyncLocalStorage } from "node:async_hooks";
 import type { Awaitable } from "./types.js";
 
 // TC39 Async Context proposal (Stage 2, 2025-09)
 // https://github.com/tc39/proposal-async-context
 // When native (≈ ES2028+), replace AsyncLocalStorage with:
-//   const _store = new AsyncContext.Variable<ScopeMap>();
+//   const _store = new AsyncContext.Variable<ContextMap>();
 //   storage.getStore() → _store.get()
 //   storage.run(m, fn) → _store.run(m, fn)
 // All other exports (context, setContext, useContext, withScope, snapshot)
@@ -12,40 +11,47 @@ import type { Awaitable } from "./types.js";
 
 declare const __brand: unique symbol;
 
-export interface Context<T> {
+export interface ContextKey<T> {
   readonly [__brand]: T;
 }
 
 export interface ScopeOptions {
-  seed?: Map<Context<unknown>, unknown>;
+  seed?: Map<ContextKey<unknown>, unknown>;
 }
 
-type ScopeMap = Map<Context<unknown>, unknown>;
+export type ContextMap = Map<ContextKey<unknown>, unknown>;
 
-// Lazy — deferred to first withScope() call so runtimes without
-// node:async_hooks (Workers, Deno, browser) can still import the package.
-let storage: AsyncLocalStorage<ScopeMap> | undefined;
-let storagePromise: Promise<AsyncLocalStorage<ScopeMap>> | undefined;
+interface ScopeStorage {
+  run<T>(store: ContextMap, fn: () => T): Promise<T>;
+  getStore(): ContextMap | undefined;
+}
 
-async function ensureStorage(): Promise<AsyncLocalStorage<ScopeMap>> {
+let storage: ScopeStorage | undefined;
+let storagePromise: Promise<ScopeStorage> | undefined;
+
+async function ensureStorage(): Promise<ScopeStorage> {
   if (storage) return storage;
   if (storagePromise) return storagePromise;
   storagePromise = (async () => {
-    try {
-      const mod = await import("node:async_hooks");
-      storage = new mod.AsyncLocalStorage<ScopeMap>();
-      return storage;
-    } catch (cause) {
-      storagePromise = undefined;
-      throw cause;
-    }
+    const mod = await import("node:async_hooks");
+    const { AsyncLocalStorage } = mod;
+    const als = new AsyncLocalStorage<ContextMap>();
+    storage = {
+      run<T>(store: ContextMap, fn: () => T): Promise<T> {
+        return als.run(store, fn) as Promise<T>;
+      },
+      getStore(): ContextMap | undefined {
+        return als.getStore();
+      },
+    };
+    return storage;
   })();
   return storagePromise;
 }
 
 const namedContexts = new Map<string, symbol>();
 
-export function context<T>(globalKey: string): Context<T> {
+export function context<T>(globalKey: string): ContextKey<T> {
   if (typeof globalKey !== "string" || globalKey.length === 0) {
     throw new Error(
       "[vincle/core] context(key): a non-empty string key is required. " +
@@ -57,32 +63,32 @@ export function context<T>(globalKey: string): Context<T> {
     sym = Symbol(globalKey);
     namedContexts.set(globalKey, sym);
   }
-  return sym as unknown as Context<T>;
+  return sym as unknown as ContextKey<T>;
 }
 
-export function setContext<T>(ctx: Context<T>, value: T): void {
+export function setContext<T>(ctx: ContextKey<T>, value: T): void {
   const map = storage?.getStore();
   if (!map) {
     throw new Error(
       "[vincle/core] setContext() called outside of a withScope() scope.",
     );
   }
-  map.set(ctx as Context<unknown>, value);
+  map.set(ctx as ContextKey<unknown>, value);
 }
 
-export function useContext<T>(ctx: Context<T>): T {
+export function useContext<T>(ctx: ContextKey<T>): T {
   const map = storage?.getStore();
   if (!map) {
     throw new Error(
       "[vincle/core] useContext() called outside of a withScope() scope.",
     );
   }
-  if (!map.has(ctx as Context<unknown>)) {
+  if (!map.has(ctx as ContextKey<unknown>)) {
     throw new Error(
       "[vincle/core] useContext() — context not found in current scope. Did you call setContext() in this withScope?",
     );
   }
-  return map.get(ctx as Context<unknown>) as T;
+  return map.get(ctx as ContextKey<unknown>) as T;
 }
 
 export async function withScope<T>(
@@ -93,7 +99,7 @@ export async function withScope<T>(
   return als.run(new Map(options?.seed), fn);
 }
 
-export function snapshot(): Map<Context<unknown>, unknown> {
+export function snapshot(): Map<ContextKey<unknown>, unknown> {
   const map = storage?.getStore();
   if (!map) {
     throw new Error(
@@ -101,6 +107,14 @@ export function snapshot(): Map<Context<unknown>, unknown> {
     );
   }
   return new Map(map);
+}
+
+/**
+ * @internal Get the current scope's context map, or undefined if no scope is active.
+ * Unlike `snapshot()` this does not throw — callers can decide how to handle absence.
+ */
+export function getCurrentScopeMap(): ContextMap | undefined {
+  return storage?.getStore();
 }
 
 /** @internal Reset module-level state for test isolation. */

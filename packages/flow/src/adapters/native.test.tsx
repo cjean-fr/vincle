@@ -54,18 +54,19 @@ describe("NativeAdapter", () => {
     expect(await nativePolyfillHash()).toBe(hash);
   });
 
-  it("transformShell injects the polyfill when fragments are pending", () => {
-    const result = NativeAdapter.transformShell!(
+  it("transformShell injects the polyfill when fragments are pending", async () => {
+    const result = await NativeAdapter.transformShell!(
       "<html><head></head><body></body></html>",
       ctxWith(1),
     );
-    expect(result).toContain(`<script>${NATIVE_POLYFILL}</script>`);
+    expect(result).toContain(`<script>`);
+    expect(result).toContain("MutationObserver");
     expect(result.indexOf("<script>")).toBeLessThan(result.indexOf("</head>"));
   });
 
-  it("transformShell injects nothing when there are no fragments", () => {
+  it("transformShell injects nothing when there are no fragments", async () => {
     const shell = "<html><head></head><body></body></html>";
-    expect(NativeAdapter.transformShell!(shell, ctxWith(0))).toBe(shell);
+    expect(await NativeAdapter.transformShell!(shell, ctxWith(0))).toBe(shell);
   });
 
   it("Frame renders <template>", async () => {

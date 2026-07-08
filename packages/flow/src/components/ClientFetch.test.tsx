@@ -26,9 +26,9 @@ describe("ClientFetch", () => {
   it("throws at runtime for invalid dynamic strings", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      expect(() => (
-        <ClientFetch src={"javascript:alert(1)" as string} />
-      )).toThrow(/forbidden scheme/);
+      await expect(
+        renderToString(<ClientFetch src={"javascript:alert(1)" as string} />),
+      ).rejects.toThrow(/forbidden scheme/);
     });
   });
 });

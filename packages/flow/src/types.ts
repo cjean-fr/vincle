@@ -8,7 +8,7 @@ export interface AdapterCapabilities {
   merges: readonly MergeType[];
 }
 
-export type DeferContent = (signal: AbortSignal) => VincleNode;
+export type DeferContent = VincleNode | ((signal: AbortSignal) => VincleNode);
 
 export interface Shell {
   type: "shell";

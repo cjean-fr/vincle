@@ -33,7 +33,7 @@ describe("JSX Runtime Export Contract", () => {
 });
 
 describe("Automatic JSX Dev Runtime", () => {
-  it("ignores key/isStaticChildren/source/self per the spec — never renders them as children", () => {
+  it("ignores key/isStaticChildren/source/self per the spec — never renders them as children", async () => {
     const source = { fileName: "Layout.tsx", lineNumber: 18, columnNumber: 9 };
     const el = jsxDEV(
       "script",
@@ -43,13 +43,12 @@ describe("Automatic JSX Dev Runtime", () => {
       source,
       null,
     );
-    expect(el.toString()).toBe(
+    expect(await renderToString(el)).toBe(
       '<script type="module" src="/assets/client.js"></script>',
     );
-    expect(el.toString()).not.toContain("[object Object]");
   });
 
-  it("reads children from props.children, not from positional args", () => {
+  it("reads children from props.children, not from positional args", async () => {
     const el = jsxDEV(
       "div",
       { children: "hello" },
@@ -58,13 +57,15 @@ describe("Automatic JSX Dev Runtime", () => {
       { fileName: "x", lineNumber: 1, columnNumber: 1 },
       null,
     );
-    expect(el.toString()).toBe("<div>hello</div>");
+    expect(await renderToString(el)).toBe("<div>hello</div>");
   });
 });
 
 describe("Automatic JSX Runtime Factories", () => {
-  it("renders an element with children from props", () => {
-    expect(jsx("span", { children: "ok" }).toString()).toBe("<span>ok</span>");
+  it("renders an element with children from props", async () => {
+    expect(await renderToString(jsx("span", { children: "ok" }))).toBe(
+      "<span>ok</span>",
+    );
   });
 
   it("renders multiple children passed via props.children array", async () => {

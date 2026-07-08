@@ -11,12 +11,12 @@ export {
 export type { JSX };
 
 export function jsxDEV<P extends {} = {}>(
-  tag: string | Component<P>,
+  type: string | Component<P>,
   props: P,
   _key?: unknown,
   _isStaticChildren?: boolean,
   _source?: { fileName?: string; lineNumber?: number; columnNumber?: number },
   _self?: unknown,
 ): JSX.Element {
-  return jsx(tag, props);
+  return jsx(type, props);
 }

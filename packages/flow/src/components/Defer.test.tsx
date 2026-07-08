@@ -53,6 +53,20 @@ describe("Defer", () => {
     });
   });
 
+  it("accepts plain JSX children (no thunk needed)", async () => {
+    await withScope(async () => {
+      initFlow({ adapter: TurboAdapter, mode: "streaming" });
+      const html = await renderToString(
+        <Defer>
+          <span>plain</span>
+        </Defer>,
+      );
+      expect(html).toContain('id="fragment-1"');
+      const { pendingStore } = useContext(Flow);
+      expect(pendingStore.size).toBe(1);
+    });
+  });
+
   it("generates a src in static mode", async () => {
     await withScope(async () => {
       initFlow({

@@ -327,12 +327,11 @@ describe("ASVS 15.2.5 — Extra protections around dangerous components (L3)", (
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("ASVS 16.5.4 — Last resort error handler (L3)", () => {
-  it("propagates sync component throws through jsx()", async () => {
+  it("propagates sync component throws through renderToString", async () => {
     const Crash = () => {
       throw new Error("sync-boom");
     };
-    // Sync throws happen during jsx() factory call, not renderToString
-    expect(() => <Crash />).toThrow("sync-boom");
+    await expect(renderToString(<Crash />)).rejects.toThrow("sync-boom");
   });
 
   it("rejects when an async component rejects", async () => {

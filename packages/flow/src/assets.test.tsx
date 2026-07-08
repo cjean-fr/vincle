@@ -138,11 +138,11 @@ describe("resolveAssets", () => {
 
     expect(result).toContain('<style data-name="a">.a { }</style>');
     expect(result).toContain(
-      '<script type="module" data-name="b">console.log(\'b\')</script>',
+      '<script data-name="b" type="module">console.log(\'b\')</script>',
     );
   });
 
-  it("throws if style content contains </style", async () => {
+  it("escapes </style in style content", async () => {
     const state = createAssetState();
     registerAsset(state, "bad", {
       type: "style",
@@ -151,9 +151,9 @@ describe("resolveAssets", () => {
     });
 
     const html = createMarker("style", "bad");
-    await expect(resolveAssets(html, state)).rejects.toThrow(
-      /contains <\/style/,
-    );
+    const result = await resolveAssets(html, state);
+    expect(result).toContain("<\\/style");
+    expect(result).not.toContain("</style><script>");
   });
 
   it("escapes </script in script content", async () => {
@@ -261,7 +261,7 @@ describe("resolveAssets", () => {
     const result = await resolveAssets(html, state);
 
     // The style tag should be in the head (first position)
-    expect(result).toContain('<head><style media="screen" data-name="dup">');
+    expect(result).toContain('<head><style data-name="dup" media="screen">');
     // Second marker removed
     expect(result).not.toContain(createMarker("style", "dup"));
   });

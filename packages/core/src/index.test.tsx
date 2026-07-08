@@ -190,11 +190,11 @@ describe("Attribute Processing, Hardening & Sanitization", () => {
 });
 
 describe("Error propagation", () => {
-  it("propagates a sync component throw through jsx()", () => {
+  it("rejects renderToString when a sync component throws", async () => {
     const Crash = () => {
       throw new Error("boom");
     };
-    expect(() => renderToString(<Crash />)).toThrow("boom");
+    await expect(renderToString(<Crash />)).rejects.toThrow("boom");
   });
 
   it("rejects renderToString when an async component rejects", async () => {
@@ -211,23 +211,25 @@ describe("Error propagation", () => {
     ).rejects.toThrow("child-boom");
   });
 
-  it("annotates sync error with component name", () => {
-    const Boom = () => {
+  it("annotates sync error with component name", async () => {
+    function Boom(): never {
       throw new Error("fail");
-    };
-    expect(() => renderToString(<Boom />)).toThrow("[Boom] fail");
+    }
+    await expect(renderToString(<Boom />)).rejects.toThrow("[Boom] fail");
   });
 
   it("annotates async error with component name", async () => {
-    const AsyncBoom = async () => {
+    async function AsyncBoom() {
       await Promise.resolve();
       throw new Error("fail");
-    };
-    expect(() => renderToString(<AsyncBoom />)).toThrow("[AsyncBoom] fail");
+    }
+    await expect(renderToString(<AsyncBoom />)).rejects.toThrow(
+      "[AsyncBoom] fail",
+    );
   });
 
-  it("annotates with the innermost component, not the chain above it", () => {
-    const Child = () => {
+  it("annotates with the innermost component, not the chain above it", async () => {
+    const Child = (): never => {
       throw new Error("fail");
     };
     const Parent = () => (
@@ -235,10 +237,10 @@ describe("Error propagation", () => {
         <Child />
       </div>
     );
-    expect(() => renderToString(<Parent />)).toThrow("[Child] fail");
+    await expect(renderToString(<Parent />)).rejects.toThrow("[Child] fail");
   });
 
-  it("preserves the original error type and properties", () => {
+  it("preserves the original error type and properties", async () => {
     class HttpError extends Error {
       status: number;
       constructor(status: number) {
@@ -250,7 +252,7 @@ describe("Error propagation", () => {
       throw new HttpError(503);
     };
     try {
-      renderToString(<Boom />);
+      await renderToString(<Boom />);
       throw new Error("expected to throw");
     } catch (e) {
       expect(e).toBeInstanceOf(HttpError);
@@ -259,36 +261,36 @@ describe("Error propagation", () => {
     }
   });
 
-  it("annotates a thrown string value", () => {
+  it("annotates a thrown string value", async () => {
     const Crash = () => {
       throw "string-boom";
     };
     try {
-      renderToString(<Crash />);
+      await renderToString(<Crash />);
       throw new Error("expected to throw");
     } catch (e) {
       expect((e as Error).message).toBe("[Crash] string-boom");
     }
   });
 
-  it("annotates a thrown number value", () => {
+  it("annotates a thrown number value", async () => {
     const Crash = () => {
       throw 42;
     };
     try {
-      renderToString(<Crash />);
+      await renderToString(<Crash />);
       throw new Error("expected to throw");
     } catch (e) {
       expect((e as Error).message).toBe("[Crash] 42");
     }
   });
 
-  it("annotates a thrown object with string tag", () => {
+  it("annotates a thrown object with string tag", async () => {
     const Crash = () => {
       throw { code: 500 };
     };
     try {
-      renderToString(<Crash />);
+      await renderToString(<Crash />);
       throw new Error("expected to throw");
     } catch (e) {
       expect((e as Error).message).toBe("[Crash] [object Object]");
@@ -386,5 +388,61 @@ describe("Iterable & Generator Children", () => {
     expect(await renderToString(<ul>{items()}</ul>)).toBe(
       "<ul><li>a</li><li>b</li></ul>",
     );
+  });
+});
+
+describe("renderToString context isolation", () => {
+  const ReqId = Main.context<number>("@vincle/core/test:req-id");
+
+  it("inherits parent scope context into each renderToString", async () => {
+    const results = await Main.withScope(async () => {
+      Main.setContext(ReqId, 42);
+      const a = renderToString(
+        <span>{(Main.useContext(ReqId) * 2).toString()}</span>,
+      );
+      const b = renderToString(
+        <span>{(Main.useContext(ReqId) + 1).toString()}</span>,
+      );
+      return Promise.all([a, b]);
+    });
+    expect(results).toEqual(["<span>84</span>", "<span>43</span>"]);
+  });
+
+  it("isolates renders — setContext inside one does not leak to siblings", async () => {
+    const results = await Main.withScope(async () => {
+      Main.setContext(ReqId, 1);
+      function A() {
+        Main.setContext(ReqId, 99);
+        return <span>{Main.useContext(ReqId)}</span>;
+      }
+      function B() {
+        return <span>{Main.useContext(ReqId)}</span>;
+      }
+      const a = renderToString(<A />);
+      const b = renderToString(<B />);
+      return Promise.all([a, b]);
+    });
+    expect(results).toEqual(["<span>99</span>", "<span>1</span>"]);
+  });
+
+  it("works without a parent scope (standalone renderToString)", async () => {
+    const html = await renderToString(<span>ok</span>);
+    expect(html).toBe("<span>ok</span>");
+  });
+
+  it("boundary stack is isolated per renderToString", async () => {
+    const results = await Main.withScope(async () => {
+      function Boom(): never {
+        throw new Error("fail");
+      }
+      const a = renderToString(
+        <Main.ErrorBoundary fallback={() => <p>caught</p>}>
+          <Boom />
+        </Main.ErrorBoundary>,
+      );
+      const b = renderToString(<span>hello</span>);
+      return Promise.all([a, b]);
+    });
+    expect(results).toEqual(["<p>caught</p>", "<span>hello</span>"]);
   });
 });

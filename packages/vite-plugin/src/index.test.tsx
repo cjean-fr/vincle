@@ -112,9 +112,9 @@ describe("Asset (production mode)", () => {
   it("throws when the entry is not found in the manifest", async () => {
     await withScope(async () => {
       setVite(manifest);
-      expect(() => <Asset entry="src/does-not-exist.ts" />).toThrow(
-        /not found in manifest/,
-      );
+      await expect(
+        render(<Asset entry="src/does-not-exist.ts" />),
+      ).rejects.toThrow(/not found in manifest/);
     });
   });
 
@@ -139,7 +139,9 @@ describe("Asset (production mode)", () => {
 describe("Asset (no setup)", () => {
   it("throws a clear error when setVite was not called", async () => {
     await withScope(async () => {
-      expect(() => <Asset entry="src/main.ts" />).toThrow(/context not found/);
+      await expect(render(<Asset entry="src/main.ts" />)).rejects.toThrow(
+        /context not found/,
+      );
     });
   });
 });

@@ -1,4 +1,5 @@
-import { escapeAttr } from "@vincle/core/html";
+import { renderToString } from "@vincle/core";
+import { jsx } from "@vincle/core/jsx-runtime";
 
 export type AssetType = "style" | "script";
 
@@ -20,7 +21,6 @@ export function createAssetState(): AssetState {
 }
 
 const REGEX_MARKER = /<!-- vincle:(style|script):(.+?) -->/g;
-const REGEX_SCRIPT_CLOSE = /<\/script/gi;
 
 export function createMarker(type: AssetType, name: string): string {
   return `<!-- vincle:${type}:${name} -->`;
@@ -46,45 +46,6 @@ export function registerAsset(
     return;
   }
   state.entries.set(name, entry);
-}
-
-function serializeStyle(
-  name: string,
-  content: string,
-  attrs: Record<string, string>,
-): string {
-  const lc = content.toLowerCase();
-  if (lc.includes("</style")) {
-    throw new Error(
-      `Style "${name}" content contains </style (use raw() for CSS; this looks like unescaped HTML)`,
-    );
-  }
-  const attrStr = attrsToStr(attrs);
-  return `<style${attrStr} data-name="${escapeAttr(name)}">${content}</style>`;
-}
-
-function serializeScript(
-  name: string,
-  content: string,
-  attrs: Record<string, string>,
-): string {
-  const safe = content.replace(REGEX_SCRIPT_CLOSE, "<\\/script");
-  const attrStr = attrsToStr(attrs);
-  return `<script${attrStr} data-name="${escapeAttr(name)}">${safe}</script>`;
-}
-
-function attrsToStr(attrs: Record<string, string>): string {
-  const keys = Object.keys(attrs);
-  if (keys.length === 0) return "";
-  return (
-    " " +
-    keys
-      .map((k) => {
-        const v = attrs[k]!;
-        return v === "" ? k : `${k}="${v.replace(/"/g, "&quot;")}"`;
-      })
-      .join(" ")
-  );
 }
 
 function isHtmlCommentSafe(name: string): boolean {
@@ -120,18 +81,10 @@ async function evaluateAndBuildTag(
     console.error(`[vincle/flow] Error evaluating asset "${name}":`, error);
     throw error;
   }
-  return serializeTag(type, name, content, entry.attrs);
-}
-
-function serializeTag(
-  type: AssetType,
-  name: string,
-  content: string,
-  attrs: Record<string, string>,
-): string {
-  return type === "style"
-    ? serializeStyle(name, content, attrs)
-    : serializeScript(name, content, attrs);
+  const tag = type === "style" ? "style" : "script";
+  return renderToString(
+    jsx(tag, { "data-name": name, ...entry.attrs, children: content }),
+  );
 }
 
 export async function resolveAssets(

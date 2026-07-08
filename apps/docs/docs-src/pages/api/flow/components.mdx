@@ -33,7 +33,7 @@ Pushes deferred content into an existing slot by name. Renders nothing itself.
 | Prop       | Type                                                        | Default     | Description                               |
 | ---------- | ----------------------------------------------------------- | ----------- | ----------------------------------------- |
 | `target`   | `string`                                                    | —           | Target slot id to push content into       |
-| `children` | `(signal: AbortSignal) => VincleNode`                       | —           | Factory returning the deferred content    |
+| `children` | `VincleNode \| ((signal: AbortSignal) => VincleNode)`       | —           | Deferred content (plain JSX or factory)   |
 | `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target element |
 | `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms         |
 | `onError`  | `(error: Error) => VincleNode`                              | —           | Per-fragment error handler                |
@@ -50,7 +50,7 @@ Declares a deferred region with a placeholder and content in one component. Equi
 | ---------- | ----------------------------------------------------------- | -------------- | -------------------------------------- |
 | `name`     | `string`                                                    | auto-generated | Fragment id                            |
 | `fallback` | `VincleNode`                                                | —              | Placeholder content shown in the shell |
-| `children` | `(signal: AbortSignal) => VincleNode`                       | —              | Factory returning the deferred content |
+| `children` | `VincleNode \| ((signal: AbortSignal) => VincleNode)`       | —              | Deferred content (plain JSX or factory)|
 | `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"`    | How content applies to the target      |
 | `timeout`  | `number`                                                    | —              | Per-fragment render timeout in ms      |
 | `onError`  | `(error: Error) => VincleNode`                              | —              | Per-fragment error handler             |
@@ -67,11 +67,24 @@ Browser fetches a fragment from a URL after the shell lands. No server-push requ
 | ----- | -------- | ------- | -------------------------------------- |
 | `src` | `string` | —       | URL of the fragment HTML file to fetch |
 
-## Factory function
+## Content forms
 
-Both `Fill` and `Defer` accept `children` as a factory `(signal: AbortSignal) => VincleNode`. The factory receives an `AbortSignal` tied to the request lifetime and per-fragment timeout.
+Both `Fill` and `Defer` accept children in either form:
 
-**Return types:**
+| Children                     | Behaviour                                                          |
+| ---------------------------- | ------------------------------------------------------------------ |
+| Plain JSX                    | Deferred automatically — no thunk needed                           |
+| `(signal: AbortSignal) => …` | **Cancellable** — receives `AbortSignal` (request + timeout abort) |
+
+Plain JSX works because `@vincle/core`'s JSX factory never calls component
+functions — it produces descriptor objects. A child like `<HeavyComponent />`
+is just `{ type: HeavyComponent, props, key }` and won't execute until the
+fragment renders.
+
+Pass a factory when you need the `AbortSignal` for cancellation (request
+disconnect, per-fragment timeout):
+
+**Return types (for both forms):**
 
 | Return type                 | Behaviour                                            |
 | --------------------------- | ---------------------------------------------------- |

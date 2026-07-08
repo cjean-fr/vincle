@@ -83,10 +83,18 @@ raw(`<script type="application/ld+json">${JSON.stringify({
       },
       {
         "@type": "Question",
+        "name": "Can I catch rendering errors without crashing the whole page?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Vincle provides an ErrorBoundary component that catches errors from child components and renders a fallback instead. Nested boundaries are supported — the innermost one that catches the error handles it. Errors not caught by any boundary reject the renderToString promise. ErrorBoundary is available in @vincle/core."
+        }
+      },
+      {
+        "@type": "Question",
         "name": "How do I debug rendering issues?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Vincle logs warnings for common mistakes: invalid tag names, dropped event handler functions, and missing context values. TypeScript catches type errors at build time. For runtime issues, wrap components in try/catch — onError handlers are available in @vincle/flow for per-fragment error recovery."
+          "text": "Vincle logs warnings for common mistakes: invalid tag names, dropped event handler functions, and missing context values. TypeScript catches type errors at build time. When a component throws, the error message is annotated with the component name. For runtime issues, wrap components in try/catch or use ErrorBoundary — onError handlers are available in @vincle/flow for per-fragment error recovery."
         }
       }
     ]
@@ -203,6 +211,24 @@ client mechanism:
 - **EsiAdapter** — CDN-level ESI composition
 
 All adapters work in both streaming and static generation modes.
+
+## Can I catch rendering errors without crashing the whole page?
+
+Yes. Vincle provides an `ErrorBoundary` component that catches errors from
+child components and renders a fallback instead. Nested boundaries are
+supported — the innermost one that catches the error handles it. If the
+fallback itself throws, the error propagates to the enclosing boundary.
+
+```tsx
+import { ErrorBoundary } from "@vincle/core";
+
+<ErrorBoundary fallback={(e) => <p>Failed: {(e as Error).message}</p>}>
+  <Profile id={id} />
+</ErrorBoundary>
+```
+
+Errors not caught by any boundary reject the `renderToString` promise.
+See the [ErrorBoundary API](/api/core/error-boundary) page for details.
 
 ## What is the bundle size?
 

@@ -10,7 +10,7 @@ import {
   setContext,
   useContext,
   withScope,
-  type Context,
+  type ContextKey,
 } from "@vincle/core";
 
 export type { FlowConfig } from "./types.js";
@@ -30,7 +30,7 @@ export interface FlowContext {
   defer(id: string, entry: Pending): void;
 }
 
-export const Flow: Context<FlowContext> =
+export const Flow: ContextKey<FlowContext> =
   context<FlowContext>("@vincle/flow:flow");
 
 export function initFlow(config: FlowConfig): void {

@@ -103,7 +103,7 @@ describe("Style/Script — render pipeline integration", () => {
       ),
     );
 
-    expect(html).toContain('<script type="module" data-name="init">');
+    expect(html).toContain('<script data-name="init" type="module">');
   });
 
   it("resolves Script with defer", async () => {
@@ -125,7 +125,7 @@ describe("Style/Script — render pipeline integration", () => {
       ),
     );
 
-    expect(html).toContain('<script defer data-name="late">');
+    expect(html).toContain('<script data-name="late" defer="">');
   });
 
   it("resolves Script with src", async () => {
@@ -146,7 +146,7 @@ describe("Style/Script — render pipeline integration", () => {
     );
 
     expect(html).toContain(
-      '<script src="/vendor/jquery.js" data-name="jquery"></script>',
+      '<script data-name="jquery" src="/vendor/jquery.js"></script>',
     );
   });
 

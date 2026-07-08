@@ -40,8 +40,15 @@ A `Slot` registers nothing in the pending store — it is purely a passive hole.
 ## `<Fill>` — push content
 
 Pushes deferred content into an existing slot by name. Renders nothing itself
-(returns `null`). The `children` must be a factory
-`(signal: AbortSignal) => VincleNode` — the runtime calls it when ready.
+(returns `null`).
+
+`children` is deferred automatically by the descriptor system — plain JSX works:
+
+```tsx
+<Fill target="page"><h1>Hello</h1></Fill>
+```
+
+Pass a factory when you need the `AbortSignal` for cancellation:
 
 <CodeExample src="flow/fill.tsx" />
 
@@ -63,16 +70,23 @@ at registration with a clear error.
 ## `<Defer>` — deferred region with placeholder
 
 Declares a deferred region with a placeholder in the shell. The `fallback` prop
-defines the content shown immediately. The `children` must be a factory
-`(signal: AbortSignal) => VincleNode` — this is what renders asynchronously and
-patches the placeholder when ready.
+defines the content shown immediately. `children` is deferred automatically —
+plain JSX works without a thunk:
 
 ```tsx
 import { Defer } from "@vincle/flow";
 
 <Defer name="dashboard" fallback={<p>Loading dashboard…</p>}>
-  {(signal) => <HeavyDashboard signal={signal} />}
+  <HeavyDashboard />
 </Defer>;
+```
+
+Pass a factory when you need the `AbortSignal` for cancellation:
+
+```tsx
+<Defer name="dashboard" fallback={<p>Loading dashboard…</p>}>
+  {(signal) => <HeavyDashboard signal={signal} />}
+</Defer>
 ```
 
 `<Defer>` is equivalent to a `<Slot>` + `<Fill>` pair, but in a single
@@ -86,10 +100,25 @@ required — works with any static file server.
 
 <CodeExample src="flow/deferred-src.tsx" />
 
-## The `(signal) => VincleNode` factory
+## Content forms
 
-Both `<Fill>` and `<Defer>` accept `children` as a factory function instead of a
-static node. The factory receives an `AbortSignal` tied to:
+Both `<Fill>` and `<Defer>` accept children in either form:
+
+| Children                     | Behaviour                                                          |
+| ---------------------------- | ------------------------------------------------------------------ |
+| Plain JSX                    | Deferred automatically — executes when the fragment renders        |
+| `(signal: AbortSignal) => …` | **Cancellable** — receives `AbortSignal` (request + timeout abort) |
+
+### Plain JSX (recommended for most cases)
+
+Because `@vincle/core` uses lazy descriptors, component functions are never
+called during JSX creation. A child like `<HeavyComponent />` is just a
+descriptor object `{ type, props, key }` — it won't execute until the fragment
+renders. No thunk needed.
+
+### Factory form — for cancellation
+
+The factory function receives an `AbortSignal` tied to:
 
 - The **request lifetime** — if the client disconnects, the signal aborts and
   any pending work can stop
@@ -108,7 +137,8 @@ been sent. Combine with a `timeout` to set an upper bound:
 
 ### One-shot vs stream
 
-The factory can return:
+The return type of a factory (or the rendered result of plain JSX) determines
+the behaviour:
 
 | Return type                 | Behaviour                                                |
 | --------------------------- | -------------------------------------------------------- |

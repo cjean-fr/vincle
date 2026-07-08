@@ -13,15 +13,15 @@ import { describe, it, expect } from "bun:test";
 const CTX = { pendingStore: { size: 0 } } as unknown as FlowContext;
 
 describe("composeShell", () => {
-  it("applies transforms left-to-right", () => {
+  it("applies transforms left-to-right", async () => {
     const t = composeShell(
       (s) => s + "[a]",
       (s) => s + "[b]",
     );
-    expect(t("x", CTX)).toBe("x[a][b]");
+    expect(await t("x", CTX)).toBe("x[a][b]");
   });
 
-  it("skips falsy entries (e.g. an adapter with no transformShell)", () => {
+  it("skips falsy entries (e.g. an adapter with no transformShell)", async () => {
     const t = composeShell(
       undefined,
       TurboAdapter.transformShell,
@@ -29,7 +29,9 @@ describe("composeShell", () => {
       null,
       false,
     );
-    expect(t("<head></head>", CTX)).toBe("<head><title>ok</title></head>");
+    expect(await t("<head></head>", CTX)).toBe(
+      "<head><title>ok</title></head>",
+    );
   });
 
   it("composes into an adapter and runs once in the streamed shell", async () => {

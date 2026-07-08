@@ -20,39 +20,39 @@ describe("escape utilities", () => {
       expect(escapeContent("Hello 123")).toBe("Hello 123");
     });
 
-    it("handles empty string", () => {
+    it("returns empty string unchanged", () => {
       expect(escapeContent("")).toBe("");
     });
 
-    it("handles string with only escapable chars", () => {
+    it("escapes only escapable chars when input has no safe runs", () => {
       expect(escapeContent("<>&")).toBe("&lt;&gt;&amp;");
     });
 
-    it("handles string starting with an escapable char", () => {
+    it("escapes when escapable char appears at position 0", () => {
       expect(escapeContent("<hello>")).toBe("&lt;hello&gt;");
       expect(escapeContent("&hello")).toBe("&amp;hello");
     });
 
-    it("handles string ending with an escapable char", () => {
+    it("escapes when escapable char appears at last position", () => {
       expect(escapeContent("hello<")).toBe("hello&lt;");
       expect(escapeContent("hello&")).toBe("hello&amp;");
     });
 
-    it("handles multiple consecutive escapable chars", () => {
+    it("escapes consecutive escapable chars without merging", () => {
       expect(escapeContent("a&&b")).toBe("a&amp;&amp;b");
       expect(escapeContent("a<<b")).toBe("a&lt;&lt;b");
     });
 
-    it("handles escapable char at position 0 then more after", () => {
+    it("escapes reinterpreted sequences (e.g. &amp; → &amp;amp;)", () => {
       expect(escapeContent("&amp;")).toBe("&amp;amp;");
     });
 
-    it("handles long string with no escapable chars", () => {
+    it("fast-paths through a long string with no escapable chars", () => {
       const long = "a".repeat(1000);
       expect(escapeContent(long)).toBe(long);
     });
 
-    it("handles long string with escapable chars scattered", () => {
+    it("escapes multiple escapable char types scattered across a long string", () => {
       const input =
         "a".repeat(100) + "&" + "b".repeat(100) + "<" + "c".repeat(100);
       const expected =
@@ -60,13 +60,13 @@ describe("escape utilities", () => {
       expect(escapeContent(input)).toBe(expected);
     });
 
-    it("handles strings with only one char that is escapable", () => {
+    it("escapes a single escapable char at any position in short input", () => {
       expect(escapeContent("&")).toBe("&amp;");
       expect(escapeContent("<")).toBe("&lt;");
       expect(escapeContent(">")).toBe("&gt;");
     });
 
-    it("handles string where escapable char is the last of a long prefix", () => {
+    it("escapes when the only escapable char ends a long safe prefix", () => {
       expect(escapeContent("abcde&fgh")).toBe("abcde&amp;fgh");
     });
   });

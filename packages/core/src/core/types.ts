@@ -151,7 +151,12 @@ export interface HTMLAttributes extends StaticAttributes {
   title?: string;
   hidden?: boolean | string;
   slot?: string;
-  /** Catch-all for any other HTML or data attribute */
+  /**
+   * Catch-all for any other HTML or data attribute.
+   * Deliberate: Vincle doesn't maintain an exhaustive attr list.
+   * Runtime validates & sanitizes anyway (escape, URL blocking…).
+   * Don't "fix" this to unknown — it would break data-*, aria-*, and custom attrs.
+   */
   [key: string]: any;
 }
 
@@ -175,6 +180,28 @@ export interface SVGAttributes extends HTMLAttributes {
 }
 
 /**
+ * A lazy descriptor produced by the JSX factory. No component code has been
+ * executed and no HTML has been rendered — the pipeline walks descriptors at
+ * render time, where it can intercept errors with ErrorBoundary.
+ */
+export interface Descriptor {
+  type: string | Component<any>;
+  props: Record<string, unknown>;
+  key?: unknown;
+}
+
+export function isDescriptor(v: unknown): v is Descriptor {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "type" in v &&
+    "props" in v &&
+    (typeof (v as any).type === "string" ||
+      typeof (v as any).type === "function")
+  );
+}
+
+/**
  * Anything Vincle can render — the public "renderable" type, analogous to
  * React's `ReactNode`. Use it to annotate values that hold markup, a
  * component's `children`, or the return type of a helper that produces content.
@@ -195,7 +222,8 @@ export type VincleNode =
   | Promise<VincleNode>
   | VincleNode[]
   | Iterable<VincleNode>
-  | AsyncIterable<VincleNode>;
+  | AsyncIterable<VincleNode>
+  | Descriptor;
 
 export type Component<P = {}> = (
   props: P & HTMLAttributes & { children?: VincleNode },
@@ -207,7 +235,7 @@ export type Component<P = {}> = (
  * automatically when @types/react is installed, via the jsxImportSource chain.
  */
 export namespace JSX {
-  export type Element = Awaitable<RawString>;
+  export type Element = Descriptor;
   /**
    * What may appear as a JSX tag: an intrinsic tag name, or a component
    * function returning a `VincleNode` (async components included). Without

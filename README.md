@@ -4,27 +4,27 @@ Monorepo of high-performance, type-safe tools built around JSX-to-HTML rendering
 
 ## Packages
 
-### `jsx-string` stack
+### Core
 
-| Package                                       | Description                                                                                                       |
-| :-------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
-| [`@vincle/jsx-string`](./packages/jsx-string) | JSX-to-HTML string renderer. Zero dependencies.                                                                   |
-| [`@vincle/jsx-flow`](./packages/jsx-flow)     | Deferred fragments, streaming, and DOM patching — the `<Defer>` primitive + Turbo / HTMX / Native / ESI adapters. |
-| [`@vincle/jsx-vite`](./packages/jsx-vite)     | Vite asset integration — `<Asset>`, `assetUrl`, manifest resolution.                                              |
+| Package                                               | Description                                                                                                       |
+| :---------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| [`@vincle/core`](./packages/core)                     | JSX-to-HTML string renderer. Zero dependencies.                                                                   |
+| [`@vincle/flow`](./packages/flow)                     | Deferred fragments, streaming, and DOM patching — the `<Defer>` primitive + Turbo / HTMX / Native / ESI adapters. |
+| [`@vincle/vite-plugin`](./packages/vite-plugin)       | Vite asset integration — `<Asset>`, `assetUrl`, manifest resolution.                                              |
 
-### Other tools
+### Tooling
 
-| Package                                                                   | Description                                                |
-| :------------------------------------------------------------------------ | :--------------------------------------------------------- |
-| [`@vincle/eslint-plugin-jsx-string`](./packages/eslint-plugin-jsx-string) | ESLint rules for safe jsx-string usage.                    |
-| [`@vincle/jsx-precompile-core`](./packages/jsx-precompile-core)           | AST-agnostic shared helpers for JSX precompile transforms. |
-| [`@vincle/vite-plugin-precompile`](./packages/vite-plugin-precompile)     | Vite plugin for Deno-style JSX precompile transform.       |
+| Package                                                 | Description                                                |
+| :------------------------------------------------------ | :--------------------------------------------------------- |
+| [`@vincle/eslint-plugin`](./packages/eslint-plugin)     | ESLint rules for safe @vincle/core usage.                  |
+| [`@vincle/precompile-core`](./packages/precompile-core) | AST helpers for JSX precompile transforms.                 |
+| [`@vincle/vite-plugin-precompile`](./packages/vite-plugin-precompile) | Vite plugin for Deno-style JSX precompile transform. |
 
 ### Apps (internal)
 
-| App                   | Description                                  |
-| :-------------------- | :------------------------------------------- |
-| [`docs`](./apps/docs) | Documentation site for `@vincle/jsx-string`. |
+| App                   | Description                              |
+| :-------------------- | :--------------------------------------- |
+| [`docs`](./apps/docs) | Documentation site for `@vincle/core`. |
 
 ## Development
 
