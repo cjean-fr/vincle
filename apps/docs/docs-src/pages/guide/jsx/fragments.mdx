@@ -51,13 +51,13 @@ function Breadcrumbs() {
 `Fragment` is a plain function that returns its `children` prop unchanged. No wrapper element is created — the children are flattened directly into the parent during rendering.
 
 ```tsx
-import { Fragment, type VincleNode } from "@vincle/core";
+import { Fragment, type VNode } from "@vincle/core";
 
 export function Fragment({
   children,
 }: {
-  children?: VincleNode;
-}): VincleNode | undefined {
+  children?: VNode;
+}): VNode | undefined {
   return children;
 }
 ```

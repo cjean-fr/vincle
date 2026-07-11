@@ -189,7 +189,7 @@ describe("precompile-core", () => {
   });
 
   describe("RUNTIME_SOURCE", () => {
-    it("is the @vincle/core jsx-runtime path", () => {
+    it("is the @vincle/core jsx-runtime path (matches Preact/Hono convention)", () => {
       expect(RUNTIME_SOURCE).toBe("@vincle/core/jsx-runtime");
     });
   });

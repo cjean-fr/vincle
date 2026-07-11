@@ -3,22 +3,45 @@ import {
   URL_ATTRIBUTES,
   RAWTEXT_TAGS,
   ATTRIBUTE_NAME_MAP,
+  escapeContent,
   escapeAttr,
   escapeRawText,
   isValidAttrName,
 } from "@vincle/core/html";
+import { decodeHTMLStrict } from "entities";
 
 export {
   VOID_ELEMENTS,
   URL_ATTRIBUTES,
   RAWTEXT_TAGS,
   ATTRIBUTE_NAME_MAP,
+  escapeContent,
   escapeAttr,
   escapeRawText,
   isValidAttrName,
 };
 
 export const RUNTIME_SOURCE = "@vincle/core/jsx-runtime";
+
+/**
+ * Decode the HTML entities in a JSX text node the way the JS compilers do
+ * (Babel/TS/esbuild/Bun), so precompiled static text matches the string the
+ * runtime path receives. Uses strict (semicolon-required) decoding: named
+ * references need a trailing `;`, unknown references (`&notreal;`) are left
+ * verbatim — verified byte-identical to Bun's JSX transform.
+ *
+ * Only for **non-rawtext** content: inside `<script>`/`<style>` the HTML
+ * parser never decodes entities, and Deno's precompile keeps them literal, so
+ * rawtext text must be emitted verbatim (see `isRawtextTag`).
+ */
+export function decodeJsxEntities(text: string): string {
+  return decodeHTMLStrict(text);
+}
+
+/** True for elements whose text content is rawtext (no entity decoding). */
+export function isRawtextTag(tag: string): boolean {
+  return RAWTEXT_TAGS.has(tag.toLowerCase());
+}
 
 export function isLower(s: string): boolean {
   return (

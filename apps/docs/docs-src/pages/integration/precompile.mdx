@@ -1,0 +1,97 @@
+---
+title: Precompile transform
+sidebar:
+  group: Integration
+  order: 7
+---
+
+# Precompile transform
+
+We've ported Deno's precompile to Vite, making precompilation available on
+any JS runtime — Node, Bun, Deno, Edge, browser.
+
+`@vincle/vite-plugin-precompile` transforms JSX at build time. Instead of
+emitting `jsx()` calls that create intermediate objects, it rewrites JSX into
+tagged template literals — less allocations, less GC pressure, faster
+rendering.
+
+```
+// Before: runtime creates a VNode tree
+jsx("div", { class: "x" }, jsx("span", {}, "hello"))
+
+// After (precompile): direct string assembly
+jsxTemplate`<div ${jsxAttr("class", "x")}><span>${jsxEscape("hello")}</span></div>`
+```
+
+The plugin auto-detects your `jsxImportSource` and wires the helpers through a
+virtual module (`virtual:vincle-precompile-runtime`) — no physical adapter
+file is needed. The three helpers (`jsxTemplate`, `jsxAttr`, `jsxEscape`) are
+provided by a [**Deno-precompile-compatible**](https://docs.deno.com/runtime/reference/jsx/)
+runtime – Preact, Hono, or @vincle/core.
+
+## Compatible JSX frameworks
+
+| Framework | `jsxImportSource` | Compatible |
+|-----------|-------------------|------------|
+| Vincle | `@vincle/core` | ✅ |
+| Preact | `preact` | ✅ |
+| Hono | `hono/jsx` | ✅ |
+| React | `react` | ❌ |
+
+React does not export the `jsxTemplate` helper that the precompile transform
+relies on. If your project targets React, the plugin throws a build error.
+
+## Two layers of independence
+
+| Layer | What it means |
+|-------|---------------|
+| **JS runtime agnostic** | The helpers are pure functions — no platform imports. The generated output runs on Node, Bun, Deno, Edge, browser. |
+| **JSX framework agnostic** | The plugin auto-detects your runtime and wires the helpers. Works with Preact, Hono, Vincle — no adapter, no config. |
+
+## Usage
+
+Just add the plugin:
+
+```ts
+import precompile from "@vincle/vite-plugin-precompile";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [precompile()],
+});
+```
+
+No adapter file, no extra config. The plugin detects the runtime from your
+`jsxImportSource` and wires up the helpers automatically through a virtual module.
+
+### Custom runtime
+
+If you want to use your own implementation of the three helpers, point
+`runtimeSource` to your module:
+
+```ts
+precompile({
+  runtimeSource: "custom/jsx-runtime",
+});
+```
+
+## Secure mode
+
+Set `secure: true` to sanitize static attributes at build time using the
+runtime's own `jsxAttr`. This mirrors the same URL-scheme blocking, CSS
+safety, and name remapping that the runtime applies to dynamic values —
+but resolved before the browser runs any code.
+
+```ts
+precompile({
+  secure: true,
+});
+```
+
+When secure mode is on, the plugin loads `jsxAttr` from the specified
+runtime module at build time and runs every static attribute value through
+it. A static `href="javascript:…"` becomes `href="#blocked"` before
+it is ever written to the bundle.
+
+Secure mode works with any runtime module that exports `jsxAttr` — not
+just Vincle's.

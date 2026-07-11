@@ -1,15 +1,16 @@
 export { renderToString, render, ErrorBoundary } from "./render.js";
-export type { VNode, VincleNode, Component } from "./render.js";
+export type { VNode, Component } from "./render.js";
 export {
   context,
   setContext,
   useContext,
   withScope,
   snapshot,
-} from "./render.js";
-export type { ContextKey, ContextMap } from "./render.js";
+  resetContextStorage,
+} from "./context.js";
+export type { ContextKey, ContextMap } from "./context.js";
 export { raw, RawString } from "./raw.js";
-export { Fragment } from "./jsx-runtime.js";
+export { Fragment, createElement } from "./jsx-runtime.js";
 
 export type {
   CSSProperties,

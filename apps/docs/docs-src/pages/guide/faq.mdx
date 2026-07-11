@@ -191,8 +191,8 @@ automatically sanitised:
 - **Text content** — `&`, `<`, `>` escaped
 - **Attribute values** — also `"` escaped
 - **URL attributes** — `javascript:`, `vbscript:`, `data:` blocked
-- **Event handlers** — functions silently dropped
-- **CSS values** — `expression()`, `javascript:` blocked
+- **Event handlers** — functions dropped (with console warning)
+- **CSS values** — HTML-escaped (no validation needed — attack vectors no longer relevant on modern browsers)
 
 The only escape hatch is `raw()`, which is explicit and opt-in. See the
 [Security model](/guide/security) for the full details.

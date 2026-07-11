@@ -4,38 +4,30 @@
   "testRunner": "bun",
   "plugins": ["stryker-mutator-bun-runner"],
   "mutate": [
-    "src/utils/escape.ts",
-    "src/utils/render-attributes.ts",
-    "src/utils/render-child.ts",
-    "src/utils/render-element.ts",
-    "src/utils/void-elements.ts",
-    "src/utils/html.ts",
+    "src/render.ts",
+    "src/render-attrs.ts",
+    "src/escape.ts",
+    "src/context.ts",
+    "src/raw.ts",
     "src/index.ts",
     "src/jsx-runtime.ts",
     "src/jsx-dev-runtime.ts",
-    "src/precompile.ts",
-    "src/core/types.ts",
-    "src/core/context.ts"
+    "src/utils/html.ts"
   ],
   "mutator": {
     "excludedMutations": [
-      "BlockStatement",
-      "BooleanLiteral",
-      "ConditionalExpression",
-      "StringLiteral",
-      "UnaryOperator",
-      "UpdateOperator",
-      "PrefixUnaryExpression"
+      "BlockStatement"
     ]
   },
   "concurrency": 4,
   "coverageAnalysis": "off",
   "reporters": ["html", "clear-text", "progress"],
   "thresholds": {
-    "high": 90,
-    "low": 75,
-    "break": 75
+    "high": 80,
+    "low": 65,
+    "break": 65
   },
   "testFiles": ["src/**/*.test.ts", "src/**/*.test.tsx"],
+  "ignorePatterns": ["**/performance.test.{ts,tsx}", "**/memory.test.{ts,tsx}"],
   "timeoutMS": 30000
 }

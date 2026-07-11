@@ -5,7 +5,7 @@ import type {
   Negotiation,
   StreamingAdapter,
 } from "./types.js";
-import type { VincleNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 
 export type { Negotiate, Negotiation } from "./types.js";
 
@@ -64,7 +64,7 @@ function buildResponse(
  */
 export async function serve(
   req: Request,
-  page: (n: Negotiation) => VincleNode,
+  page: (n: Negotiation) => VNode,
   adapter: StreamingAdapter,
   opts?: FlowOptions &
     ResponseInit & {

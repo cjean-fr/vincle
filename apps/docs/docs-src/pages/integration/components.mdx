@@ -42,7 +42,7 @@ A `Slot` registers nothing in the pending store — it is purely a passive hole.
 Pushes deferred content into an existing slot by name. Renders nothing itself
 (returns `null`).
 
-`children` is deferred automatically by the descriptor system — plain JSX works:
+`children` is deferred automatically — plain JSX works:
 
 ```tsx
 <Fill target="page"><h1>Hello</h1></Fill>
@@ -111,10 +111,10 @@ Both `<Fill>` and `<Defer>` accept children in either form:
 
 ### Plain JSX (recommended for most cases)
 
-Because `@vincle/core` uses lazy descriptors, component functions are never
-called during JSX creation. A child like `<HeavyComponent />` is just a
-descriptor object `{ type, props, key }` — it won't execute until the fragment
-renders. No thunk needed.
+`@vincle/core` renders JSX eagerly to HTML strings, but `@vincle/flow` captures
+the output and defers it to the fragment's render slot. A child like
+`<HeavyComponent />` is evaluated immediately, but its content is not sent to
+the response until the fragment flushes. No thunk needed.
 
 ### Factory form — for cancellation
 
@@ -143,8 +143,8 @@ the behaviour:
 | Return type                 | Behaviour                                                |
 | --------------------------- | -------------------------------------------------------- |
 | A renderable JSX node       | One-shot patch — renders once and resolves               |
-| `Promise<VincleNode>`       | Resolves asynchronously, then patches in                 |
-| `AsyncIterable<VincleNode>` | A **stream** — one patch per item, as each item resolves |
+| `Promise<VNode>`       | Resolves asynchronously, then patches in                 |
+| `AsyncIterable<VNode>` | A **stream** — one patch per item, as each item resolves |
 
 The runtime unwraps `Promise` and `AsyncIterable` automatically inside the
 factory — you never need to call `.then()` or `for await` yourself.

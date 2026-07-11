@@ -49,7 +49,13 @@ export function initFlow(config: FlowConfig): void {
 }
 
 export function initFlowAssets(): void {
-  useContext(Flow).assets = createAssetState();
+  // Replace the Flow context entry in THIS scope with a copy that has a fresh
+  // asset state — never mutate the shared context object in place. `withScope`
+  // gives each child scope its own context map, so `setContext` here is
+  // scope-local: parallel `renderPage` calls (Promise.all in an SSG build) get
+  // independent asset states instead of racing on one shared `.assets`.
+  const current = useContext(Flow);
+  setContext(Flow, { ...current, assets: createAssetState() });
 }
 
 export function withFlow<T>(

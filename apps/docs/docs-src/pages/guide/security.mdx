@@ -46,14 +46,14 @@ is the only mode.
       <td>URL attributes</td>
       <td>Scheme allowlist enforced</td>
       <td>
-        <code>isSafeUrl</code>
+        <code>isSafeScheme</code>
       </td>
     </tr>
     <tr>
       <td>
         Event handlers (<code>on*</code>)
       </td>
-      <td>Silently dropped from output</td>
+      <td>Function-valued: silently dropped; string-valued: emitted as-is</td>
       <td>Filter at render time</td>
     </tr>
     <tr>
@@ -73,6 +73,48 @@ is the only mode.
 </table>
 
 <CodeExample src="guide/quick-start/escaping.tsx" />
+
+## What the compiler guarantees (and what it doesn't)
+
+A common question: if the JSX compiler already turned `<div>` into a `jsx()`
+call, why re-escape anything? Because **there is no semantic specification of
+the JSX transform.** The [JSX spec](https://facebook.github.io/jsx/) defines
+_syntax_ only — it opens with _"JSX is an XML-like syntax extension to
+ECMAScript without any defined semantics."_ The `jsx`/`jsxs` protocol is a
+React convention (RFC #107), and every toolchain — TypeScript, esbuild, SWC,
+Bun, oxc — **reimplemented it from scratch**, aligning on Babel's behavior by
+testing, not by a standard. So the runtime cannot assume any particular
+compiler ran, or that it behaved a certain way.
+
+The dividing line is sharp: **the compiler guarantees the _shape_ of the
+calls, never the _content_ of the values.**
+
+| Guaranteed by the grammar / transform            | Guaranteed by nothing — the runtime must enforce it            |
+| ------------------------------------------------- | -------------------------------------------------------------- |
+| A tag/attribute name _written in JSX_ is well-formed | Names coming from a `{...spread}` (may be attacker-controlled)  |
+| A literal `<` cannot appear raw in JSX _source_ text | The string values themselves — including static text          |
+| Components are ordinary function calls            | Attribute _values_ (URL schemes, `on*` payloads, `style`)      |
+| `key` is lifted out of props (3rd `jsx` argument) | Anything reaching `jsx(dynamicTag, …)` called programmatically |
+
+The subtle trap is **HTML entities**: the compiler _decodes_ them, so
+`<div>a &amp; b &lt;script&gt;</div>` in your source arrives at the runtime as
+the literal string `a & b <script>` — the raw `<script>` is back. This is
+verified behavior across Bun, TypeScript, and esbuild. Escaping static text is
+therefore not redundant; it is the only thing standing between that decoded
+string and the output.
+
+And critically, `jsx("div", props)` is a **public API**: the runtime cannot
+distinguish a call the compiler emitted from a hand-written
+`jsx(userInput, …)`. Any "the compiler already checked this" assumption would
+be unverifiable — which is why vincle validates tag/attribute names and escapes
+every value regardless of origin.
+
+> **Classic-runtime fallback.** For the (deprecated) `<div {...p} key={k} />`
+> pattern, TypeScript emits `createElement` imported from the
+> `jsxImportSource` root. `@vincle/core` exports a `createElement` compatible
+> with that shape so the pattern renders instead of failing on a missing
+> import; it folds trailing children into `props.children` and strips
+> `key`/`ref`, exactly like the automatic runtime.
 
 ## The `raw()` Escape Hatch
 
@@ -101,8 +143,8 @@ Six independent layers protect your output. No single bypass — except
 | --: | --------------------- | -------------------------------------------------- | ------------------------------------------------------- |
 |   1 | Type System           | `RawString` branded type — explicit trust boundary | Accidental trust of untrusted strings                   |
 |   2 | HTML Escaping         | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>`, `"` injection in text and attributes     |
-|   3 | URL Filtering         | `isSafeUrl` — allowlist of safe schemes            | `javascript:`, `vbscript:`, unsafe `data:` URIs         |
-|   4 | Event Handler Filter  | `on*` attributes stripped at render time           | XSS via <code>onclick</code>, <code>onload</code>, etc. |
+|   3 | URL Filtering         | `isSafeScheme` — allowlist of safe schemes          | `javascript:`, `vbscript:`, unsafe `data:` URIs         |
+|   4 | Event Handler Filter  | `on*` functions dropped, string values preserved   | XSS via <code>onclick</code>, <code>onload</code>, etc. |
 |   5 | Tag & Attr Validation | `isValidTagName` / `isValidAttrName`               | Injection through malformed tag or attribute names      |
 |   6 | Rawtext Escaping      | `escapeRawText` — backslash `<\/tag>` not entities | `</script>`/`</style>` breakout — unlike Preact/React |
 
@@ -139,8 +181,8 @@ Each invariant is enforced by property-based (fuzz) or unit tests:
 | :--: | ------------------------------------------------------ | ---------------------------------------- |
 | I-01 | No raw `<` or `>` from untrusted input                 | `escape.fuzz.test.ts`, `escape.test.ts`  |
 | I-02 | No dangerous URL schemes pass through                  | `escape.fuzz.test.ts` (2000+ fuzz cases) |
-| I-03 | No `on*` event handler attributes leak to HTML         | `render-attributes.test.ts`              |
-| I-04 | Precompile ≡ dynamic path — byte-identical in non-rawtext contexts (see note on rawtext limitation) | `precompile.fuzz.test.ts` |
+| I-03 | No function-valued `on*` event handlers leak to HTML        | `jsx-runtime.test.ts`                    |
+| I-04 | Precompile ≡ dynamic path — byte-identical in non-rawtext contexts | `precompile.fuzz.test.ts`  |
 | I-05 | Content escaping is reversible (injective)             | `escape.fuzz.test.ts`                    |
 | I-06 | Concurrent renders isolated — no cross-request leakage | `context.test.ts`                        |
 | I-07 | No implicit `RawString` creation                       | Code review                              |

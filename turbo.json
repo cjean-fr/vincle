@@ -17,6 +17,9 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "lint": {
+      "cache": true
+    },
     "format": {
       "cache": true
     },

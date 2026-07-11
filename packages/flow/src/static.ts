@@ -9,7 +9,7 @@ import {
   snapshot,
   useContext,
   withScope,
-  type VincleNode,
+  type VNode,
 } from "@vincle/core";
 
 const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
@@ -21,7 +21,7 @@ const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
  */
 export interface PureStaticContext extends FlowContext {
   /** Render a page node, applying adapter.transformShell if present. */
-  renderPage(node: () => VincleNode): Promise<string>;
+  renderPage(node: () => VNode): Promise<string>;
 }
 
 /**

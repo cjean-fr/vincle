@@ -8,7 +8,6 @@ import {
   isValidTagName,
   sanitize,
   RAWTEXT_TAGS,
-  RCDATA_TAGS,
 } from "./escape.js";
 import { describe, it, expect } from "bun:test";
 
@@ -60,6 +59,16 @@ describe("escapeContent", () => {
     expect(escapeContent("<")).toBe("&lt;");
     expect(escapeContent(">")).toBe("&gt;");
   });
+
+  it("handles long string with escapable chars scattered", () => {
+    const input = "a".repeat(100) + "&" + "b".repeat(100) + "<" + "c".repeat(100);
+    const expected = "a".repeat(100) + "&amp;" + "b".repeat(100) + "&lt;" + "c".repeat(100);
+    expect(escapeContent(input)).toBe(expected);
+  });
+
+  it("handles string where escapable char is the last of a long prefix", () => {
+    expect(escapeContent("abcde&fgh")).toBe("abcde&amp;fgh");
+  });
 });
 
 describe("escapeAttr", () => {
@@ -96,6 +105,27 @@ describe("escapeAttr", () => {
     const long = "z".repeat(1000);
     expect(escapeAttr(long)).toBe(long);
   });
+
+  it("handles double-quote specifically", () => {
+    expect(escapeAttr('"')).toBe("&quot;");
+    expect(escapeAttr('"""')).toBe("&quot;&quot;&quot;");
+  });
+
+  it("handles single-quote specifically", () => {
+    expect(escapeAttr("'")).toBe("&#39;");
+    expect(escapeAttr("''''")).toBe("&#39;&#39;&#39;&#39;");
+  });
+
+  it("handles long string with escapable chars at boundaries", () => {
+    const input = '"' + "x".repeat(100) + "'" + "y".repeat(100);
+    const expected = "&quot;" + "x".repeat(100) + "&#39;" + "y".repeat(100);
+    expect(escapeAttr(input)).toBe(expected);
+  });
+
+  it("handles string where escapable char is the last of a long prefix", () => {
+    expect(escapeAttr('abcde"fgh')).toBe("abcde&quot;fgh");
+    expect(escapeAttr("abcde'fgh")).toBe("abcde&#39;fgh");
+  });
 });
 
 describe("escapeRawText", () => {
@@ -105,6 +135,19 @@ describe("escapeRawText", () => {
 
   it("escapes </SCRIPT> case-insensitively", () => {
     expect(escapeRawText("</SCRIPT>", "script")).toBe("<\\/SCRIPT>");
+  });
+
+  it("escapes </Script> case-insensitively", () => {
+    expect(escapeRawText("</Script>", "script")).toBe("<\\/Script>");
+  });
+
+  it("preserves standalone < and / that are not followed by tag name", () => {
+    expect(escapeRawText("a < b / c > d", "script")).toBe("a < b / c > d");
+  });
+
+  it("preserves text with no </tagName anywhere", () => {
+    const safe = "const a = 42;\nconsole.log(a);";
+    expect(escapeRawText(safe, "script")).toBe(safe);
   });
 
   it("escapes </style> for style tag", () => {
@@ -155,33 +198,48 @@ describe("isSafeScheme", () => {
     expect(isSafeScheme("?query=1")).toBe(true);
     expect(isSafeScheme("mailto:user@example.com")).toBe(true);
     expect(isSafeScheme("data:image/png;base64,abc")).toBe(true);
+    expect(isSafeScheme("data:image/jpeg;base64,/9j/4AAQ")).toBe(true);
+    expect(isSafeScheme("data:image/gif;base64,R0lGOD")).toBe(true);
+    expect(isSafeScheme("data:image/webp;base64,UklGR")).toBe(true);
+    expect(isSafeScheme("data:image/avif;base64,AAAA")).toBe(true);
   });
 
-  it("blocks javascript:", () => {
+  it("requires the scheme to start at position 0 (anchored)", () => {
+    expect(isSafeScheme("not-javascript:alert(1)")).toBe(true);
+  });
+
+  it("blocks dangerous protocols and bypasses", () => {
     expect(isSafeScheme("javascript:alert(1)")).toBe(false);
-  });
-
-  it("blocks vbscript:", () => {
     expect(isSafeScheme("vbscript:alert(1)")).toBe(false);
-  });
-
-  it("blocks non-image data URIs", () => {
-    expect(isSafeScheme("data:text/html,<script>alert(1)</script>")).toBe(
-      false,
-    );
-  });
-
-  it("blocks javascript: with whitespace prefix", () => {
-    expect(isSafeScheme("  javascript:alert(1)")).toBe(false);
-  });
-
-  it("blocks javascript: with null byte", () => {
+    expect(isSafeScheme("  JAVASCRIPT:alert(1)")).toBe(false);
     expect(isSafeScheme("java\0script:alert(1)")).toBe(false);
+    expect(isSafeScheme("java\tscript:alert(1)")).toBe(false);
+    expect(isSafeScheme("java\nscript:alert(1)")).toBe(false);
+    expect(isSafeScheme("data:text/html,<script>alert(1)</script>")).toBe(false);
   });
 
-  it("blocks homoglyph attacks", () => {
+  it("blocks data:image/svg+xml (scriptable SVG)", () => {
+    expect(isSafeScheme("data:image/svg+xml,<script>alert(1)</script>")).toBe(false);
+    expect(isSafeScheme("data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9YWxlcnQoMSk+")).toBe(false);
+  });
+
+  it("blocks javascript: with Cyrillic homoglyph (U+0430)", () => {
     const cyrillicA = "j\u0430vascript:alert(1)";
     expect(isSafeScheme(cyrillicA)).toBe(false);
+  });
+
+  it("blocks javascript: with mixed homoglyph obfuscation", () => {
+    const mixed = "j\u0430v\u0430script:alert(1)";
+    expect(isSafeScheme(mixed)).toBe(false);
+  });
+
+  it("blocks javascript: with fullwidth characters", () => {
+    const fullwidth = "\uFF4A\uFF41\uFF56\uFF41script:alert(1)";
+    expect(isSafeScheme(fullwidth)).toBe(false);
+  });
+
+  it("does not block valid Unicode in URL path", () => {
+    expect(isSafeScheme("https://пример.com/путь")).toBe(true);
   });
 });
 
@@ -211,6 +269,11 @@ describe("isSafeSrcset", () => {
     expect(isSafeSrcset("")).toBe(true);
     expect(isSafeSrcset("   ")).toBe(true);
   });
+
+  it("handles Unicode whitespace between candidates", () => {
+    expect(isSafeSrcset("img1.png 1x,\u00A0img2.png 2x")).toBe(true);
+    expect(isSafeSrcset("img1.png 1x,\u00A0javascript:alert(1) 2x")).toBe(false);
+  });
 });
 
 describe("sanitize", () => {
@@ -239,6 +302,7 @@ describe("isValidAttrName", () => {
     expect(isValidAttrName("[prop]")).toBe(true);
     expect(isValidAttrName("(evt)")).toBe(true);
     expect(isValidAttrName("x:y")).toBe(true);
+    expect(isValidAttrName("a.b")).toBe(true);
     expect(isValidAttrName("_")).toBe(true);
     expect(isValidAttrName("$")).toBe(true);
   });
@@ -247,6 +311,7 @@ describe("isValidAttrName", () => {
     expect(isValidAttrName("a b")).toBe(false);
     expect(isValidAttrName("a=")).toBe(false);
     expect(isValidAttrName('a"')).toBe(false);
+    expect(isValidAttrName("a'")).toBe(false);
     expect(isValidAttrName("a<")).toBe(false);
     expect(isValidAttrName("a>")).toBe(false);
     expect(isValidAttrName("a/")).toBe(false);
@@ -290,17 +355,6 @@ describe("RAWTEXT_TAGS", () => {
 
   it("does not contain normal HTML elements", () => {
     expect(RAWTEXT_TAGS.has("div")).toBe(false);
-  });
-});
-
-describe("RCDATA_TAGS", () => {
-  it("contains RCDATA elements", () => {
-    expect(RCDATA_TAGS.has("textarea")).toBe(true);
-    expect(RCDATA_TAGS.has("title")).toBe(true);
-  });
-
-  it("does not contain rawtext elements", () => {
-    expect(RCDATA_TAGS.has("script")).toBe(false);
-    expect(RCDATA_TAGS.has("style")).toBe(false);
+    expect(RAWTEXT_TAGS.has("p")).toBe(false);
   });
 });

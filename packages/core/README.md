@@ -226,7 +226,7 @@ const html = await renderToString(<Page id="42" />);
 
 Every JSX expression produces a lazy **descriptor** — a plain object `{ type, props, key }` — instead of eagerly rendering. `renderToString` walks descriptors at render time, where `ErrorBoundary` wraps its children in a try/catch:
 
-- `fallback` receives the caught error: `(error: unknown) => VincleNode`
+- `fallback` receives the caught error: `(error: unknown) => VNode`
 - Errors propagate up to the nearest boundary (React-style)
 - Uncaught errors are annotated with the component name in the error message: `[Profile] not found`
 - Errors not caught by any boundary reject the `renderToString` promise
@@ -337,6 +337,7 @@ _Ryzen 7 PRO 8840HS, median of 3 runs._
 - Against React: **8-14× faster** regardless of tree shape (structural advantage — no virtual DOM).
 
 > Numbers vary by machine. Re-run locally from the original monorepo at `https://github.com/vincle/vincle`.
+> [CI benchmark artifacts](https://github.com/vincle/vincle/actions/workflows/ci.yml?query=branch%3Amain) — latest results from `main`.
 
 ---
 

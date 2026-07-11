@@ -55,3 +55,14 @@ jobs:
           name: mutation-reports
           path: packages/*/reports/
           if-no-files-found: ignore
+
+      - name: Run Benchmarks
+        run: bun run --filter=@vincle/bench bench:ci
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: benchmark-results
+          path: apps/bench/results/
+          if-no-files-found: ignore

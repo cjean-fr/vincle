@@ -16,7 +16,7 @@ The `serve()` helper creates a `Response` from a page component and an
 adapter. It handles streaming, headers, and content negotiation in one call.
 
 ```tsx
-import { serve } from "@vincle/flow";
+import { serve } from "@vincle/flow/http";
 import { NativeAdapter } from "@vincle/flow/adapters";
 
 Bun.serve({
@@ -36,7 +36,7 @@ fragments are still rendering.
 ```tsx
 serve(
   req: Request,
-  page: (negotiation: Negotiation) => VincleNode,
+  page: (negotiation: Negotiation) => VNode,
   adapter: StreamingAdapter,
   options?: FlowOptions & ResponseInit & {
     negotiate?: Negotiate;
@@ -50,7 +50,7 @@ serve(
 | Option           | Type                                  | Default  | Description                       |
 | ---------------- | ------------------------------------- | -------- | --------------------------------- |
 | `signal`         | `AbortSignal`                         | —        | Abort all pending renders         |
-| `onError`        | `(error, info) => VincleNode \| void` | —        | Per-fragment error handler        |
+| `onError`        | `(error, info) => VNode \| void` | —        | Per-fragment error handler        |
 | `defaultTimeout` | `number`                              | —        | Per-fragment timeout (ms)         |
 | `negotiate`      | `(req: Request) => Negotiation`       | —        | Extract per-request hints         |
 | `mode`           | `"full" \| "fragment"`                | `"full"` | Render full page or fragment-only |
@@ -74,7 +74,7 @@ HTMX sends headers like `HX-Target` to indicate which fragment a request
 expects. Vincle provides `negotiateHtmx` to handle this automatically:
 
 ```tsx
-import { serve, negotiateHtmx } from "@vincle/flow";
+import { serve, negotiateHtmx } from "@vincle/flow/http";
 import { HtmxAdapter } from "@vincle/flow/adapters";
 
 Bun.serve({

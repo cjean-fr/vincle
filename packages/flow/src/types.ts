@@ -1,5 +1,5 @@
 import type { Adapter } from "./adapters/index.js";
-import type { VincleNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 
 export type MergeType = "replace" | "append" | "prepend" | "before" | "after";
 
@@ -8,7 +8,7 @@ export interface AdapterCapabilities {
   merges: readonly MergeType[];
 }
 
-export type DeferContent = VincleNode | ((signal: AbortSignal) => VincleNode);
+export type DeferContent = VNode | ((signal: AbortSignal) => VNode);
 
 export interface Shell {
   type: "shell";
@@ -29,7 +29,7 @@ export type FlowErrorInfo = { id: string; kind: "fragment" | "stream" };
 export type OnError = (
   error: unknown,
   info: FlowErrorInfo,
-) => VincleNode | void;
+) => VNode | void;
 
 export interface FlowOptions {
   signal?: AbortSignal;

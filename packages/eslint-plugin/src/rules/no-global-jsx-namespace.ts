@@ -50,7 +50,7 @@ export const noGlobalJsxNamespace = ESLintUtils.RuleCreator.withoutDocs({
     messages: {
       preferImportedJsx:
         'The global `JSX` namespace comes from React, not @vincle/core — a bare `JSX.{{member}}` is typed wrong for Vincle. Import `JSX` from "@vincle/core".',
-      useVincleNode: "Replace `JSX.Element` with the public `VincleNode` type.",
+      useVNode: "Replace `JSX.Element` with the public `VNode` type.",
     },
   },
   defaultOptions: [],
@@ -95,15 +95,15 @@ export const noGlobalJsxNamespace = ESLintUtils.RuleCreator.withoutDocs({
           const member =
             node.right.type === "Identifier" ? node.right.name : "Element";
 
-          const suggest: TSESLint.ReportSuggestionArray<"useVincleNode"> =
+          const suggest: TSESLint.ReportSuggestionArray<"useVNode"> =
             member === "Element"
               ? [
                   {
-                    messageId: "useVincleNode",
+                    messageId: "useVNode",
                     fix: (fixer) =>
                       [
-                        importFix(fixer, sourceCode, "VincleNode"),
-                        fixer.replaceText(node, "VincleNode"),
+                        importFix(fixer, sourceCode, "VNode"),
+                        fixer.replaceText(node, "VNode"),
                       ].filter((f): f is TSESLint.RuleFix => f !== null),
                   },
                 ]

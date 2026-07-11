@@ -52,12 +52,13 @@ Throws if `setContext` for the given key has not been called — this is
 intentional: the absence of a required value is a programming error, not a
 runtime condition to silently ignore.
 
-### withScope(fn, options?)
+### withScope(fn, parentCtx?)
 
 Creates an isolated `AsyncLocalStorage` scope. Every `setContext` call inside
 `fn` is contained within this scope. Render subtrees started inside the scope
-inherit the same context. The optional `seed` parameter pre-populates the
-scope with values from a parent scope (see `snapshot` below).
+inherit the same context. The optional `parentCtx` parameter pre-populates the
+scope with values from a parent scope — pass a `snapshot()` result here to
+seed a child scope (see `snapshot` below).
 
 ## Basic example
 

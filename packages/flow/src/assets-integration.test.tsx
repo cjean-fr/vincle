@@ -260,4 +260,36 @@ describe("Style/Script — SSG (renderToStatic)", () => {
     expect(pages[0]!.match(/<style data-name="shared">/g)).toHaveLength(1);
     expect(pages[1]!.match(/<style data-name="shared">/g)).toHaveLength(1);
   });
+
+  it("parallel renderPage calls get isolated asset state (no cross-contamination)", async () => {
+    // Regression: initFlowAssets used to mutate the shared Flow context object,
+    // so two Promise.all'd renders raced on one `.assets`. Each page must keep
+    // its own style; page1 losing its style (or gaining page2's) means the race
+    // is back.
+    const [page1, page2] = await renderToStatic(async (ctx) =>
+      Promise.all([
+        ctx.renderPage(() => (
+          <html>
+            <body>
+              <Style name="p1">{".p1{}"}</Style>
+              <span>1</span>
+            </body>
+          </html>
+        )),
+        ctx.renderPage(() => (
+          <html>
+            <body>
+              <Style name="p2">{".p2{}"}</Style>
+              <span>2</span>
+            </body>
+          </html>
+        )),
+      ]),
+    );
+
+    expect(page1).toContain('data-name="p1"');
+    expect(page1).not.toContain('data-name="p2"');
+    expect(page2).toContain('data-name="p2"');
+    expect(page2).not.toContain('data-name="p1"');
+  });
 });

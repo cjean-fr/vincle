@@ -1,6 +1,6 @@
 import { injectIntoHead } from "../utils.js";
 import { createAdapter, type Adapter } from "./shared.js";
-import { raw, type VincleNode } from "@vincle/core";
+import { raw, type VNode } from "@vincle/core";
 import { escapeAttr } from "@vincle/core/html";
 import { POLYFILL_SCRIPT } from "./native-polyfill.js";
 
@@ -10,8 +10,8 @@ export { NATIVE_POLYFILL, nativePolyfillHash } from "./native-polyfill.js";
 export const WebPlatformAdapter = createAdapter({
   Placeholder: function ({ id, src, children }) {
     const safeId = escapeAttr(id);
-    const open: VincleNode = raw(`<?start name="${safeId}">`);
-    const close: VincleNode = raw(`<?end>`);
+    const open: VNode = raw(`<?start name="${safeId}">`);
+    const close: VNode = raw(`<?end>`);
     if (src) {
       return [open, children, close, <template htmlFor={id} data-src={src} />];
     }

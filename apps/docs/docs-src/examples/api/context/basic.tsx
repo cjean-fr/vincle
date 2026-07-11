@@ -1,5 +1,5 @@
 import {
-  type VincleNode,
+  type VNode,
   context,
   setContext,
   useContext,
@@ -11,7 +11,7 @@ import {
 const themeCtx = context<"light" | "dark">("my-app:theme");
 
 // 2. A component that reads from context
-function ThemedBox({ children }: { children: VincleNode }): VincleNode {
+function ThemedBox({ children }: { children: VNode }): VNode {
   const theme = useContext(themeCtx);
   return (
     <div

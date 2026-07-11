@@ -4,7 +4,7 @@ import { withFlow, type FlowContext } from "./context.js";
 import { createFlowStream } from "./create-flow-stream.js";
 import { streamFlow } from "./streamFlow.js";
 import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
-import { renderToString, type VincleNode } from "@vincle/core";
+import { renderToString, type VNode } from "@vincle/core";
 
 const REGEX_SHELL_CLOSE = /((?:<\/body>)?\s*<\/html>\s*)$/;
 
@@ -23,7 +23,7 @@ const REGEX_SHELL_CLOSE = /((?:<\/body>)?\s*<\/html>\s*)$/;
  * // closingTag: "\n</body>\n</html>"
  */
 export async function renderShell(
-  node: () => VincleNode,
+  node: () => VNode,
   adapter: {
     transformShell?: (html: string, ctx: FlowContext) => string;
   },
@@ -50,7 +50,7 @@ export async function renderShell(
 export async function orchestrateFlow(
   emit: (ev: FlowEvent) => Promise<void>,
   signal: AbortSignal,
-  node: () => VincleNode,
+  node: () => VNode,
   adapter: Adapter,
   opts: FlowOptions & { mode?: "full" | "fragment" },
 ): Promise<void> {
@@ -94,7 +94,7 @@ export async function orchestrateFlow(
  *   iteration, and releases any producer parked on backpressure.
  */
 export function renderToFlowEvents(
-  node: () => VincleNode,
+  node: () => VNode,
   adapter: StreamingAdapter,
   opts: FlowOptions & { mode?: "full" | "fragment" } = {},
 ): ReadableStream<FlowEvent> {
@@ -117,7 +117,7 @@ export function renderToFlowEvents(
  * const stream = renderStream(() => <App />, TurboAdapter);
  */
 export function renderStream(
-  node: () => VincleNode,
+  node: () => VNode,
   adapter: StreamingAdapter,
   opts?: FlowOptions & { mode?: "full" | "fragment" },
 ): ReadableStream<string> {

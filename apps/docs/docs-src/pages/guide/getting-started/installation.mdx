@@ -40,13 +40,34 @@ without it.
 
 ## What you get
 
-| Export                  | Purpose                                    |
-| ----------------------- | ------------------------------------------ |
-| `renderToString`        | Renders a JSX tree to an HTML string       |
-| `raw`                   | Marks a trusted HTML string (no escaping)  |
-| `Fragment`              | Standard JSX fragment (`<>…</>`)           |
-| `context` / `withScope` | Scoped context for per-request isolation   |
-| `jsx-runtime`           | The JSX transform entry point (auto-wired) |
+### Runtime
+
+| Export                          | Purpose                                    |
+| ------------------------------- | ------------------------------------------ |
+| `renderToString(node)`          | Renders a JSX tree to an HTML string       |
+| `render(node)`                  | Low-level render, returns `VNode`          |
+| `raw(str)`                      | Marks a trusted HTML string (no escaping)  |
+| `ErrorBoundary`                 | Catch rendering errors with a fallback     |
+| `Fragment`                      | Standard JSX fragment (`<>…</>`)           |
+| `context`, `setContext`         | Scoped context for per-request isolation   |
+| `useContext`, `withScope`       | ...                                        |
+| `snapshot`                      | Captures current scope for child scopes    |
+| `jsx-runtime` / `jsx-dev-runtime` | JSX transform entry points (auto-wired) |
+
+### Types
+
+| Export                          | Purpose                                    |
+| ------------------------------- | ------------------------------------------ |
+| `VNode`                         | Union of everything renderable             |
+| `Component<P>`                  | Type for component functions               |
+| `RawString`                     | Branded type for pre-escaped HTML          |
+| `HTMLAttributes`                | Base HTML attribute type                   |
+| `SVGAttributes`                 | SVG element attribute type                 |
+| `CSSProperties`                 | Type for inline `style` objects            |
+| `StaticAttributes<T>`           | Generic to strip runtime props from a type |
+| `StringEventHandlers`           | String-typed event handler map             |
+| `ContextKey<T>`                 | Branded context key type                   |
+| `ContextMap`                    | Raw context map type                       |
 
 Everything else is internal. There is no plugin registry, no provider tree, no
 config object to maintain.

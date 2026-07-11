@@ -32,14 +32,16 @@ import { ErrorBoundary } from "@vincle/core";
 ## Signature
 
 ```tsx
-<ErrorBoundary fallback={(error: unknown) => VincleNode}>
+<ErrorBoundary fallback={(error: unknown) => VNode}>
   {children}
 </ErrorBoundary>
 ```
 
-`fallback` is a function that receives the caught error and returns any
-renderable value. The children that the boundary wraps can be a single
-element, a component, or a fragment.
+`fallback` can be a renderable value (shown directly) or a function that
+receives the caught error and returns any renderable value. When omitted,
+errors propagate to the nearest parent boundary or reject `renderToString`.
+The children that the boundary wraps can be a single element, a component,
+or a fragment.
 
 ## Basic usage
 
@@ -126,10 +128,11 @@ try {
 
 ## How it works
 
-JSX expressions produce **lazy descriptors** — plain objects with
-`{ type, props, key }` — instead of eagerly rendering to strings.
-`renderToString` walks these descriptors at render time, which lets
-`ErrorBoundary` wrap child execution in a try/catch.
+Rendering is **eager** — `jsx()` renders inline to a `RawString` at call
+time. `ErrorBoundary` intercepts errors via an internal error propagation
+mechanism: sync errors thrown during `jsx()` are caught by a symbol-based
+boundary check, and async rejections bubble through the promise chain.
+No descriptor tree is built or walked.
 
 `ErrorBoundary` produces no HTML of its own — not even a comment. It is
 identified by an internal symbol, not by the exported name.
@@ -138,7 +141,7 @@ identified by an internal symbol, not by the exported name.
 
 ```ts
 interface ErrorBoundaryProps {
-  children?: VincleNode;
-  fallback: (error: unknown) => VincleNode;
+  children?: VNode;
+  fallback?: VNode | ((error: unknown) => VNode);
 }
 ```

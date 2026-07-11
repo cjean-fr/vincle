@@ -31,7 +31,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@vincle/core": "workspace:*"
+    "@vincle/core": "workspace:*",
+    "entities": "^8.0.0"
   },
   "devDependencies": {
     "@stryker-mutator/core": "^9.6.1",

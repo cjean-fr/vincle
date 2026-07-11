@@ -1,9 +1,9 @@
-import { useContext, type VincleNode, type JSX } from "@vincle/core";
+import { useContext, type VNode, type JSX } from "@vincle/core";
 import { Flow } from "../context.js";
 
 export interface SlotProps {
   name: string;
-  children?: VincleNode;
+  children?: VNode;
 }
 
 export function Slot(props: SlotProps): JSX.Element | null {

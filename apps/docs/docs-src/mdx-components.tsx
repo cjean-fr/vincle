@@ -2,10 +2,10 @@
 import { CodeBlock } from "./components/CodeBlock.js";
 import { CodeExample } from "./components/CodeExample.js";
 import { CheckIcon, XIcon } from "./components/Icons.js";
-import type { VincleNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 export interface Tab {
   label: string;
-  content: VincleNode;
+  content: VNode;
 }
 
 function Tabs({ tabs, syncKey }: { tabs: Tab[]; syncKey?: string }) {

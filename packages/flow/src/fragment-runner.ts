@@ -1,18 +1,18 @@
 import type { Pending } from "./pending-store.js";
 import { resolveAssets, type AssetState } from "./assets.js";
 import type { DeferContent, FlowEvent, FlowOptions } from "./types.js";
-import { renderToString, type VincleNode } from "@vincle/core";
+import { renderToString, type VNode } from "@vincle/core";
 import { createTimeoutSignal } from "./timeout.js";
 
-const isAsyncIterable = (v: unknown): v is AsyncIterable<VincleNode> =>
+const isAsyncIterable = (v: unknown): v is AsyncIterable<VNode> =>
   v != null && typeof (v as any)[Symbol.asyncIterator] === "function";
 
-const isFactory = (c: DeferContent): c is (signal: AbortSignal) => VincleNode =>
+const isFactory = (c: DeferContent): c is (signal: AbortSignal) => VNode =>
   typeof c === "function";
 
 type ClassificationResult =
-  | { kind: "value"; value: VincleNode }
-  | { kind: "stream"; iterable: AsyncIterable<VincleNode> }
+  | { kind: "value"; value: VNode }
+  | { kind: "stream"; iterable: AsyncIterable<VNode> }
   | { kind: "sync-error"; error: unknown };
 
 function classifyEntry(
@@ -129,7 +129,7 @@ export function runFragment(
 
 async function runStream(
   id: string,
-  iterable: AsyncIterable<VincleNode>,
+  iterable: AsyncIterable<VNode>,
   merge: Pending["merge"],
   emit: (ev: FlowEvent) => Promise<void>,
   onError: FlowOptions["onError"],
@@ -140,7 +140,7 @@ async function runStream(
   // A generator parked in next() (e.g. awaiting an event that never fires)
   // would otherwise pin streamFlow forever after abort — race it.
   const aborted = opts.signal
-    ? new Promise<IteratorResult<VincleNode>>((resolve) => {
+    ? new Promise<IteratorResult<VNode>>((resolve) => {
         const onAbort = () => resolve({ done: true, value: undefined });
         if (opts.signal!.aborted) onAbort();
         else opts.signal!.addEventListener("abort", onAbort, { once: true });

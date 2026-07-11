@@ -1,101 +1,111 @@
-import type { VNode } from "./render.js";
+import type React from "react";
+import type { Awaitable, VNode } from "./render.js";
 
-export type Awaitable<T> = T | Promise<T>;
+// ── CSSProperties via csstype (re-exported from @types/react) ──────────
+// Extended with custom properties (--custom-var) which csstype doesn't cover.
 
-export interface CSSProperties {
-  [key: string]: string | number | undefined;
-}
-
-export type StringEventHandlers = {
-  onClick?: string;
-  onChange?: string;
-  onInput?: string;
-  onSubmit?: string;
-  onFocus?: string;
-  onBlur?: string;
-  onKeyDown?: string;
-  onKeyUp?: string;
-  onKeyPress?: string;
-  onMouseEnter?: string;
-  onMouseLeave?: string;
-  onMouseOver?: string;
-  onMouseOut?: string;
-  onMouseMove?: string;
-  onMouseDown?: string;
-  onMouseUp?: string;
-  onTouchStart?: string;
-  onTouchEnd?: string;
-  onTouchMove?: string;
-  onPaste?: string;
-  onCopy?: string;
-  onCut?: string;
-  onScroll?: string;
-  onLoad?: string;
-  onError?: string;
-  onSelect?: string;
-  onDrag?: string;
-  onDrop?: string;
-  onDragOver?: string;
-  onDragStart?: string;
-  onDragEnd?: string;
-  onContextMenu?: string;
-  onDoubleClick?: string;
-  onWheel?: string;
-  onResize?: string;
-  onAbort?: string;
-  onCanPlay?: string;
-  onPlay?: string;
-  onPause?: string;
-  onEnded?: string;
+export type CSSProperties = React.CSSProperties & {
+  [key: `--${string}`]: string | number | undefined;
 };
 
-export type StaticAttributes<T = {}> = {
-  [
-    K in keyof T as K extends
-      `on${string}` | "children" | "style" | "class" | "className"
-      ? never
-      : K
-  ]: T[K];
-} & {
+// ── React-only props stripped from the mapped types ────────────────────
+// These are internal React concepts (ref, hydration, synthetic events, etc.)
+// with no equivalent in static HTML.
+
+type ReactOnlyKeys =
+  | "ref"
+  | "key"
+  | "suppressHydrationWarning"
+  | "suppressContentEditableWarning"
+  | "defaultChecked"
+  | "defaultValue"
+  | "nonce"
+  | "about"
+  | "datatype"
+  | "inlist"
+  | "prefix"
+  | "property"
+  | "resource"
+  | "typeof"
+  | "vocab"
+  | "autoSave"
+  | "results"
+  | "security"
+  | "autoCapitalize"
+  | "inputMode"
+  | "is"
+  | "radioGroup"
+  | "spellCheck"
+  | "contentEditable"
+  | "contextMenu"
+  | "classID"
+  | "unselectable";
+
+type StripReact<T> = {
+  [K in keyof T as K extends ReactOnlyKeys ? never : K]: T[K];
+};
+
+// ── Event handlers: function refs → string attributes ─────────────────
+
+type EventToAttr<T> = {
+  [K in keyof T]: K extends `on${string}` ? string | undefined : T[K];
+};
+
+// ── Props we override with vincle-specific semantics ───────────────────
+
+type VincleOverrides = {
   class?: Awaitable<string | null | undefined>;
   className?: Awaitable<string | null | undefined>;
-  style?: Awaitable<string | CSSProperties>;
   children?: VNode;
+  style?: Awaitable<string | CSSProperties>;
   dangerouslySetInnerHTML?: {
     __html: Awaitable<string | null | undefined>;
   };
-} & StringEventHandlers;
+  // `htmlFor` maps to the HTML `for` attribute (see escape.ts) and is valid on
+  // every element, not just `<label>` — so it's exposed globally here.
+  htmlFor?: Awaitable<string | null | undefined>;
+};
 
-export interface HTMLAttributes extends StaticAttributes {
-  id?: string;
-  class?: Awaitable<string | null | undefined>;
-  className?: Awaitable<string | null | undefined>;
-  style?: Awaitable<string | CSSProperties>;
-  children?: VNode;
-  dangerouslySetInnerHTML?: {
-    __html: Awaitable<string | null | undefined>;
-  };
-  lang?: string;
-  dir?: "ltr" | "rtl" | "auto";
-  role?: string;
-  tabIndex?: number;
-  tabindex?: number;
-  title?: string;
-  hidden?: boolean | string;
-  slot?: string;
-  [key: string]: any;
-}
+// ── React → Vincle type transform ──────────────────────────────────────
+// Strips React-only props, converts event handlers to strings, and applies
+// vincle-specific overrides (children, style, dangerouslySetInnerHTML, class).
 
-export interface SVGAttributes extends HTMLAttributes {
-  viewBox?: string;
-  xmlns?: string;
-  fill?: string;
-  stroke?: string;
-  strokeWidth?: string | number;
-  width?: string | number;
-  height?: string | number;
-  d?: string;
-  cx?: string | number;
-  cy?: string | number;
-  r?: string | number;
-}
+export type FromReact<T> = Omit<StripReact<EventToAttr<T>>, keyof VincleOverrides> &
+  VincleOverrides;
+
+// ── Intrinsic elements derived from @types/react ───────────────────────
+// Every HTML/SVG element React knows about gets per-element attribute typing.
+// Augment `React.JSX.IntrinsicElements` in your project to add custom elements.
+
+export type IntrinsicElements = {
+  [Tag in keyof React.JSX.IntrinsicElements]: FromReact<
+    React.JSX.IntrinsicElements[Tag]
+  >;
+};
+
+// ── Named attribute types (for programmatic use) ───────────────────────
+
+export type HTMLAttributes = IntrinsicElements["div"];
+export type SVGAttributes = IntrinsicElements["svg"];
+
+// ── String event handlers (HTML attribute syntax: onclick="…") ─────────
+// Derived from React's DOMAttributes to cover every event (60+).
+
+export type StringEventHandlers = {
+  [K in keyof React.DOMAttributes<HTMLElement> as K extends `on${string}`
+    ? K
+    : never]: string;
+};
+
+// ── Static attributes (everything except events, children, style) ──────
+
+export type StaticAttributes<T = {}> = Omit<
+  HTMLAttributes,
+  | "children"
+  | "style"
+  | "dangerouslySetInnerHTML"
+  | "class"
+  | "className"
+  | keyof StringEventHandlers
+> &
+  T;

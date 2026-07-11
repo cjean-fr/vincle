@@ -59,14 +59,18 @@ camelCase keys (like React) and are converted to kebab-case CSS properties.
 
 <CodeExample src="guide/jsx/style-attribute.tsx" />
 
-Dangerous CSS values — `expression()`, `javascript:`, and unsafe `url()` — are
-blocked automatically. See the [security model](/guide/security).
+CSS values are HTML-escaped (`&`, `<`, `>`, `"`) to prevent attribute
+breakout. CSS syntax is not additionally validated — the attack
+vectors that motivated CSS value filtering (`expression()`,
+`url(javascript:)`) are no longer relevant on modern browsers.
+See the [security model](/guide/security).
 
 ## Event handlers
 
 Function-valued event handlers (`onClick`, `onChange`, …) are **dropped**
-silently at render time — they make no sense in a static HTML string. The ESLint
-plugin flags them. String-valued handlers (`onClick="doThing()"`) are allowed
+with a console warning at render time — they make no sense in a static HTML
+string. The ESLint plugin flags them. String-valued handlers
+(`onClick="doThing()"`) are allowed
 and HTML-escaped, but the JavaScript inside is **not** sanitized — never
 interpolate user data there.
 

@@ -1,7 +1,7 @@
 import type { FlowEvent } from "../types.js";
 import { createAdapter } from "./shared.js";
 import { escapeAttr } from "@vincle/core/html";
-import { raw, type VincleNode } from "@vincle/core";
+import { raw, type VNode } from "@vincle/core";
 
 export const EsiAdapter = createAdapter({
   capabilities: { streaming: false, merges: ["replace"] },
@@ -18,7 +18,7 @@ export const EsiAdapter = createAdapter({
       raw(`<esi:inline name="${id}" fetchable="yes">`),
       children,
       raw(`</esi:inline>`),
-    ] as VincleNode;
+    ] as VNode;
   },
 
   Frame: ({ children }) => children,

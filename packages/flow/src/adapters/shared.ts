@@ -1,19 +1,19 @@
 import type { FlowContext } from "../context.js";
 import type { AdapterCapabilities, FlowEvent, MergeType } from "../types.js";
-import { raw, renderToString, type VincleNode } from "@vincle/core";
+import { raw, renderToString, type VNode } from "@vincle/core";
 
 export type Adapter = {
   Placeholder(props: {
     id: string;
     src: string | null;
-    children: VincleNode;
-  }): VincleNode;
+    children: VNode;
+  }): VNode;
   Patch(props: {
     id: string;
-    children: VincleNode;
+    children: VNode;
     merge: MergeType;
-  }): VincleNode;
-  Frame(props: { id: string; children: VincleNode }): VincleNode;
+  }): VNode;
+  Frame(props: { id: string; children: VNode }): VNode;
   capabilities: AdapterCapabilities;
   /**
    * Post-process the shell before it enters the stream. Receives the active

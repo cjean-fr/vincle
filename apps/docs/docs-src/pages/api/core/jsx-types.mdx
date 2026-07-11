@@ -7,10 +7,10 @@ sidebar:
 
 # JSX types
 
-The type system that powers Vincle — `VincleNode`, `Component`, and the `JSX`
+The type system that powers Vincle — `VNode`, `Component`, and the `JSX`
 namespace.
 
-## VincleNode
+## VNode
 
 The union of everything Vincle can render. Use it to annotate props that hold
 markup, a component's `children`, or the return type of a helper that produces
@@ -18,30 +18,30 @@ content.
 
 <CodeExample src="api/renderToString/vincle-node.ts" />
 
-`renderToString` accepts exactly one `VincleNode`. To render multiple siblings,
+`renderToString` accepts exactly one `VNode`. To render multiple siblings,
 wrap them in a fragment (`<></>`).
 
-Prefer `VincleNode` over `JSX.Element` in your own annotations:
+Prefer `VNode` over `JSX.Element` in your own annotations:
 `JSX.Element` is the factory's return contract and resolves to whichever global
 `JSX` namespace is active — typically React's when `@types/react` is present.
-`VincleNode` is a plain export and can never be captured by that global.
+`VNode` is a plain export and can never be captured by that global.
 
 ### What each branch means
 
 | Type                             | Example                            | Behaviour                                                   |
 | -------------------------------- | ---------------------------------- | ----------------------------------------------------------- |
-| `string` / `number`              | `"hello"`, `42`                    | HTML-escaped and rendered as text                           |
+| `string` / `number` / `bigint`   | `"hello"`, `42`, `100n`           | HTML-escaped and rendered as text                           |
 | `boolean` / `null` / `undefined` | `true`, `null`                     | Renders nothing (empty string)                              |
-| `Stringifiable`                  | `RawString` from `raw()`           | `toString()` is called; `RawString` passes through verbatim |
-| `Promise<VincleNode>`            | `Promise.resolve(<p>hi</p>)`       | Awaited automatically by `renderToString`                   |
-| `VincleNode[]`                   | `[<a/>, <b/>]`                     | Flattened and rendered in order                             |
-| `Iterable<VincleNode>`           | `Generator`, `Set`, `Map.values()` | Iterated and rendered lazily                                |
-| `AsyncIterable<VincleNode>`      | `AsyncGenerator`                   | Iterated and awaited per-item, streaming                    |
+| `RawString`                      | `raw("<b>bold</b>")`              | Passes through verbatim, no escaping                        |
+| `Promise<VNode>`            | `Promise.resolve(<p>hi</p>)`       | Awaited automatically by `renderToString`                   |
+| `VNode[]`                   | `[<a/>, <b/>]`                     | Flattened and rendered in order                             |
+| `Iterable<VNode>`           | `Generator`, `Set`, `Map.values()` | Iterated and rendered lazily                                |
+| `AsyncIterable<VNode>`      | `AsyncGenerator`                   | Iterated and awaited per-item, streaming                    |
 
 ## Component
 
 The type of a Vincle component — a function that receives props and returns a
-`VincleNode`.
+`VNode`.
 
 ```tsx
 import type { Component } from "@vincle/core";
@@ -64,7 +64,7 @@ const AsyncGreeting: Component<{ id: string }> = async ({ id }) => {
 };
 ```
 
-The `Component<P>` type adds `children?: VincleNode` and common HTML
+The `Component<P>` type adds `children?: VNode` and common HTML
 attributes (`class`, `style`, `id`, etc.) to your props, so you don't need
 to declare them yourself.
 
@@ -75,7 +75,7 @@ to type-check JSX expressions.
 
 | Export                    | Purpose                                                                    |
 | ------------------------- | -------------------------------------------------------------------------- |
-| `JSX.Element`             | What a JSX expression evaluates to — `Awaitable<RawString>`                |
+| `JSX.Element`             | Alias for `VNode` — the union of everything renderable                     |
 | `JSX.ElementType`         | What can appear as a tag — a string (HTML element) or a component function |
 | `JSX.IntrinsicElements`   | Maps lowercase tag names to their attribute types                          |
 | `JSX.IntrinsicAttributes` | Additional attributes on every element (`key`)                             |
@@ -84,13 +84,47 @@ You rarely need these directly — they're wired automatically by the `jsxImport
 in your `tsconfig.json`. They become relevant when you write generic utilities
 that operate on JSX nodes or component factories.
 
+## StaticAttributes\<T\>
+
+A generic utility type that strips runtime-only properties from an attribute
+shape. Given a type `T`, it removes event handlers (`on*`), `children`, `style`,
+`class`, and `className` — the props that are consumed by the JSX runtime rather
+than serialized as HTML attributes — and re-adds them with Vincle-compatible
+types (`Awaitable`, `CSSProperties`).
+
+```tsx
+import type { StaticAttributes } from "@vincle/core";
+
+interface MyProps {
+  href: string;
+  onClick: () => void; // will be stripped by StaticAttributes
+  rel: string;
+}
+// StaticAttributes<MyProps> = { href: string; rel: string }
+//   & { class?: ...; style?: ...; children?: ...; dangerouslySetInnerHTML?: ... }
+//   & StringEventHandlers
+```
+
+Use it when writing a generic wrapper that projects custom props onto a
+native element:
+
+```tsx
+function SafeLink<T extends {}>(props: StaticAttributes<T> & { to: string }) {
+  return <a href={props.to} {...props} />;
+}
+```
+
+`StaticAttributes` is the building block of `HTMLAttributes` — you rarely need
+it directly, but it's exported for library authors who define custom element
+types.
+
 ## HTMLAttributes
 
 The base attribute type shared by all HTML elements. It includes:
 
 - **Global attributes** — `id`, `class`, `style`, `lang`, `dir`, `role`, `hidden`, `title`, `tabIndex`
 - **Event handlers as strings** — `onClick`, `onSubmit`, `onChange`, etc., all typed as `string` (not functions)
-- **`children`** — typed as `VincleNode`
+- **`children`** — typed as `VNode`
 - **`dangerouslySetInnerHTML`** — React-compatible API for raw HTML
 - **Catch-all** — `[key: string]: any` allows any valid HTML attribute or `data-*` attribute
 
@@ -133,7 +167,7 @@ when paired with a client-side library (HTMX, Turbo, Alpine.js).
 
 | Type             | Use case                                                  |
 | ---------------- | --------------------------------------------------------- |
-| `VincleNode`     | `children` prop, return type of helpers, generic wrappers |
+| `VNode`     | `children` prop, return type of helpers, generic wrappers |
 | `Component<P>`   | Annotating component functions                            |
 | `HTMLAttributes` | Extending HTML elements in generic components             |
 | `CSSProperties`  | Typing inline `style` objects                             |

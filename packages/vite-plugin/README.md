@@ -22,7 +22,7 @@ This package solves all three with one component.
 ## Install
 
 ```bash
-bun add @vincle/vite
+bun add @vincle/vite-plugin
 ```
 
 ## Usage

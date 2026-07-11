@@ -4,5 +4,6 @@
   "streaming": { "title": "Streaming", "order": 3 },
   "static": { "title": "Static generation", "order": 4 },
   "adapters": { "title": "Adapters", "order": 5 },
-  "http-serving": { "title": "HTTP serving", "order": 6 }
+  "http-serving": { "title": "HTTP serving", "order": 6 },
+  "precompile": { "title": "Precompile transform", "order": 7 }
 }

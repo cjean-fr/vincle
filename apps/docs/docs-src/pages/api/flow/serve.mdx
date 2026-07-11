@@ -16,7 +16,7 @@ import { serve } from "@vincle/flow/http";
 
 function serve(
   req: Request,
-  page: (n: Negotiation) => VincleNode,
+  page: (n: Negotiation) => VNode,
   adapter: StreamingAdapter,
   opts?: ServeOptions,
 ): Promise<Response>;
@@ -27,7 +27,7 @@ function serve(
 | Param     | Type                             | Description                          |
 | --------- | -------------------------------- | ------------------------------------ |
 | `req`     | `Request`                        | Incoming HTTP request                |
-| `page`    | `(n: Negotiation) => VincleNode` | Page component function              |
+| `page`    | `(n: Negotiation) => VNode` | Page component function              |
 | `adapter` | `StreamingAdapter`               | Adapter for encoding fragments       |
 | `opts`    | `ServeOptions`                   | Optional flow options, headers, mode |
 

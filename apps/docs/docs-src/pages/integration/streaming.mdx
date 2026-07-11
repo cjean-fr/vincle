@@ -53,11 +53,12 @@ For a higher-level API, use the `serve` helper:
 
 ```tsx
 import { serve } from "@vincle/flow/http";
+import { NativeAdapter } from "@vincle/flow/adapters";
 
 Bun.serve({
   port: 3000,
   fetch(req) {
-    return serve(req, { page: HomePage, adapter: "native" });
+    return serve(req, () => <HomePage />, NativeAdapter);
   },
 });
 ```

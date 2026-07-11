@@ -32,7 +32,6 @@
   ],
   "type": "module",
   "sideEffects": false,
-
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -47,9 +46,13 @@
       "types": "./dist/jsx-dev-runtime.d.ts",
       "default": "./dist/jsx-dev-runtime.js"
     },
+    "./jsx-precompile-runtime": {
+      "types": "./dist/jsx-precompile-runtime.d.ts",
+      "default": "./dist/jsx-precompile-runtime.js"
+    },
     "./html": {
-      "types": "./dist/escape.d.ts",
-      "default": "./dist/escape.js"
+      "types": "./dist/utils/html.d.ts",
+      "default": "./dist/utils/html.js"
     }
   },
   "publishConfig": {
@@ -67,9 +70,14 @@
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@types/bun": "catalog:",
-    "@types/react": "catalog:",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "fast-check": "catalog:",
     "pkgroll": "catalog:",
+    "preact": "^10.29.7",
+    "preact-render-to-string": "^6.7.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "stryker-mutator-bun-runner": "^0.4.0",
     "typescript": "catalog:"
   },

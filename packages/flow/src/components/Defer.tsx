@@ -1,4 +1,4 @@
-import { useContext, type JSX, type VincleNode } from "@vincle/core";
+import { useContext, type JSX, type VNode } from "@vincle/core";
 import { Flow } from "../context.js";
 import type { DeferContent, MergeType, OnError } from "../types.js";
 
@@ -8,7 +8,7 @@ export interface DeferProps {
   merge?: MergeType;
   timeout?: number;
   onError?: OnError;
-  fallback?: VincleNode;
+  fallback?: VNode;
 }
 
 export function Defer(props: DeferProps): JSX.Element | null {

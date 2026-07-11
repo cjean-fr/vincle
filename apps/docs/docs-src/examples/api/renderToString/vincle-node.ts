@@ -1,16 +1,14 @@
-interface Stringifiable {
-  toString(): string;
-}
+import type { RawString } from "@vincle/core";
 
-export type VincleNode =
+export type VNode =
   | string
   | number
+  | bigint
   | boolean
   | null
   | undefined
-  | Stringifiable
-  //   any object with toString() — e.g. RawString from raw()
-  | Promise<VincleNode>
-  | VincleNode[]
-  | Iterable<VincleNode>
-  | AsyncIterable<VincleNode>;
+  | RawString
+  | Promise<VNode>
+  | VNode[]
+  | Iterable<VNode>
+  | AsyncIterable<VNode>;

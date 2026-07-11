@@ -2,30 +2,30 @@
 
 Vite plugin that precompiles lowercase (native HTML) JSX elements into Deno-style `jsxTemplate` tagged template literals.
 
-Wraps a TypeScript transformer that precompiles lowercase (native HTML) JSX elements into Deno-style `jsxTemplate` tagged template literals. The transformer is also exposed as `@vincle/vite-plugin-precompile/transformer` for programmatic use.
+The underlying transformer is also exposed as `@vincle/vite-plugin-precompile/transformer` for programmatic use.
+
+## Compatible runtimes
+
+| Runtime | `jsxImportSource` | Compatible |
+|---------|-------------------|------------|
+| Vincle | `@vincle/core` | ✅ |
+| Preact | `preact` | ✅ |
+| Hono | `hono/jsx` | ✅ |
+| React | `react` | ❌ (throws build error) |
+
+React does not export the `jsxTemplate` helper that the precompile transform relies on.
 
 ## Install
 
 ```sh
 npm install @vincle/vite-plugin-precompile -D
-# or: bun add -D, yarn add -D, pnpm add -D
 ```
 
 Requires `vite` >= 5 as a peer dependency.
 
 ## Usage
 
-### Default
-
-```ts
-// tsconfig.json
-{
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core"
-  }
-}
-```
+Just add the plugin — no adapter file needed.
 
 ```ts
 // vite.config.ts
@@ -37,61 +37,15 @@ export default defineConfig({
 });
 ```
 
-You can also set `esbuild: { jsxImportSource: "@vincle/core" }` in `vite.config.ts` instead of tsconfig. Vite reads either way and exposes it via `resolvedConfig.esbuild.jsxImportSource`.
+The plugin automatically detects the runtime from your `jsxImportSource` and wires up the helpers through a virtual module (`virtual:vincle-precompile-runtime`).
 
-### With Preact
-
-```ts
-// vite.config.ts
-import precompile from "@vincle/vite-plugin-precompile";
-import preact from "@preact/preset-vite";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  esbuild: { jsxImportSource: "preact" },
-  plugins: [
-    precompile(), // auto-detected → "preact/jsx-runtime"
-    preact(),
-  ],
-});
-```
-
-```ts
-// vite.config.ts
-import precompile from "@vincle/vite-plugin-precompile";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  plugins: [precompile()],
-});
-```
-
-The plugin uses `jsxImportSource` from Vite's resolved esbuild config (which Vite reads from `tsconfig.json` or `vite.config.ts`) to determine the runtime helpers path (`{source}/jsx-runtime`). If that isn't set either, it falls back to `@vincle/core/jsx-runtime`.
-
-`runtimeSource` option always wins when provided.
-
-### With Preact
-
-```ts
-// vite.config.ts
-import precompile from "@vincle/vite-plugin-precompile";
-import preact from "@preact/preset-vite";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  plugins: [
-    precompile(), // auto-detected from tsconfig → "preact/jsx-runtime"
-    preact(),
-  ],
-});
-```
-
-### With any runtime (explicit)
+### Custom runtime
 
 ```ts
 precompile({ runtimeSource: "custom/jsx-runtime" });
-// explicit — overrides both jsxImportSource and default
 ```
+
+Only needed when using a runtime other than the detected one.
 
 ## API
 
@@ -99,7 +53,8 @@ precompile({ runtimeSource: "custom/jsx-runtime" });
 
 ```ts
 interface PluginConfig {
-  runtimeSource?: string; // default: auto-detected from esbuild.jsxImportSource + "/jsx-runtime"
+  runtimeSource?: string; // default: virtual:vincle-precompile-runtime → auto-detected
+  secure?: boolean;       // sanitize static attributes at build time
 }
 ```
 
@@ -111,17 +66,7 @@ function vitePrecompile(config?: PluginConfig): Plugin;
 
 Returns a Vite plugin with `enforce: "pre"` — runs before esbuild/Vite's own transforms.
 
-### `PluginConfig`
-
-```ts
-interface PluginConfig {
-  runtimeSource?: string; // default: "@vincle/core/jsx-runtime"
-}
-```
-
 ## Standalone transformer
-
-The underlying TypeScript transformer is exposed for programmatic use:
 
 ```ts
 import transformer from "@vincle/vite-plugin-precompile/transformer";
@@ -132,21 +77,18 @@ const result = ts.transform(sourceFile, [
 ]);
 ```
 
-This is the same transformer used internally by the Vite plugin.
-
 ## How it works
 
 - `enforce: "pre"` — runs before esbuild/Vite's own transforms
-- Reads `jsxImportSource` from Vite's resolved esbuild config during `configResolved`
+- Registers a virtual module that re-exports runtime helpers from the detected runtime
 - Only transforms `.tsx`/`.jsx` files (skips `node_modules`)
-- Skips files that don't contain `<` (no JSX)
-- The underlying TS transformer handles element-level decisions (lowercase only, skip spread/innerHTML)
-- Emits `jsxTemplate\`<div>\${expr}\</div>\`` with auto-imported runtime helpers (strings are auto-escaped by `jsxTemplate`)
+- Skips files without `<` (no JSX)
+- Emits `jsxTemplate\`<div>\${expr}\</div>\`` with auto-imported runtime helpers
 
 ## Test
 
 ```sh
-bun test   # 9 tests (integration with Vite build pipeline)
+bun test
 ```
 
 ## License

@@ -49,17 +49,16 @@ export const RAWTEXT_TAGS = new Set([
   "script", "style", "xmp", "iframe", "noembed", "noframes",
 ]);
 
-const RAWTEXT_REGEX_CACHE = new Map<string, RegExp>();
+const RAWTEXT_REGEXES: Record<string, RegExp> = {};
 for (const tag of RAWTEXT_TAGS) {
-  RAWTEXT_REGEX_CACHE.set(tag, new RegExp(`</${tag}`, "i"));
+  RAWTEXT_REGEXES[tag] = new RegExp(`</${tag}`, "i");
 }
-
-export const RCDATA_TAGS = new Set(["textarea", "title"]);
 
 export function escapeRawText(str: string, tag: string): string {
   if (!RAWTEXT_TAGS.has(tag)) return escapeContent(str);
 
-  const re = RAWTEXT_REGEX_CACHE.get(tag)!;
+  const re = RAWTEXT_REGEXES[tag];
+  if (!re) return str;
   const m = re.exec(str);
   if (!m) return str;
 
@@ -108,7 +107,6 @@ const REGEX_INVALID_TAG_NAME = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
 
 export const sanitize = (str: string): string => {
   if (!REGEX_OTHER_UNICODE_CHARS_TEST.test(str)) return str;
-  // @ts-ignore — TS doesn't know about \p{C} with u flag
   return str.replace(REGEX_OTHER_UNICODE_CHARS_REPLACE, "");
 };
 
@@ -207,12 +205,38 @@ export const isSafeSrcset = (srcset: string): boolean => {
     if (!candidate) return false;
     const m = REGEX_SRCSET_CANDIDATE.exec(candidate);
     if (!m) return false;
-    if (!isSafeScheme(m[1]!)) return false;
+    const url = m[1];
+    if (!url) return false;
+    if (!isSafeScheme(url)) return false;
   }
   return true;
 };
 
-/** HTML void (self-closing) elements that must not have a closing tag. */
+/**
+ * HTML void (self-closing) elements that must not have a closing tag.
+ *
+ * vincle emits void elements **without** a trailing slash (`<br>`, `<input>`),
+ * whereas React, Preact and kitaJS emit `<br/>`, `<input/>`.
+ *
+ * ## Why `<br>` (vincle's choice)
+ * - Canonical HTML5 — the slash is optional per the WHATWG spec
+ * - 100% email-safe — Outlook Word can misparse `<br/>` and break subsequent HTML
+ * - 1 byte smaller per tag
+ * - Valid in HTML4, HTML5, and transitional XHTML
+ *
+ * ## Why `<br/>` (React, Preact, kitaJS)
+ * - Required in XHTML / `application/xhtml+xml`
+ * - Required in JSX source (the compiler enforces it)
+ * - More explicit — visually marks the element as self-closing
+ *
+ * ## Decision
+ * vincle targets web + email output where `<br>` is the most compatible form.
+ * Developers still write `<br/>` in JSX (the compiler demands it), but the
+ * runtime produces spec-correct HTML without the slash. This is a documented
+ * intentional divergence from React (see `gold-standard.test.ts`).
+ *
+ * @see https://html.spec.whatwg.org/multipage/syntax.html#void-elements
+ */
 export const VOID_ELEMENTS = new Set([
   "area", "base", "br", "col", "embed", "hr", "img", "input", "link",
   "meta", "param", "source", "track", "wbr",

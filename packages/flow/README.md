@@ -428,7 +428,7 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `MergeType`           | `@vincle/flow/types`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"`            |
 | `FlowEvent`           | `@vincle/flow/types`    | `{ type: "shell" \| "fragment" \| "close", … }`                        |
 | `Negotiation`         | `@vincle/flow/types`    | `{ headers?, mode?, target? }`                                         |
-| `DeferContent`        | `@vincle/flow/types`    | `VincleNode \| ((signal: AbortSignal) => VincleNode)`                  |
+| `DeferContent`        | `@vincle/flow/types`    | `VNode \| ((signal: AbortSignal) => VNode)`                  |
 
 ### Utilities
 

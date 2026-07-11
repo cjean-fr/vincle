@@ -1,6 +1,13 @@
 import { renderToString, raw, ErrorBoundary, Fragment } from "./index.js";
-import { jsx, jsxDEV, jsxAttr, jsxTemplate } from "./jsx-runtime.js";
-import { renderAttr } from "./render.js";
+import type { VNode } from "./index.js";
+import {
+  jsx,
+  jsxDEV,
+  jsxAttr,
+  jsxTemplate,
+  createElement,
+} from "./jsx-runtime.js";
+import { renderAttr } from "./render-attrs.js";
 import { describe, it, expect, spyOn } from "bun:test";
 
 describe("jsx — intrinsic elements", () => {
@@ -532,5 +539,70 @@ describe("renderAttr (singular)", () => {
     expect(renderAttr("href", "javascript:alert(1)")).toBe(
       'href="#blocked"',
     );
+  });
+
+  it("drops RawString-valued event handlers silently", () => {
+    expect(renderAttr("onclick", raw("alert(1)"))).toBe("");
+    expect(renderAttr("onmouseover", raw("x"))).toBe("");
+  });
+
+  it("renders RawString-valued non-event attributes", () => {
+    expect(renderAttr("class", raw("foo"))).toBe('class="foo"');
+    expect(renderAttr("id", raw("main"))).toBe('id="main"');
+  });
+
+  it("skips function-valued event handlers silently", () => {
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      expect(renderAttr("onclick", () => {})).toBe("");
+      expect(renderAttr("ondblclick", function () {})).toBe("");
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("preserves string-valued event handlers", () => {
+    expect(renderAttr("onclick", "alert(1)")).toBe('onclick="alert(1)"');
+    expect(renderAttr("onsubmit", "return false")).toBe(
+      'onsubmit="return false"',
+    );
+  });
+
+  it("accepts data-* and aria-* attributes", () => {
+    expect(renderAttr("data-testid", "main")).toBe('data-testid="main"');
+    expect(renderAttr("aria-label", "close")).toBe('aria-label="close"');
+  });
+});
+
+describe("createElement — classic-runtime compat (tsc key-after-spread fallback)", () => {
+  it("renders an intrinsic element with a single child", async () => {
+    const el = createElement("div", { class: "c" }, "hi");
+    expect(await renderToString(el)).toBe('<div class="c">hi</div>');
+  });
+
+  it("folds multiple trailing children into props.children", async () => {
+    const el = createElement("ul", null, "a", "b", "c");
+    expect(await renderToString(el)).toBe("<ul>abc</ul>");
+  });
+
+  it("drops key/ref (never inlined, never seen by a component)", async () => {
+    // The exact shape TypeScript emits for `<div {...p} key="k">t</div>`.
+    const el = createElement("div", { ...{ id: "x" }, key: "k", ref: "r" }, "t");
+    expect(await renderToString(el)).toBe('<div id="x">t</div>');
+
+    let seenKey: unknown = "unset";
+    function Probe(props: { key?: unknown; children?: unknown }): VNode {
+      seenKey = props.key;
+      return jsx("span", { children: props.children });
+    }
+    await renderToString(createElement(Probe, { key: "k" }, "child"));
+    expect(seenKey).toBeUndefined();
+  });
+
+  it("escapes child text exactly like the automatic runtime", async () => {
+    const via = await renderToString(createElement("p", null, "a & b <x>"));
+    const auto = await renderToString(jsx("p", { children: "a & b <x>" }));
+    expect(via).toBe(auto);
+    expect(via).toBe("<p>a &amp; b &lt;x&gt;</p>");
   });
 });

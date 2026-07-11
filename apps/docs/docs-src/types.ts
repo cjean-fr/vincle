@@ -131,8 +131,8 @@ export interface DocsConfig {
   handlers?: Record<string, HandlerEntry>;
   /** Override the default page shell (Layout). Receives children already wrapped by the handler's prose wrapper. */
   layout?: (props: {
-    children: import("@vincle/core").VincleNode;
-  }) => import("@vincle/core").VincleNode;
+    children: import("@vincle/core").VNode;
+  }) => import("@vincle/core").VNode;
 }
 
 export interface ResolvedDocsConfig {
@@ -154,8 +154,8 @@ export interface ResolvedDocsConfig {
   sitemap: boolean;
   handlers: Record<string, HandlerEntry>;
   layout: (props: {
-    children: import("@vincle/core").VincleNode;
-  }) => import("@vincle/core").VincleNode;
+    children: import("@vincle/core").VNode;
+  }) => import("@vincle/core").VNode;
 }
 
 export interface Page {
@@ -164,5 +164,5 @@ export interface Page {
   outPath: string;
   handler: string;
   meta: PageMeta;
-  Component: (props: object) => import("@vincle/core").VincleNode;
+  Component: (props: object) => import("@vincle/core").VNode;
 }

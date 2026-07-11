@@ -6,7 +6,7 @@ import { TableOfContents } from "./TableOfContents.js";
 import { SearchDialog } from "./SearchDialog.js";
 import { Tabs } from "./Tabs.js";
 import { ThemeToggle, themeInitScript } from "./ThemeToggle.js";
-import type { VincleNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 import { raw } from "@vincle/core";
 import { Asset } from "@vincle/vite-plugin";
 
@@ -37,7 +37,7 @@ const STRUCTURED_DATA_TEMPLATE = (
     })}</script>`,
   );
 
-export function Layout({ children }: { children: VincleNode }) {
+export function Layout({ children }: { children: VNode }) {
   const { config, meta, currentPage } = useDocs();
   const title = meta.title ? `${meta.title} — ${config.title}` : config.title;
   const description = meta.description ?? config.description;

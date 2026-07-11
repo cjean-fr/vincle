@@ -1,6 +1,6 @@
 import { CodeExample } from "../components/CodeExample.js";
 import type { PageMeta } from "../types.js";
-import type { VincleNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 
 export const meta: PageMeta = {
   title: "Home",
@@ -112,7 +112,7 @@ function CodeIcon() {
 }
 
 interface FeatureCardProps {
-  icon: VincleNode;
+  icon: VNode;
   title: string;
   description: string;
 }
@@ -239,7 +239,7 @@ export default function HomePage() {
         </div>
         <CodeExample src="home/hello.tsx" />
         <div class="mt-4">
-          <CodeExample src="home/install.sh" label="bash" />
+          <CodeExample src="home/install.sh" language="bash" />
         </div>
       </div>
 
@@ -313,7 +313,7 @@ export default function HomePage() {
 }
 
 interface UseCaseCardProps {
-  icon: VincleNode;
+  icon: VNode;
   title: string;
   before: string;
   after: string;

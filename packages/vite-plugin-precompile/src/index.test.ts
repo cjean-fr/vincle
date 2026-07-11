@@ -1,6 +1,14 @@
 import precompile, { type PluginConfig } from "./index.js";
 import { describe, it, expect } from "bun:test";
 
+function errorCtx(): { error: (msg: string) => never } {
+  return {
+    error(msg: string): never {
+      throw new Error(msg);
+    },
+  };
+}
+
 describe("vite-plugin-precompile", () => {
   function callTransform(
     code: string,
@@ -41,12 +49,11 @@ describe("vite-plugin-precompile", () => {
     expect(result).toBeUndefined();
   });
 
-  it("transforms JSX with default runtimeSource", () => {
+  it("transforms JSX with default virtual runtime module", () => {
     const code = `const x = <div class="foo">{name}</div>;`;
     const result = callTransform(code, "/src/app.tsx");
     expect(result).not.toBeUndefined();
-    expect(result!.code).toContain("@vincle/core/jsx-runtime");
-    expect(result!.code).toContain("jsxTemplate");
+    expect(result!.code).toContain("virtual:vincle-precompile-runtime");
     expect(result!.code).toContain("jsxTemplate");
     expect(result!.code).toContain("name");
   });
@@ -60,11 +67,11 @@ describe("vite-plugin-precompile", () => {
     expect(result!.code).toContain("custom/jsx-runtime");
   });
 
-  it("falls back to @vincle/core/jsx-runtime when no runtimeSource given", () => {
+  it("falls back to the virtual runtime module when no runtimeSource given", () => {
     const code = `const x = <div>hello</div>;`;
     const result = callTransform(code, "/src/app.tsx", undefined, "preact");
     expect(result).not.toBeUndefined();
-    expect(result!.code).toContain("@vincle/core/jsx-runtime");
+    expect(result!.code).toContain("virtual:vincle-precompile-runtime");
   });
 
   it("prefers explicit runtimeSource over the default", () => {
@@ -87,10 +94,10 @@ describe("vite-plugin-precompile", () => {
     expect(result!.code).toContain("jsxTemplate");
   });
 
-  it("merges esbuild.jsxImportSource when set but no runtimeSource", () => {
+  it("uses the virtual runtime module even when esbuild.jsxImportSource is set", () => {
     const code = `<div/>`;
     const result = callTransform(code, "/src/a.tsx", undefined, "preact");
-    expect(result!.code).toContain("@vincle/core/jsx-runtime");
+    expect(result!.code).toContain("virtual:vincle-precompile-runtime");
   });
 
   it("passes through sourcemap from transform", () => {
@@ -116,5 +123,43 @@ describe("vite-plugin-precompile", () => {
     await expect(plugin.buildStart.call(ctx)).rejects.toThrow(
       /secure mode/,
     );
+  });
+
+  describe("runtime probe", () => {
+    // @ts-expect-error — internal virtual module resolved ID
+    const RID = "\0virtual:vincle-precompile-runtime";
+
+    it("uses preact/jsx-runtime when jsxImportSource is preact (compatible)", async () => {
+      const plugin = precompile();
+      // @ts-expect-error — internal hook
+      plugin.configResolved({ esbuild: { jsxImportSource: "preact" } });
+      // @ts-expect-error — internal hook
+      await plugin.buildStart.call(errorCtx());
+      // @ts-expect-error — internal hook
+      const vm = plugin.load(RID);
+      expect(vm).toContain("preact/jsx-runtime");
+    });
+
+    it("throws when jsxImportSource module has no jsxTemplate export", async () => {
+      const plugin = precompile();
+      // node:path/jsx-runtime doesn't exist → import fails → error
+      // @ts-expect-error — internal hook
+      plugin.configResolved({ esbuild: { jsxImportSource: "node:path" } });
+      // @ts-expect-error — internal hook
+      await expect(plugin.buildStart.call(errorCtx())).rejects.toThrow(
+        /failed to probe/,
+      );
+    });
+
+    it("defaults to @vincle/core/jsx-runtime when no jsxImportSource is set", async () => {
+      const plugin = precompile();
+      // @ts-expect-error — internal hook
+      plugin.configResolved({ esbuild: {} });
+      // @ts-expect-error — internal hook
+      await plugin.buildStart.call(errorCtx());
+      // @ts-expect-error — internal hook
+      const vm = plugin.load(RID);
+      expect(vm).toContain("@vincle/core/jsx-runtime");
+    });
   });
 });

@@ -18,5 +18,5 @@ const childHtml = await withScope(
     const theme = useContext(themeCtx); // still works
     return renderToString(<ChildPage />);
   },
-  { seed },
+  seed, // pass ContextMap directly (not wrapped in { seed })
 );

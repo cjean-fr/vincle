@@ -1,3 +1,3 @@
-import type { VincleNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 
-declare function renderToString(node: VincleNode): Promise<string>;
+declare function renderToString(node: VNode): Promise<string>;

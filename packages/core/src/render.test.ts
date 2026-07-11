@@ -7,11 +7,14 @@ import {
   setContext,
   useContext,
   withScope,
+  resetContextStorage,
   type VNode,
   type ContextMap,
 } from "./index.js";
 import { jsx } from "./jsx-runtime.js";
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
+
+beforeEach(() => resetContextStorage());
 
 describe("renderToString", () => {
   it("renders a raw string unchanged", async () => {
@@ -125,10 +128,6 @@ describe("render (sync)", () => {
     expect(render(BigInt(123))).toBe("123");
   });
 
-  it("returns symbol as string", () => {
-    expect(render(Symbol("test"))).toBe("Symbol(test)");
-  });
-
   it("ignores null/undefined/boolean synchronously", () => {
     expect(render(null)).toBe("");
     expect(render(undefined)).toBe("");
@@ -209,6 +208,12 @@ describe("ErrorBoundary", () => {
       jsx(ErrorBoundary, { fallback: raw("<p>fail</p>") }),
     );
     expect(html).toBe("");
+  });
+
+  it("throws TypeError when called directly outside jsx()", () => {
+    expect(() => ErrorBoundary({ children: raw("test") })).toThrow(
+      "[vincle/core] ErrorBoundary must be used within jsx(), not called directly.",
+    );
   });
 });
 
@@ -341,6 +346,93 @@ describe("Context API", () => {
       new Map([[Theme, "dark"]]) as ContextMap,
     );
     expect(html).toBe('<div class="card-dark">content</div>');
+  });
+});
+
+describe("ErrorSentinel propagation", () => {
+  it("propagates ErrorSentinel inside a synchronous array", async () => {
+    function Boom(): never { throw new Error("sync-arr"); }
+    await expect(renderToString(
+      jsx("div", { children: [jsx(Boom, {}), "ok"] })
+    )).rejects.toThrow("sync-arr");
+  });
+
+  it("propagates ErrorSentinel in async array", async () => {
+    async function AsyncBoom(): Promise<never> {
+      await Promise.resolve();
+      throw new Error("async-arr");
+    }
+    await expect(renderToString(
+      jsx("div", { children: [Promise.resolve("a"), jsx(AsyncBoom, {})] })
+    )).rejects.toThrow("async-arr");
+  });
+
+  it("stops at first ErrorSentinel in sync array", async () => {
+    const order: string[] = [];
+    function Boom(): never { order.push("boom"); throw new Error("x"); }
+    function Late(): string { order.push("late"); return "y"; }
+    await expect(renderToString(
+      jsx("div", { children: [jsx(Boom, {}), jsx(Late, {})] })
+    )).rejects.toThrow("x");
+    // Both jsx() calls are eager, so both components execute.
+    // ErrorSentinel propagation stops the *render* loop, not the jsx evaluation.
+    expect(order).toEqual(["boom", "late"]);
+  });
+});
+
+describe("Error annotation edge cases", () => {
+  it("uses displayName for error annotation", async () => {
+    const NamedComp = Object.assign(
+      () => { throw new Error("fail"); },
+      { displayName: "MyDisplayName" },
+    );
+    try {
+      await renderToString(jsx(NamedComp, {}));
+      throw new Error("expected to throw");
+    } catch (e) {
+      expect((e as Error).message).toBe("[MyDisplayName] fail");
+    }
+  });
+
+  it("handles frozen error objects without throwing", async () => {
+    function Boom(): never {
+      const e = new Error("fail");
+      Object.freeze(e);
+      throw e;
+    }
+    const html = await renderToString(
+      jsx(ErrorBoundary, {
+        fallback: () => raw("<p>ok</p>"),
+        children: jsx(Boom, {}),
+      }),
+    );
+    expect(html).toBe("<p>ok</p>");
+  });
+
+  it("handles non-extensible error objects", async () => {
+    function Boom(): never {
+      const e = new Error("fail");
+      Object.preventExtensions(e);
+      throw e;
+    }
+    const html = await renderToString(
+      jsx(ErrorBoundary, {
+        fallback: () => raw("<p>ok</p>"),
+        children: jsx(Boom, {}),
+      }),
+    );
+    expect(html).toBe("<p>ok</p>");
+  });
+
+  it("strips previous annotation prefix in re-annotation", async () => {
+    function Child(): never { throw new Error("fail"); }
+    function Parent() { return jsx(Child, {}); }
+    try {
+      await renderToString(jsx(Parent, {}));
+    } catch (e) {
+      expect((e as Error).message).toBe("[Child > Parent] fail");
+      expect((e as Error).message).not.toContain("[Child > Parent] [Child");
+    }
   });
 });
 

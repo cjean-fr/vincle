@@ -12,7 +12,7 @@ Renders a JSX tree into an HTML string. Always returns a `Promise<string>`.
 ## Signature
 
 Accepts a single JSX node — a component, an element, a fragment, or a
-primitive. `VincleNode` is the union of every value a JSX expression can produce.
+primitive. `VNode` is the union of every value a JSX expression can produce.
 
 <CodeExample src="api/renderToString/signature.ts" />
 
@@ -58,16 +58,15 @@ This makes Vincle suitable for HTTP servers that handle multiple requests
 in parallel on the same thread, without request-scoped singletons or request
 intermediation.
 
-## VincleNode type
+## VNode type
 
-`VincleNode` is the return type of any JSX expression. It accepts elements,
-components, fragments, strings, numbers, booleans, `null`, `undefined`,
-`Stringifiable` (any object with `toString()`, including `RawString` from
-`raw()`), `Promise<VincleNode>`, `VincleNode[]`, `Iterable<VincleNode>`, and
-`AsyncIterable<VincleNode>` — the union of everything `renderToString` can
+`VNode` is the return type of any JSX expression. It accepts elements,
+components, fragments, strings, numbers, bigints, booleans, `null`, `undefined`,
+`RawString` (from `raw()`), `Promise<VNode>`, `VNode[]`, `Iterable<VNode>`, and
+`AsyncIterable<VNode>` — the union of everything `renderToString` can
 consume.
 
 <CodeExample src="api/renderToString/vincle-node.ts" />
 
-`renderToString` expects exactly one `VincleNode`. To render multiple sibling
+`renderToString` expects exactly one `VNode`. To render multiple sibling
 elements, wrap them in a fragment (`<></>`).

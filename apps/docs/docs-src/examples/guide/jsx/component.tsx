@@ -1,6 +1,6 @@
-import { renderToString, type VincleNode } from "@vincle/core";
+import { renderToString, type VNode } from "@vincle/core";
 
-function Layout({ title, children }: { title: string; children: VincleNode }) {
+function Layout({ title, children }: { title: string; children: VNode }) {
   return (
     <html lang="en">
       <head>

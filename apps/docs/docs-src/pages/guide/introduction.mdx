@@ -52,7 +52,7 @@ Vincle is designed exclusively for server-side HTML generation. That lets it
 make different trade-offs:
 
 - **Zero dependencies** — nothing ships that you didn't write (~3 kB gzipped)
-- **No virtual DOM** — JSX produces lazy descriptors, walked once at render time
+- **No virtual DOM** — JSX renders to HTML eagerly, no intermediate tree
 - **Safe by default** — every value is escaped; dangerous URLs are blocked
 - **Async-native** — any component can be `async`, and the whole tree is awaited
 - **No reactivity** — no hooks, no state, no reconciliation, just functions
@@ -115,10 +115,11 @@ the full model.
 Zero runtime dependencies. No virtual DOM. No reconciliation.
 
 Most JSX runtimes allocate virtual DOM nodes, build a tree, diff it, and only
-then produce HTML. Vincle skips every one of those steps: JSX produces a lazy
-descriptor (`{ type, props, key }`), and `renderToString` walks the tree once
-and concatenates strings. This descriptor-based architecture is what enables
-`ErrorBoundary` to catch rendering errors at any depth.
+then produce HTML. Vincle skips every one of those steps: JSX renders directly
+to an HTML string (wrapped in a `RawString`) at call time — bottom-up, as the
+JSX expression is evaluated. There is no descriptor tree, no separate render
+walk, no intermediate representation. `renderToString` only unwraps the
+already-rendered result.
 
 ### Async-native
 

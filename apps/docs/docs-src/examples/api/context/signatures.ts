@@ -15,7 +15,7 @@ declare function useContext<T>(ctx: ContextKey<T>): T;
 // Create an isolated async scope
 declare function withScope<T>(
   fn: () => T | Promise<T>,
-  options?: { seed?: Map<ContextKey<unknown>, unknown> },
+  parentCtx?: Map<ContextKey<unknown>, unknown>,
 ): Promise<T>;
 
 // Capture current scope values for passing to child scopes

@@ -39,13 +39,13 @@ function renderToStatic(
 
 | Method       | Signature                                     | Description                                   |
 | ------------ | --------------------------------------------- | --------------------------------------------- |
-| `renderPage` | `(page: () => VincleNode) => Promise<string>` | Renders a page returning the full HTML string |
+| `renderPage` | `(page: () => VNode) => Promise<string>` | Renders a page returning the full HTML string |
 
 ### StaticContext
 
 | Method          | Signature                                                                  | Description                                              |
 | --------------- | -------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `renderPage`    | `(page: () => VincleNode) => Promise<string>`                              | Renders a page returning the full HTML string            |
+| `renderPage`    | `(page: () => VNode) => Promise<string>`                              | Renders a page returning the full HTML string            |
 | `emitFragments` | `(emit: (id: string, url: string, html: string) => void) => Promise<void>` | Materializes deferred fragments, passes each to callback |
 
 ## Pure static

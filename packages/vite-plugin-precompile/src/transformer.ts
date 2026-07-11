@@ -1,9 +1,13 @@
 import {
   collapseJsxWhitespace,
+  decodeJsxEntities,
   escapeAttr,
+  escapeContent,
+  escapeRawText,
   hasSpreadOrInnerHTML,
   isEventHandlerName,
   isLowercaseTag,
+  isRawtextTag,
   isVoidElement,
   remapAttrName,
   RUNTIME_SOURCE,
@@ -85,26 +89,40 @@ interface Replacement {
 }
 
 /**
- * Walk the visitor keys of an AST node, invoking `visit` for each child.
- * Returns `true` if any visit call returned `true` (early termination).
+ * Walk the visitor keys of an AST node, invoking `visit` for each child with
+ * the key it was reached through. Returns `true` if any visit call returned
+ * `true` (early termination).
  */
 function walkChildren(
   node: AnyNode,
-  visit: (child: AnyNode) => boolean,
+  visit: (child: AnyNode, key: string) => boolean,
 ): boolean {
   for (const key of visitorKeys[node.type] ?? []) {
     const val = node[key];
     if (Array.isArray(val)) {
       for (const item of val) {
         if (item && typeof item === "object" && "type" in item) {
-          if (visit(item as AnyNode)) return true;
+          if (visit(item as AnyNode, key)) return true;
         }
       }
     } else if (val && typeof val === "object" && "type" in val) {
-      if (visit(val as AnyNode)) return true;
+      if (visit(val as AnyNode, key)) return true;
     }
   }
   return false;
+}
+
+/**
+ * A transformed element/fragment is an ordinary expression. In expression
+ * position (variable init, ternary branch, attribute container…) it can be
+ * spliced verbatim, but as a direct JSX child of a PRESERVED element (a
+ * component, or a host element skipped for spread/dangerouslySetInnerHTML) it
+ * must be wrapped in a JSX expression container — otherwise the generated
+ * `jsxTemplate\`…\`` lands as literal JSXText and the page renders its own
+ * source code instead of the markup.
+ */
+function wrapForJsxChild(text: string, inJsxChildren: boolean): string {
+  return inJsxChildren ? `{${text}}` : text;
 }
 
 export default function precompileTransform(
@@ -168,6 +186,7 @@ function collectNode(
   node: AnyNode,
   ctx: Ctx,
   replacements: Replacement[],
+  inJsxChildren = false,
 ): void {
   if (node.type === "JSXElement") {
     const el = node as unknown as JSXElement;
@@ -175,22 +194,31 @@ function collectNode(
       replacements.push({
         start: el.start,
         end: el.end,
-        text: transformElement(el, ctx),
+        text: wrapForJsxChild(transformElement(el, ctx), inJsxChildren),
       });
       return;
     }
-  } else if (node.type === "JSXFragment") {
+    // Preserved element (component / spread / dangerouslySetInnerHTML): its
+    // direct `children` are JSX-child positions, everything else (attribute
+    // expressions…) stays expression position.
+    walkChildren(node, (child, key) => {
+      collectNode(child, ctx, replacements, key === "children");
+      return false;
+    });
+    return;
+  }
+  if (node.type === "JSXFragment") {
     const frag = node as unknown as JSXFragment;
     replacements.push({
       start: frag.start,
       end: frag.end,
-      text: transformFragment(frag, ctx),
+      text: wrapForJsxChild(transformFragment(frag, ctx), inJsxChildren),
     });
     return;
   }
 
   walkChildren(node, (child) => {
-    collectNode(child, ctx, replacements);
+    collectNode(child, ctx, replacements, false);
     return false;
   });
 }
@@ -223,18 +251,23 @@ function transformElement(node: JSXElement, ctx: Ctx): string {
 
   emitOpening(tag, node.openingElement.attributes, parts, exprs, ctx);
   if (!isVoidElement(tag)) {
-    emitChildren(node.children, parts, exprs, ctx);
+    emitChildren(node.children, parts, exprs, ctx, rawtextTagOf(tag));
     appendStatic(parts, `</${tag}>`);
   }
 
   return buildTaggedTemplate(parts, exprs);
 }
 
+/** The lowercased tag name if `tag` is a rawtext element, else undefined. */
+function rawtextTagOf(tag: string): string | undefined {
+  return isRawtextTag(tag) ? tag.toLowerCase() : undefined;
+}
+
 function transformFragment(node: JSXFragment, ctx: Ctx): string {
   ctx.used.add("jsxTemplate");
   const parts: string[] = [""];
   const exprs: string[] = [];
-  emitChildren(node.children, parts, exprs, ctx);
+  emitChildren(node.children, parts, exprs, ctx, undefined);
   return buildTaggedTemplate(parts, exprs);
 }
 
@@ -270,6 +303,26 @@ function emitAttribute(
   const rawName = attrName(attr);
   const init = attr.value;
 
+  // key/ref: routed to the runtime even when static — Deno's precompile does
+  // exactly this (verified against deno 2.9.2). The runtime's own policy
+  // decides the output (vincle's renderAttr drops both), so the transform
+  // never duplicates the drop-list and precompiled HTML matches the classic
+  // path. Dynamic key/ref values fall through to the generic dynamic branch.
+  if (
+    (rawName === "key" || rawName === "ref") &&
+    (init === null || init.type === "Literal")
+  ) {
+    ctx.used.add("jsxAttr");
+    const valueText = init === null ? "true" : JSON.stringify(init.value);
+    appendStatic(parts, " ");
+    addDynamic(
+      parts,
+      exprs,
+      `jsxAttr(${JSON.stringify(rawName)}, ${valueText})`,
+    );
+    return;
+  }
+
   // Boolean attribute (no value): <input disabled />, <input readOnly />.
   if (init === null) {
     emitStaticAttr(rawName, true, parts, ctx);
@@ -283,12 +336,16 @@ function emitAttribute(
   }
 
   // Dynamic value: always handled by the runtime, which does its own name
-  // remapping, sanitization, and drop-if-unsafe logic.
+  // remapping, sanitization, and drop-if-unsafe logic. The separating space
+  // lives in the static part, like Deno's output: jsxAttr returns
+  // `name="value"` with no leading space, so a dropped attribute leaves only
+  // a harmless extra space instead of gluing the next token to the tag.
   if (init.type === "JSXExpressionContainer") {
     const expr = init.expression;
     if (expr.type !== "JSXEmptyExpression") {
       ctx.used.add("jsxAttr");
       const exprText = processExpressionForJsx(expr, ctx);
+      appendStatic(parts, " ");
       addDynamic(
         parts,
         exprs,
@@ -348,31 +405,39 @@ function emitChildren(
   parts: string[],
   exprs: string[],
   ctx: Ctx,
+  rawtextTag: string | undefined,
 ): void {
   for (const child of children) {
     if (child.type === "JSXText") {
-      /*
-       * oxc/jSX parser guarantees the text is HTML-safe — any <letter
-       * starts a JSXElement, < followed by space or > alone is a parse
-       * error, and </tag closes the parent element, so < > & and
-       * rawtext-close sequences (</script>, etc.) can never appear in
-       * JSXText. Only template-literal escaping (backticks, ${, \)
-       * in appendStatic/escapeForTemplate is needed.
-       */
-      appendStatic(parts, collapseJsxWhitespace(child.value));
+      // The JS compilers decode HTML entities in every JSXText, then the
+      // dynamic path escapes the result for its context; we do the same at
+      // build time so precompiled output is byte-identical to the runtime
+      // (invariant I-04). Decode, then `escapeContent` (normal text) or
+      // `escapeRawText` (inside <script>/<style>, which only guards the
+      // element's own closing tag) — exactly what `renderChild` does. NB:
+      // this diverges from Deno, which leaves rawtext entities literal and so
+      // emits broken CSS/JS (e.g. a literal `&gt;` in a stylesheet).
+      // `appendStatic`/`escapeForTemplate` then handles the template-literal
+      // metacharacters (backtick, `${`, `\`).
+      const decoded = decodeJsxEntities(collapseJsxWhitespace(child.value));
+      appendStatic(
+        parts,
+        rawtextTag ? escapeRawText(decoded, rawtextTag) : escapeContent(decoded),
+      );
     } else if (child.type === "JSXExpressionContainer") {
       if (child.expression.type !== "JSXEmptyExpression") {
         const inner = child.expression;
         const exprText = processExpressionForJsx(inner, ctx);
 
-        addDynamic(parts, exprs, exprText);
+        ctx.used.add("jsxEscape");
+        addDynamic(parts, exprs, `jsxEscape(${exprText})`);
       }
     } else if (child.type === "JSXElement") {
       if (isEligibleElement(child)) {
         const tag = (child.openingElement.name as JSXIdentifier).name;
         emitOpening(tag, child.openingElement.attributes, parts, exprs, ctx);
         if (!isVoidElement(tag)) {
-          emitChildren(child.children, parts, exprs, ctx);
+          emitChildren(child.children, parts, exprs, ctx, rawtextTagOf(tag));
           appendStatic(parts, `</${tag}>`);
         }
       } else {
@@ -380,16 +445,18 @@ function emitChildren(
           child as unknown as Expression,
           ctx,
         );
-        addDynamic(parts, exprs, replaced);
+        ctx.used.add("jsxEscape");
+        addDynamic(parts, exprs, `jsxEscape(${replaced})`);
       }
     } else if (child.type === "JSXFragment") {
-      emitChildren(child.children, parts, exprs, ctx);
+      emitChildren(child.children, parts, exprs, ctx, rawtextTag);
     } else if (child.type === "JSXSpreadChild") {
       const exprText = ctx.source.slice(
         child.expression.start,
         child.expression.end,
       );
-      addDynamic(parts, exprs, exprText);
+      ctx.used.add("jsxEscape");
+      addDynamic(parts, exprs, `jsxEscape(${exprText})`);
     }
   }
 }
@@ -415,29 +482,40 @@ function replaceNestedJsx(node: Expression, text: string, ctx: Ctx): string {
   return result;
 }
 
-function findNestedJsx(node: AnyNode, out: Replacement[], ctx: Ctx): void {
+function findNestedJsx(
+  node: AnyNode,
+  out: Replacement[],
+  ctx: Ctx,
+  inJsxChildren = false,
+): void {
   if (node.type === "JSXElement") {
     const el = node as unknown as JSXElement;
     if (isEligibleElement(el)) {
       out.push({
         start: el.start,
         end: el.end,
-        text: transformElement(el, ctx),
+        text: wrapForJsxChild(transformElement(el, ctx), inJsxChildren),
       });
       return;
     }
-  } else if (node.type === "JSXFragment") {
+    walkChildren(node, (child, key) => {
+      findNestedJsx(child, out, ctx, key === "children");
+      return false;
+    });
+    return;
+  }
+  if (node.type === "JSXFragment") {
     const frag = node as unknown as JSXFragment;
     out.push({
       start: frag.start,
       end: frag.end,
-      text: transformFragment(frag, ctx),
+      text: wrapForJsxChild(transformFragment(frag, ctx), inJsxChildren),
     });
     return;
   }
 
   walkChildren(node, (child) => {
-    findNestedJsx(child, out, ctx);
+    findNestedJsx(child, out, ctx, false);
     return false;
   });
 }

@@ -24,7 +24,7 @@ import {
   setContext,
   useContext,
   type ContextKey,
-  type VincleNode,
+  type VNode,
 } from "@vincle/core";
 import { readFile, access } from "node:fs/promises";
 
@@ -152,13 +152,13 @@ export function Asset({ entry }: { entry: string }): any {
     : resolveProd(scope, entry);
 }
 
-function resolveDev(scope: ViteScope, entry: string): VincleNode {
+function resolveDev(scope: ViteScope, entry: string): VNode {
   const url = resolveUrl(scope, entry);
   if (entry.endsWith(".css")) return <link rel="stylesheet" href={url} />;
   return <script type="module" src={url}></script>;
 }
 
-function resolveProd(scope: ViteScope, entry: string): VincleNode {
+function resolveProd(scope: ViteScope, entry: string): VNode {
   const manifest = scope.manifest!;
   const chunk = manifest[entry];
   if (!chunk) {
@@ -167,7 +167,7 @@ function resolveProd(scope: ViteScope, entry: string): VincleNode {
     );
   }
 
-  const out: VincleNode[] = [];
+  const out: VNode[] = [];
   const seen = new Set<string>();
 
   // Co-bundled CSS — render-blocking, must appear before scripts.
@@ -193,7 +193,7 @@ function visitImports(
   chunk: ViteManifestChunk,
   base: string,
   seen: Set<string>,
-  out: VincleNode[],
+  out: VNode[],
 ): void {
   for (const importKey of chunk.imports ?? []) {
     if (seen.has(importKey)) continue;
