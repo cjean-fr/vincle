@@ -1,7 +1,6 @@
 import {
   collapseJsxWhitespace,
   escapeAttr,
-  escapeJsxText,
   isEventHandlerName,
   isLower,
   isLowercaseTag,
@@ -42,30 +41,6 @@ describe("precompile-core", () => {
     it("delegates to isLower", () => {
       expect(isLowercaseTag("div")).toBe(true);
       expect(isLowercaseTag("MyComponent")).toBe(false);
-    });
-  });
-
-  describe("escapeJsxText", () => {
-    it("escapes bare &, <, and >", () => {
-      expect(escapeJsxText("fish & chips")).toBe("fish &amp; chips");
-      expect(escapeJsxText("a < b > c")).toBe("a &lt; b &gt; c");
-    });
-
-    it("leaves well-formed entities intact (no double-escaping)", () => {
-      expect(escapeJsxText("a &amp; b")).toBe("a &amp; b");
-      expect(escapeJsxText("&copy; &eacute;")).toBe("&copy; &eacute;");
-      expect(escapeJsxText("&#65; &#x42;")).toBe("&#65; &#x42;");
-    });
-
-    it("escapes an ampersand that does not open an entity", () => {
-      expect(escapeJsxText("Tom & Jerry & co")).toBe(
-        "Tom &amp; Jerry &amp; co",
-      );
-      expect(escapeJsxText("a &notanentity b")).toBe("a &amp;notanentity b");
-    });
-
-    it("returns clean text unchanged", () => {
-      expect(escapeJsxText("hello world")).toBe("hello world");
     });
   });
 

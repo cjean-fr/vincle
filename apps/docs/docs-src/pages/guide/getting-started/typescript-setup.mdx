@@ -31,7 +31,7 @@ source in `deno.json` so you don't need explicit imports in every file:
 <CodeExample src="guide/getting-started/deno.json" meta="title=deno.json" />
 
 Deno also supports `jsx: "precompile"` — Deno's own compile-time JSX transform.
-When enabled, Vincle exports the `jsxTemplate`, `jsxAttr`, and `jsxEscape`
+When enabled, Vincle exports the `jsxTemplate` and `jsxAttr`
 helpers it needs. Note that `dangerouslySetInnerHTML` is **dropped in precompile
 mode** — use `{raw(html)}` as a child instead.
 

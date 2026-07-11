@@ -105,11 +105,11 @@ export async function renderToStatic<T>(
               const html = await renderToString(node());
               const { assets } = useContext(Flow);
               const transformed = adapter?.transformShell
-                ? await adapter.transformShell(html, ctx)
+                ? adapter.transformShell(html, ctx)
                 : html;
               return resolveAssets(transformed, assets);
             },
-            { seed: snapshot() },
+            snapshot(),
           ),
         emitFragments: async (cb) => {
           if (!adapter) {

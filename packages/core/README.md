@@ -111,9 +111,10 @@ Concurrent renders work out of the box: `await Promise.all([renderToString(a), r
 <button onClick={() => {}}>x</button>
 // => <button>x</button> (onClick dropped)
 
-// Invalid tags: dropped with warning
-<div>{/* <my-component> without registration */}</div>
-// => <div></div> + warning
+// Invalid tag names throw a TypeError (a name that could break out of the
+// markup — only reachable via a manual jsx() call, never from authored JSX)
+jsx("bad tag", {});
+// => throws TypeError
 ```
 
 **Your responsibility:**
@@ -275,8 +276,8 @@ All outputs are sanitized **automatically** — no configuration needed.
 
 #### Tags
 
-- Must match `/^[a-zA-Z][a-zA-Z0-9-]*$/`.
-- Invalid tags: dropped with warning, element omitted from output.
+- Rejected only if the name could break out of `<...>`: empty, a leading `!`/`?`, or containing whitespace, a control character, or any of `" ' < > / = \` \`. Namespaced (`svg:rect`), underscore, and custom-element names are allowed.
+- Invalid tag names throw a `TypeError` (fail fast). Only reachable via a manual `jsx(dynamicString, ...)` call — the JSX transform never emits an unsafe tag.
 
 #### Style
 
@@ -360,7 +361,7 @@ _Ryzen 7 PRO 8840HS, median of 3 runs._
 }
 ```
 
-`jsxTemplate`, `jsxAttr`, and `jsxEscape` runtime functions are exported for Deno’s precompile mode.
+`jsxTemplate` and `jsxAttr` runtime functions are exported for Deno’s precompile mode.
 `dangerouslySetInnerHTML` is **dropped in precompile mode** — use `{raw(html)}` as child instead.
 
 ---

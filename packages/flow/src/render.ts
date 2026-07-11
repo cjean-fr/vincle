@@ -25,7 +25,7 @@ const REGEX_SHELL_CLOSE = /((?:<\/body>)?\s*<\/html>\s*)$/;
 export async function renderShell(
   node: () => VincleNode,
   adapter: {
-    transformShell?: (html: string, ctx: FlowContext) => string | Promise<string>;
+    transformShell?: (html: string, ctx: FlowContext) => string;
   },
   ctx: FlowContext,
 ): Promise<{ shellBody: string; closingTag: string }> {
@@ -34,7 +34,7 @@ export async function renderShell(
   const closingTag = match?.[1] ?? "";
   const body = closingTag ? shell.slice(0, -closingTag.length) : shell;
   const shellBody = await resolveAssets(
-    adapter.transformShell ? await adapter.transformShell(body, ctx) : body,
+    adapter.transformShell ? adapter.transformShell(body, ctx) : body,
     ctx.assets,
   );
   return { shellBody, closingTag };

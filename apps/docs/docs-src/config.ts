@@ -10,6 +10,8 @@ import type {
 import { readdirSync, existsSync, statSync } from "node:fs";
 import path from "node:path";
 
+const ROOT = path.resolve(import.meta.dirname!, "..");
+
 const DEFAULTS = {
   pages: "./docs-src/pages",
   examples: "./docs-src/examples",
@@ -36,12 +38,12 @@ export function defineConfig(config: DocsConfig): ResolvedDocsConfig {
     title: config.title,
     tagline: config.tagline ?? null,
     description: config.description ?? config.title,
-    pages: config.pages ?? DEFAULTS.pages,
-    examples: config.examples ?? DEFAULTS.examples,
-    clientEntry: config.clientEntry ?? DEFAULTS.clientEntry,
-    out: config.out ?? DEFAULTS.out,
+    pages: path.resolve(ROOT, config.pages ?? DEFAULTS.pages),
+    examples: path.resolve(ROOT, config.examples ?? DEFAULTS.examples),
+    clientEntry: path.resolve(ROOT, config.clientEntry ?? DEFAULTS.clientEntry),
+    out: path.resolve(ROOT, config.out ?? DEFAULTS.out),
     base: normalizeBase(config.base ?? DEFAULTS.base),
-    viteManifest: config.viteManifest ?? DEFAULTS.viteManifest,
+    viteManifest: path.resolve(ROOT, config.viteManifest ?? DEFAULTS.viteManifest),
     sidebar: config.sidebar ?? "auto",
     tabs: resolveTabs(config),
     locale: config.locale ?? null,
@@ -78,7 +80,7 @@ function resolveTabs(config: DocsConfig): readonly TabConfig[] {
     return config.tabs;
   }
 
-  const pagesDir = path.resolve(config.pages ?? DEFAULTS.pages);
+  const pagesDir = path.resolve(ROOT, config.pages ?? DEFAULTS.pages);
   const tabs = autoDetectTabs(pagesDir);
   if (tabs.length === 0) {
     throw new Error(

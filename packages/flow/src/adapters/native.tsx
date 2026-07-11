@@ -1,8 +1,8 @@
 import { injectIntoHead } from "../utils.js";
 import { createAdapter, type Adapter } from "./shared.js";
-import { raw, renderToString, type VincleNode } from "@vincle/core";
+import { raw, type VincleNode } from "@vincle/core";
 import { escapeAttr } from "@vincle/core/html";
-import { NATIVE_POLYFILL } from "./native-polyfill.js";
+import { POLYFILL_SCRIPT } from "./native-polyfill.js";
 
 export { NATIVE_POLYFILL, nativePolyfillHash } from "./native-polyfill.js";
 
@@ -43,16 +43,12 @@ export const WebPlatformAdapter = createAdapter({
 export function withPolyfill<T extends Adapter>(adapter: T): T {
   return {
     ...adapter,
-    transformShell: async (shell, ctx) => {
+    transformShell: (shell, ctx) => {
       const transformed = adapter.transformShell
-        ? await adapter.transformShell(shell, ctx)
+        ? adapter.transformShell(shell, ctx)
         : shell;
       if (ctx.pendingStore.size === 0) return transformed;
-      const script = <script>{NATIVE_POLYFILL}</script>;
-      return injectIntoHead(
-        transformed,
-        await renderToString(script),
-      );
+      return injectIntoHead(transformed, POLYFILL_SCRIPT);
     },
   } as T;
 }

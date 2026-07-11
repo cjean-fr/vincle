@@ -1,7 +1,6 @@
 import {
   collapseJsxWhitespace,
   escapeAttr,
-  escapeJsxText,
   hasSpreadOrInnerHTML,
   isEventHandlerName,
   isLowercaseTag,
@@ -42,11 +41,15 @@ export interface PluginConfig {
  * Vite plugin (loaded from `runtimeSource`) when `secure` is on, so the
  * transformer itself stays dependency-free and synchronous. For a static
  * string/boolean value `jsxAttr` always returns synchronously.
+ *
+ * The runtime wraps the result in a `RawString` to signal it's already-escaped
+ * HTML; the transformer handles both the raw string (legacy) and `RawString`
+ * (current) forms by inspecting the `.value` property.
  */
 export type RenderAttr = (
   name: string,
   value: unknown,
-) => string | Promise<string>;
+) => string | { value: string } | Promise<string | { value: string }>;
 
 export interface TransformResult {
   code: string;
@@ -320,8 +323,9 @@ function emitStaticAttr(
 ): void {
   if (ctx.renderAttr) {
     const rendered = ctx.renderAttr(rawName, value);
-    if (typeof rendered === "string") {
-      if (rendered) appendStatic(parts, ` ${rendered}`);
+    const text = typeof rendered === "string" ? rendered : (rendered as any)?.value;
+    if (typeof text === "string") {
+      if (text) appendStatic(parts, ` ${text}`);
       return;
     }
     throw new Error(
@@ -347,18 +351,21 @@ function emitChildren(
 ): void {
   for (const child of children) {
     if (child.type === "JSXText") {
-      appendStatic(parts, escapeJsxText(collapseJsxWhitespace(child.value)));
+      /*
+       * oxc/jSX parser guarantees the text is HTML-safe — any <letter
+       * starts a JSXElement, < followed by space or > alone is a parse
+       * error, and </tag closes the parent element, so < > & and
+       * rawtext-close sequences (</script>, etc.) can never appear in
+       * JSXText. Only template-literal escaping (backticks, ${, \)
+       * in appendStatic/escapeForTemplate is needed.
+       */
+      appendStatic(parts, collapseJsxWhitespace(child.value));
     } else if (child.type === "JSXExpressionContainer") {
       if (child.expression.type !== "JSXEmptyExpression") {
         const inner = child.expression;
         const exprText = processExpressionForJsx(inner, ctx);
 
-        if (hasJsxNode(inner as unknown as AnyNode)) {
-          addDynamic(parts, exprs, exprText);
-        } else {
-          ctx.used.add("jsxEscape");
-          addDynamic(parts, exprs, `jsxEscape(${exprText})`);
-        }
+        addDynamic(parts, exprs, exprText);
       }
     } else if (child.type === "JSXElement") {
       if (isEligibleElement(child)) {
@@ -378,12 +385,11 @@ function emitChildren(
     } else if (child.type === "JSXFragment") {
       emitChildren(child.children, parts, exprs, ctx);
     } else if (child.type === "JSXSpreadChild") {
-      ctx.used.add("jsxEscape");
       const exprText = ctx.source.slice(
         child.expression.start,
         child.expression.end,
       );
-      addDynamic(parts, exprs, `jsxEscape(${exprText})`);
+      addDynamic(parts, exprs, exprText);
     }
   }
 }
@@ -434,18 +440,6 @@ function findNestedJsx(node: AnyNode, out: Replacement[], ctx: Ctx): void {
     findNestedJsx(child, out, ctx);
     return false;
   });
-}
-
-function hasJsxNode(node: AnyNode): boolean {
-  if (
-    node.type === "JSXElement" ||
-    node.type === "JSXFragment" ||
-    node.type === "JSXSpreadChild"
-  ) {
-    return true;
-  }
-
-  return walkChildren(node, (child) => hasJsxNode(child));
 }
 
 // Escape the characters that have special meaning inside the template-literal

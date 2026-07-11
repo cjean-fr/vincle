@@ -27,16 +27,12 @@
   },
   "files": [
     "dist",
-    "jsx-global.d.ts",
     "README.md",
-    "LICENSE",
-    "skills"
+    "LICENSE"
   ],
   "type": "module",
   "sideEffects": false,
-  "browser": {
-    "node:async_hooks": false
-  },
+
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -51,12 +47,9 @@
       "types": "./dist/jsx-dev-runtime.d.ts",
       "default": "./dist/jsx-dev-runtime.js"
     },
-    "./jsx-global": {
-      "types": "./jsx-global.d.ts"
-    },
     "./html": {
-      "types": "./dist/utils/html.d.ts",
-      "default": "./dist/utils/html.js"
+      "types": "./dist/escape.d.ts",
+      "default": "./dist/escape.js"
     }
   },
   "publishConfig": {

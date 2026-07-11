@@ -141,7 +141,7 @@ This is the same transformer used internally by the Vite plugin.
 - Only transforms `.tsx`/`.jsx` files (skips `node_modules`)
 - Skips files that don't contain `<` (no JSX)
 - The underlying TS transformer handles element-level decisions (lowercase only, skip spread/innerHTML)
-- Emits `jsxTemplate\`<div>\${jsxEscape(expr)}\</div>\`` with auto-imported runtime helpers
+- Emits `jsxTemplate\`<div>\${expr}\</div>\`` with auto-imported runtime helpers (strings are auto-escaped by `jsxTemplate`)
 
 ## Test
 

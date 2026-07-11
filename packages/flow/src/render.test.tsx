@@ -4,6 +4,7 @@ import { NativeAdapter, TurboAdapter } from "./adapters/index.js";
 import { renderToFlowEvents, renderShell, orchestrateFlow } from "./render.js";
 import { collectEvents, collect, type FragmentEvent } from "./test-utils.js";
 import type { FlowEvent } from "./types.js";
+import type { VNode } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
 // renderShell only reads ctx through adapter.transformShell; these unit tests
@@ -92,7 +93,7 @@ describe("renderToFlowEvents", () => {
 
   it("cancels a stream mid-flight between fragments", async () => {
     const ac = new AbortController();
-    async function* items() {
+    async function* items(): AsyncGenerator<VNode, void, undefined> {
       yield <li>a</li>;
       await Bun.sleep(50);
       yield <li>b</li>;

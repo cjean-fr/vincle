@@ -18,6 +18,9 @@ scan(document);
 new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(function(n){if(n.nodeName==='TEMPLATE'&&n.getAttribute&&n.getAttribute('for'))run(n);});});}).observe(document.documentElement,{childList:true,subtree:true});
 })()`;
 
+/** Pre-rendered `<script>` tag — deterministic because `NATIVE_POLYFILL` is constant. */
+export const POLYFILL_SCRIPT = `<script>${NATIVE_POLYFILL}</script>`;
+
 export async function nativePolyfillHash(): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",

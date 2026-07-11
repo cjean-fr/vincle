@@ -39,20 +39,11 @@ export function injectIntoHead(html: string, content: string): string {
  */
 export function composeShell(
   ...transforms: Array<
-    | ((shell: string, ctx: FlowContext) => string | Promise<string>)
-    | undefined
-    | null
-    | false
+    ((shell: string, ctx: FlowContext) => string) | undefined | null | false
   >
-): (shell: string, ctx: FlowContext) => string | Promise<string> {
+): (shell: string, ctx: FlowContext) => string {
   const fns = transforms.filter(Boolean) as Array<
-    (shell: string, ctx: FlowContext) => string | Promise<string>
+    (shell: string, ctx: FlowContext) => string
   >;
-  return async (shell, ctx) => {
-    let html = shell;
-    for (const t of fns) {
-      html = await t(html, ctx);
-    }
-    return html;
-  };
+  return (shell, ctx) => fns.reduce((html, t) => t(html, ctx), shell);
 }

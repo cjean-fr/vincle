@@ -2,6 +2,7 @@ import { useDocs } from "../context.js";
 import { CodeBlock } from "./CodeBlock.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { type VNode } from "@vincle/core";
 
 export interface CodeExampleProps {
   src: string;
@@ -9,15 +10,17 @@ export interface CodeExampleProps {
   meta?: string;
 }
 
-export async function CodeExample({ src, language, meta }: CodeExampleProps) {
-  const { config } = useDocs();
-  const file = path.resolve(config.examples, src);
-  const code = await readFile(file, "utf-8");
+export function CodeExample({ src, language, meta }: CodeExampleProps): VNode {
   return (
-    <CodeBlock
-      code={code}
-      language={language ?? path.extname(src).slice(1)}
-      meta={meta}
-    />
+    readFile(
+      path.resolve(useDocs().config.examples, src),
+      "utf-8",
+    ).then((code) => (
+      <CodeBlock
+        code={code}
+        language={language ?? path.extname(src).slice(1)}
+        meta={meta}
+      />
+    )) as unknown as VNode
   );
 }

@@ -47,7 +47,8 @@ describe("vite-plugin-precompile", () => {
     expect(result).not.toBeUndefined();
     expect(result!.code).toContain("@vincle/core/jsx-runtime");
     expect(result!.code).toContain("jsxTemplate");
-    expect(result!.code).toContain("jsxEscape(name)");
+    expect(result!.code).toContain("jsxTemplate");
+    expect(result!.code).toContain("name");
   });
 
   it("uses explicit runtimeSource when provided", () => {

@@ -22,10 +22,10 @@ describe("precompileTransform", () => {
     expect(out).toContain('jsxTemplate`<div class="x">hello</div>`');
   });
 
-  it("escapes dynamic children with jsxEscape", () => {
+  it("escapes dynamic children via resolveSlot", () => {
     const out = transform(`const a = <div>{name}</div>;`);
-    expect(out).toContain(`import { jsxTemplate, jsxEscape } from "${RT}";`);
-    expect(out).toContain("${jsxEscape(name)}");
+    expect(out).toContain(`import { jsxTemplate } from "${RT}";`);
+    expect(out).toContain("${name}");
   });
 
   it("serializes dynamic attributes with jsxAttr", () => {
@@ -50,7 +50,7 @@ describe("precompileTransform", () => {
       `const a = <ul>{items.map((i) => <li>{i}</li>)}</ul>;`,
     );
     expect(out).toContain(
-      "items.map((i) => jsxTemplate`<li>${jsxEscape(i)}</li>`)",
+      "items.map((i) => jsxTemplate`<li>${i}</li>`)",
     );
   });
 
@@ -225,7 +225,6 @@ describe("precompileTransform", () => {
     const importLine = out.split("\n")[0]!;
     expect(importLine).toContain("jsxTemplate");
     expect(importLine).toContain("jsxAttr");
-    expect(importLine).toContain("jsxEscape");
     // exactly one import from the runtime
     expect(out.match(new RegExp(RT, "g"))?.length).toBe(1);
   });
@@ -251,7 +250,7 @@ describe("precompileTransform", () => {
       runtimeSource: RT,
     })!;
     expect(result.code).toContain(
-      `import { jsxTemplate as tpl, jsxTemplate, jsxEscape } from "${RT}";`,
+      `import { jsxTemplate as tpl, jsxTemplate } from "${RT}";`,
     );
     expect(result.code.match(new RegExp(RT, "g"))?.length).toBe(1);
   });
@@ -332,10 +331,10 @@ describe("precompileTransform", () => {
       expect(out).not.toContain("[object Object]");
     });
 
-    it("HTML-escapes bare ampersands in static text but keeps entities", () => {
+    it("passes bare ampersands through as-is (oxc parser guarantees no HTML-ambiguous sequences)", () => {
       const out = transform("const a = <div>fish & chips &amp; &copy;</div>;");
       expect(out).toContain(
-        "jsxTemplate`<div>fish &amp; chips &amp; &copy;</div>`",
+        "jsxTemplate`<div>fish & chips &amp; &copy;</div>`",
       );
     });
   });

@@ -20,8 +20,6 @@ export function createAssetState(): AssetState {
   return { entries: new Map(), emitted: new Set() };
 }
 
-const REGEX_MARKER = /<!-- vincle:(style|script):(.+?) -->/g;
-
 export function createMarker(type: AssetType, name: string): string {
   return `<!-- vincle:${type}:${name} -->`;
 }
@@ -94,13 +92,13 @@ export async function resolveAssets(
   const resolved: AssetState =
     state && "entries" in state ? state : createAssetState();
 
-  REGEX_MARKER.lastIndex = 0;
+  const re = /<!-- vincle:(style|script):(.+?) -->/g;
 
   let result = "";
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = REGEX_MARKER.exec(html)) !== null) {
+  while ((match = re.exec(html)) !== null) {
     const [fullMatch, type, rawName] = match;
     const name = rawName!.trim();
 

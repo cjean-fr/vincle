@@ -4,6 +4,7 @@ import {
   RAWTEXT_TAGS,
   ATTRIBUTE_NAME_MAP,
   escapeAttr,
+  escapeRawText,
   isValidAttrName,
 } from "@vincle/core/html";
 
@@ -13,6 +14,7 @@ export {
   RAWTEXT_TAGS,
   ATTRIBUTE_NAME_MAP,
   escapeAttr,
+  escapeRawText,
   isValidAttrName,
 };
 
@@ -28,28 +30,6 @@ export function isLower(s: string): boolean {
 
 export function isLowercaseTag(name: string): boolean {
   return isLower(name);
-}
-
-// A bare `&` is one that does not open a well-formed numeric or named entity.
-const REGEX_BARE_AMP = /&(?!#\d+;|#x[0-9a-fA-F]+;|[a-zA-Z][a-zA-Z0-9]*;)/g;
-
-/**
- * HTML-escape a static JSX text child so precompiled output is valid HTML that
- * renders identically to the runtime path (which escapes `& < >` via
- * `escapeContent`). Bare `&`, `<`, and `>` are escaped; already well-formed
- * entities (`&amp;`, `&#65;`, `&eacute;`) are left intact rather than
- * double-escaped.
- *
- * Note: unlike the standard JSX transform (which decodes entities to their
- * characters before the runtime re-escapes), entities are preserved verbatim.
- * The bytes differ for non-predefined entities but the parsed DOM is identical,
- * so this avoids shipping a full HTML entity table.
- */
-export function escapeJsxText(text: string): string {
-  return text
-    .replace(REGEX_BARE_AMP, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 /**

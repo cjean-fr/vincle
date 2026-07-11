@@ -34,18 +34,16 @@ type KitaCreate = typeof kita;
 // Async benchmark — @vincle/core only (React/Preact don't support async components)
 // ---------------------------------------------------------------------------
 
-async function vincleAsyncTree() {
-  const AsyncItem = async ({ i }: { i: number }) => {
-    await Promise.resolve();
-    return jsx("li", { class: "item", children: `Item ${i}` });
-  };
+function vincleAsyncTree() {
+  const AsyncItem = ({ i }: { i: number }) =>
+    Promise.resolve().then(() => jsx("li", { class: "item", children: `Item ${i}` }));
   const items = Array.from({ length: 10 }, (_, i) => jsx(AsyncItem, { i }));
   return jsx("ul", { class: "list", children: items });
 }
 
 group("async — 10 concurrent async components (vincle only)", () => {
   bench("@vincle/core", async () => {
-    await renderToString(await vincleAsyncTree());
+    await renderToString(vincleAsyncTree());
   });
 });
 

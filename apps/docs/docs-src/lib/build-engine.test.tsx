@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const PROJECT_DIR = path.resolve(import.meta.dirname, "../..");
+const DIST_DIR = path.join(PROJECT_DIR, "dist");
 
 beforeAll(async () => {
   if (!existsSync(path.join(PROJECT_DIR, "dist/assets/.vite/manifest.json"))) {
@@ -20,25 +21,25 @@ beforeAll(async () => {
 
 describe("SSG build", () => {
   it("produces index.html", async () => {
-    const html = await readFile("dist/index.html", "utf-8");
+    const html = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("</html>");
   });
 
   it("produces robots.txt", async () => {
-    const robots = await readFile("dist/robots.txt", "utf-8");
+    const robots = await readFile(path.join(DIST_DIR, "robots.txt"), "utf-8");
     expect(robots).toContain("User-agent: *");
     expect(robots).toContain("Allow: /");
   });
 
   it("produces 404.html", async () => {
-    const html = await readFile("dist/404.html", "utf-8");
+    const html = await readFile(path.join(DIST_DIR, "404.html"), "utf-8");
     expect(html).toContain("Page Not Found");
     expect(html).toContain("404");
   });
 
   it("produces search-index.json (array of entries with body text)", async () => {
-    const index = await readFile("dist/search-index.json", "utf-8");
+    const index = await readFile(path.join(DIST_DIR, "search-index.json"), "utf-8");
     const data = JSON.parse(index);
     expect(Array.isArray(data)).toBe(true);
     expect(data.length).toBeGreaterThan(0);
@@ -60,12 +61,12 @@ describe("SSG build", () => {
       "integration/overview.html",
     ];
     for (const page of pages) {
-      expect(existsSync(`dist/${page}`)).toBe(true);
+      expect(existsSync(path.join(DIST_DIR, page))).toBe(true);
     }
   });
 
   it("injects Vite assets in pages", async () => {
-    const html = await readFile("dist/index.html", "utf-8");
+    const html = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
     expect(html).toMatch(
       /<script.*?type="module".*?src="\/assets\/client-.*?\.js".*?>/,
     );
@@ -75,38 +76,38 @@ describe("SSG build", () => {
   });
 
   it("includes canonical link when config.site is set", async () => {
-    const html = await readFile("dist/index.html", "utf-8");
+    const html = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
     expect(html).toContain('rel="canonical"');
     expect(html).toContain("https://vincle.netlify.app/");
   });
 
   it("produces llms.txt", async () => {
-    const data = await readFile("dist/llms.txt", "utf-8");
+    const data = await readFile(path.join(DIST_DIR, "llms.txt"), "utf-8");
     expect(data).toContain("Vincle");
     expect(data).toContain("Installation");
   });
 
   it("produces security.txt", async () => {
-    const data = await readFile("dist/.well-known/security.txt", "utf-8");
+    const data = await readFile(path.join(DIST_DIR, ".well-known/security.txt"), "utf-8");
     expect(data).toContain("security");
     expect(data).toContain("Contact");
   });
 
   it("produces manifest.json", async () => {
-    const data = await readFile("dist/manifest.json", "utf-8");
+    const data = await readFile(path.join(DIST_DIR, "manifest.json"), "utf-8");
     const manifest = JSON.parse(data);
     expect(manifest.name).toBe("Vincle");
     expect(manifest.start_url).toBe("/");
   });
 
   it("produces 500.html", async () => {
-    const html = await readFile("dist/500.html", "utf-8");
+    const html = await readFile(path.join(DIST_DIR, "500.html"), "utf-8");
     expect(html).toContain("Server Error");
     expect(html).toContain("500");
   });
 
   it("includes meta tags from specification.website", async () => {
-    const html = await readFile("dist/index.html", "utf-8");
+    const html = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
     expect(html).toContain('name="color-scheme"');
     expect(html).toContain('name="theme-color"');
     expect(html).toContain('name="referrer"');

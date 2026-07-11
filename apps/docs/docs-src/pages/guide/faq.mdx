@@ -242,11 +242,11 @@ for.
 
 ## How do I debug rendering issues?
 
-Vincle logs warnings for:
+Vincle warns or throws for:
 
-- **Invalid tag names** — element omitted from output
-- **Dropped event handlers** — function values on `on*` props
-- **Missing context values** — `useContext` called before `setContext`
+- **Invalid tag names** — throws a `TypeError` (fail fast; only reachable via a manual `jsx()` call)
+- **Dropped event handlers** — warns on function values on `on*` props
+- **Missing context values** — throws when `useContext` is called before `setContext`
 - **Invalid URL schemes** — blocked and replaced with `#blocked`
 
 TypeScript catches type errors at build time. For runtime issues in
