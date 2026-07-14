@@ -77,19 +77,52 @@ precompile({
 
 ## Build-time sanitization (secure mode)
 
-**Enabled by default.** Static attributes are sanitized at build time using the
-runtime's own `jsxAttr`. This mirrors the same URL-scheme blocking, CSS
-safety, and name remapping that the runtime applies to dynamic values —
-but resolved before the browser runs any code.
+**Enabled by default.** Static attribute values are hardened at build time
+using the runtime's own attribute serializer (`jsxAttr`). This catches XSS
+vectors that are invisible to type-checking — a literal `href="javascript:…"`
+in your source passes any linter but is a real vulnerability:
 
 ```ts
-// Default — secure mode is ON
-precompile();
+// Static string — looks harmless, linter passes
+<a href="javascript:alert(1)">click</a>
+
+// Without secure mode → inlined verbatim in the bundle
+//   <a href="javascript:alert(1)">click</a>
+
+// Secure mode → blocked at build time
+//   <a href="#blocked">click</a>
 ```
 
-The plugin loads `jsxAttr` from the runtime module at build time and runs
-every static attribute value through it. A static `href="javascript:…"`
-becomes `href="#blocked"` before it is ever written to the bundle.
+The same URL-scheme blocking, unsafe-CSS dropping, and name remapping that
+the runtime applies to *dynamic* values also applies to static ones —
+but resolved before the browser runs a single byte.
+
+### How it works
+
+The plugin loads `jsxAttr` from your runtime module at build time and runs
+every static attribute value through it. The serialized result is inlined
+directly into the generated template literal, so **there is zero runtime
+cost** — no wrapper objects, no deferred calls, no extra branching.
+
+```ts
+// vite.config.ts — secure mode is ON by default
+import precompile from "@vincle/vite-plugin-precompile";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [precompile()],
+});
+```
+
+### What is caught?
+
+| Attack surface              | Example                                          | Secure mode output       |
+| --------------------------- | ------------------------------------------------ | ------------------------ |
+| `javascript:` URLs          | `<a href="javascript:alert(1)">x</a>`            | `<a href="#blocked">x`   |
+| `vbscript:` URLs            | `<a href="vbscript:msgbox">x</a>`                | `<a href="#blocked">x`   |
+| Unsafe `data:` URLs         | `<iframe src="data:text/html,<script>…">`        | `<iframe src="#blocked">` |
+| `on*` event handlers        | `<button onclick="alert(1)">x</button>`           | `<button>x</button>`     |
+| React names in output       | `<div className="box">x</div>`                   | `<div class="box">x`     |
 
 ### Opting out: Deno-precompile-compatible mode
 
@@ -103,8 +136,9 @@ precompile({
 });
 ```
 
-Use this when migrating an existing Deno precompile setup, or when the
-build-time dependency on the runtime module is undesirable.
+Use this when migrating an existing Deno precompile setup, when you have
+your own build-time sanitizer, or when the build-time dependency on the
+runtime module is undesirable.
 
 Build-time sanitization works with any runtime module that exports
-`jsxAttr` — not just Vincle's.
+`jsxAttr` — Vincle, Preact, and Hono all support it.

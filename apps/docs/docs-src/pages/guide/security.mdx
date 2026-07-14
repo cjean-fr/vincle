@@ -139,17 +139,21 @@ hardcoded markup. Never pass user input directly to `raw()`.
 
 ## Defense in Depth
 
-Six independent layers protect your output. No single bypass — except
+Seven independent layers protect your output. No single bypass — except
 `raw()` — can defeat all of them.
 
-|   # | Layer                 | Mechanism                                          | Stops                                                   |
-| --: | --------------------- | -------------------------------------------------- | ------------------------------------------------------- |
-|   1 | Type System           | `RawString` branded type — explicit trust boundary | Accidental trust of untrusted strings                   |
-|   2 | HTML Escaping         | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>`, `"` injection in text and attributes     |
-|   3 | URL Filtering         | `isSafeScheme` — allowlist of safe schemes         | `javascript:`, `vbscript:`, unsafe `data:` URIs         |
-|   4 | Event Handler Filter  | `on*` functions dropped, string values preserved   | XSS via <code>onclick</code>, <code>onload</code>, etc. |
-|   5 | Tag & Attr Validation | `isValidTagName` / `isValidAttrName`               | Injection through malformed tag or attribute names      |
-|   6 | Rawtext Escaping      | `escapeRawText` — backslash `<\/tag>` not entities | `</script>`/`</style>` breakout — unlike Preact/React   |
+|   # | Layer                      | Mechanism                                          | Stops                                                   |
+| --: | -------------------------- | -------------------------------------------------- | ------------------------------------------------------- |
+|   1 | Type System                | `RawString` branded type — explicit trust boundary | Accidental trust of untrusted strings                   |
+|   2 | HTML Escaping              | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>`, `"` injection in text and attributes     |
+|   3 | URL Filtering              | `isSafeScheme` — allowlist of safe schemes         | `javascript:`, `vbscript:`, unsafe `data:` URIs         |
+|   4 | Event Handler Filter       | `on*` functions dropped, string values preserved   | XSS via <code>onclick</code>, <code>onload</code>, etc. |
+|   5 | Build-time Sanitization    | `@vincle/vite-plugin-precompile` defaults to       | Literal `javascript:`, unsafe CSS, `on*` — at build time|
+|    |                            | `secure: true` — static attributes run through     | before the browser parses any HTML                      |
+|    |                            | the same `jsxAttr` as dynamic values, at build     |                                                         |
+|    |                            | time, not at runtime                               |                                                         |
+|   6 | Tag & Attr Validation      | `isValidTagName` / `isValidAttrName`               | Injection through malformed tag or attribute names      |
+|   7 | Rawtext Escaping           | `escapeRawText` — backslash `<\/tag>` not entities | `</script>`/`</style>` breakout — unlike Preact/React   |
 
 Each layer is independently verifyable — see [Invariants](#invariants).
 

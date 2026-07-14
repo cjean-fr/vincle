@@ -49,6 +49,26 @@ export default defineConfig({
 Vite reads either `tsconfig.json` or its own `esbuild` option — they are
 equivalent.
 
+### Precompile plugin (recommended for production)
+
+For faster rendering and smaller bundles, add the precompile plugin. It
+rewrites JSX into tagged template literals — less allocations, less GC
+pressure, faster rendering:
+
+```ts
+import precompile from "@vincle/vite-plugin-precompile";
+
+export default defineConfig({
+  esbuild: { jsx: "automatic", jsxImportSource: "@vincle/core" },
+  plugins: [precompile()],
+});
+```
+
+**Static attribute sanitization is enabled by default** — literal
+`href="javascript:…"` and unsafe CSS are blocked at build time, before
+they ever reach the bundle. See [Precompile transform → Build-time
+sanitization](/integration/precompile#build-time-sanitization-secure-mode).
+
 ## Optional: attribute autocomplete
 
 Installing `@types/react` (without React itself) gives you per-element attribute
