@@ -59,6 +59,20 @@ export type RenderAttr = (
   value: unknown,
 ) => string | { value: string } | Promise<string | { value: string }>;
 
+/**
+ * Build-time content escaper — the runtime's `jsxEscape`. Injected by the Vite
+ * plugin (loaded from `runtimeSource`) when `secure` is on, so the transformer
+ * itself stays dependency-free and synchronous. For a static string value
+ * `jsxEscape` always returns synchronously.
+ *
+ * The runtime wraps the result in a `RawString` to signal it's already-escaped
+ * HTML; the transformer handles both the raw string (legacy) and `RawString`
+ * (current) forms by inspecting the `.value` property.
+ */
+export type RenderEscape = (
+  value: unknown,
+) => string | { value: string } | Promise<string | { value: string }>;
+
 export interface TransformResult {
   code: string;
   map?: ReturnType<MagicString["generateMap"]>;
@@ -76,6 +90,12 @@ interface Ctx {
   used: Set<string>;
   /** Present in secure mode (default); sanitizes static attributes at build time. */
   renderAttr: RenderAttr | null;
+  /**
+   * Present in secure mode (default); escapes static text content using the
+   * target runtime's own escaping rules (byte-identity). When null (Deno mode
+   * or runtime lacks jsxEscape), falls back to Vincle's escapeContent.
+   */
+  renderEscape: RenderEscape | null;
 }
 
 /** Minimal structural view of an oxc AST node for generic traversal. */
@@ -131,6 +151,7 @@ export default function precompileTransform(
   id: string,
   config?: PluginConfig,
   renderAttr?: RenderAttr,
+  renderEscape?: RenderEscape,
 ): TransformResult | null {
   const rtSource = config?.runtimeSource ?? RUNTIME_SOURCE;
   const lang = id.endsWith(".tsx") ? "tsx" : "jsx";
@@ -152,6 +173,7 @@ export default function precompileTransform(
     source: code,
     used: new Set<string>(),
     renderAttr: config?.secure !== false ? (renderAttr ?? null) : null,
+    renderEscape: config?.secure !== false ? (renderEscape ?? null) : null,
   };
   const replacements: Replacement[] = [];
 
@@ -390,17 +412,48 @@ function emitChildren(
   for (const child of children) {
     if (child.type === "JSXText") {
       // The JS compilers decode HTML entities in every JSXText, then the
-      // dynamic path escapes the result for its context; we do the same at
-      // build time so precompiled output is byte-identical to the runtime
-      // (invariant I-04). Decode, then `escapeContent` (normal text) or
-      // `escapeRawText` (inside <script>/<style>, which only guards the
-      // element's own closing tag) — exactly what `renderChild` does. NB:
-      // this diverges from Deno, which leaves rawtext entities literal and so
-      // emits broken CSS/JS (e.g. a literal `&gt;` in a stylesheet).
-      // `appendStatic`/`escapeForTemplate` then handles the template-literal
-      // metacharacters (backtick, `${`, `\`).
-      const decoded = decodeJsxEntities(collapseJsxWhitespace(child.value));
-      appendStatic(parts, rawtextTag ? escapeRawText(decoded, rawtextTag) : escapeContent(decoded));
+      // dynamic path escapes the result for its context. We do the same at
+      // build time so precompiled output is byte-identical to the runtime.
+      //
+      // For non-rawtext text, there are three paths:
+      //   - Secure mode + runtime has jsxEscape (default): use the runtime's
+      //     own escaping for byte-identity with the target framework
+      //   - Secure mode + no jsxEscape (fallback): use Vincle's escapeContent
+      //   - Deno mode (secure: false): use Vincle's escapeContent
+      //
+      // For rawtext content (<script>, <style>):
+      //   - Deno mode (ctx.renderAttr === null): keep entities verbatim —
+      //     Deno's precompile leaves rawtext entities literal. The HTML
+      //     parser never decodes entities in rawtext, so this is safe.
+      //   - Secure mode: decode entities then apply escapeRawText — guards
+      //     the element's own closing tag, a Vincle extra that no other
+      //     runtime provides.
+      //
+      // `appendStatic`/`escapeForTemplate` handles the template-literal
+      // metacharacters (backtick, `${`, `\`) for all paths.
+      const collapsed = collapseJsxWhitespace(child.value);
+      if (rawtextTag && ctx.renderAttr === null) {
+        // Deno-compatible mode: inline rawtext verbatim, keep entities as-is.
+        // The JSX parser preserves source entities in rawtext; Deno does not
+        // decode them, so neither do we.
+        appendStatic(parts, collapsed);
+      } else if (rawtextTag) {
+        // Secure mode rawtext: decode entities (like the compiler does),
+        // then apply escapeRawText — Vincle's extra protection against
+        // </script>/</style> breakout. The runtime's jsxEscape does not
+        // handle rawtext context, so we don't use it here.
+        const decoded = decodeJsxEntities(collapsed);
+        appendStatic(parts, escapeRawText(decoded, rawtextTag));
+      } else {
+        // Non-rawtext text: decode entities, then escape using the runtime's
+        // own jsxEscape when available (secure mode), or Vincle's
+        // escapeContent as fallback (Deno mode / runtime lacks jsxEscape).
+        const decoded = decodeJsxEntities(collapsed);
+        const escaped = ctx.renderEscape
+          ? extractRawString(ctx.renderEscape(decoded))
+          : escapeContent(decoded);
+        appendStatic(parts, escaped);
+      }
     } else if (child.type === "JSXExpressionContainer") {
       if (child.expression.type !== "JSXEmptyExpression") {
         const inner = child.expression;
@@ -491,6 +544,21 @@ function findNestedJsx(node: AnyNode, out: Replacement[], ctx: Ctx, inJsxChildre
 // this, a backtick or `${` coming from static JSX text or attribute values
 // would either break codegen (SyntaxError) or, worse, inject an arbitrary
 // interpolation into the generated template.
+/**
+ * Unwrap a value that may be a plain string, a `RawString`-shaped object
+ * (`{ value: string }`), or a Promise of either. For static string values
+ * the runtime's jsxEscape always returns synchronously; the Promise branch
+ * is a type-safety escape hatch that will never trigger at build time.
+ */
+function extractRawString(
+  result: string | { value: string } | Promise<string | { value: string }>,
+): string {
+  if (result instanceof Promise) {
+    throw new Error("jsxEscape returned a Promise for static text — unexpected");
+  }
+  return typeof result === "string" ? result : result.value;
+}
+
 function escapeForTemplate(str: string): string {
   return str.replace(/[\\`]/g, "\\$&").replace(/\$\{/g, "\\${");
 }

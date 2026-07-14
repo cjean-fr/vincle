@@ -1,5 +1,5 @@
 import { TraceMap, originalPositionFor } from "@jridgewell/trace-mapping";
-import { jsxAttr } from "@vincle/core/jsx-runtime";
+import { jsxAttr, jsxEscape } from "@vincle/core/jsx-runtime";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -170,6 +170,18 @@ describe("precompileTransform", () => {
       return result.code;
     }
 
+    function transformSecureWithEscape(code: string): string {
+      const result = precompileTransform(
+        code,
+        "/src/app.tsx",
+        { runtimeSource: RT, secure: true },
+        jsxAttr,
+        jsxEscape,
+      );
+      if (!result) throw new Error("expected a transform result, got null");
+      return result.code;
+    }
+
     it("sanitizes static URL attributes at build time (output stays static)", () => {
       const out = transformSecure(`const a = <a href="javascript:alert(1)">x</a>;`);
       expect(out).toContain('<a href="#blocked">x</a>');
@@ -192,6 +204,28 @@ describe("precompileTransform", () => {
     it("escapes static values through the runtime", () => {
       const out = transformSecure(`const a = <div title='a"b'>x</div>;`);
       expect(out).toContain("a&quot;b");
+    });
+
+    it("escapes static text content using the runtime's own jsxEscape", () => {
+      const out = transformSecureWithEscape(`const a = <div>hello & world</div>;`);
+      // jsxEscape from @vincle/core escapes & < > — same as escapeContent
+      // for Vincle. For other runtimes (Preact, Hono) the escaping differs;
+      // using the runtime's own jsxEscape guarantees byte-identity.
+      expect(out).toContain("jsxTemplate`<div>hello &amp; world</div>`");
+    });
+
+    it("decodes rawtext entities then escapeRawText (secure mode, matches dynamic runtime)", () => {
+      // Secure mode: decode entities (like the JS compiler does) then
+      // escapeRawText — the same path renderChild takes — so `&gt;` becomes
+      // a real `>` and the output is valid CSS/JS. Unlike Deno mode where
+      // rawtext entities stay verbatim.
+      const style = transformSecure("const a = <style>.a &gt; .b</style>;");
+      expect(style).toContain("jsxTemplate`<style>.a > .b</style>`");
+      const script = transformSecure("const a = <script>a &amp;&amp; b</script>;");
+      expect(script).toContain("jsxTemplate`<script>a && b</script>`");
+      // The element's own closing tag is neutralized (breakout guard).
+      const guard = transformSecure("const a = <script>x &lt;/script&gt; y</script>;");
+      expect(guard).not.toContain("</script> y");
     });
   });
 
@@ -305,17 +339,18 @@ describe("precompileTransform", () => {
       expect(out).not.toContain("<script>");
     });
 
-    it("decodes rawtext (`<style>`/`<script>`) then escapeRawText — matches the runtime, valid CSS/JS", () => {
-      // Unlike Deno (which leaves rawtext entities literal → broken CSS/JS), we
-      // decode like the compiler then apply escapeRawText — the same path
-      // renderChild takes — so `&gt;` becomes a real `>` and the output is valid.
+    it("keeps rawtext entities verbatim (Deno-compatible mode)", () => {
+      // Deno mode (secure: false): rawtext entities stay literal — the HTML
+      // parser never decodes entities in <script>/<style> content, so keeping
+      // them verbatim is safe and matches Deno's own precompile output.
       const style = transform("const a = <style>.a &gt; .b</style>;");
-      expect(style).toContain("jsxTemplate`<style>.a > .b</style>`");
+      expect(style).toContain("jsxTemplate`<style>.a &gt; .b</style>`");
       const script = transform("const a = <script>a &amp;&amp; b</script>;");
-      expect(script).toContain("jsxTemplate`<script>a && b</script>`");
-      // But the element's own closing tag is still neutralized (breakout guard).
+      expect(script).toContain("jsxTemplate`<script>a &amp;&amp; b</script>`");
+      // </script> encoded as entities stays safe — browser won't decode
+      // entities in rawtext, so no breakout.
       const guard = transform("const a = <script>x &lt;/script&gt; y</script>;");
-      expect(guard).not.toContain("</script> y");
+      expect(guard).toContain("&lt;/script&gt;");
     });
   });
 
@@ -518,7 +553,7 @@ describe("precompileTransform", () => {
       expect(preMod.html.value).toBe(rtMod.html.value);
     });
 
-    it("rawtext: precompiled <style> is byte-identical to the dynamic runtime path", async () => {
+    it("rawtext: precompiled <style> is byte-identical to the dynamic runtime path (secure mode)", async () => {
       const rand = () => Math.random().toString(36).slice(2);
       const body = `<style>.a &gt; .b {"{"}color:red{"}"}</style>`;
 
@@ -531,7 +566,8 @@ describe("precompileTransform", () => {
 
       const preSrc = precompileTransform(`export const html = ${body};`, "/src/app.tsx", {
         runtimeSource: RT,
-      })!.code;
+        secure: true,
+      }, jsxAttr)!.code;
       const prePath = join(TMP, `pre-${rand()}.ts`);
       writeFileSync(prePath, preSrc);
       const preMod = (await import(prePath)) as { html: { value: string } };

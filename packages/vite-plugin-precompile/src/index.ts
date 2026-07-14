@@ -25,6 +25,14 @@ const FRAMEWORK_RUNTIME_SUFFIX = "/jsx-runtime";
 export default function vitePrecompile(config?: PluginConfig): Plugin {
   let rs: string | null = null;
   let renderAttr: RenderAttr | null = null;
+  /**
+   * The runtime's `jsxEscape` function, loaded at build time in secure mode.
+   * Used to escape static text content using the target runtime's own
+   * escaping rules, ensuring byte-identity between precompile and dynamic
+   * paths. Falls back to Vincle's `escapeContent` when the runtime has no
+   * `jsxEscape` export (should not happen for compatible runtimes).
+   */
+  let renderEscape: ((value: unknown) => string | { value: string } | Promise<string | { value: string }>) | null = null;
 
   /**
    * When jsxImportSource is set, this holds the candidate path
@@ -126,10 +134,15 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       // Secure mode (default): sanitizes static attributes at build time using
       // the runtime's own jsxAttr, so there is no duplicated security logic and
       // no runtime cost. The runtime module is the one the app already depends on.
+      //
+      // Also loads jsxEscape for static text content, so precompiled text uses
+      // the target runtime's own escaping rules (byte-identity). Vincle's extra
+      // protections (rawtext guard, URL blocking) are applied on top.
       const source = resolvedRuntimeSource;
       try {
         const mod = (await import(/* @vite-ignore */ source)) as {
           jsxAttr?: RenderAttr;
+          jsxEscape?: (value: unknown) => string | { value: string } | Promise<string | { value: string }>;
         };
         if (typeof mod.jsxAttr === "function") {
           renderAttr = mod.jsxAttr;
@@ -137,6 +150,9 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
           this.error(
             `secure mode: "${source}" has no "jsxAttr" export — cannot sanitize static attributes`,
           );
+        }
+        if (typeof mod.jsxEscape === "function") {
+          renderEscape = mod.jsxEscape;
         }
       } catch (err) {
         this.error(`secure mode: failed to load "${source}" (${String(err)})`);
@@ -153,6 +169,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         id,
         { runtimeSource: rs!, secure: config?.secure },
         renderAttr ?? undefined,
+        renderEscape ?? undefined,
       );
 
       if (!result || result.code === code) return;
