@@ -75,23 +75,36 @@ precompile({
 });
 ```
 
-## Secure mode
+## Build-time sanitization (secure mode)
 
-Set `secure: true` to sanitize static attributes at build time using the
+**Enabled by default.** Static attributes are sanitized at build time using the
 runtime's own `jsxAttr`. This mirrors the same URL-scheme blocking, CSS
 safety, and name remapping that the runtime applies to dynamic values —
 but resolved before the browser runs any code.
 
 ```ts
+// Default — secure mode is ON
+precompile();
+```
+
+The plugin loads `jsxAttr` from the runtime module at build time and runs
+every static attribute value through it. A static `href="javascript:…"`
+becomes `href="#blocked"` before it is ever written to the bundle.
+
+### Opting out: Deno-precompile-compatible mode
+
+Set `secure: false` to match Deno's own `jsx: "precompile"` transform:
+static attributes are trusted and inlined verbatim (name-remapped and
+HTML-escaped, but no URL/CSS sanitization applied at build time).
+
+```ts
 precompile({
-  secure: true,
+  secure: false,
 });
 ```
 
-When secure mode is on, the plugin loads `jsxAttr` from the specified
-runtime module at build time and runs every static attribute value through
-it. A static `href="javascript:…"` becomes `href="#blocked"` before
-it is ever written to the bundle.
+Use this when migrating an existing Deno precompile setup, or when the
+build-time dependency on the runtime module is undesirable.
 
-Secure mode works with any runtime module that exports `jsxAttr` — not
-just Vincle's.
+Build-time sanitization works with any runtime module that exports
+`jsxAttr` — not just Vincle's.

@@ -54,7 +54,7 @@ Only needed when using a runtime other than the detected one.
 ```ts
 interface PluginConfig {
   runtimeSource?: string; // default: virtual:vincle-precompile-runtime → auto-detected
-  secure?: boolean; // sanitize static attributes at build time
+  secure?: boolean; // true (default): sanitize static attributes at build time; false: Deno-compatible, inline verbatim
 }
 ```
 

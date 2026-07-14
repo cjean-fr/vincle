@@ -30,13 +30,16 @@ import { parseSync, visitorKeys } from "oxc-parser";
 export interface PluginConfig {
   runtimeSource?: string;
   /**
-   * When `true`, static attributes are sanitized at build time by running them
-   * through the runtime's own attribute serializer (`renderAttr`) instead of
-   * being inlined verbatim. This mirrors what the runtime does for dynamic
-   * values (URL-scheme blocking, unsafe-CSS dropping, name remapping). The
-   * default (`false`) matches Deno's precompile: static attributes are trusted
-   * and inlined, keeping them fully static. The Vite plugin wires `renderAttr`
-   * up automatically from `runtimeSource`.
+   * When `true` (default), static attributes are sanitized at build time by
+   * running them through the runtime's own attribute serializer (`renderAttr`)
+   * instead of being inlined verbatim. This mirrors what the runtime does for
+   * dynamic values (URL-scheme blocking, unsafe-CSS dropping, name remapping).
+   *
+   * Set to `false` for Deno-precompile-compatible behavior: static attributes
+   * are trusted and inlined verbatim (name-remapped and HTML-escaped, but no
+   * URL/CSS sanitization). This is useful when migrating from Deno's
+   * `jsx: "precompile"` transform or when the build-time dependency on the
+   * runtime module is undesirable.
    */
   secure?: boolean;
 }
@@ -71,7 +74,7 @@ export interface TransformResult {
 interface Ctx {
   source: string;
   used: Set<string>;
-  /** Present only in secure mode; sanitizes static attributes at build time. */
+  /** Present in secure mode (default); sanitizes static attributes at build time. */
   renderAttr: RenderAttr | null;
 }
 
@@ -148,7 +151,7 @@ export default function precompileTransform(
   const ctx: Ctx = {
     source: code,
     used: new Set<string>(),
-    renderAttr: config?.secure ? (renderAttr ?? null) : null,
+    renderAttr: config?.secure !== false ? (renderAttr ?? null) : null,
   };
   const replacements: Replacement[] = [];
 
@@ -340,17 +343,19 @@ function emitAttribute(attr: JSXAttribute, parts: string[], exprs: string[], ctx
 /**
  * Emit a statically-known attribute (a boolean flag or a string literal).
  *
- * Default (Deno-aligned): static attributes are trusted and inlined. The name
- * is remapped to its HTML form (`className` → `class`, `tabIndex` →
- * `tabindex`), event-handler names are lowercased (`onClick` → `onclick`), and
- * the value is HTML-escaped. No value sanitization is applied — that is the
- * runtime's job for *dynamic* values, which always go through `jsxAttr`.
+ * Secure mode (default, `ctx.renderAttr` present): the value is run through
+ * the runtime's own `jsxAttr` at build time and the serialized result is
+ * inlined, so the same URL/CSS/name handling the runtime applies to dynamic
+ * values also applies to static ones (`href="javascript:…"` →
+ * `href="#blocked"`, unsafe `style` dropped, …) — while the output stays fully
+ * static.
  *
- * Secure mode (`ctx.renderAttr`): the value is run through the runtime's own
- * `jsxAttr` at build time and the serialized result is inlined, so the same
- * URL/CSS/name handling the runtime applies to dynamic values also applies to
- * static ones (`href="javascript:…"` → `href="#blocked"`, unsafe `style`
- * dropped, …) — while the output stays fully static.
+ * Deno mode (`secure: false`, `ctx.renderAttr` is null): static attributes are
+ * trusted and inlined. The name is remapped to its HTML form (`className` →
+ * `class`, `tabIndex` → `tabindex`), event-handler names are lowercased
+ * (`onClick` → `onclick`), and the value is HTML-escaped. No value
+ * sanitization is applied — only the runtime handles that for *dynamic* values,
+ * which always go through `jsxAttr`. This matches Deno's own precompile output.
  */
 function emitStaticAttr(rawName: string, value: string | true, parts: string[], ctx: Ctx): void {
   if (ctx.renderAttr) {

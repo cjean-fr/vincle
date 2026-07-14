@@ -185,7 +185,7 @@ Each invariant is enforced by property-based (fuzz) or unit tests:
 | I-01 | No raw `<` or `>` from untrusted input                             | `escape.fuzz.test.ts`, `escape.test.ts`  |
 | I-02 | No dangerous URL schemes pass through                              | `escape.fuzz.test.ts` (2000+ fuzz cases) |
 | I-03 | No function-valued `on*` event handlers leak to HTML               | `jsx-runtime.test.ts`                    |
-| I-04 | Precompile ≡ dynamic path — byte-identical in non-rawtext contexts | `precompile.fuzz.test.ts`                |
+| I-04 | Precompile ≡ dynamic path — byte-identical in non-rawtext contexts (secure mode default ensures same `jsxAttr` path) | `precompile.fuzz.test.ts` |
 | I-05 | Content escaping is reversible (injective)                         | `escape.fuzz.test.ts`                    |
 | I-06 | Concurrent renders isolated — no cross-request leakage             | `context.test.ts`                        |
 | I-07 | No implicit `RawString` creation                                   | Code review                              |

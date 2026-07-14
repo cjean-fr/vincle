@@ -117,10 +117,15 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         resolvedRuntimeSource = candidateFrameworkRuntime;
       }
 
-      if (!config?.secure) return;
-      // Secure mode sanitizes static attributes at build time using the
-      // runtime's own jsxAttr, so there is no duplicated security logic and no
-      // runtime cost. The runtime module is the one the app already depends on.
+      if (config?.secure === false) {
+        // Explicit opt-out: Deno-precompile-compatible behavior — static
+        // attributes are trusted and inlined verbatim (name-remapped and
+        // HTML-escaped, but no URL/CSS sanitization).
+        return;
+      }
+      // Secure mode (default): sanitizes static attributes at build time using
+      // the runtime's own jsxAttr, so there is no duplicated security logic and
+      // no runtime cost. The runtime module is the one the app already depends on.
       const source = resolvedRuntimeSource;
       try {
         const mod = (await import(/* @vite-ignore */ source)) as {
