@@ -1,11 +1,7 @@
-import type {
-  ResolvedDocsConfig,
-  PageMeta,
-  ResolvedSidebar,
-  TabConfig,
-} from "./types.js";
-import type { NavLink } from "./lib/sidebar.js";
 import { context, setContext, useContext, type ContextKey } from "@vincle/core";
+
+import type { NavLink } from "./lib/sidebar.js";
+import type { ResolvedDocsConfig, PageMeta, ResolvedSidebar, TabConfig } from "./types.js";
 
 export interface DocsRenderContext {
   config: ResolvedDocsConfig;
@@ -22,9 +18,8 @@ export interface DocsRenderContext {
   next: NavLink | null;
 }
 
-const DocsContext: ContextKey<DocsRenderContext> = context<DocsRenderContext>(
-  "@vincle/docs:render",
-);
+const DocsContext: ContextKey<DocsRenderContext> =
+  context<DocsRenderContext>("@vincle/docs:render");
 
 export function setDocs(value: DocsRenderContext): void {
   setContext(DocsContext, value);

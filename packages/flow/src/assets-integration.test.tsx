@@ -1,7 +1,8 @@
 import { describe, it, expect } from "bun:test";
-import { renderStream, renderToStatic, Defer } from "./index.js";
+
 import { NativeAdapter } from "./adapters/index.js";
 import { Style, Script } from "./components/index.js";
+import { renderStream, renderToStatic, Defer } from "./index.js";
 import { collect } from "./test-utils.js";
 
 describe("Style/Script — render pipeline integration", () => {
@@ -27,9 +28,7 @@ describe("Style/Script — render pipeline integration", () => {
     const matches = html.match(/<style data-name="base">/g);
     expect(matches).toHaveLength(1);
     // It should be in the head
-    expect(html.indexOf("<head>")).toBeLessThan(
-      html.indexOf('<style data-name="base">'),
-    );
+    expect(html.indexOf("<head>")).toBeLessThan(html.indexOf('<style data-name="base">'));
   });
 
   it("only evaluates factory once for duplicate names", async () => {
@@ -125,7 +124,7 @@ describe("Style/Script — render pipeline integration", () => {
       ),
     );
 
-    expect(html).toContain('<script data-name="late" defer="">');
+    expect(html).toContain('<script data-name="late" defer>');
   });
 
   it("resolves Script with src", async () => {
@@ -145,9 +144,7 @@ describe("Style/Script — render pipeline integration", () => {
       ),
     );
 
-    expect(html).toContain(
-      '<script data-name="jquery" src="/vendor/jquery.js"></script>',
-    );
+    expect(html).toContain('<script data-name="jquery" src="/vendor/jquery.js"></script>');
   });
 
   it("deduplicates name across fragments: emitted in shell → removed from fragment", async () => {

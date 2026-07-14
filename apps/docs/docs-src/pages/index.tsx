@@ -1,6 +1,8 @@
-import { CodeExample } from "../components/CodeExample.js";
-import type { PageMeta } from "../types.js";
 import type { VNode } from "@vincle/core";
+
+import type { PageMeta } from "../types.js";
+
+import { CodeExample } from "../components/CodeExample.js";
 
 export const meta: PageMeta = {
   title: "Home",
@@ -119,7 +121,7 @@ interface FeatureCardProps {
 
 function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
-    <div class="docs-feature-card group relative rounded-2xl border border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] p-6 hover:border-[var(--docs-color-accent)] hover:shadow-md hover:shadow-[var(--docs-color-accent)]/10">
+    <div class="docs-feature-card group relative rounded-2xl border border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] p-6 hover:border-[var(--docs-color-accent)] hover:shadow-[var(--docs-color-accent)]/10 hover:shadow-md">
       <div class="docs-card-glow pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity group-hover:opacity-100">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-[var(--docs-color-accent)]/10 via-transparent to-purple-500/10" />
       </div>
@@ -127,12 +129,8 @@ function FeatureCard({ icon, title, description }: FeatureCardProps) {
         <div class="docs-feature-card-icon mb-4 flex size-10 items-center justify-center rounded-xl bg-[var(--docs-color-accent-soft)] text-[var(--docs-color-accent)] ring-1 ring-[var(--docs-color-accent)]/10 transition-colors">
           {icon}
         </div>
-        <h3 class="mb-2 text-base font-semibold text-[var(--docs-color-text)]">
-          {title}
-        </h3>
-        <p class="text-sm leading-relaxed text-[var(--docs-color-text-secondary)]">
-          {description}
-        </p>
+        <h3 class="mb-2 text-base font-semibold text-[var(--docs-color-text)]">{title}</h3>
+        <p class="text-sm leading-relaxed text-[var(--docs-color-text-secondary)]">{description}</p>
       </div>
     </div>
   );
@@ -156,8 +154,8 @@ export default function HomePage() {
         </h1>
 
         <p class="mt-6 max-w-2xl text-lg text-[var(--docs-color-text-secondary)] sm:text-xl">
-          Server-side JSX rendering with native async, no DOM shim. For email
-          templates, API responses, and static sites.
+          Server-side JSX rendering with native async, no DOM shim. For email templates, API
+          responses, and static sites.
         </p>
         <p class="mt-3 text-sm text-[var(--docs-color-text-secondary)]/70">
           Built for Node.js 20+, Bun, Deno, and Cloudflare Workers.
@@ -294,18 +292,10 @@ export default function HomePage() {
           />
         </a>
         <a href="https://www.npmjs.com/package/@vincle/core">
-          <img
-            src="https://img.shields.io/npm/v/@vincle/core"
-            alt="npm version"
-            height="20"
-          />
+          <img src="https://img.shields.io/npm/v/@vincle/core" alt="npm version" height="20" />
         </a>
         <a href="https://www.npmjs.com/package/@vincle/core">
-          <img
-            src="https://img.shields.io/npm/dm/@vincle/core"
-            alt="downloads"
-            height="20"
-          />
+          <img src="https://img.shields.io/npm/dm/@vincle/core" alt="downloads" height="20" />
         </a>
       </div>
     </div>
@@ -321,30 +311,24 @@ interface UseCaseCardProps {
 
 function UseCaseCard({ icon, title, before, after }: UseCaseCardProps) {
   return (
-    <div class="docs-usecase-card group relative rounded-2xl border border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] p-6 transition-all hover:border-[var(--docs-color-accent)] hover:shadow-md hover:shadow-[var(--docs-color-accent)]/10">
+    <div class="docs-usecase-card group relative rounded-2xl border border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] p-6 transition-all hover:border-[var(--docs-color-accent)] hover:shadow-[var(--docs-color-accent)]/10 hover:shadow-md">
       <div class="relative">
         <div class="mb-4 flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-600 ring-1 ring-red-200/50 dark:bg-red-950 dark:text-red-400 dark:ring-red-800/50">
           {icon}
         </div>
-        <h3 class="mb-3 text-base font-semibold text-[var(--docs-color-text)]">
-          {title}
-        </h3>
+        <h3 class="mb-3 text-base font-semibold text-[var(--docs-color-text)]">{title}</h3>
         <div class="space-y-2 text-sm">
           <div class="flex items-start gap-2">
-            <span class="mt-0.5 shrink-0 flex size-4 items-center justify-center rounded-full bg-red-100 text-[10px] font-bold text-red-600 dark:bg-red-900 dark:text-red-400">
+            <span class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-red-100 text-[10px] font-bold text-red-600 dark:bg-red-900 dark:text-red-400">
               ✕
             </span>
-            <span class="text-[var(--docs-color-text-secondary)]">
-              {before}
-            </span>
+            <span class="text-[var(--docs-color-text-secondary)]">{before}</span>
           </div>
           <div class="flex items-start gap-2">
-            <span class="mt-0.5 shrink-0 flex size-4 items-center justify-center rounded-full bg-green-100 text-[10px] font-bold text-green-600 dark:bg-green-900 dark:text-green-400">
+            <span class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-green-100 text-[10px] font-bold text-green-600 dark:bg-green-900 dark:text-green-400">
               ✓
             </span>
-            <span class="font-medium text-[var(--docs-color-text)]">
-              {after}
-            </span>
+            <span class="font-medium text-[var(--docs-color-text)]">{after}</span>
           </div>
         </div>
       </div>
@@ -355,10 +339,8 @@ function UseCaseCard({ icon, title, before, after }: UseCaseCardProps) {
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div class="docs-stat-card rounded-xl border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-5 py-5 text-center">
-      <div class="text-2xl font-bold tracking-tight text-[var(--docs-color-text)]">
-        {value}
-      </div>
-      <div class="mt-1 text-xs font-medium uppercase tracking-wider text-[var(--docs-color-text-secondary)]">
+      <div class="text-2xl font-bold tracking-tight text-[var(--docs-color-text)]">{value}</div>
+      <div class="mt-1 text-xs font-medium tracking-wider text-[var(--docs-color-text-secondary)] uppercase">
         {label}
       </div>
     </div>

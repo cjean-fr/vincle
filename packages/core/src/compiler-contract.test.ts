@@ -1,4 +1,5 @@
 import { describe, it, expect } from "bun:test";
+
 import { renderToString } from "./index.js";
 import { jsx } from "./jsx-runtime.js";
 
@@ -22,9 +23,7 @@ const tsx = new Bun.Transpiler({
 describe("JSX compiler contract — invariants the runtime depends on", () => {
   it("DECODES HTML entities in text → static text can carry a raw <script>", () => {
     // The single reason escaping static text is not redundant.
-    const out = tsx.transformSync(
-      `export const a = <div>a &amp; b &lt;script&gt;</div>;`,
-    );
+    const out = tsx.transformSync(`export const a = <div>a &amp; b &lt;script&gt;</div>;`);
     expect(out).toContain('"a & b <script>"');
     expect(out).not.toContain("&amp;");
   });
@@ -36,9 +35,7 @@ describe("JSX compiler contract — invariants the runtime depends on", () => {
   });
 
   it("LIFTS `key` out of props (separate argument, never a prop)", () => {
-    const out = tsx.transformSync(
-      `export const b = <div class="c" key="k">t</div>;`,
-    );
+    const out = tsx.transformSync(`export const b = <div class="c" key="k">t</div>;`);
     // key must not be a property of the props object…
     expect(out).not.toMatch(/key:\s*["']k["']/);
     // …and its value is present as a trailing argument.
@@ -54,9 +51,7 @@ describe("JSX compiler contract — invariants the runtime depends on", () => {
 
   it("runtime enforces name validity that the compiler cannot (spread case)", async () => {
     // A hostile name arriving via spread must not break out of the tag.
-    const html = await renderToString(
-      jsx("div", { 'x"><script>': "y", id: "ok" }),
-    );
+    const html = await renderToString(jsx("div", { 'x"><script>': "y", id: "ok" }));
     expect(html).not.toContain("<script>");
     expect(html).toContain('id="ok"');
   });

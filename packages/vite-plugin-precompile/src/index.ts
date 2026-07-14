@@ -1,9 +1,8 @@
 import type { Plugin, ResolvedConfig } from "vite";
-import precompileTransform, {
-  type PluginConfig,
-  type RenderAttr,
-} from "./transformer.js";
+
 import { RUNTIME_SOURCE } from "@vincle/precompile-core";
+
+import precompileTransform, { type PluginConfig, type RenderAttr } from "./transformer.js";
 
 export type { PluginConfig };
 
@@ -67,10 +66,10 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       rs = VIRTUAL_MODULE_ID;
 
       const esbuild = resolvedConfig.esbuild;
-      const jsxImportSource = esbuild && typeof esbuild === "object" ? esbuild.jsxImportSource : undefined;
+      const jsxImportSource =
+        esbuild && typeof esbuild === "object" ? esbuild.jsxImportSource : undefined;
       if (jsxImportSource) {
-        candidateFrameworkRuntime =
-          `${jsxImportSource}${FRAMEWORK_RUNTIME_SUFFIX}`;
+        candidateFrameworkRuntime = `${jsxImportSource}${FRAMEWORK_RUNTIME_SUFFIX}`;
       }
     },
 
@@ -101,11 +100,12 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         // does not — the probe throws a clear build error.
         let mod: Record<string, unknown>;
         try {
-          mod = await import(/* @vite-ignore */ candidateFrameworkRuntime) as Record<string, unknown>;
+          mod = (await import(/* @vite-ignore */ candidateFrameworkRuntime)) as Record<
+            string,
+            unknown
+          >;
         } catch (err) {
-          this.error(
-            `failed to probe ${candidateFrameworkRuntime}: ${String(err)}`,
-          );
+          this.error(`failed to probe ${candidateFrameworkRuntime}: ${String(err)}`);
           return;
         }
         if (typeof mod["jsxTemplate"] !== "function") {

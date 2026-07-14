@@ -1,8 +1,9 @@
+import type { VNode } from "@vincle/core";
+
 /** @jsxImportSource @vincle/core */
 import { CodeBlock } from "./components/CodeBlock.js";
 import { CodeExample } from "./components/CodeExample.js";
 import { CheckIcon, XIcon } from "./components/Icons.js";
-import type { VNode } from "@vincle/core";
 export interface Tab {
   label: string;
   content: VNode;
@@ -26,11 +27,7 @@ function Tabs({ tabs, syncKey }: { tabs: Tab[]; syncKey?: string }) {
         ))}
       </div>
       {tabs.map((tab, i) => (
-        <div
-          data-docs-tab-panel
-          class="docs-tabs-panel"
-          hidden={i !== 0 ? true : undefined}
-        >
+        <div data-docs-tab-panel class="docs-tabs-panel" hidden={i !== 0 ? true : undefined}>
           {tab.content}
         </div>
       ))}

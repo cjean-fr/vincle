@@ -24,10 +24,8 @@ declare global {
     type Element = VincleJSX.Element;
     interface IntrinsicElements extends VincleJSX.IntrinsicElements {}
     interface IntrinsicAttributes extends VincleJSX.IntrinsicAttributes {}
-    interface ElementChildrenAttribute
-      extends VincleJSX.ElementChildrenAttribute {}
-    interface ElementAttributesProperty
-      extends VincleJSX.ElementAttributesProperty {}
+    interface ElementChildrenAttribute extends VincleJSX.ElementChildrenAttribute {}
+    interface ElementAttributesProperty extends VincleJSX.ElementAttributesProperty {}
   }
 }
 

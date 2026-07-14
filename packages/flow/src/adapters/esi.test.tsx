@@ -1,6 +1,7 @@
-import { EsiAdapter } from "../adapters/index.js";
 import { renderToString } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
+
+import { EsiAdapter } from "../adapters/index.js";
 
 describe("EsiAdapter", () => {
   it("declares no streaming and replace-only merges", () => {
@@ -12,14 +13,10 @@ describe("EsiAdapter", () => {
 
   it("renders esi:include / esi:inline and escapes src", async () => {
     expect(
-      await renderToString(
-        EsiAdapter.Placeholder({ id: "x", src: "/f?a=1&b=2", children: "" }),
-      ),
+      await renderToString(EsiAdapter.Placeholder({ id: "x", src: "/f?a=1&b=2", children: "" })),
     ).toContain("&amp;");
     expect(
-      await renderToString(
-        EsiAdapter.Patch({ id: "x", children: "c", merge: "replace" }),
-      ),
+      await renderToString(EsiAdapter.Patch({ id: "x", children: "c", merge: "replace" })),
     ).toContain("esi:inline");
   });
 

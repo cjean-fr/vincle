@@ -1,6 +1,7 @@
-import { TurboAdapter } from "../adapters/index.js";
 import { renderToString } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
+
+import { TurboAdapter } from "../adapters/index.js";
 
 describe("TurboAdapter", () => {
   it("placeholder → turbo-frame; patch → turbo-stream", async () => {
@@ -17,8 +18,8 @@ describe("TurboAdapter", () => {
   });
 
   it("Frame renders <turbo-frame>", async () => {
-    expect(
-      await renderToString(TurboAdapter.Frame({ id: "x", children: "c" })),
-    ).toContain("<turbo-frame");
+    expect(await renderToString(TurboAdapter.Frame({ id: "x", children: "c" }))).toContain(
+      "<turbo-frame",
+    );
   });
 });

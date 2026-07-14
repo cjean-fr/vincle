@@ -132,8 +132,7 @@
 
 .docs-prose td {
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--docs-color-border) 60%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--docs-color-border) 60%, transparent);
   vertical-align: top;
 }
 

@@ -1,3 +1,13 @@
+import { describe, it, expect } from "bun:test";
+
+import {
+  escapeContent,
+  escapeAttr,
+  isSafeScheme,
+  isSafeSrcset,
+  isValidTagName,
+  isValidAttrName,
+} from "./escape.js";
 /**
  * ASVS 5.0 Compliance Tests — Verification Suite
  *
@@ -9,15 +19,6 @@
  * See apps/docs/docs-src/pages/safety/index.mdx for the full matrix.
  */
 import { renderToString, raw } from "./index.js";
-import {
-  escapeContent,
-  escapeAttr,
-  isSafeScheme,
-  isSafeSrcset,
-  isValidTagName,
-  isValidAttrName,
-} from "./escape.js";
-import { describe, it, expect } from "bun:test";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // V1 Encoding and Sanitization
@@ -35,9 +36,7 @@ describe("ASVS 1.2.1 — Context-relevant output encoding (L1)", () => {
   });
 
   it('escapes & < > " in style string attributes', async () => {
-    const html = await renderToString(
-      <div style={'color:red";width:100%'}></div>,
-    );
+    const html = await renderToString(<div style={'color:red";width:100%'}></div>);
     expect(html).toBe('<div style="color:red&quot;;width:100%"></div>');
   });
 
@@ -72,9 +71,7 @@ describe("ASVS 1.2.2 — Safe URL protocols (L1)", () => {
   });
 
   it("blocks non-image data: URIs in href", async () => {
-    const html = await renderToString(
-      <a href="data:text/html,<script>alert(1)</script>">link</a>,
-    );
+    const html = await renderToString(<a href="data:text/html,<script>alert(1)</script>">link</a>);
     expect(html).toContain('href="#blocked"');
   });
 
@@ -96,9 +93,7 @@ describe("ASVS 1.2.2 — Safe URL protocols (L1)", () => {
   });
 
   it("blocks javascript: in srcset candidates", () => {
-    expect(
-      isSafeSrcset("https://example.com/img.png 1x, javascript:alert(1) 2x"),
-    ).toBe(false);
+    expect(isSafeSrcset("https://example.com/img.png 1x, javascript:alert(1) 2x")).toBe(false);
   });
 
   it("blocks javascript: in action, formaction, cite, poster", async () => {
@@ -114,9 +109,7 @@ describe("ASVS 1.2.2 — Safe URL protocols (L1)", () => {
 
 describe("ASVS 1.2.3 — Output encoding for JavaScript/JSON contexts (L1)", () => {
   it("prevents </script> breakout in script elements", async () => {
-    const html = await renderToString(
-      <script>{"</script><script>alert(1)"}</script>,
-    );
+    const html = await renderToString(<script>{"</script><script>alert(1)"}</script>);
     // The escaped `<\/script>` prevents the parser from seeing a real end tag.
     // Standalone `<script>` (without `</`) is harmless in rawtext mode — the
     // parser stays in script-data state until it sees the element's own
@@ -128,9 +121,7 @@ describe("ASVS 1.2.3 — Output encoding for JavaScript/JSON contexts (L1)", () 
   });
 
   it("prevents the <!--<script> script-data double-escape breakout", async () => {
-    const html = await renderToString(
-      <script>{"<!--<script>alert(1)</script>"}</script>,
-    );
+    const html = await renderToString(<script>{"<!--<script>alert(1)</script>"}</script>);
     // Only `</script>` is escaped — `<!--` and `<script>` are NOT tokenizer
     // signal sequences in rawtext mode. The HTML parser never reads past the
     // element's own closing `</script>` because our `<\/script>` blocks it.
@@ -172,9 +163,7 @@ describe("ASVS 1.2.3 — Output encoding for JavaScript/JSON contexts (L1)", () 
 
 describe("ASVS 1.1.2 — Output encoding as final step (L2)", () => {
   it("does not pre-encode raw() content", async () => {
-    const html = await renderToString(
-      <div>{raw("<strong>bold</strong>")}</div>,
-    );
+    const html = await renderToString(<div>{raw("<strong>bold</strong>")}</div>);
     // raw() output is inserted verbatim — encoding not applied
     expect(html).toBe("<div><strong>bold</strong></div>");
   });
@@ -275,9 +264,7 @@ describe("ASVS 1.3.12 — ReDoS-free regular expressions (L3)", () => {
   it("handles CSS url() regex without backtracking blowup", async () => {
     // url(\s*(['"]?)(.*?)\1\s*\) with adversarial input
     const deepNesting = "url(" + "'".repeat(100) + "x".repeat(1000);
-    const html = await renderToString(
-      <div style={{ background: deepNesting }}></div>,
-    );
+    const html = await renderToString(<div style={{ background: deepNesting }}></div>);
     // Should not block render
     expect(typeof html).toBe("string");
   });
@@ -364,9 +351,7 @@ describe("ASVS 16.5.4 — Last resort error handler (L3)", () => {
       yield "hello";
       throw new Error("gen-boom");
     }
-    await expect(renderToString(<div>{badGen()}</div>)).rejects.toThrow(
-      "gen-boom",
-    );
+    await expect(renderToString(<div>{badGen()}</div>)).rejects.toThrow("gen-boom");
   });
 
   it("preserves the original error type and properties", async () => {
@@ -392,8 +377,7 @@ describe("ASVS 16.5.4 — Last resort error handler (L3)", () => {
 
 describe("ASVS 15.4.1 — Thread-safe shared objects (L3)", () => {
   it("concurrent renders have isolated context state", async () => {
-    const { context, setContext, useContext, withScope } =
-      await import("./context.js");
+    const { context, setContext, useContext, withScope } = await import("./context.js");
     const Ctx = context<string>("key");
 
     const renderA = withScope(async () => {

@@ -1,4 +1,3 @@
-import { RawString } from "./raw.js";
 import {
   escapeContent,
   escapeRawText,
@@ -6,6 +5,7 @@ import {
   RAWTEXT_TAGS,
   VOID_ELEMENTS,
 } from "./escape.js";
+import { RawString } from "./raw.js";
 import { renderAttrs } from "./render-attrs.js";
 
 // ── Rendering model ─────────────────────────────────────────────────────────
@@ -17,22 +17,22 @@ import { renderAttrs } from "./render-attrs.js";
 //
 // A synchronous error thrown by a component cannot unwind normally: by the time
 // a parent (or an `ErrorBoundary`) runs, its children have already been
-// evaluated. So a sync throw is captured into an `ErrorSentinel` value that
+// evaluated. So a sync throw is captured into an `RenderError` value that
 // propagates *up* through elements (which pass it through) until an
 // `ErrorBoundary` turns it into a fallback, or `renderToString` re-throws it.
 // Async errors travel the normal way — as promise rejections.
 
-class ErrorSentinel {
+class RenderError {
   readonly error: unknown;
   constructor(error: unknown) {
     this.error = error;
   }
 }
 
-/** A rendered child: a plain string, a propagating error, or either async. */
-type Rendered = string | ErrorSentinel | Promise<string | ErrorSentinel>;
-/** A rendered node (element/component): a RawString, a propagating error, or either async. */
-type Node = RawString | ErrorSentinel | Promise<RawString | ErrorSentinel>;
+export type Awaitable<T> = T | Promise<T>;
+
+type Rendered = Awaitable<string | RenderError>;
+type Node = Awaitable<RawString | RenderError>;
 
 // ── VNode types ────────────────────────────────────────────────────────────
 
@@ -44,13 +44,16 @@ export type VNode =
   | null
   | undefined
   | RawString
-  | ErrorSentinel
+  | RenderError
   | Promise<VNode>
   | VNode[]
   | Iterable<VNode>
   | AsyncIterable<VNode>;
 
-export type Awaitable<T> = T | Promise<T>;
+/** VNode with the recursive `Promise` removed. Use as a cast target in
+ * thenable-sensitive contexts (e.g. `yield <li>x</li> as ResolvedVNode`)
+ * to avoid TS1062 ("Type referenced in its own `then` callback"). */
+export type ResolvedVNode = Exclude<VNode, Promise<any>>;
 
 export type Component<P = {}> = (props: P) => VNode;
 
@@ -59,7 +62,7 @@ export type Component<P = {}> = (props: P) => VNode;
 // `ErrorBoundary` is a marker component registered in the `boundaryComponents`
 // set. When `renderComponent` finds it in the set, it routes through
 // `renderBoundary`, which reads `fallback` from props and swaps it in when the
-// (already-evaluated) children carry an error — a sync `ErrorSentinel` or an
+// (already-evaluated) children carry an error — a sync `RenderError` or an
 // async promise rejection.
 
 export function ErrorBoundary(_props: {
@@ -126,14 +129,14 @@ function renderArray(arr: unknown[], rawtextTag: string | undefined): Rendered {
       out += r;
       continue;
     }
-    if (r instanceof ErrorSentinel) return r;
+    if (r instanceof RenderError) return r;
     // Async child: resolve it plus every remaining child in parallel.
     const rest: Rendered[] = [r];
     for (let j = i + 1; j < arr.length; j++) rest.push(renderChild(arr[j], rawtextTag));
     return Promise.all(rest).then((parts) => {
       let result = out;
       for (const p of parts) {
-        if (p instanceof ErrorSentinel) return p;
+        if (p instanceof RenderError) return p;
         result += p;
       }
       return result;
@@ -145,12 +148,12 @@ function renderArray(arr: unknown[], rawtextTag: string | undefined): Rendered {
 async function renderAsyncIterable(
   iterable: AsyncIterable<unknown>,
   rawtextTag: string | undefined,
-): Promise<string | ErrorSentinel> {
+): Promise<string | RenderError> {
   let out = "";
   for await (const item of iterable) {
     const r = renderChild(item, rawtextTag);
     const s = r instanceof Promise ? await r : r;
-    if (s instanceof ErrorSentinel) return s;
+    if (s instanceof RenderError) return s;
     out += s;
   }
   return out;
@@ -163,7 +166,7 @@ function renderChild(value: unknown, rawtextTag?: string): Rendered {
   }
   if (typeof value === "number") return String(value);
   if (value instanceof RawString) return value.value;
-  if (value instanceof ErrorSentinel) return value;
+  if (value instanceof RenderError) return value;
   if (value instanceof Promise) {
     return value.then((v) => renderChild(v, rawtextTag));
   }
@@ -174,34 +177,32 @@ function renderChild(value: unknown, rawtextTag?: string): Rendered {
   if (typeof (value as any)?.[Symbol.asyncIterator] === "function") {
     return renderAsyncIterable(value as AsyncIterable<unknown>, rawtextTag);
   }
-  return rawtextTag
-    ? escapeRawText(String(value), rawtextTag)
-    : escapeContent(String(value));
+  return rawtextTag ? escapeRawText(String(value), rawtextTag) : escapeContent(String(value));
 }
 
 /** Normalize a rendered child into a node: string → RawString, else pass through. */
 function finalizeNode(r: Rendered): Node {
   if (typeof r === "string") return new RawString(r);
-  if (r instanceof ErrorSentinel) return r;
-  return r.then((s) => (s instanceof ErrorSentinel ? s : new RawString(s)));
+  if (r instanceof RenderError) return r;
+  return r.then((s) => (s instanceof RenderError ? s : new RawString(s)));
 }
 
-function toErrorNode(error: unknown, comp: Component): ErrorSentinel {
-  return new ErrorSentinel(annotateError(error, comp));
+function toErrorNode(error: unknown, comp: Component): RenderError {
+  return new RenderError(annotateError(error, comp));
 }
 
-function renderComponent(
-  comp: Component,
-  props: Record<string, unknown>,
-): Node {
+function renderComponent(comp: Component, props: Record<string, unknown>): Node {
   if (boundaryComponents.has(comp)) return renderBoundary(props);
   try {
-    const r = renderChild(comp(props));
+    const result = comp(props);
+    // Already rendered — pass through without re-wrapping
+    if (result instanceof RawString) return result;
+    if (result instanceof RenderError) return toErrorNode(result.error, comp);
+    const r = renderChild(result);
     if (typeof r === "string") return new RawString(r);
-    if (r instanceof ErrorSentinel) return toErrorNode(r.error, comp);
+    if (r instanceof RenderError) return toErrorNode(r.error, comp);
     return r.then(
-      (s) =>
-        s instanceof ErrorSentinel ? toErrorNode(s.error, comp) : new RawString(s),
+      (s) => (s instanceof RenderError ? toErrorNode(s.error, comp) : new RawString(s)),
       (e) => {
         throw annotateError(e, comp);
       },
@@ -212,22 +213,21 @@ function renderComponent(
 }
 
 function renderBoundary(props: Record<string, unknown>): Node {
-  const fallback = props["fallback"] as
-    | VNode
-    | ((error: unknown) => VNode);
+  const fallback = props["fallback"] as VNode | ((error: unknown) => VNode);
   const onError = (e: unknown): Node =>
     finalizeNode(
       renderChild(
-        typeof fallback === "function"
-          ? (fallback as (e: unknown) => VNode)(e)
-          : fallback,
+        typeof fallback === "function" ? (fallback as (e: unknown) => VNode)(e) : fallback,
       ),
     );
-  const r = renderChild(props["children"]);
-  if (r instanceof ErrorSentinel) return onError(r.error);
+  const children = props["children"];
+  if (children instanceof RawString) return children;
+  if (children instanceof RenderError) return onError(children.error);
+  const r = renderChild(children);
+  if (r instanceof RenderError) return onError(r.error);
   if (typeof r === "string") return new RawString(r);
   return r.then(
-    (s) => (s instanceof ErrorSentinel ? onError(s.error) : new RawString(s)),
+    (s) => (s instanceof RenderError ? onError(s.error) : new RawString(s)),
     (e) => onError(e),
   );
 }
@@ -246,9 +246,11 @@ interface TagInfo {
   isVoid: boolean;
 }
 
-// One cache entry per distinct tag folds the four per-element checks
-// (isValidTagName, lowercasing, RAWTEXT_TAGS, VOID_ELEMENTS) into a single
-// Map lookup on the hot path. Computed once, then reused for every occurrence.
+// Cache tag info per distinct tag name. Bounded at 1000 entries so a
+// malicious generator of unique tag names (via jsx(dynamicString)) can't grow
+// the Map without limit. The check costs ~0% on the hot path (benchmarked),
+// and keeping the Map small also avoids hash-collision slowdown at scale.
+const MAX_TAG_CACHE = 1000;
 const TAG_INFO_CACHE = new Map<string, TagInfo>();
 
 function tagInfo(tag: string): TagInfo {
@@ -261,6 +263,7 @@ function tagInfo(tag: string): TagInfo {
       rawtext: valid && RAWTEXT_TAGS.has(lc) ? lc : undefined,
       isVoid: valid && VOID_ELEMENTS.has(tag),
     };
+    if (TAG_INFO_CACHE.size >= MAX_TAG_CACHE) TAG_INFO_CACHE.clear();
     TAG_INFO_CACHE.set(tag, info);
   }
   return info;
@@ -270,10 +273,7 @@ function wrapElement(tag: string, attrs: string, content: string): RawString {
   return new RawString("<" + tag + attrs + ">" + content + "</" + tag + ">");
 }
 
-function renderElement(
-  tag: string,
-  props: Record<string, unknown> | null | undefined,
-): Node {
+function renderElement(tag: string, props: Record<string, unknown> | null | undefined): Node {
   if (!props) props = {};
   const info = tagInfo(tag);
   if (!info.valid) {
@@ -297,26 +297,22 @@ function renderElement(
       : attrs.then((a) => new RawString("<" + tag + a + ">"));
   }
 
-  const innerHTML = props["dangerouslySetInnerHTML"] as
-    | { __html: unknown }
-    | undefined;
+  const innerHTML = props["dangerouslySetInnerHTML"] as { __html: unknown } | undefined;
   const content: Rendered = innerHTML
     ? renderInnerHTML(innerHTML.__html)
     : renderChild(props["children"], info.rawtext);
 
   if (typeof attrs === "string") {
     if (typeof content === "string") return wrapElement(tag, attrs, content);
-    if (content instanceof ErrorSentinel) return content;
-    return content.then((c) =>
-      c instanceof ErrorSentinel ? c : wrapElement(tag, attrs, c),
-    );
+    if (content instanceof RenderError) return content;
+    return content.then((c) => (c instanceof RenderError ? c : wrapElement(tag, attrs, c)));
   }
 
   return attrs.then((a) => {
     if (typeof content === "string") return wrapElement(tag, a, content);
-    if (content instanceof ErrorSentinel) return content;
-    return (content as Promise<string | ErrorSentinel>).then((c) =>
-      c instanceof ErrorSentinel ? c : wrapElement(tag, a, c),
+    if (content instanceof RenderError) return content;
+    return (content as Promise<string | RenderError>).then((c) =>
+      c instanceof RenderError ? c : wrapElement(tag, a, c),
     );
   });
 }
@@ -327,9 +323,9 @@ function renderElement(
 export function render(value: unknown, rawtextTag?: string): Awaitable<string> {
   const r = renderChild(value, rawtextTag);
   if (typeof r === "string") return r;
-  if (r instanceof ErrorSentinel) throw r.error;
+  if (r instanceof RenderError) throw r.error;
   return r.then((s) => {
-    if (s instanceof ErrorSentinel) throw s.error;
+    if (s instanceof RenderError) throw s.error;
     return s;
   });
 }
@@ -338,15 +334,10 @@ export function render(value: unknown, rawtextTag?: string): Awaitable<string> {
 export async function renderToString(node: VNode): Promise<string> {
   const r = renderChild(node);
   const s = r instanceof Promise ? await r : r;
-  if (s instanceof ErrorSentinel) throw s.error;
+  if (s instanceof RenderError) throw s.error;
   return s;
 }
 
 // ── Exports for jsx-runtime ────────────────────────────────────────────────
 
-export {
-  renderChild,
-  renderElement,
-  renderComponent,
-  finalizeNode,
-};
+export { renderChild, renderElement, renderComponent, finalizeNode };

@@ -28,15 +28,15 @@ Prefer `VNode` over `JSX.Element` in your own annotations:
 
 ### What each branch means
 
-| Type                             | Example                            | Behaviour                                                   |
-| -------------------------------- | ---------------------------------- | ----------------------------------------------------------- |
-| `string` / `number` / `bigint`   | `"hello"`, `42`, `100n`           | HTML-escaped and rendered as text                           |
-| `boolean` / `null` / `undefined` | `true`, `null`                     | Renders nothing (empty string)                              |
-| `RawString`                      | `raw("<b>bold</b>")`              | Passes through verbatim, no escaping                        |
-| `Promise<VNode>`            | `Promise.resolve(<p>hi</p>)`       | Awaited automatically by `renderToString`                   |
-| `VNode[]`                   | `[<a/>, <b/>]`                     | Flattened and rendered in order                             |
-| `Iterable<VNode>`           | `Generator`, `Set`, `Map.values()` | Iterated and rendered lazily                                |
-| `AsyncIterable<VNode>`      | `AsyncGenerator`                   | Iterated and awaited per-item, streaming                    |
+| Type                             | Example                            | Behaviour                                 |
+| -------------------------------- | ---------------------------------- | ----------------------------------------- |
+| `string` / `number` / `bigint`   | `"hello"`, `42`, `100n`            | HTML-escaped and rendered as text         |
+| `boolean` / `null` / `undefined` | `true`, `null`                     | Renders nothing (empty string)            |
+| `RawString`                      | `raw("<b>bold</b>")`               | Passes through verbatim, no escaping      |
+| `Promise<VNode>`                 | `Promise.resolve(<p>hi</p>)`       | Awaited automatically by `renderToString` |
+| `VNode[]`                        | `[<a/>, <b/>]`                     | Flattened and rendered in order           |
+| `Iterable<VNode>`                | `Generator`, `Set`, `Map.values()` | Iterated and rendered lazily              |
+| `AsyncIterable<VNode>`           | `AsyncGenerator`                   | Iterated and awaited per-item, streaming  |
 
 ## Component
 
@@ -167,7 +167,7 @@ when paired with a client-side library (HTMX, Turbo, Alpine.js).
 
 | Type             | Use case                                                  |
 | ---------------- | --------------------------------------------------------- |
-| `VNode`     | `children` prop, return type of helpers, generic wrappers |
+| `VNode`          | `children` prop, return type of helpers, generic wrappers |
 | `Component<P>`   | Annotating component functions                            |
 | `HTMLAttributes` | Extending HTML elements in generic components             |
 | `CSSProperties`  | Typing inline `style` objects                             |

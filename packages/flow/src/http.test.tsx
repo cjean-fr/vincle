@@ -1,13 +1,12 @@
-import { Defer } from "./index.js";
-import { serve, negotiateHtmx } from "./http.js";
-import { NativeAdapter, HtmxAdapter } from "./adapters/index.js";
 import { describe, it, expect } from "bun:test";
+
+import { NativeAdapter, HtmxAdapter } from "./adapters/index.js";
+import { serve, negotiateHtmx } from "./http.js";
+import { Defer } from "./index.js";
 
 describe("HTTP negotiation (decoupled from the adapter)", () => {
   it("negotiateHtmx reads HX-Target and sets Vary", () => {
-    const n = negotiateHtmx(
-      new Request("http://localhost", { headers: { "HX-Target": "my-id" } }),
-    );
+    const n = negotiateHtmx(new Request("http://localhost", { headers: { "HX-Target": "my-id" } }));
     expect(n.target).toBe("my-id");
     expect(new Headers(n.headers).get("Vary")).toContain("HX-Target");
   });

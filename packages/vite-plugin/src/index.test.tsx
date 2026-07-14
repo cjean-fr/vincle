@@ -1,6 +1,7 @@
-import { Asset, assetUrl, setVite, type ViteManifest } from "./index.js";
 import { withScope, renderToString } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
+
+import { Asset, assetUrl, setVite, type ViteManifest } from "./index.js";
 
 async function render(node: unknown): Promise<string> {
   return renderToString(node as Parameters<typeof renderToString>[0]);
@@ -11,9 +12,7 @@ describe("Asset (dev mode)", () => {
     await withScope(async () => {
       setVite(null);
       const html = await render(<Asset entry="src/styles/main.css" />);
-      expect(html).toContain(
-        '<link rel="stylesheet" href="/src/styles/main.css"',
-      );
+      expect(html).toContain('<link rel="stylesheet" href="/src/styles/main.css"');
     });
   });
 
@@ -71,9 +70,7 @@ describe("Asset (production mode)", () => {
     await withScope(async () => {
       setVite(manifest);
       const html = await render(<Asset entry="src/main.ts" />);
-      expect(html).toContain(
-        '<script type="module" src="/assets/main-abc123.js">',
-      );
+      expect(html).toContain('<script type="module" src="/assets/main-abc123.js">');
     });
   });
 
@@ -92,9 +89,7 @@ describe("Asset (production mode)", () => {
     await withScope(async () => {
       setVite(manifest);
       const html = await render(<Asset entry="src/main.ts" />);
-      expect(html).toContain(
-        '<link rel="modulepreload" href="/assets/shared-xyz789.js"',
-      );
+      expect(html).toContain('<link rel="modulepreload" href="/assets/shared-xyz789.js"');
     });
   });
 
@@ -102,9 +97,7 @@ describe("Asset (production mode)", () => {
     await withScope(async () => {
       setVite(manifest);
       const html = await render(<Asset entry="src/styles/main.css" />);
-      expect(html).toContain(
-        '<link rel="stylesheet" href="/assets/main-only-d4f6.css"',
-      );
+      expect(html).toContain('<link rel="stylesheet" href="/assets/main-only-d4f6.css"');
       expect(html).not.toContain("<script");
     });
   });
@@ -112,9 +105,9 @@ describe("Asset (production mode)", () => {
   it("throws when the entry is not found in the manifest", async () => {
     await withScope(async () => {
       setVite(manifest);
-      await expect(
-        render(<Asset entry="src/does-not-exist.ts" />),
-      ).rejects.toThrow(/not found in manifest/);
+      await expect(render(<Asset entry="src/does-not-exist.ts" />)).rejects.toThrow(
+        /not found in manifest/,
+      );
     });
   });
 
@@ -139,9 +132,7 @@ describe("Asset (production mode)", () => {
 describe("Asset (no setup)", () => {
   it("throws a clear error when setVite was not called", async () => {
     await withScope(async () => {
-      await expect(render(<Asset entry="src/main.ts" />)).rejects.toThrow(
-        /context not found/,
-      );
+      await expect(render(<Asset entry="src/main.ts" />)).rejects.toThrow(/context not found/);
     });
   });
 });
@@ -165,9 +156,7 @@ describe("assetUrl (dev mode)", () => {
   it("works inside a JSX attribute", async () => {
     await withScope(async () => {
       setVite(null);
-      const html = await renderToString(
-        <link rel="icon" href={assetUrl("src/favicon.svg")} />,
-      );
+      const html = await renderToString(<link rel="icon" href={assetUrl("src/favicon.svg")} />);
       expect(html).toContain('href="/src/favicon.svg"');
     });
   });
@@ -189,9 +178,7 @@ describe("assetUrl (production mode)", () => {
     await withScope(async () => {
       setVite(manifest);
       expect(assetUrl("src/logo.svg")).toBe("/assets/logo-Bx7k2.svg");
-      expect(assetUrl("src/fonts/inter.woff2")).toBe(
-        "/assets/inter-abc123.woff2",
-      );
+      expect(assetUrl("src/fonts/inter.woff2")).toBe("/assets/inter-abc123.woff2");
     });
   });
 
@@ -205,18 +192,14 @@ describe("assetUrl (production mode)", () => {
   it("throws when the entry is not in the manifest", async () => {
     await withScope(async () => {
       setVite(manifest);
-      expect(() => assetUrl("src/does-not-exist.png")).toThrow(
-        /not found in manifest/,
-      );
+      expect(() => assetUrl("src/does-not-exist.png")).toThrow(/not found in manifest/);
     });
   });
 
   it("composes with arbitrary tags", async () => {
     await withScope(async () => {
       setVite(manifest);
-      const html = await renderToString(
-        <img src={assetUrl("src/logo.svg")} alt="logo" />,
-      );
+      const html = await renderToString(<img src={assetUrl("src/logo.svg")} alt="logo" />);
       expect(html).toContain('src="/assets/logo-Bx7k2.svg"');
       expect(html).toContain('alt="logo"');
     });

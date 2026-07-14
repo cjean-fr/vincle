@@ -7,16 +7,11 @@
  *   which stops the producer and releases any parked `emit()` call.
  */
 export function createFlowStream<T>(
-  producer: (
-    emit: (t: T) => Promise<void>,
-    signal: AbortSignal,
-  ) => Promise<void>,
+  producer: (emit: (t: T) => Promise<void>, signal: AbortSignal) => Promise<void>,
   opts?: { signal?: AbortSignal },
 ): ReadableStream<T> {
   const internal = new AbortController();
-  const signal = opts?.signal
-    ? AbortSignal.any([opts.signal, internal.signal])
-    : internal.signal;
+  const signal = opts?.signal ? AbortSignal.any([opts.signal, internal.signal]) : internal.signal;
   let controller!: ReadableStreamDefaultController<T>;
   const waiters: Array<() => void> = [];
   const flushWaiters = () => {

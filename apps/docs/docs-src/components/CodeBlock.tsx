@@ -1,6 +1,7 @@
-import { createRenderer, ExpressiveCodeBlock } from "satteri-expressive-code";
-import { toHtml } from "hast-util-to-html";
 import { raw, type VNode } from "@vincle/core";
+import { toHtml } from "hast-util-to-html";
+import { createRenderer, ExpressiveCodeBlock } from "satteri-expressive-code";
+
 import { useDocs } from "../context.js";
 import { escapeHtml } from "../lib/escape.js";
 
@@ -35,50 +36,43 @@ function makeCodeBlock(body: string): VNode {
   ) as VNode;
 }
 
-export function CodeBlock({
-  code,
-  language = "text",
-  meta,
-}: CodeBlockProps): VNode {
-  const p = getRenderer()
-    .then((renderer) => {
-      const { ec, baseStyles, themeStyles, jsModules } = renderer;
+export function CodeBlock({ code, language = "text", meta }: CodeBlockProps): VNode {
+  const p = getRenderer().then((renderer) => {
+    const { ec, baseStyles, themeStyles, jsModules } = renderer;
 
-      const page = useDocs();
-      const pageKey = `ec:${page.currentPage}`;
-      const isFirstOnPage = !injectedPages.has(pageKey);
-      if (isFirstOnPage) injectedPages.add(pageKey);
+    const page = useDocs();
+    const pageKey = `ec:${page.currentPage}`;
+    const isFirstOnPage = !injectedPages.has(pageKey);
+    if (isFirstOnPage) injectedPages.add(pageKey);
 
-      const cleaned = code.trim();
+    const cleaned = code.trim();
 
-      function handleResult(body: string): VNode {
-        if (isFirstOnPage && jsModules.length) {
-          body += `<script type="module">if(!window.__ec){window.__ec=true;${jsModules.join("")}}</script>`;
-        }
-        return makeCodeBlock(body);
+    function handleResult(body: string): VNode {
+      if (isFirstOnPage && jsModules.length) {
+        body += `<script type="module">if(!window.__ec){window.__ec=true;${jsModules.join("")}}</script>`;
       }
+      return makeCodeBlock(body);
+    }
 
-      if (language === "text") {
-        return makeCodeBlock(renderPlain(cleaned));
-      }
+    if (language === "text") {
+      return makeCodeBlock(renderPlain(cleaned));
+    }
 
-      const head: string[] = [];
-      if (isFirstOnPage) {
-        if (baseStyles) head.push(baseStyles);
-        if (themeStyles) head.push(themeStyles);
-      }
+    const head: string[] = [];
+    if (isFirstOnPage) {
+      if (baseStyles) head.push(baseStyles);
+      if (themeStyles) head.push(themeStyles);
+    }
 
-      return ec
-        .render(
-          new ExpressiveCodeBlock({ code: cleaned, language, meta }),
-        )
-        .then(({ renderedGroupAst, styles }) => {
-          if (styles.size) head.push([...styles].join(""));
-          const style = head.length ? `<style>${head.join("")}</style>` : "";
-          return handleResult(style + toHtml(renderedGroupAst));
-        })
-        .catch(() => makeCodeBlock(renderPlain(cleaned)));
-    });
+    return ec
+      .render(new ExpressiveCodeBlock({ code: cleaned, language, meta }))
+      .then(({ renderedGroupAst, styles }) => {
+        if (styles.size) head.push([...styles].join(""));
+        const style = head.length ? `<style>${head.join("")}</style>` : "";
+        return handleResult(style + toHtml(renderedGroupAst));
+      })
+      .catch(() => makeCodeBlock(renderPlain(cleaned)));
+  });
 
   return p as unknown as VNode;
 }

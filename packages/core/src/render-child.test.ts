@@ -1,6 +1,7 @@
+import { expect, describe, it } from "bun:test";
+
 import { RawString, raw } from "./raw.js";
 import { renderChild } from "./render.js";
-import { expect, describe, it } from "bun:test";
 
 describe("renderChild", () => {
   it("handles a mixed sync + async array", async () => {
@@ -46,9 +47,7 @@ describe("renderChild", () => {
   });
 
   it("handles deeply nested promises in array", async () => {
-    const result = await renderChild([
-      Promise.resolve(Promise.resolve("deep")),
-    ]);
+    const result = await renderChild([Promise.resolve(Promise.resolve("deep"))]);
     expect(result).toBe("deep");
   });
 });

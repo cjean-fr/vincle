@@ -1,7 +1,9 @@
-import type { FlowEvent } from "../types.js";
-import { createAdapter } from "./shared.js";
-import { escapeAttr } from "@vincle/core/html";
 import { raw, type VNode } from "@vincle/core";
+import { escapeAttr } from "@vincle/core/html";
+
+import type { FlowEvent } from "../types.js";
+
+import { createAdapter } from "./shared.js";
 
 export const EsiAdapter = createAdapter({
   capabilities: { streaming: false, merges: ["replace"] },

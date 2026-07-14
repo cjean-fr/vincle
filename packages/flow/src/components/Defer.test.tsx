@@ -1,18 +1,18 @@
+import { renderToString, withScope, useContext } from "@vincle/core";
+import type { ResolvedVNode } from "@vincle/core";
+import { describe, it, expect } from "bun:test";
+
+import { TurboAdapter, NativeAdapter } from "../adapters/index.js";
 import { Flow, initFlow } from "../context.js";
 import { Defer, Fill, Slot } from "../index.js";
-import { TurboAdapter, NativeAdapter } from "../adapters/index.js";
 import { renderStream } from "../render.js";
 import { collect } from "../test-utils.js";
-import { renderToString, withScope, useContext } from "@vincle/core";
-import { describe, it, expect } from "bun:test";
 
 describe("Defer", () => {
   it("renders a placeholder and registers content (streaming mode)", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const html = await renderToString(
-        <Defer>{() => <span>content</span>}</Defer>,
-      );
+      const html = await renderToString(<Defer>{() => <span>content</span>}</Defer>);
       expect(html).toContain('id="fragment-1"');
       const { pendingStore } = useContext(Flow);
       expect(pendingStore.size).toBe(1);
@@ -22,9 +22,7 @@ describe("Defer", () => {
   it("accepts a factory returning a node", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const html = await renderToString(
-        <Defer>{() => <span>inline</span>}</Defer>,
-      );
+      const html = await renderToString(<Defer>{() => <span>inline</span>}</Defer>);
       expect(html).toContain('id="fragment-1"');
       const { pendingStore } = useContext(Flow);
       expect(pendingStore.size).toBe(1);
@@ -74,9 +72,7 @@ describe("Defer", () => {
         mode: "static",
         generatePath: (id) => `/f/${id}.html`,
       });
-      const html = await renderToString(
-        <Defer>{() => <span>content</span>}</Defer>,
-      );
+      const html = await renderToString(<Defer>{() => <span>content</span>}</Defer>);
       expect(html).toContain('src="/f/fragment-1.html"');
     });
   });
@@ -85,8 +81,8 @@ describe("Defer", () => {
 describe("Defer — streaming sequences (async-iterable child)", () => {
   it("streams each yield as an append fragment", async () => {
     async function* rows() {
-      yield <li>a</li>;
-      yield <li>b</li>;
+      yield <li>a</li> as ResolvedVNode;
+      yield <li>b</li> as ResolvedVNode;
     }
     const html = await collect(
       renderStream(
@@ -111,7 +107,7 @@ describe("Defer — streaming sequences (async-iterable child)", () => {
 
   it("streams even with no other deferred content present", async () => {
     async function* rows() {
-      yield <li>only</li>;
+      yield <li>only</li> as ResolvedVNode;
     }
     const html = await collect(
       renderStream(
@@ -134,7 +130,7 @@ describe("Defer — streaming sequences (async-iterable child)", () => {
 
   it("a streaming Defer registered inside a one-shot Defer factory is picked up", async () => {
     async function* inner() {
-      yield <li>streamed</li>;
+      yield <li>streamed</li> as ResolvedVNode;
     }
     const html = await collect(
       renderStream(

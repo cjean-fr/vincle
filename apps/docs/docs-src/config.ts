@@ -1,14 +1,11 @@
+import { readdirSync, existsSync, statSync } from "node:fs";
+import path from "node:path";
+
+import type { ResolvedDocsConfig, DocsConfig, HandlerEntry, TabConfig } from "./types.js";
+
 import { Layout } from "./components/Layout.js";
 import { JsxHandler } from "./handlers/jsx.js";
 import { MarkdownHandler } from "./handlers/markdown.js";
-import type {
-  ResolvedDocsConfig,
-  DocsConfig,
-  HandlerEntry,
-  TabConfig,
-} from "./types.js";
-import { readdirSync, existsSync, statSync } from "node:fs";
-import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname!, "..");
 
@@ -66,14 +63,10 @@ function resolveTabs(config: DocsConfig): readonly TabConfig[] {
     const seen = new Set<string>();
     for (const tab of config.tabs) {
       if (!tab.slug) {
-        throw new Error(
-          "[@vincle/docs] defineConfig(): each tab requires a `slug`.",
-        );
+        throw new Error("[@vincle/docs] defineConfig(): each tab requires a `slug`.");
       }
       if (seen.has(tab.slug)) {
-        throw new Error(
-          `[@vincle/docs] defineConfig(): duplicate tab slug "${tab.slug}".`,
-        );
+        throw new Error(`[@vincle/docs] defineConfig(): duplicate tab slug "${tab.slug}".`);
       }
       seen.add(tab.slug);
     }

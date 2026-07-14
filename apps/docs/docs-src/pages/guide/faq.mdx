@@ -224,7 +224,7 @@ import { ErrorBoundary } from "@vincle/core";
 
 <ErrorBoundary fallback={(e) => <p>Failed: {(e as Error).message}</p>}>
   <Profile id={id} />
-</ErrorBoundary>
+</ErrorBoundary>;
 ```
 
 Errors not caught by any boundary reject the `renderToString` promise.

@@ -19,7 +19,9 @@ function createFallbackStore(): {
     run<T>(ctx: ContextMap, fn: () => Awaitable<T>): Promise<T> {
       const prev = fallback;
       fallback = ctx;
-      const restore = () => { fallback = prev; };
+      const restore = () => {
+        fallback = prev;
+      };
       try {
         const result = fn();
         if (result instanceof Promise) return result.finally(restore);
@@ -44,8 +46,8 @@ function createContextStore(): ReturnType<typeof createFallbackStore> {
   } catch {
     console.warn(
       "[vincle/core] AsyncLocalStorage not available — using fallback store. " +
-      "Concurrent requests may leak context between scopes. " +
-      "Ensure your runtime provides AsyncLocalStorage (Node.js >= 22, modern Deno/Bun).",
+        "Concurrent requests may leak context between scopes. " +
+        "Ensure your runtime provides AsyncLocalStorage (Node.js >= 22, modern Deno/Bun).",
     );
   }
   return createFallbackStore();
@@ -70,9 +72,7 @@ function scopeContext(): ContextMap {
 
 export function context<T>(globalKey: string): ContextKey<T> {
   if (typeof globalKey !== "string" || globalKey.length === 0) {
-    throw new Error(
-      "[vincle/core] context(key): a non-empty string key is required.",
-    );
+    throw new Error("[vincle/core] context(key): a non-empty string key is required.");
   }
   let sym = namedContexts.get(globalKey);
   if (!sym) {
@@ -89,9 +89,7 @@ export function setContext<T>(key: ContextKey<T>, value: T): void {
 export function useContext<T>(key: ContextKey<T>): T {
   const ctx = scopeContext();
   if (!ctx.has(key as ContextKey<unknown>)) {
-    throw new Error(
-      "[vincle/core] useContext() — context not found in current scope.",
-    );
+    throw new Error("[vincle/core] useContext() — context not found in current scope.");
   }
   return ctx.get(key as ContextKey<unknown>) as T;
 }
@@ -100,9 +98,6 @@ export function snapshot(): ContextMap {
   return new Map(scopeContext());
 }
 
-export function withScope<T>(
-  fn: () => Awaitable<T>,
-  parentCtx?: ContextMap,
-): Promise<T> {
+export function withScope<T>(fn: () => Awaitable<T>, parentCtx?: ContextMap): Promise<T> {
   return contextStore.run(new Map(parentCtx), fn);
 }

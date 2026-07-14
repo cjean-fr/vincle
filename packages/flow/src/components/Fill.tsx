@@ -1,6 +1,8 @@
 import { useContext } from "@vincle/core";
-import { Flow } from "../context.js";
+
 import type { DeferContent, MergeType } from "../types.js";
+
+import { Flow } from "../context.js";
 
 export interface FillProps {
   target: string;

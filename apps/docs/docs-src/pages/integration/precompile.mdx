@@ -32,20 +32,20 @@ runtime – Preact, Hono, or @vincle/core.
 ## Compatible JSX frameworks
 
 | Framework | `jsxImportSource` | Compatible |
-|-----------|-------------------|------------|
-| Vincle | `@vincle/core` | ✅ |
-| Preact | `preact` | ✅ |
-| Hono | `hono/jsx` | ✅ |
-| React | `react` | ❌ |
+| --------- | ----------------- | ---------- |
+| Vincle    | `@vincle/core`    | ✅         |
+| Preact    | `preact`          | ✅         |
+| Hono      | `hono/jsx`        | ✅         |
+| React     | `react`           | ❌         |
 
 React does not export the `jsxTemplate` helper that the precompile transform
 relies on. If your project targets React, the plugin throws a build error.
 
 ## Two layers of independence
 
-| Layer | What it means |
-|-------|---------------|
-| **JS runtime agnostic** | The helpers are pure functions — no platform imports. The generated output runs on Node, Bun, Deno, Edge, browser. |
+| Layer                      | What it means                                                                                                        |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **JS runtime agnostic**    | The helpers are pure functions — no platform imports. The generated output runs on Node, Bun, Deno, Edge, browser.   |
 | **JSX framework agnostic** | The plugin auto-detects your runtime and wires the helpers. Works with Preact, Hono, Vincle — no adapter, no config. |
 
 ## Usage

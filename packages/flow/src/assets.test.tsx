@@ -1,10 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import {
-  createAssetState,
-  createMarker,
-  registerAsset,
-  resolveAssets,
-} from "./assets.js";
+
+import { createAssetState, createMarker, registerAsset, resolveAssets } from "./assets.js";
 
 describe("createAssetState", () => {
   it("creates an empty state", () => {
@@ -16,21 +12,15 @@ describe("createAssetState", () => {
 
 describe("createMarker", () => {
   it("creates a style marker", () => {
-    expect(createMarker("style", "ec/base")).toBe(
-      "<!-- vincle:style:ec/base -->",
-    );
+    expect(createMarker("style", "ec/base")).toBe("<!-- vincle:style:ec/base -->");
   });
 
   it("creates a script marker", () => {
-    expect(createMarker("script", "jquery")).toBe(
-      "<!-- vincle:script:jquery -->",
-    );
+    expect(createMarker("script", "jquery")).toBe("<!-- vincle:script:jquery -->");
   });
 
   it("handles names with slashes", () => {
-    expect(createMarker("style", "ec/s-hash123")).toBe(
-      "<!-- vincle:style:ec/s-hash123 -->",
-    );
+    expect(createMarker("style", "ec/s-hash123")).toBe("<!-- vincle:style:ec/s-hash123 -->");
   });
 });
 
@@ -54,13 +44,9 @@ describe("resolveAssets", () => {
 
     const result = await resolveAssets(html, state);
 
-    expect(result).toContain(
-      '<style data-name="ec/base">body { color: red }</style>',
-    );
+    expect(result).toContain('<style data-name="ec/base">body { color: red }</style>');
     // Only one style tag
-    expect((result.match(/<style data-name="ec\/base">/g) ?? []).length).toBe(
-      1,
-    );
+    expect((result.match(/<style data-name="ec\/base">/g) ?? []).length).toBe(1);
     // The second and third markers should be gone (empty)
     const firstPos = result.indexOf("<style ");
     const afterFirst = result.slice(firstPos + 1);
@@ -130,16 +116,12 @@ describe("resolveAssets", () => {
       attrs: { type: "module" },
     });
 
-    const html = [createMarker("style", "a"), createMarker("script", "b")].join(
-      "",
-    );
+    const html = [createMarker("style", "a"), createMarker("script", "b")].join("");
 
     const result = await resolveAssets(html, state);
 
     expect(result).toContain('<style data-name="a">.a { }</style>');
-    expect(result).toContain(
-      '<script data-name="b" type="module">console.log(\'b\')</script>',
-    );
+    expect(result).toContain('<script data-name="b" type="module">console.log(\'b\')</script>');
   });
 
   it("escapes </style in style content", async () => {

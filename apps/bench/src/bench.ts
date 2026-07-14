@@ -1,3 +1,13 @@
+import { createElement as kita } from "@kitajs/html";
+import { renderToString } from "@vincle/core";
+import { jsx } from "@vincle/core/jsx-runtime";
+import { jsx as honoJsx } from "hono/jsx";
+import { bench, group, run } from "mitata";
+import { h } from "preact";
+import { render as preactRender } from "preact-render-to-string";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
 /**
  * Benchmarks: @vincle/core vs preact-render-to-string vs react-dom/server
  * vs hono/jsx vs @kitajs/html (v5, pre-release).
@@ -18,15 +28,6 @@ import { render as realworldKita } from "./realworld/kitajs.js";
 import { render as realworldPreact } from "./realworld/preact.js";
 import { render as realworldReact } from "./realworld/react.js";
 import { render as realworldVincle } from "./realworld/vincle.js";
-import { renderToString } from "@vincle/core";
-import { jsx } from "@vincle/core/jsx-runtime";
-import { createElement as kita } from "@kitajs/html";
-import { jsx as honoJsx } from "hono/jsx";
-import { bench, group, run } from "mitata";
-import { h } from "preact";
-import { render as preactRender } from "preact-render-to-string";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 
 type KitaCreate = typeof kita;
 
@@ -73,16 +74,8 @@ const bavariaReact = () =>
   createElement(
     "div",
     null,
-    createElement(
-      "span",
-      { className: "foo", "data-testid": "foo" },
-      BAVARIA_1,
-    ),
-    createElement(
-      "span",
-      { className: "bar", "data-testid": "bar" },
-      BAVARIA_2,
-    ),
+    createElement("span", { className: "foo", "data-testid": "foo" }, BAVARIA_1),
+    createElement("span", { className: "bar", "data-testid": "bar" }, BAVARIA_2),
   );
 const bavariaPreact = () =>
   h(
@@ -114,11 +107,7 @@ function makeKitaBuilders(k: KitaCreate) {
   };
   const stack = (depth: number): any =>
     depth <= 0
-      ? k(
-          "div",
-          null,
-          k("span", { class: "foo", "data-testid": "stack" }, "deep stack"),
-        )
+      ? k("div", null, k("span", { class: "foo", "data-testid": "stack" }, "deep stack"))
       : k("div", null, stack(depth - 1));
   const stackApp = () => {
     const children = new Array(STACK_REPEATS);
@@ -169,22 +158,14 @@ function stackReact(depth: number): any {
     return createElement(
       "div",
       null,
-      createElement(
-        "span",
-        { className: "foo", "data-testid": "stack" },
-        "deep stack",
-      ),
+      createElement("span", { className: "foo", "data-testid": "stack" }, "deep stack"),
     );
   }
   return createElement("div", null, stackReact(depth - 1));
 }
 function stackPreact(depth: number): any {
   if (depth <= 0) {
-    return h(
-      "div",
-      null,
-      h("span", { class: "foo", "data-testid": "stack" }, "deep stack"),
-    );
+    return h("div", null, h("span", { class: "foo", "data-testid": "stack" }, "deep stack"));
   }
   return h("div", null, stackPreact(depth - 1));
 }
@@ -201,8 +182,7 @@ function stackHono(depth: number): any {
 
 function stackAppVincle() {
   const children = new Array(STACK_REPEATS);
-  for (let i = 0; i < STACK_REPEATS; i++)
-    children[i] = stackVincle(STACK_DEPTH);
+  for (let i = 0; i < STACK_REPEATS; i++) children[i] = stackVincle(STACK_DEPTH);
   return jsx("div", { children });
 }
 function stackAppReact() {
@@ -212,8 +192,7 @@ function stackAppReact() {
 }
 function stackAppPreact() {
   const children = new Array(STACK_REPEATS);
-  for (let i = 0; i < STACK_REPEATS; i++)
-    children[i] = stackPreact(STACK_DEPTH);
+  for (let i = 0; i < STACK_REPEATS; i++) children[i] = stackPreact(STACK_DEPTH);
   return h("div", null, children);
 }
 function stackAppHono() {
@@ -240,46 +219,40 @@ group(`text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`, () => {
   });
 });
 
-group(
-  `stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
-  () => {
-    bench("@vincle/core", async () => {
-      await renderToString(stackAppVincle());
-    });
-    bench("react (renderToStaticMarkup)", () => {
-      renderToStaticMarkup(stackAppReact());
-    });
-    bench("preact (render)", () => {
-      preactRender(stackAppPreact());
-    });
-    bench("hono/jsx (toString)", () => {
-      String(stackAppHono());
-    });
-    bench("@kitajs/html", () => {
-      kitaBench.stackApp();
-    });
-  },
-);
+group(`stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`, () => {
+  bench("@vincle/core", async () => {
+    await renderToString(stackAppVincle());
+  });
+  bench("react (renderToStaticMarkup)", () => {
+    renderToStaticMarkup(stackAppReact());
+  });
+  bench("preact (render)", () => {
+    preactRender(stackAppPreact());
+  });
+  bench("hono/jsx (toString)", () => {
+    String(stackAppHono());
+  });
+  bench("@kitajs/html", () => {
+    kitaBench.stackApp();
+  });
+});
 
-group(
-  `realworld — full page, ${PURCHASES.length} purchases (kitajs port)`,
-  () => {
-    bench("@vincle/core", async () => {
-      await realworldVincle(NAME, PURCHASES);
-    });
-    bench("react (renderToStaticMarkup)", () => {
-      realworldReact(NAME, PURCHASES);
-    });
-    bench("preact (render)", () => {
-      realworldPreact(NAME, PURCHASES);
-    });
-    bench("hono/jsx (toString)", () => {
-      realworldHono(NAME, PURCHASES);
-    });
-    bench("@kitajs/html", () => {
-      realworldKita(NAME, PURCHASES);
-    });
-  },
-);
+group(`realworld — full page, ${PURCHASES.length} purchases (kitajs port)`, () => {
+  bench("@vincle/core", async () => {
+    await realworldVincle(NAME, PURCHASES);
+  });
+  bench("react (renderToStaticMarkup)", () => {
+    realworldReact(NAME, PURCHASES);
+  });
+  bench("preact (render)", () => {
+    realworldPreact(NAME, PURCHASES);
+  });
+  bench("hono/jsx (toString)", () => {
+    realworldHono(NAME, PURCHASES);
+  });
+  bench("@kitajs/html", () => {
+    realworldKita(NAME, PURCHASES);
+  });
+});
 
 await run();

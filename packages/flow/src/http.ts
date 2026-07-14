@@ -1,11 +1,8 @@
-import { renderStream } from "./render.js";
-import type {
-  FlowOptions,
-  Negotiate,
-  Negotiation,
-  StreamingAdapter,
-} from "./types.js";
 import type { VNode } from "@vincle/core";
+
+import type { FlowOptions, Negotiate, Negotiation, StreamingAdapter } from "./types.js";
+
+import { renderStream } from "./render.js";
 
 export type { Negotiate, Negotiation } from "./types.js";
 
@@ -46,10 +43,7 @@ function mergeHeaders(
   return headers;
 }
 
-function buildResponse(
-  body: ReadableStream<Uint8Array> | string,
-  init?: ResponseInit,
-): Response {
+function buildResponse(body: ReadableStream<Uint8Array> | string, init?: ResponseInit): Response {
   return new Response(body, init);
 }
 

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "bun:test";
-import { createPendingStore, debugStore } from "./pending-store.js";
+
 import type { FlowConfig } from "./types.js";
+
+import { createPendingStore, debugStore } from "./pending-store.js";
 
 function adaptCfg(overrides?: Partial<FlowConfig>): FlowConfig {
   return {
@@ -47,9 +49,7 @@ describe("PendingStore", () => {
       expect(() => store.defer("", { content: "x", merge: "replace" })).toThrow(
         'Defer: "" is not a valid fragment id',
       );
-      expect(() =>
-        store.defer("123abc", { content: "x", merge: "replace" }),
-      ).toThrow();
+      expect(() => store.defer("123abc", { content: "x", merge: "replace" })).toThrow();
     });
   });
 

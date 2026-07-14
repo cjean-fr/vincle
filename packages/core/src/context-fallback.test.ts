@@ -1,12 +1,6 @@
 import { describe, it, expect, afterAll } from "bun:test";
 
-import {
-  context,
-  setContext,
-  useContext,
-  withScope,
-  resetContextStorage,
-} from "./context.js";
+import { context, setContext, useContext, withScope, resetContextStorage } from "./context.js";
 
 describe("ALS fallback (no AsyncLocalStorage available)", () => {
   afterAll(() => {

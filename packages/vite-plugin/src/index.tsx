@@ -19,13 +19,7 @@
  *
  * @module
  */
-import {
-  context,
-  setContext,
-  useContext,
-  type ContextKey,
-  type VNode,
-} from "@vincle/core";
+import { context, setContext, useContext, type ContextKey, type VNode } from "@vincle/core";
 import { readFile, access } from "node:fs/promises";
 
 /** A single chunk in a Vite manifest. Mirrors `vite.ManifestChunk`. */
@@ -51,8 +45,7 @@ interface ViteScope {
   base: string;
 }
 
-const ViteContext: ContextKey<ViteScope> =
-  context<ViteScope>("@vincle/vite:scope");
+const ViteContext: ContextKey<ViteScope> = context<ViteScope>("@vincle/vite:scope");
 
 /**
  * Load and parse a Vite manifest from disk. Returns `null` if the file does
@@ -62,9 +55,7 @@ const ViteContext: ContextKey<ViteScope> =
  * const manifest = await loadViteManifest("docs/assets/.vite/manifest.json");
  * // manifest is null in dev (file absent), the parsed object after `vite build`.
  */
-export async function loadViteManifest(
-  path: string,
-): Promise<ViteManifest | null> {
+export async function loadViteManifest(path: string): Promise<ViteManifest | null> {
   try {
     await access(path);
   } catch {
@@ -78,10 +69,7 @@ export async function loadViteManifest(
  * Configure Vite asset resolution for the current render scope. Call once
  * before rendering, with the loaded manifest (production) or `null` (dev).
  */
-export function setVite(
-  manifest: ViteManifest | null,
-  options?: { base?: string },
-): void {
+export function setVite(manifest: ViteManifest | null, options?: { base?: string }): void {
   setContext(ViteContext, {
     manifest,
     base: options?.base ?? "/",
@@ -147,9 +135,7 @@ function resolveUrl(scope: ViteScope, entry: string): string {
  */
 export function Asset({ entry }: { entry: string }): any {
   const scope = useContext(ViteContext);
-  return scope.manifest === null
-    ? resolveDev(scope, entry)
-    : resolveProd(scope, entry);
+  return scope.manifest === null ? resolveDev(scope, entry) : resolveProd(scope, entry);
 }
 
 function resolveDev(scope: ViteScope, entry: string): VNode {
@@ -205,8 +191,6 @@ function visitImports(
     for (const css of importedChunk.css ?? []) {
       out.push(<link rel="stylesheet" href={`${base}${css}`} />);
     }
-    out.push(
-      <link rel="modulepreload" href={`${base}${importedChunk.file}`} />,
-    );
+    out.push(<link rel="modulepreload" href={`${base}${importedChunk.file}`} />);
   }
 }

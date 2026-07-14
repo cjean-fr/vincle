@@ -47,16 +47,16 @@ serve(
 
 ### Options
 
-| Option           | Type                                  | Default  | Description                       |
-| ---------------- | ------------------------------------- | -------- | --------------------------------- |
-| `signal`         | `AbortSignal`                         | —        | Abort all pending renders         |
+| Option           | Type                             | Default  | Description                       |
+| ---------------- | -------------------------------- | -------- | --------------------------------- |
+| `signal`         | `AbortSignal`                    | —        | Abort all pending renders         |
 | `onError`        | `(error, info) => VNode \| void` | —        | Per-fragment error handler        |
-| `defaultTimeout` | `number`                              | —        | Per-fragment timeout (ms)         |
-| `negotiate`      | `(req: Request) => Negotiation`       | —        | Extract per-request hints         |
-| `mode`           | `"full" \| "fragment"`                | `"full"` | Render full page or fragment-only |
-| `headers`        | `HeadersInit`                         | —        | Additional response headers       |
-| `status`         | `number`                              | `200`    | Response status code              |
-| `statusText`     | `string`                              | —        | Response status text              |
+| `defaultTimeout` | `number`                         | —        | Per-fragment timeout (ms)         |
+| `negotiate`      | `(req: Request) => Negotiation`  | —        | Extract per-request hints         |
+| `mode`           | `"full" \| "fragment"`           | `"full"` | Render full page or fragment-only |
+| `headers`        | `HeadersInit`                    | —        | Additional response headers       |
+| `status`         | `number`                         | `200`    | Response status code              |
+| `statusText`     | `string`                         | —        | Response status text              |
 
 ## Using Node.js `http`
 

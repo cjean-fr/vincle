@@ -1,4 +1,5 @@
 import type React from "react";
+
 import type { Awaitable, VNode } from "./render.js";
 
 // ── CSSProperties via csstype (re-exported from @types/react) ──────────
@@ -78,9 +79,7 @@ export type FromReact<T> = Omit<StripReact<EventToAttr<T>>, keyof VincleOverride
 // Augment `React.JSX.IntrinsicElements` in your project to add custom elements.
 
 export type IntrinsicElements = {
-  [Tag in keyof React.JSX.IntrinsicElements]: FromReact<
-    React.JSX.IntrinsicElements[Tag]
-  >;
+  [Tag in keyof React.JSX.IntrinsicElements]: FromReact<React.JSX.IntrinsicElements[Tag]>;
 };
 
 // ── Named attribute types (for programmatic use) ───────────────────────
@@ -92,9 +91,7 @@ export type SVGAttributes = IntrinsicElements["svg"];
 // Derived from React's DOMAttributes to cover every event (60+).
 
 export type StringEventHandlers = {
-  [K in keyof React.DOMAttributes<HTMLElement> as K extends `on${string}`
-    ? K
-    : never]: string;
+  [K in keyof React.DOMAttributes<HTMLElement> as K extends `on${string}` ? K : never]: string;
 };
 
 // ── Static attributes (everything except events, children, style) ──────

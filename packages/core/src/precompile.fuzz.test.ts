@@ -1,13 +1,14 @@
+import { describe, it, expect } from "bun:test";
+import fc from "fast-check";
+
 // Locks the "one coercion core" deepening: `jsxEscape` is now an alias of
 // `renderChild`, so the precompile escape path and the dynamic render path are
 // the same descent by construction. These property-based tests assert that
 // guarantee at the core interface, so a future change can't silently re-fork it.
 import { renderToString, raw } from "./index.js";
-import { jsx } from "./jsx-runtime.js";
 import { jsxEscape, jsxTemplate } from "./jsx-precompile-runtime.js";
+import { jsx } from "./jsx-runtime.js";
 import { renderChild } from "./render.js";
-import { describe, it, expect } from "bun:test";
-import fc from "fast-check";
 
 // Recursive VNode arbitrary WITHOUT RawString: every string leaf is untrusted,
 // so the whole output must be free of raw angle brackets. Includes nested arrays
@@ -49,40 +50,41 @@ describe("precompile path ≡ dynamic path", () => {
   // through renderToString must produce byte-identical output.
   const viaTemplate = async (child: unknown) => {
     const escaped = jsxEscape(child);
-    const result = escaped instanceof Promise
-      ? await jsxTemplate(["<div>", "</div>"], await escaped)
-      : jsxTemplate(["<div>", "</div>"], escaped);
+    const result =
+      escaped instanceof Promise
+        ? await jsxTemplate(["<div>", "</div>"], await escaped)
+        : jsxTemplate(["<div>", "</div>"], escaped);
     return result instanceof Promise ? (await result).value : result.value;
   };
-  const viaDynamic = (child: unknown) =>
-    renderToString(jsx("div", { children: child }));
+  const viaDynamic = (child: unknown) => renderToString(jsx("div", { children: child }));
 
-  it("matches on representative children (escape, RawString, arrays, async)", async () => {
-    const cases: unknown[] = [
-      "plain text",
-      "<script>alert(1)</script>",
-      "a & b < c > d",
-      "",
-      null,
-      undefined,
-      false,
-      true,
-      42,
-      raw("<b>bold</b>"),
-      ["x", "<y>", 7, raw("<z>")],
-      ["a", [Promise.resolve("b"), "c"]],
-      Promise.resolve("<async>"),
-      // Re-iterable non-array iterables must coerce like the dynamic path,
-      // not stringify to "[object Set]" / "[object Map]".
-      new Set(["a", "<b>", 3]),
-      new Map([
-        [1, "x"],
-        [2, "<y>"],
-      ]),
-    ];
-    for (const c of cases) {
-      expect(await viaTemplate(c)).toBe(await viaDynamic(c));
-    }
+  const cases: unknown[] = [
+    "plain text",
+    "<script>alert(1)</script>",
+    "a & b < c > d",
+    "",
+    null,
+    undefined,
+    false,
+    true,
+    42,
+    raw("<b>bold</b>"),
+    ["x", "<y>", 7, raw("<z>")],
+    ["a", [Promise.resolve("b"), "c"]],
+    Promise.resolve("<async>"),
+    // Re-iterable non-array iterables must coerce like the dynamic path,
+    // not stringify to "[object Set]" / "[object Map]".
+    new Set(["a", "<b>", 3]),
+    new Map([
+      [1, "x"],
+      [2, "<y>"],
+    ]),
+  ];
+
+  it.concurrent.each(cases)("matches on representative children - case #%#", async (c) => {
+    const [templateResult, dynamicResult] = await Promise.all([viaTemplate(c), viaDynamic(c)]);
+
+    expect(templateResult).toBe(dynamicResult);
   });
 
   it("coerces one-shot iterables (sync & async generators) like the dynamic path", async () => {

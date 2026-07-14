@@ -1,10 +1,6 @@
-// Property-based ("fuzz") security tests. Where escape.test.ts checks known
-// payloads, this file asserts the *invariants* those payloads are examples of:
-// properties that must hold for EVERY possible input. fast-check generates
-// thousands of adversarial strings (control chars, astral codepoints, partial
-// entities, scheme look-alikes) and shrinks any failure to a minimal repro.
-import { renderToString } from "../index.js";
-import { jsx } from "../jsx-runtime.js";
+import { describe, it } from "bun:test";
+import fc from "fast-check";
+
 import {
   escapeContent,
   escapeAttr,
@@ -12,25 +8,25 @@ import {
   isSafeSrcset,
   isValidAttrName,
 } from "../escape.js";
-import { describe, it } from "bun:test";
-import fc from "fast-check";
+// Property-based ("fuzz") security tests. Where escape.test.ts checks known
+// payloads, this file asserts the *invariants* those payloads are examples of:
+// properties that must hold for EVERY possible input. fast-check generates
+// thousands of adversarial strings (control chars, astral codepoints, partial
+// entities, scheme look-alikes) and shrinks any failure to a minimal repro.
+import { renderToString } from "../index.js";
+import { jsx } from "../jsx-runtime.js";
 
 // Reverse the escaping. The decode regex matches the exact tokens escape*
 // inserts, left-to-right and non-overlapping — so it is a precise inverse.
 const decodeContent = (s: string): string =>
-  s.replace(
-    /&(amp|lt|gt);/g,
-    (_m, e: string) => ({ amp: "&", lt: "<", gt: ">" })[e]!,
-  );
+  s.replace(/&(amp|lt|gt);/g, (_m, e: string) => ({ amp: "&", lt: "<", gt: ">" })[e]!);
 const decodeAttr = (s: string): string =>
   s.replace(
     /&(amp|lt|gt|quot|#39);/g,
-    (_m, e: string) =>
-      ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" })[e]!,
+    (_m, e: string) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" })[e]!,
   );
 
-const count = (haystack: string, needle: string): number =>
-  haystack.split(needle).length - 1;
+const count = (haystack: string, needle: string): number => haystack.split(needle).length - 1;
 
 describe("escape invariants (property-based)", () => {
   describe("escapeContent", () => {
@@ -97,9 +93,7 @@ describe("renders cannot be broken out of (property-based)", () => {
   it("a user-controlled child + attribute never adds an angle bracket", async () => {
     await fc.assert(
       fc.asyncProperty(fc.fullUnicodeString(), async (s) => {
-        const out = await renderToString(
-          jsx("div", { "data-x": s, children: s }),
-        );
+        const out = await renderToString(jsx("div", { "data-x": s, children: s }));
         // Exactly: "<div" + ">" + "</div" + ">"  ->  two of each, always.
         return count(out, "<") === 2 && count(out, ">") === 2;
       }),
@@ -156,30 +150,21 @@ describe("URL safety invariants (property-based)", () => {
 
   it("blocks javascript: under arbitrary control-char/whitespace obfuscation", () => {
     fc.assert(
-      fc.property(
-        dangerousUrl("javascript:"),
-        (url) => isSafeScheme(url) === false,
-      ),
+      fc.property(dangerousUrl("javascript:"), (url) => isSafeScheme(url) === false),
       { numRuns: 1000 },
     );
   });
 
   it("blocks vbscript: under arbitrary obfuscation", () => {
     fc.assert(
-      fc.property(
-        dangerousUrl("vbscript:"),
-        (url) => isSafeScheme(url) === false,
-      ),
+      fc.property(dangerousUrl("vbscript:"), (url) => isSafeScheme(url) === false),
       { numRuns: 1000 },
     );
   });
 
   it("blocks non-image data: URIs under arbitrary obfuscation", () => {
     fc.assert(
-      fc.property(
-        dangerousUrl("data:text/html,"),
-        (url) => isSafeScheme(url) === false,
-      ),
+      fc.property(dangerousUrl("data:text/html,"), (url) => isSafeScheme(url) === false),
       { numRuns: 1000 },
     );
   });
@@ -198,9 +183,7 @@ describe("URL safety invariants (property-based)", () => {
     );
     // Path/query chars excluding control chars and the literal ":" that could
     // forge a new scheme at the front.
-    const tail = fc
-      .fullUnicodeString()
-      .filter((s) => !/\p{C}/u.test(s) && !s.includes(":"));
+    const tail = fc.fullUnicodeString().filter((s) => !/\p{C}/u.test(s) && !s.includes(":"));
     fc.assert(
       fc.property(safePrefix, tail, (p, t) => isSafeScheme(p + t) === true),
       { numRuns: 1000 },

@@ -49,8 +49,7 @@ const ALL_REGEXES: RegexEntry[] = [
     pattern: "^[a-zA-Z][a-zA-Z0-9_-]*$",
     flags: "",
     purpose: "Validate fragment id format.",
-    whySafe:
-      "Anchored with `*` on a character class only — no nested groups, no alternation.",
+    whySafe: "Anchored with `*` on a character class only — no nested groups, no alternation.",
   },
 ];
 
@@ -106,8 +105,7 @@ describe("ReDoS static analysis", () => {
   for (const re of ALL_REGEXES) {
     it(`${re.id}: ${re.file} ${re.name} is structurally safe`, () => {
       const risks = analyze(re.pattern);
-      const rx = new RegExp(re.pattern, re.flags);
-      expect(rx).toBeDefined();
+      expect(new RegExp(re.pattern, re.flags)).toBeDefined();
 
       if (risks.length > 0) {
         const msg = risks.map((r) => r.type).join("; ");
@@ -142,12 +140,8 @@ describe("ReDoS behavioral contract", () => {
 
   it("[2] REGEX_MARKER finds asset markers", () => {
     // g flag mutates lastIndex — fresh regex per assertion
-    expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:style:ec/base -->")).toBe(
-      true,
-    );
-    expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:script:jquery -->")).toBe(
-      true,
-    );
+    expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:style:ec/base -->")).toBe(true);
+    expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:script:jquery -->")).toBe(true);
     expect(rx(ALL_REGEXES[1]!).test("<!-- vincle:style:a/b -->")).toBe(true);
     expect(rx(ALL_REGEXES[1]!).test("plain text")).toBe(false);
     expect(rx(ALL_REGEXES[1]!).test("<!-- other -->")).toBe(false);

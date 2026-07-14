@@ -1,3 +1,5 @@
+import { describe, it, expect } from "bun:test";
+
 import {
   escapeContent,
   escapeAttr,
@@ -9,7 +11,6 @@ import {
   sanitize,
   RAWTEXT_TAGS,
 } from "./escape.js";
-import { describe, it, expect } from "bun:test";
 
 describe("escapeContent", () => {
   it("escapes & < >", () => {
@@ -73,9 +74,7 @@ describe("escapeContent", () => {
 
 describe("escapeAttr", () => {
   it("escapes & < > \" '", () => {
-    expect(escapeAttr("\"><script>'")).toBe(
-      "&quot;&gt;&lt;script&gt;&#39;",
-    );
+    expect(escapeAttr("\"><script>'")).toBe("&quot;&gt;&lt;script&gt;&#39;");
   });
 
   it("returns safe string unchanged", () => {
@@ -160,9 +159,7 @@ describe("escapeRawText", () => {
   });
 
   it("escapes multiple occurrences", () => {
-    expect(escapeRawText("</script>a</script>b", "script")).toBe(
-      "<\\/script>a<\\/script>b",
-    );
+    expect(escapeRawText("</script>a</script>b", "script")).toBe("<\\/script>a<\\/script>b");
   });
 
   it("preserves content without closing tags", () => {

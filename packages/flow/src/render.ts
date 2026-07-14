@@ -1,10 +1,12 @@
+import { renderToString, type VNode } from "@vincle/core";
+
 import type { Adapter } from "./adapters/index.js";
+import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
+
 import { resolveAssets } from "./assets.js";
 import { withFlow, type FlowContext } from "./context.js";
 import { createFlowStream } from "./create-flow-stream.js";
 import { streamFlow } from "./streamFlow.js";
-import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
-import { renderToString, type VNode } from "@vincle/core";
 
 const REGEX_SHELL_CLOSE = /((?:<\/body>)?\s*<\/html>\s*)$/;
 
@@ -69,9 +71,7 @@ export async function orchestrateFlow(
         // inline with the first fragment that declares it.
         const emitResolved = async (ev: FlowEvent) =>
           emit(
-            ev.type === "fragment"
-              ? { ...ev, html: await resolveAssets(ev.html, ctx.assets) }
-              : ev,
+            ev.type === "fragment" ? { ...ev, html: await resolveAssets(ev.html, ctx.assets) } : ev,
           );
         await streamFlow({ pendingStore }, emitResolved, { ...opts, signal });
         if (opts.mode !== "fragment" && closingTag) {
@@ -98,12 +98,9 @@ export function renderToFlowEvents(
   adapter: StreamingAdapter,
   opts: FlowOptions & { mode?: "full" | "fragment" } = {},
 ): ReadableStream<FlowEvent> {
-  return createFlowStream(
-    (emit, signal) => orchestrateFlow(emit, signal, node, adapter, opts),
-    {
-      signal: opts.signal,
-    },
-  );
+  return createFlowStream((emit, signal) => orchestrateFlow(emit, signal, node, adapter, opts), {
+    signal: opts.signal,
+  });
 }
 
 /**

@@ -1,7 +1,9 @@
+import { describe, it, expect } from "bun:test";
+
 import type { VNode } from "./render.js";
+
 import * as Main from "./index.js";
 import { renderToString } from "./index.js";
-import { describe, it, expect } from "bun:test";
 
 describe("Main Entry Point API Contract", () => {
   it("exports core rendering, fragments and trust markers", () => {
@@ -25,9 +27,7 @@ describe("Main Entry Point API Contract", () => {
   });
 
   it("renderToString resolves then unwraps a Promise<RawString>", async () => {
-    expect(await renderToString(Promise.resolve(Main.raw("<i>text</i>")))).toBe(
-      "<i>text</i>",
-    );
+    expect(await renderToString(Promise.resolve(Main.raw("<i>text</i>")))).toBe("<i>text</i>");
   });
 
   it("strictly encapsulates internal implementation details", () => {
@@ -40,23 +40,17 @@ describe("Main Entry Point API Contract", () => {
 describe("Functional & Classless Components", () => {
   it("renders standard functional components", async () => {
     const Button = ({ label }: { label: string }) => <button>{label}</button>;
-    expect(await renderToString(<Button label="Click" />)).toBe(
-      "<button>Click</button>",
-    );
+    expect(await renderToString(<Button label="Click" />)).toBe("<button>Click</button>");
   });
 
   it("supports deep nesting with sequential children rendering", async () => {
-    const Box = ({ children }: { children?: VNode }) => (
-      <div class="box">{children}</div>
-    );
+    const Box = ({ children }: { children?: VNode }) => <div class="box">{children}</div>;
     const App = () => (
       <Box>
         <p>Hello</p>
       </Box>
     );
-    expect(await renderToString(<App />)).toBe(
-      '<div class="box"><p>Hello</p></div>',
-    );
+    expect(await renderToString(<App />)).toBe('<div class="box"><p>Hello</p></div>');
   });
 
   it("handles components returning Fragments without array leakage or trailing commas", async () => {
@@ -113,9 +107,7 @@ describe("Attribute Processing, Hardening & Sanitization", () => {
     expect(await renderToString(<label htmlFor="id">Label</label>)).toBe(
       '<label for="id">Label</label>',
     );
-    expect(await renderToString(<div tabIndex={1} />)).toBe(
-      '<div tabindex="1"></div>',
-    );
+    expect(await renderToString(<div tabIndex={1} />)).toBe('<div tabindex="1"></div>');
     expect(await renderToString(<input readOnly />)).toBe("<input readonly>");
   });
 
@@ -132,24 +124,18 @@ describe("Attribute Processing, Hardening & Sanitization", () => {
 
   it("allows verified and non-malicious data-URIs inside source descriptors", async () => {
     const img = <img srcSet="data:image/png;base64,abc 1x" />;
-    expect(await renderToString(img)).toBe(
-      '<img srcset="data:image/png;base64,abc 1x">',
-    );
+    expect(await renderToString(img)).toBe('<img srcset="data:image/png;base64,abc 1x">');
     expect(await renderToString(<img srcSet="javascript:alert(1) 1x" />)).toBe(
       '<img srcset="#blocked">',
     );
     expect(
-      await renderToString(
-        <img srcSet="https://example.com/img.png 1x, javascript:alert(1) 2x" />,
-      ),
+      await renderToString(<img srcSet="https://example.com/img.png 1x, javascript:alert(1) 2x" />),
     ).toBe('<img srcset="#blocked">');
   });
 
   it("drops invalid structural attributes like spaces in naming descriptors", async () => {
     // @ts-ignore
-    expect(await renderToString(<div {...{ "data foo": "bar" }} />)).toBe(
-      "<div></div>",
-    );
+    expect(await renderToString(<div {...{ "data foo": "bar" }} />)).toBe("<div></div>");
   });
 
   it("purges nullish entries out of complex object style specifications", async () => {
@@ -158,32 +144,20 @@ describe("Attribute Processing, Hardening & Sanitization", () => {
       marginTop: undefined,
       marginContent: null,
     };
-    expect(await renderToString(<div style={inlineStyle} />)).toBe(
-      '<div style="color:red"></div>',
-    );
+    expect(await renderToString(<div style={inlineStyle} />)).toBe('<div style="color:red"></div>');
   });
 
   it("treats empty, undefined or unprovided inner HTML directives gracefully", async () => {
-    expect(
-      await renderToString(
-        <div dangerouslySetInnerHTML={{ __html: undefined }} />,
-      ),
-    ).toBe("<div></div>");
-    expect(
-      await renderToString(
-        <div dangerouslySetInnerHTML={{ __html: "<b>html</b>" }} />,
-      ),
-    ).toBe("<div><b>html</b></div>");
+    expect(await renderToString(<div dangerouslySetInnerHTML={{ __html: undefined }} />)).toBe(
+      "<div></div>",
+    );
+    expect(await renderToString(<div dangerouslySetInnerHTML={{ __html: "<b>html</b>" }} />)).toBe(
+      "<div><b>html</b></div>",
+    );
   });
 
   it("safely stringifies BigInt", async () => {
-    expect(
-      await renderToString(
-        <div>
-          {BigInt(123)}
-        </div>,
-      ),
-    ).toBe("<div>123</div>");
+    expect(await renderToString(<div>{BigInt(123)}</div>)).toBe("<div>123</div>");
   });
 });
 
@@ -299,9 +273,7 @@ describe("Error propagation", () => {
 describe("__html Promise", () => {
   it("resolves a Promise __html into rendered HTML", async () => {
     const html = await renderToString(
-      <div
-        dangerouslySetInnerHTML={{ __html: Promise.resolve("<b>safe</b>") }}
-      />,
+      <div dangerouslySetInnerHTML={{ __html: Promise.resolve("<b>safe</b>") }} />,
     );
     expect(html).toBe("<div><b>safe</b></div>");
   });
@@ -327,68 +299,62 @@ describe("__html Promise", () => {
 });
 
 describe("class + className together", () => {
-  it("merges class and className into a single attribute", async () => {
+  // Uniform rule: when both the HTML name (`class`) and the React name
+  // (`className`) are present, the HTML name wins and the React name is dropped.
+
+  it("class + className → class wins, className dropped", async () => {
     const html = await renderToString(
       <div class="a" className="b">
         x
       </div>,
     );
-    expect(html).toBe('<div class="a b">x</div>');
+    expect(html).toBe('<div class="a">x</div>');
   });
 
-  it("handles class alone (no merge needed)", async () => {
+  it("handles class alone", async () => {
     const html = await renderToString(<div class="a">x</div>);
     expect(html).toBe('<div class="a">x</div>');
   });
 
-  it("handles className alone (no merge needed)", async () => {
+  it("handles className alone (mapped to class)", async () => {
     const html = await renderToString(<div className="b">x</div>);
     expect(html).toBe('<div class="b">x</div>');
   });
 
-  it("merges when class is a Promise and className is static (no side dropped)", async () => {
+  it("class (Promise) + className → class wins", async () => {
     const html = await renderToString(
       <div class={Promise.resolve("a")} className="b">
         x
       </div>,
     );
-    expect(html).toBe('<div class="a b">x</div>');
+    expect(html).toBe('<div class="a">x</div>');
   });
 
-  it("merges when className is a Promise and class is static (no side dropped)", async () => {
+  it("class + className (Promise) → class wins", async () => {
     const html = await renderToString(
       <div class="a" className={Promise.resolve("b")}>
         x
       </div>,
     );
-    expect(html).toBe('<div class="a b">x</div>');
+    expect(html).toBe('<div class="a">x</div>');
   });
 
-  it("merges when BOTH class and className are Promises", async () => {
+  it("both class and className are Promises → class wins", async () => {
     const html = await renderToString(
       <div class={Promise.resolve("a")} className={Promise.resolve("b")}>
         x
       </div>,
     );
-    expect(html).toBe('<div class="a b">x</div>');
+    expect(html).toBe('<div class="a">x</div>');
   });
 
-  it("keeps the single side when the other Promise resolves empty", async () => {
+  it("class (Promise) + className (empty Promise) → class wins", async () => {
     const html = await renderToString(
       <div class={Promise.resolve("a")} className={Promise.resolve("")}>
         x
       </div>,
     );
     expect(html).toBe('<div class="a">x</div>');
-  });
-
-  it("renders async class when both are static strings", async () => {
-    const html = await renderToString(
-      <div class="a" className="b">
-        x
-      </div>,
-    );
-    expect(html).toBe('<div class="a b">x</div>');
   });
 });
 
@@ -398,15 +364,11 @@ describe("Iterable & Generator Children", () => {
       yield <li>1</li>;
       yield <li>2</li>;
     }
-    expect(await renderToString(<ul>{items()}</ul>)).toBe(
-      "<ul><li>1</li><li>2</li></ul>",
-    );
+    expect(await renderToString(<ul>{items()}</ul>)).toBe("<ul><li>1</li><li>2</li></ul>");
   });
 
   it("renders a Set", async () => {
-    expect(await renderToString(<div>{new Set(["a", "b"])}</div>)).toBe(
-      "<div>ab</div>",
-    );
+    expect(await renderToString(<div>{new Set(["a", "b"])}</div>)).toBe("<div>ab</div>");
   });
 
   it("renders Map values()", async () => {
@@ -418,9 +380,7 @@ describe("Iterable & Generator Children", () => {
   });
 
   it("escapes string items from an iterable", async () => {
-    expect(await renderToString(<div>{new Set(["<b>"])}</div>)).toBe(
-      "<div>&lt;b&gt;</div>",
-    );
+    expect(await renderToString(<div>{new Set(["<b>"])}</div>)).toBe("<div>&lt;b&gt;</div>");
   });
 
   it("renders a generator yielding mixed primitives and elements", async () => {
@@ -438,8 +398,6 @@ describe("Iterable & Generator Children", () => {
       await Promise.resolve();
       yield <li>b</li>;
     }
-    expect(await renderToString(<ul>{items()}</ul>)).toBe(
-      "<ul><li>a</li><li>b</li></ul>",
-    );
+    expect(await renderToString(<ul>{items()}</ul>)).toBe("<ul><li>a</li><li>b</li></ul>");
   });
 });

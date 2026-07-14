@@ -1,6 +1,7 @@
-import { noReactHooks } from "./no-react-hooks";
 import * as parser from "@typescript-eslint/parser";
 import { RuleTester } from "@typescript-eslint/rule-tester";
+
+import { noReactHooks } from "./no-react-hooks";
 
 const ruleTester = new RuleTester({
   languageOptions: {

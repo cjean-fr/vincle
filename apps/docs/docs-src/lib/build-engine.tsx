@@ -1,7 +1,16 @@
+import type { ViteManifest } from "@vincle/vite-plugin";
+
+import { loadViteManifest, setVite } from "@vincle/vite-plugin";
+import { existsSync } from "node:fs";
+import { writeFile, mkdir, rm, readdir, copyFile } from "node:fs/promises";
+import { availableParallelism, cpus } from "node:os";
+import path from "node:path";
+
+import type { Page, PageMeta, TabConfig } from "../types.js";
+
 import config from "../../docs.config.js";
 import { setDocs } from "../context.js";
 import { buildMinimatchIndex } from "../search/minimatch-build.js";
-import type { Page, PageMeta, TabConfig } from "../types.js";
 import { buildSitemap } from "./build-sitemap.js";
 import {
   generateLlmsTxt,
@@ -11,22 +20,11 @@ import {
   updateRobotsTxt,
   extractPlainText,
 } from "./build-static-assets.js";
+import { injectHeadingAnchors } from "./heading-anchors.js";
 import { discoverPages } from "./pages.js";
 import { renderDocument } from "./render-document.js";
-import {
-  resolveSidebar,
-  resolveNavigation,
-  clearMetaCache,
-  firstPageOfTab,
-} from "./sidebar.js";
+import { resolveSidebar, resolveNavigation, clearMetaCache, firstPageOfTab } from "./sidebar.js";
 import { injectToc, renderTocHtml } from "./toc.js";
-import { injectHeadingAnchors } from "./heading-anchors.js";
-import type { ViteManifest } from "@vincle/vite-plugin";
-import { loadViteManifest, setVite } from "@vincle/vite-plugin";
-import { existsSync } from "node:fs";
-import { writeFile, mkdir, rm, readdir, copyFile } from "node:fs/promises";
-import { availableParallelism, cpus } from "node:os";
-import path from "node:path";
 
 function mapConcurrent<T, R>(
   items: T[],
@@ -47,10 +45,7 @@ function mapConcurrent<T, R>(
 
 function concurrency(): number {
   return Math.min(
-    Number(process.env["BUILD_CONCURRENCY"]) ||
-      availableParallelism?.() ||
-      cpus().length ||
-      4,
+    Number(process.env["BUILD_CONCURRENCY"]) || availableParallelism?.() || cpus().length || 4,
     16,
   );
 }
@@ -62,9 +57,7 @@ let resolvedTabs: { label: string; slug: string; href: string }[] = [];
 export async function initBuild(): Promise<void> {
   manifest = await loadViteManifest(path.resolve(config.viteManifest));
   if (!manifest) {
-    throw new Error(
-      `[@vincle/docs] Vite manifest not found. Run \`vite build\` first.`,
-    );
+    throw new Error(`[@vincle/docs] Vite manifest not found. Run \`vite build\` first.`);
   }
 }
 
@@ -111,9 +104,7 @@ export async function refreshPages(): Promise<void> {
   console.log(`[dev] Refreshed ${allPages.length} pages.`);
 }
 
-async function renderPages(
-  pages: Page[],
-): Promise<{ url: string; title: string; html: string }[]> {
+async function renderPages(pages: Page[]): Promise<{ url: string; title: string; html: string }[]> {
   const typedPages = allPages as (Page & { meta: PageMeta })[];
 
   // Resolve tab hrefs once for the entire build.
@@ -151,18 +142,11 @@ async function renderPages(
             next,
           });
           const rawInner = page.Component({});
-          const inner = prose ? (
-            <div class="docs-prose">{rawInner}</div>
-          ) : (
-            rawInner
-          );
+          const inner = prose ? <div class="docs-prose">{rawInner}</div> : rawInner;
           return config.layout({ children: inner });
         },
         {
-          transforms: [
-            (h) => injectToc(h, renderTocHtml),
-            injectHeadingAnchors,
-          ],
+          transforms: [(h) => injectToc(h, renderTocHtml), injectHeadingAnchors],
         },
       );
 
@@ -191,10 +175,7 @@ async function postBuild(
     html: r.html,
   }));
 
-  await buildMinimatchIndex(
-    pageData,
-    path.join(config.out, "search-index.json"),
-  );
+  await buildMinimatchIndex(pageData, path.join(config.out, "search-index.json"));
 
   const hasSitemap = config.sitemap && Boolean(config.site);
   await updateRobotsTxt(config.out, hasSitemap, config.site);
@@ -223,11 +204,7 @@ async function postBuild(
   await copyPublicAssets();
 }
 
-async function renderError(
-  status: number,
-  title: string,
-  message: string,
-): Promise<void> {
+async function renderError(status: number, title: string, message: string): Promise<void> {
   const html = await renderDocument(() => {
     setVite(manifest!, { base: config.base });
     setDocs({
@@ -245,9 +222,7 @@ async function renderError(
     return config.layout({
       children: (
         <main class="docs-main mx-auto max-w-2xl py-16 text-center">
-          <h1 class="text-6xl font-bold text-gray-300 dark:text-gray-700">
-            {status}
-          </h1>
+          <h1 class="text-6xl font-bold text-gray-300 dark:text-gray-700">{status}</h1>
           <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">{message}</p>
           <a
             href="/"
@@ -259,11 +234,7 @@ async function renderError(
       ),
     });
   });
-  await writeFile(
-    path.join(config.out, `${status}.html`),
-    "<!DOCTYPE html>\n" + html,
-    "utf-8",
-  );
+  await writeFile(path.join(config.out, `${status}.html`), "<!DOCTYPE html>\n" + html, "utf-8");
 }
 
 async function copyPublicAssets(): Promise<void> {
@@ -272,10 +243,7 @@ async function copyPublicAssets(): Promise<void> {
   const entries = await readdir(publicDir, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.isFile()) {
-      await copyFile(
-        path.join(publicDir, entry.name),
-        path.join(config.out, entry.name),
-      );
+      await copyFile(path.join(publicDir, entry.name), path.join(config.out, entry.name));
     }
   }
 }

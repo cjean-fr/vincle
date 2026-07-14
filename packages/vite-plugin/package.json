@@ -2,32 +2,34 @@
   "name": "@vincle/vite-plugin",
   "version": "0.9.0",
   "description": "Vite asset integration for @vincle/core",
-  "author": "Christophe Jean",
-  "license": "MIT",
+  "keywords": [
+    "asset",
+    "hmr",
+    "jsx",
+    "manifest",
+    "ssr",
+    "vite",
+    "vite-plugin"
+  ],
   "homepage": "https://vincle.cjean.fr",
+  "bugs": {
+    "url": "https://github.com/vincle/vincle/issues"
+  },
+  "license": "MIT",
+  "author": "Christophe Jean",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vincle/vincle.git",
     "directory": "packages/vite-plugin"
   },
-  "bugs": {
-    "url": "https://github.com/vincle/vincle/issues"
-  },
-  "keywords": [
-    "vite",
-    "jsx",
-    "ssr",
-    "asset",
-    "manifest",
-    "hmr",
-    "vite-plugin"
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
-  "sideEffects": false,
   "type": "module",
+  "sideEffects": false,
   "types": "./dist/index.d.ts",
-  "engines": {
-    "node": ">=22.0.0"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -38,9 +40,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "pkgroll --clean-dist --minify",
+    "build": "tsdown",
     "check": "tsc --noEmit",
-    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "format": "oxfmt",
     "test": "bun test"
   },
   "dependencies": {
@@ -49,7 +51,7 @@
   "devDependencies": {
     "@types/bun": "catalog:",
     "@types/react": "catalog:",
-    "pkgroll": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "peerDependencies": {
@@ -60,9 +62,7 @@
       "optional": true
     }
   },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ]
+  "engines": {
+    "node": ">=22.0.0"
+  }
 }

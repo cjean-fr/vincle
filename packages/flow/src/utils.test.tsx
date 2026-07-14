@@ -1,13 +1,11 @@
-import type { FlowContext } from "./context.js";
-import { renderStream, Defer } from "./index.js";
-import { composeShell, injectIntoHead } from "./utils.js";
-import {
-  createAdapter,
-  NativeAdapter,
-  TurboAdapter,
-} from "./adapters/index.js";
-import { collect } from "./test-utils.js";
 import { describe, it, expect } from "bun:test";
+
+import type { FlowContext } from "./context.js";
+
+import { createAdapter, NativeAdapter, TurboAdapter } from "./adapters/index.js";
+import { renderStream, Defer } from "./index.js";
+import { collect } from "./test-utils.js";
+import { composeShell, injectIntoHead } from "./utils.js";
 
 // These transforms ignore the ctx; pass a stub to satisfy the signature.
 const CTX = { pendingStore: { size: 0 } } as unknown as FlowContext;
@@ -33,8 +31,7 @@ describe("composeShell", () => {
   });
 
   it("composes into an adapter and runs once in the streamed shell", async () => {
-    const metadata = () => (s: string) =>
-      injectIntoHead(s, "<title>Home</title>");
+    const metadata = () => (s: string) => injectIntoHead(s, "<title>Home</title>");
     const adapter = createAdapter({
       ...NativeAdapter,
       transformShell: composeShell(NativeAdapter.transformShell, metadata()),

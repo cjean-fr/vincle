@@ -22,16 +22,10 @@ async function loadIndex(): Promise<SearchDocument[]> {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const dialog = document.getElementById(
-    "search-dialog",
-  ) as HTMLDialogElement | null;
-  const input = document.getElementById(
-    "search-input",
-  ) as HTMLInputElement | null;
+  const dialog = document.getElementById("search-dialog") as HTMLDialogElement | null;
+  const input = document.getElementById("search-input") as HTMLInputElement | null;
   const status = document.getElementById("search-status") as HTMLElement | null;
-  const results = document.getElementById(
-    "search-results",
-  ) as HTMLElement | null;
+  const results = document.getElementById("search-results") as HTMLElement | null;
   if (!dialog || !input || !status || !results) return;
 
   const searchDialog = dialog;
@@ -57,8 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const oy = ((t.top + t.height / 2 - d.top) / d.height) * 100;
       searchDialog.style.setProperty("--search-origin-x", ox + "%");
       searchDialog.style.setProperty("--search-origin-y", oy + "%");
-      searchDialog.style.transformOrigin =
-        "var(--search-origin-x) var(--search-origin-y)";
+      searchDialog.style.transformOrigin = "var(--search-origin-x) var(--search-origin-y)";
     } else {
       searchDialog.showModal();
     }
@@ -167,9 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Open via any [data-search-trigger] button — pass trigger for morph origin
   document.addEventListener("click", (e) => {
-    const trigger = (e.target as Element | null)?.closest(
-      "[data-search-trigger]",
-    );
+    const trigger = (e.target as Element | null)?.closest("[data-search-trigger]");
     if (trigger) {
       e.preventDefault();
       open(trigger);
@@ -223,9 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const idx = Number(item.dataset["index"]);
     if (!isNaN(idx)) {
       selectedIndex = idx;
-      updateSelection(
-        searchResults.querySelectorAll<HTMLElement>("[data-index]"),
-      );
+      updateSelection(searchResults.querySelectorAll<HTMLElement>("[data-index]"));
     }
   });
 
@@ -244,10 +233,7 @@ function search(docs: SearchDocument[], query: string): SearchHit[] {
   return docs
     .map((document) => ({ document, score: scoreDocument(document, terms) }))
     .filter((hit) => hit.score > 0)
-    .sort(
-      (a, b) =>
-        b.score - a.score || a.document.title.localeCompare(b.document.title),
-    );
+    .sort((a, b) => b.score - a.score || a.document.title.localeCompare(b.document.title));
 }
 
 function scoreDocument(document: SearchDocument, terms: string[]): number {
@@ -321,9 +307,7 @@ function snippet(text: string, query: string, radius = 50): string {
   const prefix = start > 0 ? "..." : "";
   const suffix = end < text.length ? "..." : "";
   const before = escapeHtml(text.slice(start, match.idx));
-  const matchedText = escapeHtml(
-    text.slice(match.idx, match.idx + match.term.length),
-  );
+  const matchedText = escapeHtml(text.slice(match.idx, match.idx + match.term.length));
   const after = escapeHtml(text.slice(match.idx + match.term.length, end));
   return `${prefix}${before}<mark>${matchedText}</mark>${after}${suffix}`;
 }

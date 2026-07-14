@@ -15,10 +15,7 @@ interface GroupedEntry {
   children: TocEntry[];
 }
 
-export function injectToc(
-  html: string,
-  renderToc: (entries: TocEntry[]) => string,
-): string {
+export function injectToc(html: string, renderToc: (entries: TocEntry[]) => string): string {
   const entries = extractTocEntries(html);
   if (entries.length === 0) {
     return html.replace(PLACEHOLDER_RE, "");
@@ -97,10 +94,7 @@ function renderGroup(group: GroupedEntry): string {
   let sublist = "";
   if (group.children.length > 0) {
     const items = group.children
-      .map(
-        (c) =>
-          `<li class="docs-toc-entry docs-toc-level-3 m-0">${renderTocLink(c)}</li>`,
-      )
+      .map((c) => `<li class="docs-toc-entry docs-toc-level-3 m-0">${renderTocLink(c)}</li>`)
       .join("");
     sublist = `<ul class="docs-toc-sublist list-none p-0 m-0">${items}</ul>`;
   }

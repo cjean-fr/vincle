@@ -22,10 +22,7 @@ new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(fu
 export const POLYFILL_SCRIPT = `<script>${NATIVE_POLYFILL}</script>`;
 
 export async function nativePolyfillHash(): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(NATIVE_POLYFILL),
-  );
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(NATIVE_POLYFILL));
   const b64 = btoa(String.fromCharCode(...new Uint8Array(digest)));
   return `sha256-${b64}`;
 }

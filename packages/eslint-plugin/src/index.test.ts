@@ -1,5 +1,6 @@
-import plugin from "./index.js";
 import { describe, it, expect } from "bun:test";
+
+import plugin from "./index.js";
 
 const rules = plugin.rules!;
 const configs = plugin.configs!;
@@ -12,7 +13,7 @@ describe("plugin index", () => {
   });
 
   it("has all 7 rules", () => {
-    const ruleNames = Object.keys(rules).sort();
+    const ruleNames = Object.keys(rules).toSorted();
     expect(ruleNames).toEqual([
       "no-context",
       "no-global-jsx-namespace",
@@ -40,9 +41,7 @@ describe("plugin index", () => {
       expect(rule.meta).toBeDefined();
       expect(rule.meta!.schema).toEqual([]);
       expect(rule.meta!.messages).toBeDefined();
-      expect(Object.keys(rule.meta!.messages!).length).toBeGreaterThanOrEqual(
-        1,
-      );
+      expect(Object.keys(rule.meta!.messages!).length).toBeGreaterThanOrEqual(1);
     }
   });
 

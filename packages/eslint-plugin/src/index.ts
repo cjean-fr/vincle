@@ -1,4 +1,3 @@
-import type { TSESLint } from "@typescript-eslint/utils";
 import { noContext } from "./rules/no-context.js";
 import { noGlobalJsxNamespace } from "./rules/no-global-jsx-namespace.js";
 import { noJavascriptUrls } from "./rules/no-javascript-urls.js";
@@ -7,10 +6,7 @@ import { noReactImports } from "./rules/no-react-imports.js";
 import { noRefs } from "./rules/no-refs.js";
 import { noUnsafeEventHandlers } from "./rules/no-unsafe-event-handlers.js";
 
-type FlatConfig = TSESLint.FlatConfig.Config;
-type RuleModule = TSESLint.RuleModule<string, unknown[]>;
-
-const rules: Record<string, RuleModule> = {
+const rules = {
   "no-react-imports": noReactImports,
   "no-react-hooks": noReactHooks,
   "no-unsafe-event-handlers": noUnsafeEventHandlers,
@@ -20,14 +16,13 @@ const rules: Record<string, RuleModule> = {
   "no-global-jsx-namespace": noGlobalJsxNamespace,
 };
 
-const plugin: TSESLint.FlatConfig.Plugin & {
-  configs: Record<string, FlatConfig>;
-} = {
+const plugin = {
+  meta: { name: "vincle" },
   rules,
-  configs: {},
+  configs: {} as Record<string, any>,
 };
 
-const configs: Record<string, FlatConfig> = {
+const configs = {
   recommended: {
     plugins: {
       "@vincle/core": plugin,
@@ -47,3 +42,4 @@ const configs: Record<string, FlatConfig> = {
 plugin.configs = configs;
 
 export default plugin;
+export { rules, configs };

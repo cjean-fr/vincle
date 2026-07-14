@@ -11,17 +11,11 @@ import type * as React from "react";
 declare global {
   namespace React.JSX {
     interface IntrinsicElements {
-      "turbo-frame": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      > & {
+      "turbo-frame": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
         src?: string;
         target?: string;
       };
-      "turbo-stream": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      > & {
+      "turbo-stream": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
         action?: string;
         target?: string;
         method?: string;

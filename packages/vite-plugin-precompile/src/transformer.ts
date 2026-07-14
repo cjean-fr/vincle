@@ -1,3 +1,15 @@
+import type {
+  Expression,
+  ImportDeclaration,
+  JSXAttribute,
+  JSXAttributeItem,
+  JSXChild,
+  JSXElement,
+  JSXFragment,
+  JSXIdentifier,
+  Program,
+} from "@oxc-project/types";
+
 import {
   collapseJsxWhitespace,
   decodeJsxEntities,
@@ -12,17 +24,6 @@ import {
   remapAttrName,
   RUNTIME_SOURCE,
 } from "@vincle/precompile-core";
-import type {
-  Expression,
-  ImportDeclaration,
-  JSXAttribute,
-  JSXAttributeItem,
-  JSXChild,
-  JSXElement,
-  JSXFragment,
-  JSXIdentifier,
-  Program,
-} from "@oxc-project/types";
 import MagicString from "magic-string";
 import { parseSync, visitorKeys } from "oxc-parser";
 
@@ -93,10 +94,7 @@ interface Replacement {
  * the key it was reached through. Returns `true` if any visit call returned
  * `true` (early termination).
  */
-function walkChildren(
-  node: AnyNode,
-  visit: (child: AnyNode, key: string) => boolean,
-): boolean {
+function walkChildren(node: AnyNode, visit: (child: AnyNode, key: string) => boolean): boolean {
   for (const key of visitorKeys[node.type] ?? []) {
     const val = node[key];
     if (Array.isArray(val)) {
@@ -142,9 +140,7 @@ export default function precompileTransform(
   });
 
   if (result.errors.length > 0) {
-    const isCritical = result.errors.some(
-      (e: { severity: string }) => e.severity === "Error",
-    );
+    const isCritical = result.errors.some((e: { severity: string }) => e.severity === "Error");
     if (isCritical) return null;
   }
 
@@ -294,12 +290,7 @@ function emitOpening(
   appendStatic(parts, closingBracket);
 }
 
-function emitAttribute(
-  attr: JSXAttribute,
-  parts: string[],
-  exprs: string[],
-  ctx: Ctx,
-): void {
+function emitAttribute(attr: JSXAttribute, parts: string[], exprs: string[], ctx: Ctx): void {
   const rawName = attrName(attr);
   const init = attr.value;
 
@@ -308,18 +299,11 @@ function emitAttribute(
   // decides the output (vincle's renderAttr drops both), so the transform
   // never duplicates the drop-list and precompiled HTML matches the classic
   // path. Dynamic key/ref values fall through to the generic dynamic branch.
-  if (
-    (rawName === "key" || rawName === "ref") &&
-    (init === null || init.type === "Literal")
-  ) {
+  if ((rawName === "key" || rawName === "ref") && (init === null || init.type === "Literal")) {
     ctx.used.add("jsxAttr");
     const valueText = init === null ? "true" : JSON.stringify(init.value);
     appendStatic(parts, " ");
-    addDynamic(
-      parts,
-      exprs,
-      `jsxAttr(${JSON.stringify(rawName)}, ${valueText})`,
-    );
+    addDynamic(parts, exprs, `jsxAttr(${JSON.stringify(rawName)}, ${valueText})`);
     return;
   }
 
@@ -346,11 +330,7 @@ function emitAttribute(
       ctx.used.add("jsxAttr");
       const exprText = processExpressionForJsx(expr, ctx);
       appendStatic(parts, " ");
-      addDynamic(
-        parts,
-        exprs,
-        `jsxAttr(${JSON.stringify(rawName)}, ${exprText})`,
-      );
+      addDynamic(parts, exprs, `jsxAttr(${JSON.stringify(rawName)}, ${exprText})`);
       return;
     }
     appendStatic(parts, ` ${remapAttrName(rawName)}=""`);
@@ -372,12 +352,7 @@ function emitAttribute(
  * static ones (`href="javascript:…"` → `href="#blocked"`, unsafe `style`
  * dropped, …) — while the output stays fully static.
  */
-function emitStaticAttr(
-  rawName: string,
-  value: string | true,
-  parts: string[],
-  ctx: Ctx,
-): void {
+function emitStaticAttr(rawName: string, value: string | true, parts: string[], ctx: Ctx): void {
   if (ctx.renderAttr) {
     const rendered = ctx.renderAttr(rawName, value);
     const text = typeof rendered === "string" ? rendered : (rendered as any)?.value;
@@ -420,10 +395,7 @@ function emitChildren(
       // `appendStatic`/`escapeForTemplate` then handles the template-literal
       // metacharacters (backtick, `${`, `\`).
       const decoded = decodeJsxEntities(collapseJsxWhitespace(child.value));
-      appendStatic(
-        parts,
-        rawtextTag ? escapeRawText(decoded, rawtextTag) : escapeContent(decoded),
-      );
+      appendStatic(parts, rawtextTag ? escapeRawText(decoded, rawtextTag) : escapeContent(decoded));
     } else if (child.type === "JSXExpressionContainer") {
       if (child.expression.type !== "JSXEmptyExpression") {
         const inner = child.expression;
@@ -441,20 +413,14 @@ function emitChildren(
           appendStatic(parts, `</${tag}>`);
         }
       } else {
-        const replaced = processExpressionForJsx(
-          child as unknown as Expression,
-          ctx,
-        );
+        const replaced = processExpressionForJsx(child as unknown as Expression, ctx);
         ctx.used.add("jsxEscape");
         addDynamic(parts, exprs, `jsxEscape(${replaced})`);
       }
     } else if (child.type === "JSXFragment") {
       emitChildren(child.children, parts, exprs, ctx, rawtextTag);
     } else if (child.type === "JSXSpreadChild") {
-      const exprText = ctx.source.slice(
-        child.expression.start,
-        child.expression.end,
-      );
+      const exprText = ctx.source.slice(child.expression.start, child.expression.end);
       ctx.used.add("jsxEscape");
       addDynamic(parts, exprs, `jsxEscape(${exprText})`);
     }
@@ -482,12 +448,7 @@ function replaceNestedJsx(node: Expression, text: string, ctx: Ctx): string {
   return result;
 }
 
-function findNestedJsx(
-  node: AnyNode,
-  out: Replacement[],
-  ctx: Ctx,
-  inJsxChildren = false,
-): void {
+function findNestedJsx(node: AnyNode, out: Replacement[], ctx: Ctx, inJsxChildren = false): void {
   if (node.type === "JSXElement") {
     const el = node as unknown as JSXElement;
     if (isEligibleElement(el)) {
@@ -530,8 +491,7 @@ function escapeForTemplate(str: string): string {
 }
 
 function appendStatic(parts: string[], str: string): void {
-  parts[parts.length - 1] =
-    (parts[parts.length - 1] ?? "") + escapeForTemplate(str);
+  parts[parts.length - 1] = (parts[parts.length - 1] ?? "") + escapeForTemplate(str);
 }
 
 function addDynamic(parts: string[], exprs: string[], expr: string): void {
@@ -575,9 +535,7 @@ function injectRuntimeImport(
     const decl = stmt as ImportDeclaration;
     if (decl.source.value !== rtSource) continue;
     if (decl.importKind === "type") continue;
-    const named = (decl.specifiers ?? []).filter(
-      (sp) => sp.type === "ImportSpecifier",
-    );
+    const named = (decl.specifiers ?? []).filter((sp) => sp.type === "ImportSpecifier");
     // Default-only / namespace / side-effect import: no braces to merge into.
     if (named.length === 0) continue;
 
@@ -585,11 +543,7 @@ function injectRuntimeImport(
     // references the canonical name, so `jsxTemplate as tpl` does not count.
     const existing = new Set(
       named
-        .filter(
-          (sp) =>
-            sp.imported.type === "Identifier" &&
-            sp.local.name === sp.imported.name,
-        )
+        .filter((sp) => sp.imported.type === "Identifier" && sp.local.name === sp.imported.name)
         .map((sp) => (sp.imported as { name: string }).name),
     );
     const missing = helpers.filter((h) => !existing.has(h));
@@ -599,11 +553,7 @@ function injectRuntimeImport(
     const braceStart = decl.start + declText.indexOf("{");
     const braceEnd = decl.start + declText.indexOf("}");
     const specifierTexts = named.map((sp) => source.slice(sp.start, sp.end));
-    s.overwrite(
-      braceStart,
-      braceEnd + 1,
-      `{ ${[...specifierTexts, ...missing].join(", ")} }`,
-    );
+    s.overwrite(braceStart, braceEnd + 1, `{ ${[...specifierTexts, ...missing].join(", ")} }`);
     return;
   }
 

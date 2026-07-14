@@ -1,10 +1,6 @@
 import type { VNode } from "./render.js";
-import {
-  renderChild,
-  renderElement,
-  renderComponent,
-  finalizeNode,
-} from "./render.js";
+
+import { renderChild, renderElement, renderComponent, finalizeNode } from "./render.js";
 
 export type {
   CSSProperties,
@@ -17,8 +13,8 @@ export type {
 import type React from "react";
 
 // Local copy of the mapped type so the `interface` below keeps its `extends`
-// clause through pkgroll's .d.ts bundling (cross-module `import()` types in an
-// `extends` get dropped by rollup-plugin-dts).
+// clause through tsdown's .d.ts bundling (cross-module `import()` types in an
+// `extends` get dropped by rolldown-plugin-dts).
 //
 // Each element's props are `FromReact<…>` (React's props, camelCase event
 // handlers turned into strings, React-only props stripped) intersected with a
@@ -73,19 +69,14 @@ export function jsx<P extends {} = {}>(
 ): VNode {
   if (typeof type === "function") {
     if (type === Fragment) {
-      return finalizeNode(
-        renderChild((props as { children?: unknown } | null)?.children),
-      );
+      return finalizeNode(renderChild((props as { children?: unknown } | null)?.children));
     }
     return renderComponent(
       type as (props: Record<string, unknown>) => VNode,
       (props ?? {}) as Record<string, unknown>,
     );
   }
-  return renderElement(
-    type,
-    (props ?? {}) as Record<string, unknown>,
-  );
+  return renderElement(type, (props ?? {}) as Record<string, unknown>);
 }
 
 export const jsxs: typeof jsx = jsx;
@@ -130,8 +121,4 @@ export function createElement(
   return jsx(type, merged);
 }
 
-export {
-  jsxAttr,
-  jsxEscape,
-  jsxTemplate,
-} from "./jsx-precompile-runtime.js";
+export { jsxAttr, jsxEscape, jsxTemplate } from "./jsx-precompile-runtime.js";

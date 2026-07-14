@@ -1,10 +1,4 @@
-export {
-  jsxs,
-  Fragment,
-  jsxAttr,
-  jsxTemplate,
-  jsxDEV,
-} from "./jsx-runtime.js";
+export { jsxs, Fragment, jsxAttr, jsxTemplate, jsxDEV } from "./jsx-runtime.js";
 export type {
   CSSProperties,
   StringEventHandlers,

@@ -1,4 +1,5 @@
-import { RawString } from "./raw.js";
+import type { Awaitable } from "./render.js";
+
 import {
   escapeAttr,
   isValidAttrName,
@@ -7,11 +8,13 @@ import {
   isSafeSrcset,
   URL_ATTRIBUTES,
   ATTRIBUTE_NAME_MAP,
+  BOOLEAN_ATTRIBUTES,
 } from "./escape.js";
-import type { Awaitable } from "./render.js";
+import { RawString } from "./raw.js";
 
 // ── Style rendering ──────────────────────────────────────────────────────
 
+const MAX_CSS_CACHE = 1000;
 const CSS_PROP_CACHE = new Map<string, string>();
 const REGEX_CAMEL_TO_KEBAB = /[A-Z]/g;
 
@@ -20,6 +23,7 @@ function cssPropName(key: string): string {
   let cached = CSS_PROP_CACHE.get(key);
   if (cached === undefined) {
     cached = key.replace(REGEX_CAMEL_TO_KEBAB, "-$&").toLowerCase();
+    if (CSS_PROP_CACHE.size >= MAX_CSS_CACHE) CSS_PROP_CACHE.clear();
     CSS_PROP_CACHE.set(key, cached);
   }
   return cached;
@@ -39,14 +43,14 @@ function renderStyle(style: Record<string, string | number | undefined>): string
 
 // ── Event handler detection ──────────────────────────────────────────────
 
-const ON_MASK =
-  ("o".charCodeAt(0) << 8) | "n".charCodeAt(0);
+const ON_MASK = ("o".charCodeAt(0) << 8) | "n".charCodeAt(0);
 
 function isEventHandler(name: string): boolean {
   const c2 = name.charCodeAt(2) | 32;
   return (
     (((name.charCodeAt(0) | 32) << 8) | (name.charCodeAt(1) | 32)) === ON_MASK &&
-    c2 >= 97 && c2 <= 122
+    c2 >= 97 &&
+    c2 <= 122
   );
 }
 
@@ -62,13 +66,16 @@ interface AttrMeta {
   name: string;
   isEvent: boolean;
   isStyle: boolean;
+  isBoolean: boolean;
   urlKind: 0 | 1 | 2;
 }
 
+const MAX_ATTR_CACHE = 1000;
 const ATTR_META_CACHE = new Map<string, AttrMeta | null>();
 
 function computeAttrMeta(name: string): AttrMeta | null {
-  if (name === "children" || name === "dangerouslySetInnerHTML" || name === "key" || name === "ref") return null;
+  if (name === "children" || name === "dangerouslySetInnerHTML" || name === "key" || name === "ref")
+    return null;
 
   let attrName = name;
   if (!isValidAttrName(attrName)) {
@@ -83,19 +90,20 @@ function computeAttrMeta(name: string): AttrMeta | null {
   if (isEvent) attrName = attrName.toLowerCase();
 
   if (attrName === "style") {
-    return { name: attrName, isEvent: false, isStyle: true, urlKind: 0 };
+    return { name: attrName, isEvent: false, isStyle: true, isBoolean: false, urlKind: 0 };
   }
 
   const lcName = attrName.toLowerCase();
   const urlKind: 0 | 1 | 2 =
     lcName === "srcset" ? URL_SRCSET : URL_ATTRIBUTES.has(lcName) ? URL_ATTR : URL_NONE;
-  return { name: attrName, isEvent, isStyle: false, urlKind };
+  return { name: attrName, isEvent, isStyle: false, isBoolean: BOOLEAN_ATTRIBUTES.has(lcName), urlKind };
 }
 
 function getAttrMeta(name: string): AttrMeta | null {
   const cached = ATTR_META_CACHE.get(name);
   if (cached !== undefined) return cached;
   const meta = computeAttrMeta(name);
+  if (ATTR_META_CACHE.size >= MAX_ATTR_CACHE) ATTR_META_CACHE.clear();
   ATTR_META_CACHE.set(name, meta);
   return meta;
 }
@@ -107,7 +115,7 @@ export function renderAttr(name: string, value: unknown): Awaitable<string> {
     return value.then((v) => renderAttr(name, v));
   }
 
-  if (value === false || value == null) return "";
+  if (value == null) return "";
 
   const meta = getAttrMeta(name);
   if (meta === null) return "";
@@ -142,7 +150,13 @@ export function renderAttr(name: string, value: unknown): Awaitable<string> {
     return `style="${escapeAttr(style)}"`;
   }
 
-  if (value === true) return attrName;
+  // HTML boolean attribute: presence = true, absence = false
+  if (meta.isBoolean) {
+    if (value === false) return "";
+    if (value === true) return attrName;
+    // Non-boolean value for a boolean attr is a programming error; drop it
+    return "";
+  }
 
   let str = typeof value === "string" ? value : String(value);
   if (meta.urlKind === URL_SRCSET) {
@@ -154,52 +168,27 @@ export function renderAttr(name: string, value: unknown): Awaitable<string> {
   return `${attrName}="${escapeAttr(str)}"`;
 }
 
-// ── Class/className merge ────────────────────────────────────────────────
-
-function mergeClass(
-  classVal: unknown,
-  classNameVal: unknown,
-): { merged: unknown; skipClassName: boolean } {
-  if (classNameVal === undefined) return { merged: classVal, skipClassName: false };
-  if (classVal === undefined) return { merged: classNameVal, skipClassName: true };
-  if (classVal instanceof Promise || classNameVal instanceof Promise) {
-    // Await BOTH, then merge — never drop one side. (Promise.all treats a
-    // non-promise entry as already-resolved.) renderAttr resolves this promise.
-    const merged = Promise.all([classVal, classNameVal]).then(([a, b]) =>
-      joinClass(a, b),
-    );
-    return { merged, skipClassName: true };
-  }
-  return { merged: joinClass(classVal, classNameVal), skipClassName: true };
-}
-
-function joinClass(classVal: unknown, classNameVal: unknown): string | undefined {
-  const cls = classVal != null ? String(classVal) : "";
-  const cn = classNameVal != null ? String(classNameVal) : "";
-  return cls && cn ? `${cls} ${cn}` : cls || cn || undefined;
-}
-
 // ── Props rendering ──────────────────────────────────────────────────────
+//
+// When a React-style name (e.g. `className`, `htmlFor`) and its HTML-native
+// counterpart (`class`, `for`) both appear in props, the HTML name wins and the
+// React name is silently dropped — no merge, single pass. This rule applies
+// uniformly to all entries in `ATTRIBUTE_NAME_MAP`. The rationale: vincle
+// renders HTML, not React, so the HTML-native form is the canonical output.
 
-export function renderAttrs(
-  props: Record<string, unknown> | null | undefined,
-): Awaitable<string> {
+export function renderAttrs(props: Record<string, unknown> | null | undefined): Awaitable<string> {
   if (!props) return "";
   let out = "";
   let pending: Promise<string>[] | null = null;
 
-  const hasClass = "class" in props;
-  const hasClassName = "className" in props;
-  const { merged: mergedClass, skipClassName } =
-    hasClass && hasClassName
-      ? mergeClass(props["class"], props["className"])
-      : { merged: undefined, skipClassName: false };
-
   for (const key in props) {
     if (key === "children" || key === "dangerouslySetInnerHTML" || key === "key" || key === "ref") continue;
-    if (skipClassName && key === "className") continue;
-    const value = key === "class" && mergedClass !== undefined ? mergedClass : props[key];
-    const r = renderAttr(key, value);
+    const meta = getAttrMeta(key);
+    if (meta === null) continue;
+    // When both a React-style name (className) and its HTML-native counterpart
+    // (class) are in props, the HTML name wins and the React name is skipped.
+    if (meta.name !== key && meta.name in props) continue;
+    const r = renderAttr(key, props[key]);
     if (typeof r === "string") {
       if (r) out += ` ${r}`;
     } else {
@@ -207,7 +196,5 @@ export function renderAttrs(
     }
   }
 
-  return pending
-    ? Promise.all(pending).then((parts) => out + parts.join(""))
-    : out;
+  return pending ? Promise.all(pending).then((parts) => out + parts.join("")) : out;
 }

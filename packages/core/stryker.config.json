@@ -15,9 +15,7 @@
     "src/utils/html.ts"
   ],
   "mutator": {
-    "excludedMutations": [
-      "BlockStatement"
-    ]
+    "excludedMutations": ["BlockStatement"]
   },
   "concurrency": 4,
   "coverageAnalysis": "off",

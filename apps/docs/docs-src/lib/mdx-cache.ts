@@ -1,11 +1,13 @@
+import type { MdxCompileOptions } from "satteri";
+
 import grayMatter from "gray-matter";
 import { existsSync } from "node:fs";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { mdxToJs, defineHastPlugin } from "satteri";
-import type { MdxCompileOptions } from "satteri";
 import expressiveCode from "satteri-expressive-code";
+
 import { wrapTables } from "./hast-plugins.js";
 
 export interface CompiledMdx {
@@ -30,9 +32,8 @@ const headingIds = defineHastPlugin({
 
 const compileOptions: MdxCompileOptions = {
   jsxImportSource: "@vincle/core",
-  providerImportSource: pathToFileURL(
-    path.resolve(import.meta.dirname, "../mdx-components.jsx"),
-  ).href,
+  providerImportSource: pathToFileURL(path.resolve(import.meta.dirname, "../mdx-components.jsx"))
+    .href,
   hastPlugins: [
     expressiveCode({ themes: ["github-light", "github-dark"] }),
     headingIds,
@@ -66,11 +67,7 @@ export class MdxCache {
     }
   }
 
-  async #compileAndLoad(
-    file: string,
-    raw: string,
-    key: string,
-  ): Promise<CompiledMdx> {
+  async #compileAndLoad(file: string, raw: string, key: string): Promise<CompiledMdx> {
     const { data: frontmatter, content } = grayMatter(raw);
     const { code } = await mdxToJs(content, compileOptions);
 
@@ -86,9 +83,7 @@ export class MdxCache {
     const mod = await this.#importModule(file, code);
     const Component = mod.default;
     if (typeof Component !== "function") {
-      throw new Error(
-        `[@vincle/docs] Compiled MDX ${file} has no default export.`,
-      );
+      throw new Error(`[@vincle/docs] Compiled MDX ${file} has no default export.`);
     }
 
     const entry: CompiledMdx = {
@@ -107,11 +102,7 @@ export class MdxCache {
   }> {
     const pagesDir = path.resolve(import.meta.dirname, "../pages");
     const rel = path.relative(pagesDir, file);
-    const tmpFile = path.join(
-      pagesDir,
-      ".compiled",
-      rel.replace(/\.mdx$/, ".tsx"),
-    );
+    const tmpFile = path.join(pagesDir, ".compiled", rel.replace(/\.mdx$/, ".tsx"));
     const tmpDir = path.dirname(tmpFile);
     if (!existsSync(tmpDir)) {
       await mkdir(tmpDir, { recursive: true });
@@ -123,9 +114,7 @@ export class MdxCache {
   async #hash(content: string): Promise<string> {
     const data = new TextEncoder().encode(content);
     const hash = await crypto.subtle.digest("SHA-256", data);
-    const hex = Array.from(new Uint8Array(hash), (b) =>
-      b.toString(16).padStart(2, "0"),
-    ).join("");
+    const hex = Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
     return hex.slice(0, 16);
   }
 

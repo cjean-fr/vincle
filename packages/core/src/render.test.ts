@@ -1,3 +1,5 @@
+import { describe, it, expect, beforeEach } from "bun:test";
+
 import {
   render,
   renderToString,
@@ -12,7 +14,6 @@ import {
   type ContextMap,
 } from "./index.js";
 import { jsx } from "./jsx-runtime.js";
-import { describe, it, expect, beforeEach } from "bun:test";
 
 beforeEach(() => resetContextStorage());
 
@@ -60,9 +61,7 @@ describe("renderToString", () => {
   });
 
   it("resolves Promise in array", async () => {
-    expect(
-      await renderToString(["a", Promise.resolve("b"), "c"]),
-    ).toBe("abc");
+    expect(await renderToString(["a", Promise.resolve("b"), "c"])).toBe("abc");
   });
 
   it("handles mixed sync/async array", async () => {
@@ -72,9 +71,7 @@ describe("renderToString", () => {
       Promise.resolve(raw("<i>also safe</i>")),
       "plain",
     ];
-    expect(await renderToString(mixed)).toBe(
-      "<b>safe</b>raw &amp; text<i>also safe</i>plain",
-    );
+    expect(await renderToString(mixed)).toBe("<b>safe</b>raw &amp; text<i>also safe</i>plain");
   });
 
   it("renders sync generator", async () => {
@@ -185,8 +182,7 @@ describe("ErrorBoundary", () => {
     }
     const html = await renderToString(
       jsx(ErrorBoundary, {
-        fallback: (e: unknown) =>
-          raw(`<p>Error: ${(e as Error).message}</p>`),
+        fallback: (e: unknown) => raw(`<p>Error: ${(e as Error).message}</p>`),
         children: jsx(Boom, {}),
       }),
     );
@@ -204,9 +200,7 @@ describe("ErrorBoundary", () => {
   });
 
   it("passes through when no children", async () => {
-    const html = await renderToString(
-      jsx(ErrorBoundary, { fallback: raw("<p>fail</p>") }),
-    );
+    const html = await renderToString(jsx(ErrorBoundary, { fallback: raw("<p>fail</p>") }));
     expect(html).toBe("");
   });
 
@@ -227,8 +221,7 @@ describe("Error annotation", () => {
     try {
       const html = await renderToString(
         jsx(ErrorBoundary, {
-          fallback: (e: unknown) =>
-            raw(`<p>${(e as Error).message}</p>`),
+          fallback: (e: unknown) => raw(`<p>${(e as Error).message}</p>`),
           children: jsx(Boom, {}),
         }),
       );
@@ -247,8 +240,7 @@ describe("Error annotation", () => {
     try {
       const html = await renderToString(
         jsx(ErrorBoundary, {
-          fallback: (e: unknown) =>
-            raw(`<p>${(e as Error).message}</p>`),
+          fallback: (e: unknown) => raw(`<p>${(e as Error).message}</p>`),
           children: jsx(Crash, {}),
         }),
       );
@@ -267,8 +259,7 @@ describe("Error annotation", () => {
     try {
       const html = await renderToString(
         jsx(ErrorBoundary, {
-          fallback: (e: unknown) =>
-            raw(`<p>${(e as Error).message}</p>`),
+          fallback: (e: unknown) => raw(`<p>${(e as Error).message}</p>`),
           children: jsx(Crash, {}),
         }),
       );
@@ -349,33 +340,41 @@ describe("Context API", () => {
   });
 });
 
-describe("ErrorSentinel propagation", () => {
-  it("propagates ErrorSentinel inside a synchronous array", async () => {
-    function Boom(): never { throw new Error("sync-arr"); }
-    await expect(renderToString(
-      jsx("div", { children: [jsx(Boom, {}), "ok"] })
-    )).rejects.toThrow("sync-arr");
+describe("RenderError propagation", () => {
+  it("propagates RenderError inside a synchronous array", async () => {
+    function Boom(): never {
+      throw new Error("sync-arr");
+    }
+    await expect(renderToString(jsx("div", { children: [jsx(Boom, {}), "ok"] }))).rejects.toThrow(
+      "sync-arr",
+    );
   });
 
-  it("propagates ErrorSentinel in async array", async () => {
+  it("propagates RenderError in async array", async () => {
     async function AsyncBoom(): Promise<never> {
       await Promise.resolve();
       throw new Error("async-arr");
     }
-    await expect(renderToString(
-      jsx("div", { children: [Promise.resolve("a"), jsx(AsyncBoom, {})] })
-    )).rejects.toThrow("async-arr");
+    await expect(
+      renderToString(jsx("div", { children: [Promise.resolve("a"), jsx(AsyncBoom, {})] })),
+    ).rejects.toThrow("async-arr");
   });
 
-  it("stops at first ErrorSentinel in sync array", async () => {
+  it("stops at first RenderError in sync array", async () => {
     const order: string[] = [];
-    function Boom(): never { order.push("boom"); throw new Error("x"); }
-    function Late(): string { order.push("late"); return "y"; }
-    await expect(renderToString(
-      jsx("div", { children: [jsx(Boom, {}), jsx(Late, {})] })
-    )).rejects.toThrow("x");
+    function Boom(): never {
+      order.push("boom");
+      throw new Error("x");
+    }
+    function Late(): string {
+      order.push("late");
+      return "y";
+    }
+    await expect(
+      renderToString(jsx("div", { children: [jsx(Boom, {}), jsx(Late, {})] })),
+    ).rejects.toThrow("x");
     // Both jsx() calls are eager, so both components execute.
-    // ErrorSentinel propagation stops the *render* loop, not the jsx evaluation.
+    // RenderError propagation stops the *render* loop, not the jsx evaluation.
     expect(order).toEqual(["boom", "late"]);
   });
 });
@@ -383,7 +382,9 @@ describe("ErrorSentinel propagation", () => {
 describe("Error annotation edge cases", () => {
   it("uses displayName for error annotation", async () => {
     const NamedComp = Object.assign(
-      () => { throw new Error("fail"); },
+      () => {
+        throw new Error("fail");
+      },
       { displayName: "MyDisplayName" },
     );
     try {
@@ -425,8 +426,12 @@ describe("Error annotation edge cases", () => {
   });
 
   it("strips previous annotation prefix in re-annotation", async () => {
-    function Child(): never { throw new Error("fail"); }
-    function Parent() { return jsx(Child, {}); }
+    function Child(): never {
+      throw new Error("fail");
+    }
+    function Parent() {
+      return jsx(Child, {});
+    }
     try {
       await renderToString(jsx(Parent, {}));
     } catch (e) {
@@ -438,9 +443,7 @@ describe("Error annotation edge cases", () => {
 
 describe("Edge cases", () => {
   it("handles deeply nested promises in array", async () => {
-    const result = await renderToString([
-      Promise.resolve(Promise.resolve("deep")),
-    ]);
+    const result = await renderToString([Promise.resolve(Promise.resolve("deep"))]);
     expect(result).toBe("deep");
   });
 });

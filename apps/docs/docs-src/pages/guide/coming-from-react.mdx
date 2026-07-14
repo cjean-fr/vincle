@@ -38,9 +38,7 @@ export function Page() {
 
 // Vincle — renders HTML once, zero JS shipped
 export function Page() {
-  return renderToString(
-    <button onclick="let c=0;this.onclick=()=>this.textContent=++c">0</button>,
-  );
+  return renderToString(<button onclick="let c=0;this.onclick=()=>this.textContent=++c">0</button>);
 }
 ```
 
@@ -151,8 +149,8 @@ function Timer({ time }: { time: number }) {
 | `ErrorBoundary`           | Same concept — catches child render errors                 |
 | `dangerouslySetInnerHTML` | Same API — also `raw(html)` as child                       |
 | `onClick={() => fn()}`    | `onclick="fn()"` as string                                 |
-| `className` / `class`     | Both work — not merged, pick one                           |
-| `htmlFor` → `for`         | Same remapping as React                                    |
+| `className` / `class`     | Both work — HTML name wins if both present, no merge       |
+| `htmlFor` → `for`         | `htmlFor` remapped to `for`; `for` wins if both present    |
 | `@types/react`            | Optional — install it for attribute autocomplete           |
 
 ## What you lose

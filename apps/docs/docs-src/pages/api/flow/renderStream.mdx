@@ -14,10 +14,7 @@ Returns a `ReadableStream<string>`. The shell chunk is emitted first; fragment c
 ```tsx
 import { renderStream } from "@vincle/flow";
 
-function renderStream(
-  page: () => VNode,
-  options?: StreamOptions,
-): ReadableStream<string>;
+function renderStream(page: () => VNode, options?: StreamOptions): ReadableStream<string>;
 ```
 
 ## Options

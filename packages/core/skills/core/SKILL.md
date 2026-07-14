@@ -84,10 +84,7 @@ const UserCard = async ({ id }: { id: string }) => {
 
 // ✅ Parallel fetches for independent data
 const Dashboard = async ({ userId }: { userId: string }) => {
-  const [user, posts] = await Promise.all([
-    fetchUser(userId),
-    fetchPosts(userId),
-  ]);
+  const [user, posts] = await Promise.all([fetchUser(userId), fetchPosts(userId)]);
   return (
     <div>
       {user.name} — {posts.length} posts
@@ -112,9 +109,7 @@ Typed, isolated scope for sharing data across the render tree without prop drill
 ```ts
 // Define a typed token — once, in its own module. Convention: "<scope>:<purpose>".
 // Same key always resolves to the same Symbol within a given @vincle/core instance.
-export const AuthContext = context<{ user: string; locale: string }>(
-  "my-app:auth",
-);
+export const AuthContext = context<{ user: string; locale: string }>("my-app:auth");
 ```
 
 ```tsx

@@ -1,10 +1,4 @@
-import {
-  snapshot,
-  withScope,
-  useContext,
-  renderToString,
-  type ContextKey,
-} from "@vincle/core";
+import { snapshot, withScope, useContext, renderToString, type ContextKey } from "@vincle/core";
 
 declare const themeCtx: ContextKey<"light" | "dark">;
 const ChildPage = () => <div />;

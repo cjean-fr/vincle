@@ -19,24 +19,14 @@ function setOpen(open: boolean): void {
   else nav.removeAttribute("data-open");
   backdrop?.toggleAttribute("data-open", open);
   toggle?.setAttribute("aria-expanded", String(open));
-  toggle?.setAttribute(
-    "aria-label",
-    open ? "Close navigation" : "Open navigation",
-  );
-  toggle
-    ?.querySelector(".docs-nav-toggle-open")
-    ?.toggleAttribute("hidden", open);
-  toggle
-    ?.querySelector(".docs-nav-toggle-close")
-    ?.toggleAttribute("hidden", !open);
+  toggle?.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+  toggle?.querySelector(".docs-nav-toggle-open")?.toggleAttribute("hidden", open);
+  toggle?.querySelector(".docs-nav-toggle-close")?.toggleAttribute("hidden", !open);
   main?.toggleAttribute("inert", open);
   document.body.style.overflow = open ? "hidden" : "";
   if (open) {
     nav.focus({ preventScroll: true });
-  } else if (
-    previousFocus instanceof HTMLElement &&
-    !previousFocus.closest("a")
-  ) {
+  } else if (previousFocus instanceof HTMLElement && !previousFocus.closest("a")) {
     previousFocus.focus({ preventScroll: true });
     previousFocus = null;
   }

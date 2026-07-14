@@ -1,3 +1,5 @@
+import { describe, it, expect } from "bun:test";
+
 import {
   collapseJsxWhitespace,
   escapeAttr,
@@ -14,7 +16,6 @@ import {
   URL_ATTRIBUTES,
   ATTRIBUTE_NAME_MAP,
 } from "./index.js";
-import { describe, it, expect } from "bun:test";
 
 describe("precompile-core", () => {
   describe("isLower", () => {
@@ -65,9 +66,7 @@ describe("precompile-core", () => {
 
     it("returns true for dangerouslySetInnerHTML", () => {
       expect(
-        hasSpreadOrInnerHTML([
-          { kind: "attribute" as const, name: "dangerouslySetInnerHTML" },
-        ]),
+        hasSpreadOrInnerHTML([{ kind: "attribute" as const, name: "dangerouslySetInnerHTML" }]),
       ).toBe(true);
     });
 

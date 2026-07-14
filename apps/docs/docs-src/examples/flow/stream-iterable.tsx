@@ -1,8 +1,6 @@
 import { Fill } from "@vincle/flow";
 
-declare function fetchRows(
-  page: number,
-): Promise<{ id: number; name: string }[]>;
+declare function fetchRows(page: number): Promise<{ id: number; name: string }[]>;
 
 // Each yield produces an independent patch with the configured merge type.
 function Feed() {

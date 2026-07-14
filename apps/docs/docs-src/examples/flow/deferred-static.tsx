@@ -1,6 +1,7 @@
+import type { JSX } from "@vincle/core";
+
 import { renderToStatic } from "@vincle/flow";
 import { NativeAdapter } from "@vincle/flow/adapters";
-import type { JSX } from "@vincle/core";
 import { writeFile } from "node:fs/promises";
 
 declare const pages: { Component: () => JSX.Element; out: string }[];
@@ -15,9 +16,7 @@ await renderToStatic(
 
     // One .html file per deferred fragment — already
     // Frame-wrapped, ready to write.
-    await ctx.emitFragments((_id, url, html) =>
-      writeFile("./dist" + url, html),
-    );
+    await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
   },
   { adapter: NativeAdapter },
 );

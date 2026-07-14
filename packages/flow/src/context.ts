@@ -1,17 +1,9 @@
-import { createAssetState, type AssetState } from "./assets.js";
+import { context, setContext, useContext, withScope, type ContextKey } from "@vincle/core";
+
 import type { FlowConfig } from "./types.js";
-import {
-  createPendingStore,
-  type Pending,
-  type PendingStore,
-} from "./pending-store.js";
-import {
-  context,
-  setContext,
-  useContext,
-  withScope,
-  type ContextKey,
-} from "@vincle/core";
+
+import { createAssetState, type AssetState } from "./assets.js";
+import { createPendingStore, type Pending, type PendingStore } from "./pending-store.js";
 
 export type { FlowConfig } from "./types.js";
 
@@ -30,8 +22,7 @@ export interface FlowContext {
   defer(id: string, entry: Pending): void;
 }
 
-export const Flow: ContextKey<FlowContext> =
-  context<FlowContext>("@vincle/flow:flow");
+export const Flow: ContextKey<FlowContext> = context<FlowContext>("@vincle/flow:flow");
 
 export function initFlow(config: FlowConfig): void {
   let counter = 0;
@@ -58,10 +49,7 @@ export function initFlowAssets(): void {
   setContext(Flow, { ...current, assets: createAssetState() });
 }
 
-export function withFlow<T>(
-  handler: (ctx: FlowContext) => T,
-  config: FlowConfig,
-): Promise<T> {
+export function withFlow<T>(handler: (ctx: FlowContext) => T, config: FlowConfig): Promise<T> {
   return withScope(async function () {
     initFlow(config);
     return handler(useContext(Flow));

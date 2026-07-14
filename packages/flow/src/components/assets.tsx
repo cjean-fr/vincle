@@ -1,6 +1,7 @@
 import { useContext, raw, type JSX } from "@vincle/core";
-import { Flow } from "../context.js";
+
 import { createMarker, registerAsset, assertNameSafe } from "../assets.js";
+import { Flow } from "../context.js";
 
 type Awaitable<T> = T | Promise<T>;
 
@@ -35,20 +36,14 @@ export function Style(props: StyleProps): JSX.Element | null {
 
 export function Script(props: ScriptProps): JSX.Element | null {
   const { assets } = useContext(Flow);
-  const {
-    name,
-    src,
-    module: isModule,
-    defer: isDefer,
-    children: content,
-  } = props;
+  const { name, src, module: isModule, defer: isDefer, children: content } = props;
 
   assertNameSafe(name);
 
-  const attrs: Record<string, string> = {};
+  const attrs: Record<string, string | boolean> = {};
   if (src != null) attrs["src"] = src;
   if (isModule) attrs["type"] = "module";
-  if (isDefer) attrs["defer"] = "";
+  if (isDefer) attrs["defer"] = true;
 
   const resolvedContent = content ?? "";
   registerAsset(assets, name, {

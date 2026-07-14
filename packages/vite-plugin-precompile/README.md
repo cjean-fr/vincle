@@ -6,12 +6,12 @@ The underlying transformer is also exposed as `@vincle/vite-plugin-precompile/tr
 
 ## Compatible runtimes
 
-| Runtime | `jsxImportSource` | Compatible |
-|---------|-------------------|------------|
-| Vincle | `@vincle/core` | ✅ |
-| Preact | `preact` | ✅ |
-| Hono | `hono/jsx` | ✅ |
-| React | `react` | ❌ (throws build error) |
+| Runtime | `jsxImportSource` | Compatible              |
+| ------- | ----------------- | ----------------------- |
+| Vincle  | `@vincle/core`    | ✅                      |
+| Preact  | `preact`          | ✅                      |
+| Hono    | `hono/jsx`        | ✅                      |
+| React   | `react`           | ❌ (throws build error) |
 
 React does not export the `jsxTemplate` helper that the precompile transform relies on.
 
@@ -54,7 +54,7 @@ Only needed when using a runtime other than the detected one.
 ```ts
 interface PluginConfig {
   runtimeSource?: string; // default: virtual:vincle-precompile-runtime → auto-detected
-  secure?: boolean;       // sanitize static attributes at build time
+  secure?: boolean; // sanitize static attributes at build time
 }
 ```
 

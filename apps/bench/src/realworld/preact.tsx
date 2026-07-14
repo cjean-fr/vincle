@@ -1,6 +1,7 @@
+import { render as preactRender } from "preact-render-to-string";
+
 /** @jsxImportSource preact */
 import type { Purchase } from "./data.js";
-import { render as preactRender } from "preact-render-to-string";
 
 function Purchase({ name, price, quantity }: Purchase) {
   return (
@@ -117,15 +118,13 @@ function PageContent() {
     <div class="page-content">
       <h2 class="title h2 mb-4">Welcome to our store</h2>
       <p class="p text mb-0">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla venenatis
-        magna id dolor ultricies, eget pretium ligula sodales. Cras sit amet
-        turpis nec lacus blandit placerat. Sed vestibulum est sit amet enim
-        ultrices rutrum. Vivamus in nulla vel nunc interdum vehicula.
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla venenatis magna id dolor
+        ultricies, eget pretium ligula sodales. Cras sit amet turpis nec lacus blandit placerat. Sed
+        vestibulum est sit amet enim ultrices rutrum. Vivamus in nulla vel nunc interdum vehicula.
       </p>
       <p class="p text mb-0">
-        Pellentesque efficitur tellus id velit vehicula laoreet. Proin et neque
-        ac dolor hendrerit elementum. Fusce auctor metus non ligula tincidunt,
-        id gravida odio sollicitudin.
+        Pellentesque efficitur tellus id velit vehicula laoreet. Proin et neque ac dolor hendrerit
+        elementum. Fusce auctor metus non ligula tincidunt, id gravida odio sollicitudin.
       </p>
     </div>
   );
@@ -138,11 +137,7 @@ function RealWorldPage(name: string, purchases: Purchase[]) {
         <h2>Purchases</h2>
         <div class="purchases">
           {purchases.map((purchase) => (
-            <Purchase
-              name={purchase.name}
-              price={purchase.price}
-              quantity={purchase.quantity}
-            />
+            <Purchase name={purchase.name} price={purchase.price} quantity={purchase.quantity} />
           ))}
         </div>
         <UserProfile name={name} />

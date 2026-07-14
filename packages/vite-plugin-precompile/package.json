@@ -39,9 +39,10 @@
     "access": "public"
   },
   "scripts": {
-    "build": "pkgroll --clean-dist --minify",
+    "build": "tsdown",
     "check": "tsc --noEmit",
     "coverage": "bun test --coverage --coverage-reporter=lcov",
+    "format": "oxfmt",
     "mutation": "stryker run",
     "test": "bun test"
   },
@@ -56,9 +57,9 @@
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@vincle/core": "workspace:*",
     "bun": "catalog:",
-    "pkgroll": "catalog:",
     "preact": "^10.29.7",
     "stryker-mutator-bun-runner": "^0.4.0",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"
   },

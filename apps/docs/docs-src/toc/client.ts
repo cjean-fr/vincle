@@ -18,24 +18,17 @@ const DEFAULTS = {
   offset: 32,
 } satisfies Required<ScrollSpyOptions>;
 
-export function installScrollSpy(
-  toc: HTMLElement,
-  opts: ScrollSpyOptions = {},
-): () => void {
+export function installScrollSpy(toc: HTMLElement, opts: ScrollSpyOptions = {}): () => void {
   const o = { ...DEFAULTS, ...opts };
 
   if (typeof window === "undefined") return () => {};
 
-  const headings = Array.from(
-    document.querySelectorAll<HTMLElement>(o.headingSelector),
-  );
+  const headings = Array.from(document.querySelectorAll<HTMLElement>(o.headingSelector));
   if (headings.length === 0) return () => {};
 
   const marker = toc.querySelector<HTMLElement>(o.markerSelector);
   const track = marker?.parentElement ?? null;
-  const links = Array.from(
-    toc.querySelectorAll<HTMLAnchorElement>(o.linkSelector),
-  );
+  const links = Array.from(toc.querySelectorAll<HTMLAnchorElement>(o.linkSelector));
 
   ensureAnimatingCss(o.animatingClass, o.markerSelector);
 
@@ -46,8 +39,7 @@ export function installScrollSpy(
   function getActiveId(): string {
     const scrollBottom = window.scrollY + window.innerHeight;
     const threshold = window.scrollY + o.offset;
-    const isAtBottom =
-      scrollBottom >= document.documentElement.scrollHeight - 2;
+    const isAtBottom = scrollBottom >= document.documentElement.scrollHeight - 2;
     let result = headings[0]!.id;
     for (const h of headings) {
       if (h.offsetTop <= threshold || isAtBottom) result = h.id;
@@ -150,10 +142,7 @@ export function installScrollSpy(
 
 // Injects the single CSS rule needed for the rAF tracking trick.
 // No-ops if already injected (identified by id="toc-spy-styles").
-function ensureAnimatingCss(
-  animatingClass: string,
-  markerSelector: string,
-): void {
+function ensureAnimatingCss(animatingClass: string, markerSelector: string): void {
   if (typeof document === "undefined") return;
   const id = "toc-spy-styles";
   if (document.getElementById(id)) return;

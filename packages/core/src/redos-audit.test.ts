@@ -65,10 +65,8 @@ const ALL_REGEXES: RegexEntry[] = [
     name: "REGEX_VALID_ATTR_NAME",
     pattern: "^[^\\s\"'<>/=\\p{C}]+$",
     flags: "u",
-    purpose:
-      "Validate an attribute name in one pass (reject controls & delimiters).",
-    whySafe:
-      "Single negated character class with anchors and `+`. No alternation, no nesting.",
+    purpose: "Validate an attribute name in one pass (reject controls & delimiters).",
+    whySafe: "Single negated character class with anchors and `+`. No alternation, no nesting.",
   },
   {
     id: 6,
@@ -115,8 +113,7 @@ const ALL_REGEXES: RegexEntry[] = [
     name: "REGEX_RAWTEXT_CLOSE",
     pattern: "<\\/(?:script|style|xmp|iframe|noembed|noframes)",
     flags: "gi",
-    purpose:
-      "Escape closing rawtext tags (</script> → <\\/script>) to prevent breakout.",
+    purpose: "Escape closing rawtext tags (</script> → <\\/script>) to prevent breakout.",
     whySafe:
       "Fixed literal `</` followed by a non-capturing alternation of tag names — all literal. No quantifiers, no nested groups, no overlapping branches.",
   },
@@ -270,15 +267,15 @@ describe("ReDoS behavioral contract", () => {
   // 6 — REGEX_INVALID_TAG_NAME /^[!?]|[\s"'<>/=\`\\]|\p{C}/u
   it("[6] REGEX_INVALID_TAG_NAME rejects invalid tag names", () => {
     const r = rx(ALL_REGEXES[5]!);
-    expect(r.test("div")).toBe(false);          // valid — no invalid chars
+    expect(r.test("div")).toBe(false); // valid — no invalid chars
     expect(r.test("custom-element")).toBe(false);
-    expect(r.test("-div")).toBe(false);         // valid — blocklist doesn't reject -
-    expect(r.test("_div")).toBe(false);         // valid — blocklist doesn't reject _
-    expect(r.test("svg:rect")).toBe(false);     // valid — blocklist doesn't reject :
-    expect(r.test("<script>")).toBe(true);      // contains <
-    expect(r.test("div class=x")).toBe(true);   // contains space
-    expect(r.test("a")).toBe(false);            // single letter, valid
-    expect(r.test("")).toBe(false);             // empty — no leading !?, no forbidden chars
+    expect(r.test("-div")).toBe(false); // valid — blocklist doesn't reject -
+    expect(r.test("_div")).toBe(false); // valid — blocklist doesn't reject _
+    expect(r.test("svg:rect")).toBe(false); // valid — blocklist doesn't reject :
+    expect(r.test("<script>")).toBe(true); // contains <
+    expect(r.test("div class=x")).toBe(true); // contains space
+    expect(r.test("a")).toBe(false); // single letter, valid
+    expect(r.test("")).toBe(false); // empty — no leading !?, no forbidden chars
   });
 
   // 7 — REGEX_UNSAFE_PROTOCOLS /^(?:java|vb)script:/i

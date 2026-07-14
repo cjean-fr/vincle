@@ -1,11 +1,10 @@
-import type { ResolvedDocsConfig, Page, HandlerEntry } from "../types.js";
 import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 
-export async function discoverPages(
-  config: ResolvedDocsConfig,
-): Promise<Page[]> {
+import type { ResolvedDocsConfig, Page, HandlerEntry } from "../types.js";
+
+export async function discoverPages(config: ResolvedDocsConfig): Promise<Page[]> {
   const pagesDir = path.resolve(config.pages);
   const handlers = config.handlers;
   const extensions = Object.keys(handlers);
@@ -29,15 +28,10 @@ async function loadFile(
   if (entry) {
     return entry.handler.load(file, pagesDir, config);
   }
-  throw new Error(
-    `[@vincle/docs] No handler configured for "${ext}" files (${file}).`,
-  );
+  throw new Error(`[@vincle/docs] No handler configured for "${ext}" files (${file}).`);
 }
 
-export function findPageFile(
-  config: ResolvedDocsConfig,
-  url: string,
-): string | null {
+export function findPageFile(config: ResolvedDocsConfig, url: string): string | null {
   const pagesDir = path.resolve(config.pages);
   const extensions = Object.keys(config.handlers);
   let route = url.replace(/^\//, "") || "index";
@@ -61,10 +55,7 @@ async function walk(dir: string, extensions: string[]): Promise<string[]> {
     if (entry.isDirectory()) {
       if (entry.name === ".compiled") continue;
       out.push(...(await walk(fullPath, extensions)));
-    } else if (
-      entry.isFile() &&
-      extensions.some((ext) => entry.name.endsWith(ext))
-    ) {
+    } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(ext))) {
       out.push(fullPath);
     }
   }

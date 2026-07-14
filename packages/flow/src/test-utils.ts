@@ -6,9 +6,7 @@ export const collect = async (s: ReadableStream<string>): Promise<string> => {
   return out;
 };
 
-export const collectEvents = async (
-  s: ReadableStream<FlowEvent>,
-): Promise<FlowEvent[]> => {
+export const collectEvents = async (s: ReadableStream<FlowEvent>): Promise<FlowEvent[]> => {
   const events: FlowEvent[] = [];
   for await (const ev of s) events.push(ev);
   return events;

@@ -1,60 +1,52 @@
-import { ESLintUtils } from "@typescript-eslint/utils";
+import type { RuleModule } from "../types.js";
 
-export const noContext = ESLintUtils.RuleCreator.withoutDocs({
+function isCreateContext(callee: any): boolean {
+  return (
+    (callee?.type === "Identifier" && callee.name === "createContext") ||
+    (callee?.type === "MemberExpression" &&
+      callee.property?.type === "Identifier" &&
+      callee.property.name === "createContext")
+  );
+}
+
+export const noContext: RuleModule = {
   meta: {
     type: "problem",
-    docs: {
-      description: "Disallow React Context usage.",
-    },
-
+    docs: { description: "Disallow React Context usage." },
     schema: [],
     messages: {
-      noContext:
-        "React Context is not compatible with @vincle/core. Use props or a Registry.",
+      noContext: "React Context is not compatible with @vincle/core. Use props or a Registry.",
     },
   },
   defaultOptions: [],
   create(context) {
     const contextIdentifiers = new Set<string>();
 
-    const isCreateContext = (callee: any) =>
-      (callee.type === "Identifier" && callee.name === "createContext") ||
-      (callee.type === "MemberExpression" &&
-        callee.property.type === "Identifier" &&
-        callee.property.name === "createContext");
-
     return {
-      CallExpression(node) {
+      CallExpression(node: any) {
         if (isCreateContext(node.callee)) {
-          context.report({
-            node,
-            messageId: "noContext",
-          });
+          context.report({ node, messageId: "noContext" });
         }
       },
-      VariableDeclarator(node) {
+      VariableDeclarator(node: any) {
         if (
-          node.init &&
-          node.init.type === "CallExpression" &&
+          node.init?.type === "CallExpression" &&
           isCreateContext(node.init.callee) &&
-          node.id.type === "Identifier"
+          node.id?.type === "Identifier"
         ) {
           contextIdentifiers.add(node.id.name);
         }
       },
-      JSXMemberExpression(node) {
+      JSXMemberExpression(node: any) {
         if (
-          node.property.type === "JSXIdentifier" &&
+          node.property?.type === "JSXIdentifier" &&
           node.property.name === "Provider" &&
-          node.object.type === "JSXIdentifier" &&
+          node.object?.type === "JSXIdentifier" &&
           contextIdentifiers.has(node.object.name)
         ) {
-          context.report({
-            node,
-            messageId: "noContext",
-          });
+          context.report({ node, messageId: "noContext" });
         }
       },
     };
   },
-});
+};

@@ -1,7 +1,8 @@
-import { initFlow, Flow } from "./context.js";
-import { TurboAdapter, EsiAdapter } from "./adapters/index.js";
 import { withScope, useContext } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
+
+import { TurboAdapter, EsiAdapter } from "./adapters/index.js";
+import { initFlow, Flow } from "./context.js";
 
 describe("initFlow", () => {
   it("initializes the flow context", async () => {
@@ -12,9 +13,7 @@ describe("initFlow", () => {
   });
 
   it("throws when used outside withScope", () => {
-    expect(() =>
-      initFlow({ adapter: TurboAdapter, mode: "streaming" }),
-    ).toThrow();
+    expect(() => initFlow({ adapter: TurboAdapter, mode: "streaming" })).toThrow();
   });
 });
 
@@ -25,19 +24,17 @@ describe("context.defer()", () => {
       const { defer, pendingStore } = useContext(Flow);
       defer("badge", { content: () => <span>42</span>, merge: "replace" });
       expect(pendingStore.size).toBe(1);
-      expect(
-        pendingStore.pending(new Set()).find(([id]) => id === "badge")?.[1]
-          .merge,
-      ).toBe("replace");
+      expect(pendingStore.pending(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
+        "replace",
+      );
       defer("badge", { content: () => <span>43</span>, merge: "append" });
       expect(pendingStore.size).toBe(1);
-      expect(
-        pendingStore.pending(new Set()).find(([id]) => id === "badge")?.[1]
-          .merge,
-      ).toBe("append");
-      expect(() =>
-        defer("has space", { content: () => <span />, merge: "replace" }),
-      ).toThrow(/valid fragment id/);
+      expect(pendingStore.pending(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
+        "append",
+      );
+      expect(() => defer("has space", { content: () => <span />, merge: "replace" })).toThrow(
+        /valid fragment id/,
+      );
     });
   });
 

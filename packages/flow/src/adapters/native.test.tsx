@@ -1,14 +1,11 @@
-import {
-  NativeAdapter,
-  NATIVE_POLYFILL,
-  nativePolyfillHash,
-} from "../adapters/index.js";
-import type { FlowContext } from "../context.js";
 import { renderToString } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
-const ctxWith = (size: number) =>
-  ({ pendingStore: { size } }) as unknown as FlowContext;
+import type { FlowContext } from "../context.js";
+
+import { NativeAdapter, NATIVE_POLYFILL, nativePolyfillHash } from "../adapters/index.js";
+
+const ctxWith = (size: number) => ({ pendingStore: { size } }) as unknown as FlowContext;
 
 describe("NativeAdapter", () => {
   it("patches are declarative templates — never per-fragment scripts (CSP)", async () => {
@@ -70,8 +67,8 @@ describe("NativeAdapter", () => {
   });
 
   it("Frame renders <template>", async () => {
-    expect(
-      await renderToString(NativeAdapter.Frame({ id: "x", children: "c" })),
-    ).toContain("template");
+    expect(await renderToString(NativeAdapter.Frame({ id: "x", children: "c" }))).toContain(
+      "template",
+    );
   });
 });

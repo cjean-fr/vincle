@@ -1,10 +1,11 @@
-import { describe, it, expect } from "bun:test";
 import { renderToString, withScope } from "@vincle/core";
-import { Flow, initFlow, type FlowContext } from "../context.js";
 import { useContext } from "@vincle/core";
-import { resolveAssets } from "../assets.js";
-import { Style, Script } from "./assets.js";
+import { describe, it, expect } from "bun:test";
+
 import { TurboAdapter } from "../adapters/index.js";
+import { resolveAssets } from "../assets.js";
+import { Flow, initFlow, type FlowContext } from "../context.js";
+import { Style, Script } from "./assets.js";
 
 function strictFlow(): FlowContext {
   return useContext(Flow);
@@ -14,9 +15,7 @@ describe("Style", () => {
   it("emits a marker and registers content", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const html = await renderToString(
-        <Style name="ec/base">{"body { color: red }"}</Style>,
-      );
+      const html = await renderToString(<Style name="ec/base">{"body { color: red }"}</Style>);
       expect(html).toBe("<!-- vincle:style:ec/base -->");
       const { assets } = strictFlow();
       expect(assets.entries.has("ec/base")).toBe(true);
@@ -51,9 +50,7 @@ describe("Style", () => {
   it("throws for unsafe names containing -->", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      expect(() =>
-        renderToString(<Style name={"x-->dangerous"}>{".a { }"}</Style>),
-      ).toThrow();
+      expect(() => renderToString(<Style name={"x-->dangerous"}>{".a { }"}</Style>)).toThrow();
     });
   });
 });
@@ -95,7 +92,7 @@ describe("Script", () => {
         </Script>,
       );
       const { assets } = strictFlow();
-      expect(assets.entries.get("late")?.attrs).toEqual({ defer: "" });
+      expect(assets.entries.get("late")?.attrs).toEqual({ defer: true });
     });
   });
 
@@ -115,14 +112,10 @@ describe("Style + Script — integration with resolveAssets", () => {
   it("resolves a Style marker to a style tag", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const html = await renderToString(
-        <Style name="ec/base">{"body { color: red }"}</Style>,
-      );
+      const html = await renderToString(<Style name="ec/base">{"body { color: red }"}</Style>);
       const { assets } = strictFlow();
       const resolved = await resolveAssets(html, assets);
-      expect(resolved).toBe(
-        '<style data-name="ec/base">body { color: red }</style>',
-      );
+      expect(resolved).toBe('<style data-name="ec/base">body { color: red }</style>');
     });
   });
 
@@ -145,14 +138,10 @@ describe("Style + Script — integration with resolveAssets", () => {
   it("resolves Script with src (no content)", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const html = await renderToString(
-        <Script name="jquery" src="/vendor/jquery.js" />,
-      );
+      const html = await renderToString(<Script name="jquery" src="/vendor/jquery.js" />);
       const { assets } = strictFlow();
       const resolved = await resolveAssets(html, assets);
-      expect(resolved).toBe(
-        '<script data-name="jquery" src="/vendor/jquery.js"></script>',
-      );
+      expect(resolved).toBe('<script data-name="jquery" src="/vendor/jquery.js"></script>');
     });
   });
 

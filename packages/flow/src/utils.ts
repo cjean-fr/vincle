@@ -38,12 +38,8 @@ export function injectIntoHead(html: string, content: string): string {
  * });
  */
 export function composeShell(
-  ...transforms: Array<
-    ((shell: string, ctx: FlowContext) => string) | undefined | null | false
-  >
+  ...transforms: Array<((shell: string, ctx: FlowContext) => string) | undefined | null | false>
 ): (shell: string, ctx: FlowContext) => string {
-  const fns = transforms.filter(Boolean) as Array<
-    (shell: string, ctx: FlowContext) => string
-  >;
+  const fns = transforms.filter(Boolean) as Array<(shell: string, ctx: FlowContext) => string>;
   return (shell, ctx) => fns.reduce((html, t) => t(html, ctx), shell);
 }

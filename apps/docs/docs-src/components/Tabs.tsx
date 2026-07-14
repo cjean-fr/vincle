@@ -19,9 +19,7 @@ export function Tabs() {
         <a
           key={tab.slug}
           href={tab.href}
-          aria-current={
-            currentTab && tab.slug === currentTab.slug ? "page" : undefined
-          }
+          aria-current={currentTab && tab.slug === currentTab.slug ? "page" : undefined}
           class={tabClass(currentTab ? tab.slug === currentTab.slug : false)}
         >
           {tab.label}

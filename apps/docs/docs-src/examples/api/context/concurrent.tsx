@@ -1,9 +1,4 @@
-import {
-  withScope,
-  setContext,
-  renderToString,
-  type ContextKey,
-} from "@vincle/core";
+import { withScope, setContext, renderToString, type ContextKey } from "@vincle/core";
 
 declare const themeCtx: ContextKey<"light" | "dark">;
 const Page = () => <div />;

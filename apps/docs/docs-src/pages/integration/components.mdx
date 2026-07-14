@@ -45,7 +45,9 @@ Pushes deferred content into an existing slot by name. Renders nothing itself
 `children` is deferred automatically — plain JSX works:
 
 ```tsx
-<Fill target="page"><h1>Hello</h1></Fill>
+<Fill target="page">
+  <h1>Hello</h1>
+</Fill>
 ```
 
 Pass a factory when you need the `AbortSignal` for cancellation:
@@ -140,9 +142,9 @@ been sent. Combine with a `timeout` to set an upper bound:
 The return type of a factory (or the rendered result of plain JSX) determines
 the behaviour:
 
-| Return type                 | Behaviour                                                |
-| --------------------------- | -------------------------------------------------------- |
-| A renderable JSX node       | One-shot patch — renders once and resolves               |
+| Return type            | Behaviour                                                |
+| ---------------------- | -------------------------------------------------------- |
+| A renderable JSX node  | One-shot patch — renders once and resolves               |
 | `Promise<VNode>`       | Resolves asynchronously, then patches in                 |
 | `AsyncIterable<VNode>` | A **stream** — one patch per item, as each item resolves |
 

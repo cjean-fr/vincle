@@ -1,8 +1,9 @@
-import { Flow, initFlow } from "../context.js";
-import { ClientFetch } from "../index.js";
-import { TurboAdapter } from "../adapters/index.js";
 import { renderToString, withScope, useContext } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
+
+import { TurboAdapter } from "../adapters/index.js";
+import { Flow, initFlow } from "../context.js";
+import { ClientFetch } from "../index.js";
 
 describe("ClientFetch", () => {
   it("renders a placeholder pointing at src, registers nothing", async () => {

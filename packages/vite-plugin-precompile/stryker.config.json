@@ -3,10 +3,7 @@
   "packageManager": "npm",
   "testRunner": "bun",
   "plugins": ["stryker-mutator-bun-runner"],
-  "mutate": [
-    "src/index.ts",
-    "src/transformer.ts"
-  ],
+  "mutate": ["src/index.ts", "src/transformer.ts"],
   "mutator": {
     "excludedMutations": [
       "BlockStatement",

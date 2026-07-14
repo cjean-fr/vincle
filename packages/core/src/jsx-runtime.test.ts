@@ -1,14 +1,10 @@
-import { renderToString, raw, ErrorBoundary, Fragment } from "./index.js";
-import type { VNode } from "./index.js";
-import {
-  jsx,
-  jsxDEV,
-  jsxAttr,
-  jsxTemplate,
-  createElement,
-} from "./jsx-runtime.js";
-import { renderAttr } from "./render-attrs.js";
 import { describe, it, expect, spyOn } from "bun:test";
+
+import type { VNode } from "./index.js";
+
+import { renderToString, raw, ErrorBoundary, Fragment } from "./index.js";
+import { jsx, jsxDEV, jsxAttr, jsxTemplate, createElement } from "./jsx-runtime.js";
+import { renderAttr } from "./render-attrs.js";
 
 describe("jsx — intrinsic elements", () => {
   it("renders a simple element", async () => {
@@ -18,9 +14,7 @@ describe("jsx — intrinsic elements", () => {
 
   it("renders element with attributes", async () => {
     const el = jsx("a", { href: "/about", class: "link", children: "About" });
-    expect(await renderToString(el)).toBe(
-      '<a href="/about" class="link">About</a>',
-    );
+    expect(await renderToString(el)).toBe('<a href="/about" class="link">About</a>');
   });
 
   it("renders boolean attribute as bare name", async () => {
@@ -40,18 +34,14 @@ describe("jsx — intrinsic elements", () => {
 
   it("maps htmlFor to for", async () => {
     const el = jsx("label", { htmlFor: "input-id", children: "Label" });
-    expect(await renderToString(el)).toBe(
-      '<label for="input-id">Label</label>',
-    );
+    expect(await renderToString(el)).toBe('<label for="input-id">Label</label>');
   });
 
   it("renders style object as inline CSS", async () => {
     const el = jsx("div", {
       style: { color: "red", marginTop: "10px" },
     });
-    expect(await renderToString(el)).toBe(
-      '<div style="color:red;margin-top:10px"></div>',
-    );
+    expect(await renderToString(el)).toBe('<div style="color:red;margin-top:10px"></div>');
   });
 
   it("renders style string verbatim", async () => {
@@ -68,9 +58,7 @@ describe("jsx — intrinsic elements", () => {
 
   it("escapes string children", async () => {
     const el = jsx("p", { children: "<script>alert(1)</script>" });
-    expect(await renderToString(el)).toBe(
-      "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
-    );
+    expect(await renderToString(el)).toBe("<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>");
   });
 
   it("preserves CSS custom properties in style", async () => {
@@ -80,10 +68,7 @@ describe("jsx — intrinsic elements", () => {
 
   it("renders multiple children via array", async () => {
     const el = jsx("ul", {
-      children: [
-        jsx("li", { children: "a" }),
-        jsx("li", { children: "b" }),
-      ],
+      children: [jsx("li", { children: "a" }), jsx("li", { children: "b" })],
     });
     expect(await renderToString(el)).toBe("<ul><li>a</li><li>b</li></ul>");
   });
@@ -93,9 +78,7 @@ describe("jsx — intrinsic elements", () => {
       onClick: "alert(1)",
       children: "Click",
     });
-    expect(await renderToString(el)).toBe(
-      '<button onclick="alert(1)">Click</button>',
-    );
+    expect(await renderToString(el)).toBe('<button onclick="alert(1)">Click</button>');
   });
 
   it("drops function event handlers with warning", async () => {
@@ -120,9 +103,7 @@ describe("jsx — intrinsic elements", () => {
 
   it("allows safe data: image URIs", async () => {
     const el = jsx("img", { src: "data:image/png;base64,abc" });
-    expect(await renderToString(el)).toBe(
-      '<img src="data:image/png;base64,abc">',
-    );
+    expect(await renderToString(el)).toBe('<img src="data:image/png;base64,abc">');
   });
 
   it("renders void elements without closing tag", async () => {
@@ -139,9 +120,7 @@ describe("jsx — intrinsic elements", () => {
 
   it("accepts data-* and aria-* attributes", async () => {
     const el = jsx("div", { "data-test-id": "123", "aria-label": "test" });
-    expect(await renderToString(el)).toBe(
-      '<div data-test-id="123" aria-label="test"></div>',
-    );
+    expect(await renderToString(el)).toBe('<div data-test-id="123" aria-label="test"></div>');
   });
 });
 
@@ -177,19 +156,15 @@ describe("jsx — async elements", () => {
 
 describe("jsx — components", () => {
   it("renders a functional component", async () => {
-    const Button = ({ label }: { label: string }) =>
-      jsx("button", { children: label });
+    const Button = ({ label }: { label: string }) => jsx("button", { children: label });
     const el = jsx(Button, { label: "Click" });
     expect(await renderToString(el)).toBe("<button>Click</button>");
   });
 
   it("renders nested components", async () => {
-    const Box = ({ children }: { children?: any }) =>
-      jsx("div", { class: "box", children });
+    const Box = ({ children }: { children?: any }) => jsx("div", { class: "box", children });
     const App = () => jsx(Box, { children: jsx("p", { children: "Hello" }) });
-    expect(await renderToString(jsx(App, {}))).toBe(
-      '<div class="box"><p>Hello</p></div>',
-    );
+    expect(await renderToString(jsx(App, {}))).toBe('<div class="box"><p>Hello</p></div>');
   });
 
   it("renders async component", async () => {
@@ -204,14 +179,9 @@ describe("jsx — components", () => {
   it("renders async component returning Fragment", async () => {
     const AsyncList: any = async () => {
       await Promise.resolve();
-      return [
-        jsx("li", { children: "1" }),
-        jsx("li", { children: "2" }),
-      ];
+      return [jsx("li", { children: "1" }), jsx("li", { children: "2" })];
     };
-    expect(await renderToString(jsx(AsyncList, {}))).toBe(
-      "<li>1</li><li>2</li>",
-    );
+    expect(await renderToString(jsx(AsyncList, {}))).toBe("<li>1</li><li>2</li>");
   });
 
   it("error annotation with component name", async () => {
@@ -223,8 +193,7 @@ describe("jsx — components", () => {
     try {
       const html = await renderToString(
         jsx(ErrorBoundary, {
-          fallback: (e: unknown) =>
-            raw(`<p>${(e as Error).message}</p>`),
+          fallback: (e: unknown) => raw(`<p>${(e as Error).message}</p>`),
           children: jsx(Boom, {}),
         }),
       );
@@ -250,8 +219,7 @@ describe("jsx — components", () => {
     try {
       const html = await renderToString(
         jsx(ErrorBoundary, {
-          fallback: (e: unknown) =>
-            raw(`<p>${(e as HttpError).status}</p>`),
+          fallback: (e: unknown) => raw(`<p>${(e as HttpError).status}</p>`),
           children: jsx(Boom, {}),
         }),
       );
@@ -265,10 +233,7 @@ describe("jsx — components", () => {
 describe("Fragment", () => {
   it("renders fragment children", async () => {
     const el = jsx(Fragment, {
-      children: [
-        jsx("li", { children: "1" }),
-        jsx("li", { children: "2" }),
-      ],
+      children: [jsx("li", { children: "1" }), jsx("li", { children: "2" })],
     });
     expect(await renderToString(el)).toBe("<li>1</li><li>2</li>");
   });
@@ -344,25 +309,19 @@ describe("rawtext elements (script, style)", () => {
     const el = jsx("script", {
       children: "</script><script>alert(1)",
     });
-    expect(await renderToString(el)).toBe(
-      "<script><\\/script><script>alert(1)</script>",
-    );
+    expect(await renderToString(el)).toBe("<script><\\/script><script>alert(1)</script>");
   });
 
   it("escapes </style> in style element", async () => {
     const el = jsx("style", {
       children: "</style><img src=x onerror=alert(1)>",
     });
-    expect(await renderToString(el)).toBe(
-      "<style><\\/style><img src=x onerror=alert(1)></style>",
-    );
+    expect(await renderToString(el)).toBe("<style><\\/style><img src=x onerror=alert(1)></style>");
   });
 
   it("preserves normal JS in script element", async () => {
     const el = jsx("script", { children: "console.log('hello');" });
-    expect(await renderToString(el)).toBe(
-      "<script>console.log('hello');</script>",
-    );
+    expect(await renderToString(el)).toBe("<script>console.log('hello');</script>");
   });
 
   it("escapes </SCRIPT> case-insensitively", async () => {
@@ -385,9 +344,7 @@ describe("RCDATA elements (textarea, title)", () => {
     const el = jsx("title", {
       children: "</title><script>alert(1)",
     });
-    expect(await renderToString(el)).toBe(
-      "<title>&lt;/title&gt;&lt;script&gt;alert(1)</title>",
-    );
+    expect(await renderToString(el)).toBe("<title>&lt;/title&gt;&lt;script&gt;alert(1)</title>");
   });
 });
 
@@ -415,10 +372,7 @@ describe("Precompile path — jsxTemplate", () => {
   });
 
   it("interpolates dynamic text", () => {
-    const result = jsxTemplate(
-      ["<h1>Hello ", "!</h1>"],
-      "Ada",
-    );
+    const result = jsxTemplate(["<h1>Hello ", "!</h1>"], "Ada");
     expect(result.toString()).toBe("<h1>Hello Ada!</h1>");
   });
 
@@ -429,32 +383,19 @@ describe("Precompile path — jsxTemplate", () => {
   });
 
   it("escapes unsafe content", () => {
-    const result = jsxTemplate(
-      ["<div>", "</div>"],
-      "<script>alert(1)</script>",
-    );
-    expect(result.toString()).toBe(
-      "<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>",
-    );
+    const result = jsxTemplate(["<div>", "</div>"], "<script>alert(1)</script>");
+    expect(result.toString()).toBe("<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>");
   });
 
   it("filters null/undefined/boolean", () => {
-    const result = jsxTemplate(
-      ["<div>", "</div>"],
-      [null, undefined, false, true],
-    );
+    const result = jsxTemplate(["<div>", "</div>"], [null, undefined, false, true]);
     expect(result.toString()).toBe("<div></div>");
   });
 
   it("renders concurrent promises in parallel", async () => {
     const start = Date.now();
-    const slow = (v: string, ms: number) =>
-      new Promise<string>((r) => setTimeout(() => r(v), ms));
-    const result = jsxTemplate(
-      ["<p>", " - ", "</p>"],
-      slow("a", 30),
-      slow("b", 20),
-    );
+    const slow = (v: string, ms: number) => new Promise<string>((r) => setTimeout(() => r(v), ms));
+    const result = jsxTemplate(["<p>", " - ", "</p>"], slow("a", 30), slow("b", 20));
     expect((await result).toString()).toBe("<p>a - b</p>");
     expect(Date.now() - start).toBeLessThan(45);
   });
@@ -462,10 +403,7 @@ describe("Precompile path — jsxTemplate", () => {
 
 describe("Precompile path — jsxAttr", () => {
   it("renders attribute key=value", () => {
-    const result = jsxTemplate(
-      ["<a ", "></a>"],
-      jsxAttr("href", "/about"),
-    );
+    const result = jsxTemplate(["<a ", "></a>"], jsxAttr("href", "/about"));
     expect(result.toString()).toBe('<a href="/about"></a>');
   });
 
@@ -479,22 +417,14 @@ describe("Precompile path — jsxAttr", () => {
   });
 
   it("escapes quotes in attribute values", () => {
-    const result = jsxTemplate(
-      ["<a ", "></a>"],
-      jsxAttr("title", '"><script>x</script>'),
-    );
-    expect(result.toString()).toBe(
-      '<a title="&quot;&gt;&lt;script&gt;x&lt;/script&gt;"></a>',
-    );
+    const result = jsxTemplate(["<a ", "></a>"], jsxAttr("title", '"><script>x</script>'));
+    expect(result.toString()).toBe('<a title="&quot;&gt;&lt;script&gt;x&lt;/script&gt;"></a>');
   });
 
   it("filters function event handlers but accepts strings", () => {
     const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
     try {
-      const ok = jsxTemplate(
-        ["<button ", "></button>"],
-        jsxAttr("onClick", "alert(1)"),
-      );
+      const ok = jsxTemplate(["<button ", "></button>"], jsxAttr("onClick", "alert(1)"));
       expect(ok.toString()).toBe('<button onclick="alert(1)"></button>');
 
       const dropped = jsxTemplate(
@@ -536,9 +466,7 @@ describe("renderAttr (singular)", () => {
   });
 
   it("blocks javascript: URLs", () => {
-    expect(renderAttr("href", "javascript:alert(1)")).toBe(
-      'href="#blocked"',
-    );
+    expect(renderAttr("href", "javascript:alert(1)")).toBe('href="#blocked"');
   });
 
   it("drops RawString-valued event handlers silently", () => {
@@ -563,9 +491,7 @@ describe("renderAttr (singular)", () => {
 
   it("preserves string-valued event handlers", () => {
     expect(renderAttr("onclick", "alert(1)")).toBe('onclick="alert(1)"');
-    expect(renderAttr("onsubmit", "return false")).toBe(
-      'onsubmit="return false"',
-    );
+    expect(renderAttr("onsubmit", "return false")).toBe('onsubmit="return false"');
   });
 
   it("accepts data-* and aria-* attributes", () => {

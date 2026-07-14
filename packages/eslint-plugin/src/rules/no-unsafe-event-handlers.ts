@@ -1,12 +1,11 @@
-import { ESLintUtils } from "@typescript-eslint/utils";
+import type { RuleModule } from "../types.js";
 
-export const noUnsafeEventHandlers = ESLintUtils.RuleCreator.withoutDocs({
+export const noUnsafeEventHandlers: RuleModule = {
   meta: {
     type: "suggestion",
     docs: {
       description: "Warn about event handlers which might be unsafely handled.",
     },
-
     schema: [],
     messages: {
       unsafeHandler:
@@ -16,17 +15,11 @@ export const noUnsafeEventHandlers = ESLintUtils.RuleCreator.withoutDocs({
   defaultOptions: [],
   create(context) {
     return {
-      JSXAttribute(node) {
-        if (
-          node.name.type === "JSXIdentifier" &&
-          /^on[A-Za-z]/.test(node.name.name)
-        ) {
-          context.report({
-            node,
-            messageId: "unsafeHandler",
-          });
+      JSXAttribute(node: any) {
+        if (node.name?.type === "JSXIdentifier" && /^on[A-Za-z]/.test(node.name.name)) {
+          context.report({ node, messageId: "unsafeHandler" });
         }
       },
     };
   },
-});
+};

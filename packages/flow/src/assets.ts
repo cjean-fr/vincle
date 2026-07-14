@@ -8,7 +8,7 @@ export type AssetContent = string | (() => string | Promise<string>);
 export type AssetEntry = {
   type: AssetType;
   content: AssetContent;
-  attrs: Record<string, string>;
+  attrs: Record<string, string | boolean>;
 };
 
 export type AssetState = {
@@ -24,11 +24,7 @@ export function createMarker(type: AssetType, name: string): string {
   return `<!-- vincle:${type}:${name} -->`;
 }
 
-export function registerAsset(
-  state: AssetState,
-  name: string,
-  entry: AssetEntry,
-): void {
+export function registerAsset(state: AssetState, name: string, entry: AssetEntry): void {
   if (state.entries.has(name)) {
     if (process.env.NODE_ENV !== "production") {
       const existing = state.entries.get(name)!;
@@ -52,9 +48,7 @@ function isHtmlCommentSafe(name: string): boolean {
 
 function assertNameSafe(name: string): void {
   if (!isHtmlCommentSafe(name)) {
-    throw new Error(
-      `Asset name "${name}" is not safe for use in HTML comment markers`,
-    );
+    throw new Error(`Asset name "${name}" is not safe for use in HTML comment markers`);
   }
 }
 
@@ -80,17 +74,14 @@ async function evaluateAndBuildTag(
     throw error;
   }
   const tag = type === "style" ? "style" : "script";
-  return renderToString(
-    jsx(tag, { "data-name": name, ...entry.attrs, children: content }),
-  );
+  return renderToString(jsx(tag, { "data-name": name, ...entry.attrs, children: content }));
 }
 
 export async function resolveAssets(
   html: string,
   state?: AssetState | { isolate: boolean },
 ): Promise<string> {
-  const resolved: AssetState =
-    state && "entries" in state ? state : createAssetState();
+  const resolved: AssetState = state && "entries" in state ? state : createAssetState();
 
   const re = /<!-- vincle:(style|script):(.+?) -->/g;
 

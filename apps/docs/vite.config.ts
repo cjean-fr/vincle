@@ -1,5 +1,5 @@
-import precompile from "@vincle/vite-plugin-precompile";
 import tailwindcss from "@tailwindcss/vite";
+import precompile from "@vincle/vite-plugin-precompile";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { defineConfig } from "vite";
@@ -11,9 +11,7 @@ export default defineConfig({
     satteri({
       mdx: {
         jsxImportSource: "@vincle/core",
-        providerImportSource: pathToFileURL(
-          path.resolve("docs-src/mdx-components.jsx"),
-        ).href,
+        providerImportSource: pathToFileURL(path.resolve("docs-src/mdx-components.jsx")).href,
       },
     }),
     tailwindcss(),

@@ -17,7 +17,7 @@ per_host_delay_ms = 50
 include = []
 exclude = []
 allow_query_params = []
-drop_query_prefixes = [ "utm_", "gclid", "fbclid" ]
+drop_query_prefixes = ["utm_", "gclid", "fbclid"]
 respect_robots = true
 incremental = true
 breadth_first = true
@@ -26,7 +26,7 @@ use_cache_control = true
 max_staleness_seconds = 86400
 
 [rules]
-enable = [ "*" ]
+enable = ["*"]
 disable = []
 
 [plugins]

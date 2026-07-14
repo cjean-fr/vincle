@@ -32,9 +32,7 @@ import { ErrorBoundary } from "@vincle/core";
 ## Signature
 
 ```tsx
-<ErrorBoundary fallback={(error: unknown) => VNode}>
-  {children}
-</ErrorBoundary>
+<ErrorBoundary fallback={(error: unknown) => VNode}>{children}</ErrorBoundary>
 ```
 
 `fallback` can be a renderable value (shown directly) or a function that
@@ -98,7 +96,9 @@ When a component throws, Vincle annotates the error message with the
 component's display name:
 
 ```tsx
-const Profile = () => { throw new Error("not found"); };
+const Profile = () => {
+  throw new Error("not found");
+};
 await renderToString(
   <ErrorBoundary fallback={(e) => <p>{(e as Error).message}</p>}>
     <Profile />

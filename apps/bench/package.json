@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "bench": "NODE_ENV=production bun run src/bench.ts",
-    "bench:ci": "mkdir -p results && NODE_ENV=production bun run src/bench.ts | tee results/benchmark.txt"
+    "bench:ci": "mkdir -p results && NODE_ENV=production bun run src/bench.ts | tee results/benchmark.txt",
+    "format": "oxfmt"
   },
   "dependencies": {
     "@vincle/core": "workspace:*"

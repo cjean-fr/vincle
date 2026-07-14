@@ -1,6 +1,7 @@
-import { noContext } from "./no-context";
 import * as parser from "@typescript-eslint/parser";
 import { RuleTester } from "@typescript-eslint/rule-tester";
+
+import { noContext } from "./no-context";
 
 const ruleTester = new RuleTester({
   languageOptions: {

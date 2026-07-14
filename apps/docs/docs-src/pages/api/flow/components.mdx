@@ -17,10 +17,10 @@ Declares a named insertion point in the shell. Its children render immediately a
 
 **Props:**
 
-| Prop       | Type         | Default | Description                                                    |
-| ---------- | ------------ | ------- | -------------------------------------------------------------- |
-| `name`     | `string`     | —       | Fragment id, required. Must match `/^[a-zA-Z][a-zA-Z0-9_-]*$/` |
-| `children` | `VNode` | —       | Fallback content rendered immediately in the shell             |
+| Prop       | Type     | Default | Description                                                    |
+| ---------- | -------- | ------- | -------------------------------------------------------------- |
+| `name`     | `string` | —       | Fragment id, required. Must match `/^[a-zA-Z][a-zA-Z0-9_-]*$/` |
+| `children` | `VNode`  | —       | Fallback content rendered immediately in the shell             |
 
 ## Fill
 
@@ -33,10 +33,10 @@ Pushes deferred content into an existing slot by name. Renders nothing itself.
 | Prop       | Type                                                        | Default     | Description                               |
 | ---------- | ----------------------------------------------------------- | ----------- | ----------------------------------------- |
 | `target`   | `string`                                                    | —           | Target slot id to push content into       |
-| `children` | `VNode \| ((signal: AbortSignal) => VNode)`       | —           | Deferred content (plain JSX or factory)   |
+| `children` | `VNode \| ((signal: AbortSignal) => VNode)`                 | —           | Deferred content (plain JSX or factory)   |
 | `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target element |
 | `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms         |
-| `onError`  | `(error: Error) => VNode`                              | —           | Per-fragment error handler                |
+| `onError`  | `(error: Error) => VNode`                                   | —           | Per-fragment error handler                |
 
 ## Defer
 
@@ -46,14 +46,14 @@ Declares a deferred region with a placeholder and content in one component. Equi
 
 **Props:**
 
-| Prop       | Type                                                        | Default        | Description                            |
-| ---------- | ----------------------------------------------------------- | -------------- | -------------------------------------- |
-| `name`     | `string`                                                    | auto-generated | Fragment id                            |
-| `fallback` | `VNode`                                                | —              | Placeholder content shown in the shell |
-| `children` | `VNode \| ((signal: AbortSignal) => VNode)`       | —              | Deferred content (plain JSX or factory)|
-| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"`    | How content applies to the target      |
-| `timeout`  | `number`                                                    | —              | Per-fragment render timeout in ms      |
-| `onError`  | `(error: Error) => VNode`                              | —              | Per-fragment error handler             |
+| Prop       | Type                                                        | Default        | Description                             |
+| ---------- | ----------------------------------------------------------- | -------------- | --------------------------------------- |
+| `name`     | `string`                                                    | auto-generated | Fragment id                             |
+| `fallback` | `VNode`                                                     | —              | Placeholder content shown in the shell  |
+| `children` | `VNode \| ((signal: AbortSignal) => VNode)`                 | —              | Deferred content (plain JSX or factory) |
+| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"`    | How content applies to the target       |
+| `timeout`  | `number`                                                    | —              | Per-fragment render timeout in ms       |
+| `onError`  | `(error: Error) => VNode`                                   | —              | Per-fragment error handler              |
 
 ## ClientFetch
 
@@ -87,8 +87,8 @@ disconnect, per-fragment timeout):
 
 **Return types (for both forms):**
 
-| Return type                 | Behaviour                                            |
-| --------------------------- | ---------------------------------------------------- |
-| A renderable JSX node       | One-shot patch — renders once and resolves           |
+| Return type            | Behaviour                                            |
+| ---------------------- | ---------------------------------------------------- |
+| A renderable JSX node  | One-shot patch — renders once and resolves           |
 | `Promise<VNode>`       | Resolves asynchronously, then patches in             |
 | `AsyncIterable<VNode>` | A stream — one patch per item, as each item resolves |

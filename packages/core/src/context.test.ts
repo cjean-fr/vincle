@@ -1,3 +1,7 @@
+import { expect, describe, it, beforeEach, afterAll } from "bun:test";
+
+import type { ContextMap } from "./context.js";
+
 import {
   context,
   setContext,
@@ -6,8 +10,6 @@ import {
   snapshot,
   resetContextStorage,
 } from "./context.js";
-import type { ContextMap } from "./context.js";
-import { expect, describe, it, beforeEach, afterAll } from "bun:test";
 
 const UserToken = context<{ name: string }>("test:user");
 const PluginToken = context<{ items: string[] }>("test:plugin");
@@ -17,9 +19,7 @@ describe("context", () => {
     beforeEach(() => resetContextStorage());
 
     it("throws outside withScope", () => {
-      expect(() => useContext(UserToken)).toThrow(
-        "[vincle/core] useContext/setContext",
-      );
+      expect(() => useContext(UserToken)).toThrow("[vincle/core] useContext/setContext");
       expect(() => setContext(UserToken, { name: "x" })).toThrow(
         "[vincle/core] useContext/setContext",
       );
@@ -100,9 +100,7 @@ describe("context", () => {
       await withScope(async () => {
         setContext(UserToken, { name: "Parent" });
         await withScope(() => {
-          expect(() => useContext(UserToken)).toThrow(
-            "not found in current scope",
-          );
+          expect(() => useContext(UserToken)).toThrow("not found in current scope");
         });
       });
     });
@@ -136,9 +134,7 @@ describe("context", () => {
 
     it("snapshot throws outside withScope", () => {
       resetContextStorage();
-      expect(() => snapshot()).toThrow(
-        "[vincle/core] useContext/setContext",
-      );
+      expect(() => snapshot()).toThrow("[vincle/core] useContext/setContext");
     });
   });
 
@@ -195,7 +191,10 @@ describe("context", () => {
         this.#store = ctx;
         try {
           const result = fn();
-          if (result instanceof Promise) return result.finally(() => { this.#store = prev; }) as Promise<T>;
+          if (result instanceof Promise)
+            return result.finally(() => {
+              this.#store = prev;
+            }) as Promise<T>;
           this.#store = prev;
           return Promise.resolve(result);
         } catch (e) {

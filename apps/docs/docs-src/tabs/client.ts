@@ -4,9 +4,7 @@ function activate(container: Element, index: number): void {
   const buttons = Array.from(
     container.querySelectorAll<HTMLButtonElement>("[data-docs-tab-target]"),
   );
-  const panels = Array.from(
-    container.querySelectorAll<HTMLElement>("[data-docs-tab-panel]"),
-  );
+  const panels = Array.from(container.querySelectorAll<HTMLElement>("[data-docs-tab-panel]"));
   buttons.forEach((btn, i) => {
     const active = i === index;
     btn.setAttribute("aria-selected", active ? "true" : "false");

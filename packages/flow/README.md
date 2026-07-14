@@ -226,24 +226,16 @@ Uses the [Declarative Partial Updates](https://developer.chrome.com/blog/declara
 Every update is a **declarative `<template for>`** — the merge mode rides on `data-merge`, lazy client fetches on `data-src`. There are **no per-fragment inline scripts**; the only JS is a single static polyfill, which makes a strict CSP straightforward:
 
 ```ts
-import {
-  NativeAdapter,
-  nativePolyfillHash,
-  NATIVE_POLYFILL,
-} from "@vincle/flow/adapters";
+import { NativeAdapter, nativePolyfillHash, NATIVE_POLYFILL } from "@vincle/flow/adapters";
 
 // Option A — keep the inline <script>, pin it by hash (static ⇒ cache/SSG-safe):
-res.headers.set(
-  "Content-Security-Policy",
-  `script-src 'self' '${await nativePolyfillHash()}'`,
-);
+res.headers.set("Content-Security-Policy", `script-src 'self' '${await nativePolyfillHash()}'`);
 
 // Option B — serve the polyfill from your origin under script-src 'self':
 //   write NATIVE_POLYFILL to e.g. /flow.js, then:
 const selfHosted = {
   ...NativeAdapter,
-  transformShell: (shell: string) =>
-    injectIntoHead(shell, `<script src="/flow.js"></script>`),
+  transformShell: (shell: string) => injectIntoHead(shell, `<script src="/flow.js"></script>`),
 };
 ```
 
@@ -299,9 +291,7 @@ import { renderToStatic } from "@vincle/flow";
 
 await renderToStatic(async (ctx) => {
   for (const page of pages) {
-    const html = await ctx.renderPage(() =>
-      page.component({ currentPage: page.url }),
-    );
+    const html = await ctx.renderPage(() => page.component({ currentPage: page.url }));
     await Bun.write(page.outPath, "<!DOCTYPE html>\n" + html);
   }
 });
@@ -318,9 +308,7 @@ import { NativeAdapter } from "@vincle/flow/adapters";
 await renderToStatic(
   async (ctx) => {
     for (const page of pages) {
-      const html = await ctx.renderPage(() =>
-        page.component({ currentPage: page.url }),
-      );
+      const html = await ctx.renderPage(() => page.component({ currentPage: page.url }));
       await Bun.write(page.outPath, "<!DOCTYPE html>\n" + html);
     }
 
@@ -362,8 +350,7 @@ Bun.serve({
 import { NativeAdapter, createAdapter } from "@vincle/flow/adapters";
 import { composeShell, injectIntoHead } from "@vincle/flow/utils";
 
-const metadata = () => (html: string) =>
-  injectIntoHead(html, "<title>Home</title>");
+const metadata = () => (html: string) => injectIntoHead(html, "<title>Home</title>");
 
 const MyAdapter = createAdapter({
   ...NativeAdapter,
@@ -428,7 +415,7 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `MergeType`           | `@vincle/flow/types`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"`            |
 | `FlowEvent`           | `@vincle/flow/types`    | `{ type: "shell" \| "fragment" \| "close", … }`                        |
 | `Negotiation`         | `@vincle/flow/types`    | `{ headers?, mode?, target? }`                                         |
-| `DeferContent`        | `@vincle/flow/types`    | `VNode \| ((signal: AbortSignal) => VNode)`                  |
+| `DeferContent`        | `@vincle/flow/types`    | `VNode \| ((signal: AbortSignal) => VNode)`                            |
 
 ### Utilities
 

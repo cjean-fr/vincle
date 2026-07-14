@@ -1,3 +1,7 @@
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import type {
   PageMeta,
   DirMeta,
@@ -7,9 +11,6 @@ import type {
   ResolvedDocsConfig,
 } from "../types.js";
 import type { Page } from "../types.js";
-import { readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import path from "node:path";
 
 export interface NavLink {
   label: string;
@@ -44,8 +45,7 @@ async function readDirMeta(dir: string): Promise<DirMeta> {
   try {
     const raw = await readFile(file, "utf-8");
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const meta =
-      parsed && typeof parsed === "object" ? (parsed as DirMeta) : NO_META;
+    const meta = parsed && typeof parsed === "object" ? (parsed as DirMeta) : NO_META;
     metaCache.set(dir, meta);
     return meta;
   } catch {
@@ -98,11 +98,7 @@ export async function resolveSidebar(
 
 function tabForUrl(tabs: readonly TabConfig[], url: string): TabConfig {
   const top = url.split("/").filter(Boolean)[0] ?? "";
-  return (
-    tabs.find((t) => t.slug === top) ??
-    tabs.find((t) => t.slug === "guide") ??
-    tabs[0]!
-  );
+  return tabs.find((t) => t.slug === top) ?? tabs.find((t) => t.slug === "guide") ?? tabs[0]!;
 }
 
 function insert(root: TreeNode, page: DocsPage): void {
@@ -126,10 +122,7 @@ function insert(root: TreeNode, page: DocsPage): void {
   node.page = page;
 }
 
-async function treeToItems(
-  node: TreeNode,
-  currentUrl: string,
-): Promise<ResolvedSidebarItem[]> {
+async function treeToItems(node: TreeNode, currentUrl: string): Promise<ResolvedSidebarItem[]> {
   if (!node.dir) return [];
   const meta = await readDirMeta(node.dir);
   const entries = [...node.children.values()];
@@ -157,12 +150,9 @@ async function treeToItems(
       // Category (directory). It may also carry an index page.
       const childItems = await treeToItems(child, currentUrl);
       const expanded = childItems.some(
-        (i) =>
-          (i.kind === "page" && i.current) ||
-          (i.kind === "category" && i.expanded),
+        (i) => (i.kind === "page" && i.current) || (i.kind === "category" && i.expanded),
       );
-      const categoryLabel =
-        label ?? child.page?.meta.title ?? titleCase(child.name);
+      const categoryLabel = label ?? child.page?.meta.title ?? titleCase(child.name);
       items.push({
         kind: "category",
         label: categoryLabel,
@@ -228,9 +218,7 @@ export function resolveNavigation(
   };
 }
 
-function flattenPages(
-  sidebar: ResolvedSidebar,
-): { label: string; href: string }[] {
+function flattenPages(sidebar: ResolvedSidebar): { label: string; href: string }[] {
   const out: { label: string; href: string }[] = [];
   for (const group of sidebar.groups) {
     for (const item of group.items) collectPages(item, out);
@@ -238,10 +226,7 @@ function flattenPages(
   return out;
 }
 
-function collectPages(
-  item: ResolvedSidebarItem,
-  out: { label: string; href: string }[],
-): void {
+function collectPages(item: ResolvedSidebarItem, out: { label: string; href: string }[]): void {
   if (item.kind === "page") {
     out.push({ label: item.label, href: item.href });
   } else if (item.kind === "category") {

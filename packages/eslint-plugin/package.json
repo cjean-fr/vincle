@@ -43,7 +43,7 @@
     "build": "tsc",
     "test": "bun test",
     "check": "tsc --noEmit",
-    "format": "prettier --write \"**/*.{ts,json,md}\""
+    "format": "oxfmt"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
@@ -51,7 +51,7 @@
     "@typescript-eslint/rule-tester": "catalog:",
     "@typescript-eslint/utils": "catalog:",
     "eslint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "npm:@typescript/typescript6"
   },
   "peerDependencies": {
     "@vincle/core": "workspace:*",

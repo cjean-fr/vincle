@@ -1,6 +1,7 @@
-import { noRefs } from "./no-refs";
 import * as parser from "@typescript-eslint/parser";
 import { RuleTester } from "@typescript-eslint/rule-tester";
+
+import { noRefs } from "./no-refs";
 
 const ruleTester = new RuleTester({
   languageOptions: {

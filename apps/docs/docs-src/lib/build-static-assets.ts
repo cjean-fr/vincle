@@ -1,6 +1,7 @@
-import type { ResolvedDocsConfig } from "../types.js";
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
+
+import type { ResolvedDocsConfig } from "../types.js";
 
 export async function generateLlmsTxt(
   pages: { url: string; title: string; html: string }[],
@@ -42,17 +43,10 @@ export async function generateLlmsFullTxt(
     parts.push(page.text);
     parts.push("");
   }
-  await writeFile(
-    path.join(outDir, "llms-full.txt"),
-    parts.join("\n"),
-    "utf-8",
-  );
+  await writeFile(path.join(outDir, "llms-full.txt"), parts.join("\n"), "utf-8");
 }
 
-export async function generateManifest(
-  config: ResolvedDocsConfig,
-  outDir: string,
-): Promise<void> {
+export async function generateManifest(config: ResolvedDocsConfig, outDir: string): Promise<void> {
   const manifest = {
     name: config.title,
     short_name: config.title,
@@ -70,11 +64,7 @@ export async function generateManifest(
       },
     ],
   };
-  await writeFile(
-    path.join(outDir, "manifest.json"),
-    JSON.stringify(manifest, null, 2),
-    "utf-8",
-  );
+  await writeFile(path.join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2), "utf-8");
 }
 
 export async function generateSecurityTxt(
@@ -96,11 +86,7 @@ export async function generateSecurityTxt(
     "Encryption: https://github.com/vincle/vincle/blob/main/SECURITY.md",
     "",
   ];
-  await writeFile(
-    path.join(wellKnownDir, "security.txt"),
-    lines.join("\n"),
-    "utf-8",
-  );
+  await writeFile(path.join(wellKnownDir, "security.txt"), lines.join("\n"), "utf-8");
 }
 
 export async function updateRobotsTxt(

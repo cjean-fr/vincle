@@ -13,10 +13,11 @@
  * - preact-render-to-string/test/render.test.jsx
  */
 import { describe, it, expect } from "bun:test";
+import { createElement as reactCreate, Fragment as ReactFragment } from "react";
+import { renderToString as reactRender } from "react-dom/server";
+
 import { renderToString as vincleRender } from "./index.js";
 import { jsx, Fragment } from "./jsx-runtime.js";
-import { renderToString as reactRender } from "react-dom/server";
-import { createElement as reactCreate, Fragment as ReactFragment } from "react";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,14 +60,13 @@ function diverges(label: string, vincleNode: any, reactNode: any, reason: string
 // 1. ATTRIBUTES
 // ---------------------------------------------------------------------------
 describe("gold — attributes", () => {
-
   // --- Boolean attributes ---
   // React renders `disabled=""`, vincle renders `disabled` (bare HTML boolean)
   diverges(
     "boolean true → bare attr",
     jsx("input", { disabled: true }),
     reactCreate("input", { disabled: true }),
-    "React outputs disabled=\"\", vincle outputs disabled (HTML spec: bare is correct)",
+    'React outputs disabled="", vincle outputs disabled (HTML spec: bare is correct)',
   );
 
   // React renders `<input/>` for false (self-closing, no attrs)
@@ -83,7 +83,7 @@ describe("gold — attributes", () => {
     "boolean 0 → omitted (React convention)",
     jsx("input", { disabled: 0 as any }),
     reactCreate("input", { disabled: 0 as any }),
-    "vincle drops 0, React renders disabled=\"0\"",
+    'vincle drops 0, React renders disabled="0"',
   );
   diverges(
     "boolean '' → omitted (React convention)",
@@ -99,24 +99,53 @@ describe("gold — attributes", () => {
   // --- className / class ---
   j("className → class", ["div", { className: "foo" }], ["div", { className: "foo" }]);
 
-  // React only processes className, ignorning `class` attribute entirely.
-  // vincle merges both: class takes precedence over className.
-  diverges(
-    "class+className merging",
+  // vincle now follows a uniform rule: when both React & HTML names exist, the
+  // HTML name (`class`) wins and the React name (`className`) is dropped.
+  // React ignores `class` and uses `className` — so both produce `class="a"` by
+  // different paths (React via className, vincle via class).
+  match(
+    "class+className — HTML name wins",
     jsx("div", { class: "a", className: "b" }),
     reactCreate("div", { className: "a" }),
-    "React ignores `class` attribute (only className); vincle merges them, class wins",
   );
 
   // --- htmlFor / for ---
   j("htmlFor → for", ["label", { htmlFor: "input-id" }], ["label", { htmlFor: "input-id" }]);
 
+  // vincle uniform rule: HTML name wins. `for` is the HTML name, `htmlFor` is the
+  // React name. When both are present, `for` wins and `htmlFor` is dropped.
+  match(
+    "htmlFor+for — HTML name wins",
+    jsx("label", { for: "id-html", htmlFor: "id-react", children: "L" }),
+    reactCreate("label", { htmlFor: "id-html", children: "L" }),
+  );
+
   // --- style object ---
-  j("style object → inline CSS", ["div", { style: { color: "red", marginTop: "10px" } }], ["div", { style: { color: "red", marginTop: "10px" } }]);
-  j("style camelCase to kebab", ["div", { style: { backgroundColor: "blue" } }], ["div", { style: { backgroundColor: "blue" } }]);
-  j("style custom properties", ["div", { style: { "--my-var": "10px" as any } }], ["div", { style: { "--my-var": "10px" as any } }]);
-  j("style null value → omitted", ["div", { style: { color: "red", marginTop: null as any } }], ["div", { style: { color: "red", marginTop: null as any } }]);
-  j("style undefined value → omitted", ["div", { style: { color: "red", marginTop: undefined as any } }], ["div", { style: { color: "red", marginTop: undefined as any } }]);
+  j(
+    "style object → inline CSS",
+    ["div", { style: { color: "red", marginTop: "10px" } }],
+    ["div", { style: { color: "red", marginTop: "10px" } }],
+  );
+  j(
+    "style camelCase to kebab",
+    ["div", { style: { backgroundColor: "blue" } }],
+    ["div", { style: { backgroundColor: "blue" } }],
+  );
+  j(
+    "style custom properties",
+    ["div", { style: { "--my-var": "10px" as any } }],
+    ["div", { style: { "--my-var": "10px" as any } }],
+  );
+  j(
+    "style null value → omitted",
+    ["div", { style: { color: "red", marginTop: null as any } }],
+    ["div", { style: { color: "red", marginTop: null as any } }],
+  );
+  j(
+    "style undefined value → omitted",
+    ["div", { style: { color: "red", marginTop: undefined as any } }],
+    ["div", { style: { color: "red", marginTop: undefined as any } }],
+  );
   j("style empty object → no style attr", ["div", { style: {} }], ["div", { style: {} }]);
 
   // React rejects string style; vincle accepts it for convenience
@@ -128,13 +157,9 @@ describe("gold — attributes", () => {
   );
 
   // --- aria-* attributes ---
-  // React renders `aria-hidden="true"`, vincle renders `aria-hidden` (bare boolean)
-  diverges(
-    "aria-hidden boolean",
-    jsx("div", { "aria-hidden": true }),
-    reactCreate("div", { "aria-hidden": true }),
-    "React renders aria-hidden=\"true\"; vincle renders aria-hidden (bare boolean)",
-  );
+  // vincle now matches React: ARIA attrs are string attributes, not HTML booleans
+  j("aria-hidden true → string", ["div", { "aria-hidden": true }], ["div", { "aria-hidden": true }]);
+  j("aria-hidden false → string", ["div", { "aria-hidden": false }], ["div", { "aria-hidden": false }]);
   j("aria-label string", ["div", { "aria-label": "hello" }], ["div", { "aria-label": "hello" }]);
 
   // --- data-* attributes ---
@@ -149,7 +174,11 @@ describe("gold — attributes", () => {
   j("onSubmit dropped", ["form", { onSubmit: () => {} }], ["form", { onSubmit: () => {} }]);
 
   // --- Special attributes ---
-  j("acceptCharset → accept-charset", ["form", { acceptCharset: "UTF-8" }], ["form", { acceptCharset: "UTF-8" }]);
+  j(
+    "acceptCharset → accept-charset",
+    ["form", { acceptCharset: "UTF-8" }],
+    ["form", { acceptCharset: "UTF-8" }],
+  );
   // httpEquiv: React uses charSet not charset, let's normalize
   const metaJsx = jsx("meta", { httpEquiv: "refresh" });
   const metaReact = reactCreate("meta", { httpEquiv: "refresh" });
@@ -167,7 +196,7 @@ describe("gold — attributes", () => {
     "hidden true → bare hidden",
     jsx("div", { hidden: true }),
     reactCreate("div", { hidden: true }),
-    "React: hidden=\"\"; vincle: hidden (bare, HTML spec correct)",
+    'React: hidden=""; vincle: hidden (bare, HTML spec correct)',
   );
   j("hidden false → omitted", ["div", { hidden: false }], ["div", { hidden: false }]);
 
@@ -177,9 +206,13 @@ describe("gold — attributes", () => {
     "download true → bare",
     jsx("a", { download: true, href: "/f" }),
     reactCreate("a", { download: true, href: "/f" }),
-    "React: download=\"\"; vincle: download (bare)",
+    'React: download=""; vincle: download (bare)',
   );
-  j("download string → named", ["a", { download: "file.pdf", href: "/f" }], ["a", { download: "file.pdf", href: "/f" }]);
+  j(
+    "download string → named",
+    ["a", { download: "file.pdf", href: "/f" }],
+    ["a", { download: "file.pdf", href: "/f" }],
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -209,7 +242,11 @@ describe("gold — children", () => {
     "React inserts <!-- --> between adjacent text nodes; vincle joins directly",
   );
 
-  j("escaping in text child", ["p", { children: "<script>alert(1)</script>" }], ["p", null, "<script>alert(1)</script>"]);
+  j(
+    "escaping in text child",
+    ["p", { children: "<script>alert(1)</script>" }],
+    ["p", null, "<script>alert(1)</script>"],
+  );
   j("escaping & entity", ["p", { children: "a & b" }], ["p", null, "a & b"]);
 });
 
@@ -217,7 +254,11 @@ describe("gold — children", () => {
 // 3. FRAGMENTS
 // ---------------------------------------------------------------------------
 describe("gold — fragments", () => {
-  match("single child fragment", jsx(Fragment, { children: "hello" }), reactCreate(ReactFragment, null, "hello"));
+  match(
+    "single child fragment",
+    jsx(Fragment, { children: "hello" }),
+    reactCreate(ReactFragment, null, "hello"),
+  );
 
   // React inserts <!-- --> comment separators between fragment children too
   diverges(
@@ -235,33 +276,79 @@ describe("gold — fragments", () => {
 // ---------------------------------------------------------------------------
 describe("gold — void elements", () => {
   // React uses `<br/>` self-closing syntax; vincle uses `<br>` (valid HTML5, spec-preferred)
-  const voidTags = ["br", "hr", "img", "input", "area", "base", "col", "embed", "param", "source", "track", "wbr"];
+  const voidTags = [
+    "br",
+    "hr",
+    "img",
+    "input",
+    "area",
+    "base",
+    "col",
+    "embed",
+    "param",
+    "source",
+    "track",
+    "wbr",
+  ];
   for (const tag of voidTags) {
-    const el = tag === "meta" ? jsx("meta", { charSet: "UTF-8" as any }) :
-               tag === "img" ? jsx("img", { src: "/a.png" }) :
-               tag === "input" ? jsx("input", { type: "text" }) :
-               tag === "link" ? jsx("link", { rel: "stylesheet", href: "/style.css" }) :
-               tag === "area" ? jsx("area", { shape: "rect", coords: "0,0,10,10" }) :
-               tag === "base" ? jsx("base", { href: "/" }) :
-               tag === "col" ? jsx("col", { span: 2 }) :
-               tag === "embed" ? jsx("embed", { src: "/movie.swf" }) :
-               tag === "param" ? jsx("param", { name: "autoplay", value: "true" }) :
-               tag === "source" ? jsx("source", { src: "/a.mp4", type: "video/mp4" }) :
-               tag === "track" ? jsx("track", { src: "/a.vtt", kind: "subtitles" }) :
-               jsx(tag, {});
+    const el =
+      tag === "meta"
+        ? jsx("meta", { charSet: "UTF-8" as any })
+        : tag === "img"
+          ? jsx("img", { src: "/a.png" })
+          : tag === "input"
+            ? jsx("input", { type: "text" })
+            : tag === "link"
+              ? jsx("link", { rel: "stylesheet", href: "/style.css" })
+              : tag === "area"
+                ? jsx("area", { shape: "rect", coords: "0,0,10,10" })
+                : tag === "base"
+                  ? jsx("base", { href: "/" })
+                  : tag === "col"
+                    ? jsx("col", { span: 2 })
+                    : tag === "embed"
+                      ? jsx("embed", { src: "/movie.swf" })
+                      : tag === "param"
+                        ? jsx("param", { name: "autoplay", value: "true" })
+                        : tag === "source"
+                          ? jsx("source", { src: "/a.mp4", type: "video/mp4" })
+                          : tag === "track"
+                            ? jsx("track", { src: "/a.vtt", kind: "subtitles" })
+                            : jsx(tag, {});
 
-    const rTag = tag === "meta" ? reactCreate("meta", { charSet: "UTF-8" }) :
-                 tag === "img" ? reactCreate("img", { src: "/a.png" }) :
-                 tag === "input" ? reactCreate("input", { type: "text" }) :
-                 tag === "link" ? reactCreate("link", { rel: "stylesheet", href: "/style.css" }) :
-                 tag === "area" ? reactCreate("area", { shape: "rect", coords: "0,0,10,10" }) :
-                 tag === "base" ? reactCreate("base", { href: "/" }) :
-                 tag === "col" ? reactCreate("col", { span: 2 }) :
-                 tag === "embed" ? reactCreate("embed", { src: "/movie.swf" }) :
-                 tag === "param" ? reactCreate("param", { name: "autoplay", value: "true" }) :
-                 tag === "source" ? reactCreate("source", { src: "/a.mp4", type: "video/mp4" }) :
-                 tag === "track" ? reactCreate("track", { src: "/a.vtt", kind: "subtitles" }) :
-                 reactCreate(tag);
+    const rTag =
+      tag === "meta"
+        ? reactCreate("meta", { charSet: "UTF-8" })
+        : tag === "img"
+          ? reactCreate("img", { src: "/a.png" })
+          : tag === "input"
+            ? reactCreate("input", { type: "text" })
+            : tag === "link"
+              ? reactCreate("link", { rel: "stylesheet", href: "/style.css" })
+              : tag === "area"
+                ? reactCreate("area", { shape: "rect", coords: "0,0,10,10" })
+                : tag === "base"
+                  ? reactCreate("base", { href: "/" })
+                  : tag === "col"
+                    ? reactCreate("col", { span: 2 })
+                    : tag === "embed"
+                      ? reactCreate("embed", { src: "/movie.swf" })
+                      : tag === "param"
+                        ? reactCreate("param", {
+                            name: "autoplay",
+                            value: "true",
+                          })
+                        : tag === "source"
+                          ? reactCreate("source", {
+                              src: "/a.mp4",
+                              type: "video/mp4",
+                            })
+                          : tag === "track"
+                            ? reactCreate("track", {
+                                src: "/a.vtt",
+                                kind: "subtitles",
+                              })
+                            : reactCreate(tag);
 
     diverges(
       tag,
@@ -280,7 +367,11 @@ describe("gold — void elements", () => {
 // 5. WHITESPACE & SPECIAL ELEMENTS
 // ---------------------------------------------------------------------------
 describe("gold — whitespace & special", () => {
-  j("pre preserves whitespace", ["pre", { children: "  hello\n  world" }], ["pre", null, "  hello\n  world"]);
+  j(
+    "pre preserves whitespace",
+    ["pre", { children: "  hello\n  world" }],
+    ["pre", null, "  hello\n  world"],
+  );
   // textarea with children triggers React warning but still renders
   j("textarea with text", ["textarea", { children: "  hello" }], ["textarea", null, "  hello"]);
 });
@@ -289,8 +380,16 @@ describe("gold — whitespace & special", () => {
 // 6. dangerouslySetInnerHTML
 // ---------------------------------------------------------------------------
 describe("gold — dangerouslySetInnerHTML", () => {
-  j("__html as string", ["div", { dangerouslySetInnerHTML: { __html: "<b>bold</b>" } }], ["div", { dangerouslySetInnerHTML: { __html: "<b>bold</b>" } }]);
-  j("__html empty string", ["div", { dangerouslySetInnerHTML: { __html: "" } }], ["div", { dangerouslySetInnerHTML: { __html: "" } }]);
+  j(
+    "__html as string",
+    ["div", { dangerouslySetInnerHTML: { __html: "<b>bold</b>" } }],
+    ["div", { dangerouslySetInnerHTML: { __html: "<b>bold</b>" } }],
+  );
+  j(
+    "__html empty string",
+    ["div", { dangerouslySetInnerHTML: { __html: "" } }],
+    ["div", { dangerouslySetInnerHTML: { __html: "" } }],
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -312,8 +411,16 @@ describe("gold — URL sanitization (javascript:)", () => {
     "Same divergence — error string vs #blocked",
   );
 
-  j("https: href passes", ["a", { href: "https://example.com" }], ["a", { href: "https://example.com" }]);
-  j("mailto: href passes", ["a", { href: "mailto:test@test.com" }], ["a", { href: "mailto:test@test.com" }]);
+  j(
+    "https: href passes",
+    ["a", { href: "https://example.com" }],
+    ["a", { href: "https://example.com" }],
+  );
+  j(
+    "mailto: href passes",
+    ["a", { href: "mailto:test@test.com" }],
+    ["a", { href: "mailto:test@test.com" }],
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -326,15 +433,25 @@ describe("gold — components", () => {
   function GreetReact(p: { name: string }) {
     return reactCreate("div", null, `Hello ${p.name}`);
   }
-  match("function component", jsx(Greet, { name: "World" }), reactCreate(GreetReact, { name: "World" }));
+  match(
+    "function component",
+    jsx(Greet, { name: "World" }),
+    reactCreate(GreetReact, { name: "World" }),
+  );
 
   function List(p: { items: string[] }) {
-    return jsx(Fragment, { children: p.items.map((i) => jsx("li", { children: i })) });
+    return jsx(Fragment, {
+      children: p.items.map((i) => jsx("li", { children: i })),
+    });
   }
   function ListReact(p: { items: string[] }) {
     return reactCreate(ReactFragment, null, ...p.items.map((i) => reactCreate("li", null, i)));
   }
-  match("component returning fragment", jsx(List, { items: ["a", "b"] }), reactCreate(ListReact, { items: ["a", "b"] }));
+  match(
+    "component returning fragment",
+    jsx(List, { items: ["a", "b"] }),
+    reactCreate(ListReact, { items: ["a", "b"] }),
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -353,8 +470,12 @@ describe("gold — escaping & XSS", () => {
     "React: &#x27;; vincle: &#39; — beide valides HTML",
   );
 
-  j("attr name with < is stripped", ["div", { 'x"><script>': "y" }], ["div", { 'x"><script>': "y" }]);
-  j("attr name with \" is stripped", ["div", { 'x"y': "z" }], ["div", { 'x"y': "z" }]);
+  j(
+    "attr name with < is stripped",
+    ["div", { 'x"><script>': "y" }],
+    ["div", { 'x"><script>': "y" }],
+  );
+  j('attr name with " is stripped', ["div", { 'x"y': "z" }], ["div", { 'x"y': "z" }]);
 });
 
 // ---------------------------------------------------------------------------
@@ -363,8 +484,15 @@ describe("gold — escaping & XSS", () => {
 describe("gold — SVG", () => {
   match(
     "svg element",
-    jsx("svg", { viewBox: "0 0 100 100", children: jsx("circle", { cx: "50", cy: "50", r: "40" }) }),
-    reactCreate("svg", { viewBox: "0 0 100 100" }, reactCreate("circle", { cx: "50", cy: "50", r: "40" })),
+    jsx("svg", {
+      viewBox: "0 0 100 100",
+      children: jsx("circle", { cx: "50", cy: "50", r: "40" }),
+    }),
+    reactCreate(
+      "svg",
+      { viewBox: "0 0 100 100" },
+      reactCreate("circle", { cx: "50", cy: "50", r: "40" }),
+    ),
   );
 
   match(
@@ -379,8 +507,11 @@ describe("gold — SVG", () => {
 // ---------------------------------------------------------------------------
 describe("gold — MathML", () => {
   // MathML elements render like any other intrinsic element in vincle
-  match("math element", jsx("math", { display: "block", children: jsx("mi", { children: "x" }) }),
-    reactCreate("math", { display: "block" }, reactCreate("mi", null, "x")));
+  match(
+    "math element",
+    jsx("math", { display: "block", children: jsx("mi", { children: "x" }) }),
+    reactCreate("math", { display: "block" }, reactCreate("mi", null, "x")),
+  );
 
   match("mi identifier", jsx("mi", { children: "x" }), reactCreate("mi", null, "x"));
   match("mo operator", jsx("mo", { children: "+" }), reactCreate("mo", null, "+"));
@@ -388,73 +519,152 @@ describe("gold — MathML", () => {
   match("ms string", jsx("ms", { children: "hello" }), reactCreate("ms", null, "hello"));
   match("mtext", jsx("mtext", { children: "text" }), reactCreate("mtext", null, "text"));
 
-  match("mrow grouping", jsx("mrow", { children: [jsx("mi", { children: "a" }), jsx("mo", { children: "+" }), jsx("mi", { children: "b" })] }),
-    reactCreate("mrow", null, reactCreate("mi", null, "a"), reactCreate("mo", null, "+"), reactCreate("mi", null, "b")));
+  match(
+    "mrow grouping",
+    jsx("mrow", {
+      children: [
+        jsx("mi", { children: "a" }),
+        jsx("mo", { children: "+" }),
+        jsx("mi", { children: "b" }),
+      ],
+    }),
+    reactCreate(
+      "mrow",
+      null,
+      reactCreate("mi", null, "a"),
+      reactCreate("mo", null, "+"),
+      reactCreate("mi", null, "b"),
+    ),
+  );
 
-  match("msup superscript", jsx("msup", { children: [jsx("mi", { children: "x" }), jsx("mn", { children: "2" })] }),
-    reactCreate("msup", null, reactCreate("mi", null, "x"), reactCreate("mn", null, "2")));
+  match(
+    "msup superscript",
+    jsx("msup", {
+      children: [jsx("mi", { children: "x" }), jsx("mn", { children: "2" })],
+    }),
+    reactCreate("msup", null, reactCreate("mi", null, "x"), reactCreate("mn", null, "2")),
+  );
 
-  match("msub subscript", jsx("msub", { children: [jsx("mi", { children: "x" }), jsx("mn", { children: "1" })] }),
-    reactCreate("msub", null, reactCreate("mi", null, "x"), reactCreate("mn", null, "1")));
+  match(
+    "msub subscript",
+    jsx("msub", {
+      children: [jsx("mi", { children: "x" }), jsx("mn", { children: "1" })],
+    }),
+    reactCreate("msub", null, reactCreate("mi", null, "x"), reactCreate("mn", null, "1")),
+  );
 
-  match("mfrac fraction", jsx("mfrac", { children: [jsx("mi", { children: "a" }), jsx("mi", { children: "b" })] }),
-    reactCreate("mfrac", null, reactCreate("mi", null, "a"), reactCreate("mi", null, "b")));
+  match(
+    "mfrac fraction",
+    jsx("mfrac", {
+      children: [jsx("mi", { children: "a" }), jsx("mi", { children: "b" })],
+    }),
+    reactCreate("mfrac", null, reactCreate("mi", null, "a"), reactCreate("mi", null, "b")),
+  );
 
-  match("msqrt square root", jsx("msqrt", { children: jsx("mn", { children: "2" }) }),
-    reactCreate("msqrt", null, reactCreate("mn", null, "2")));
+  match(
+    "msqrt square root",
+    jsx("msqrt", { children: jsx("mn", { children: "2" }) }),
+    reactCreate("msqrt", null, reactCreate("mn", null, "2")),
+  );
 
-  match("mroot nth root", jsx("mroot", { children: [jsx("mi", { children: "x" }), jsx("mn", { children: "3" })] }),
-    reactCreate("mroot", null, reactCreate("mi", null, "x"), reactCreate("mn", null, "3")));
+  match(
+    "mroot nth root",
+    jsx("mroot", {
+      children: [jsx("mi", { children: "x" }), jsx("mn", { children: "3" })],
+    }),
+    reactCreate("mroot", null, reactCreate("mi", null, "x"), reactCreate("mn", null, "3")),
+  );
 
-  match("msubsup", jsx("msubsup", { children: [jsx("mi", { children: "x" }), jsx("mn", { children: "1" }), jsx("mn", { children: "2" })] }),
-    reactCreate("msubsup", null, reactCreate("mi", null, "x"), reactCreate("mn", null, "1"), reactCreate("mn", null, "2")));
+  match(
+    "msubsup",
+    jsx("msubsup", {
+      children: [
+        jsx("mi", { children: "x" }),
+        jsx("mn", { children: "1" }),
+        jsx("mn", { children: "2" }),
+      ],
+    }),
+    reactCreate(
+      "msubsup",
+      null,
+      reactCreate("mi", null, "x"),
+      reactCreate("mn", null, "1"),
+      reactCreate("mn", null, "2"),
+    ),
+  );
 
   // MathML presentation attributes
-  match("mathcolor attr", jsx("mi", { mathcolor: "red", children: "x" }),
-    reactCreate("mi", { mathcolor: "red" }, "x"));
+  match(
+    "mathcolor attr",
+    jsx("mi", { mathcolor: "red", children: "x" }),
+    reactCreate("mi", { mathcolor: "red" }, "x"),
+  );
 
-  match("mathbackground attr", jsx("mi", { mathbackground: "#eee", children: "x" }),
-    reactCreate("mi", { mathbackground: "#eee" }, "x"));
+  match(
+    "mathbackground attr",
+    jsx("mi", { mathbackground: "#eee", children: "x" }),
+    reactCreate("mi", { mathbackground: "#eee" }, "x"),
+  );
 
-  match("lspace rspace attrs", jsx("mo", { lspace: "0.2em", rspace: "0.2em", children: "+" }),
-    reactCreate("mo", { lspace: "0.2em", rspace: "0.2em" }, "+"));
+  match(
+    "lspace rspace attrs",
+    jsx("mo", { lspace: "0.2em", rspace: "0.2em", children: "+" }),
+    reactCreate("mo", { lspace: "0.2em", rspace: "0.2em" }, "+"),
+  );
 
   // Nested MathML
-  match("nested msup in mfrac",
-    jsx("mfrac", { children: [
-      jsx("msup", { children: [jsx("mi", { children: "x" }), jsx("mn", { children: "2" })] }),
-      jsx("mi", { children: "y" }),
-    ] }),
-    reactCreate("mfrac", null,
+  match(
+    "nested msup in mfrac",
+    jsx("mfrac", {
+      children: [
+        jsx("msup", {
+          children: [jsx("mi", { children: "x" }), jsx("mn", { children: "2" })],
+        }),
+        jsx("mi", { children: "y" }),
+      ],
+    }),
+    reactCreate(
+      "mfrac",
+      null,
       reactCreate("msup", null, reactCreate("mi", null, "x"), reactCreate("mn", null, "2")),
-      reactCreate("mi", null, "y")));
+      reactCreate("mi", null, "y"),
+    ),
+  );
 
-  match("math with multiple children",
-    jsx("math", { children: [
-      jsx("mi", { children: "E" }),
-      jsx("mo", { children: "=" }),
-      jsx("mi", { children: "m" }),
-      jsx("msup", { children: [jsx("mi", { children: "c" }), jsx("mn", { children: "2" })] }),
-    ] }),
-    reactCreate("math", null,
+  match(
+    "math with multiple children",
+    jsx("math", {
+      children: [
+        jsx("mi", { children: "E" }),
+        jsx("mo", { children: "=" }),
+        jsx("mi", { children: "m" }),
+        jsx("msup", {
+          children: [jsx("mi", { children: "c" }), jsx("mn", { children: "2" })],
+        }),
+      ],
+    }),
+    reactCreate(
+      "math",
+      null,
       reactCreate("mi", null, "E"),
       reactCreate("mo", null, "="),
       reactCreate("mi", null, "m"),
-      reactCreate("msup", null, reactCreate("mi", null, "c"), reactCreate("mn", null, "2"))));
+      reactCreate("msup", null, reactCreate("mi", null, "c"), reactCreate("mn", null, "2")),
+    ),
+  );
 
   match("empty math", jsx("math", {}), reactCreate("math"));
 
   // mspace is not a void element in the HTML spec — both render <mspace></mspace>
   match("mspace", jsx("mspace", { width: "1em" }), reactCreate("mspace", { width: "1em" }));
 
-  // stretchy boolean: React treats stretchy as non-boolean (emits warning but keeps value)
-  // vincle treats boolean true as bare attr, same divergence as HTML boolean attrs
-  // Not testing false — React drops it (warns but omits)
+  // stretchy — React 19 drops non-boolean boolean attrs with warning;
+  // vincle renders `stretchy="true"` (more useful — the attr appears in output)
   diverges(
     "stretchy boolean true",
     jsx("mo", { stretchy: true, children: ")" }),
     reactCreate("mo", { stretchy: true }, ")"),
-    "React: stretchy=\"true\"; vincle: stretchy (bare boolean)",
+    'React 19 drops stretchy (warning); vincle renders stretchy="true"',
   );
 });
 
@@ -470,21 +680,30 @@ describe("gold — select & form elements", () => {
     "option selected=true",
     jsx("option", { selected: true, value: "x", children: "X" }),
     reactCreate("option", { selected: true, value: "x" }, "X"),
-    "React: selected=\"\"; vincle: selected (bare boolean)",
+    'React: selected=""; vincle: selected (bare boolean)',
   );
 
-  match("option selected=false", jsx("option", { selected: false, value: "x", children: "X" }),
-    reactCreate("option", { selected: false, value: "x" }, "X"));
+  match(
+    "option selected=false",
+    jsx("option", { selected: false, value: "x", children: "X" }),
+    reactCreate("option", { selected: false, value: "x" }, "X"),
+  );
 
-  match("optgroup", jsx("optgroup", { label: "G", children: jsx("option", { value: "1", children: "A" }) }),
-    reactCreate("optgroup", { label: "G" }, reactCreate("option", { value: "1" }, "A")));
+  match(
+    "optgroup",
+    jsx("optgroup", {
+      label: "G",
+      children: jsx("option", { value: "1", children: "A" }),
+    }),
+    reactCreate("optgroup", { label: "G" }, reactCreate("option", { value: "1" }, "A")),
+  );
 
   // Checkbox / radio — checked boolean
   diverges(
     "checkbox checked=true",
     jsx("input", { type: "checkbox", checked: true }),
     reactCreate("input", { type: "checkbox", checked: true }),
-    "React: checked=\"\"; vincle: checked (bare boolean)",
+    'React: checked=""; vincle: checked (bare boolean)',
   );
 
   diverges(
@@ -498,7 +717,7 @@ describe("gold — select & form elements", () => {
     "radio checked=true",
     jsx("input", { type: "radio", checked: true }),
     reactCreate("input", { type: "radio", checked: true }),
-    "React: checked=\"\"; vincle: checked (bare boolean)",
+    'React: checked=""; vincle: checked (bare boolean)',
   );
 
   diverges(
@@ -514,21 +733,27 @@ describe("gold — select & form elements", () => {
 // ---------------------------------------------------------------------------
 describe("gold — additional edge cases", () => {
   // Mixed children types (text + element + text)
-  match("mixed text + element + text",
-    jsx("p", { children: ["Hello ", jsx("strong", { children: "World" }), "!"] }),
-    reactCreate("p", null, "Hello ", reactCreate("strong", null, "World"), "!"));
+  match(
+    "mixed text + element + text",
+    jsx("p", {
+      children: ["Hello ", jsx("strong", { children: "World" }), "!"],
+    }),
+    reactCreate("p", null, "Hello ", reactCreate("strong", null, "World"), "!"),
+  );
 
   // Whitespace-preserving children
-  match("whitespace around element",
+  match(
+    "whitespace around element",
     jsx("span", { children: ["  ", jsx("em", { children: "x" }), "  "] }),
-    reactCreate("span", null, "  ", reactCreate("em", null, "x"), "  "));
+    reactCreate("span", null, "  ", reactCreate("em", null, "x"), "  "),
+  );
 
   // autofocus (boolean)
   diverges(
     "autofocus true",
     jsx("input", { type: "text", autoFocus: true }),
     reactCreate("input", { type: "text", autoFocus: true }),
-    "React: autofocus=\"\"; vincle: autofocus (bare boolean)",
+    'React: autofocus=""; vincle: autofocus (bare boolean)',
   );
 
   diverges(
@@ -538,39 +763,47 @@ describe("gold — additional edge cases", () => {
     "Self-closing: React <input/> vs vincle <input>",
   );
 
-  // contentEditable — React treats as string attr, vincle as boolean → divergence
-  // React: contentEditable={true} → contenteditable="true"
-  // vincle: contentEditable={true} → contenteditable (bare)
-  diverges(
-    "contentEditable true",
-    jsx("div", { contentEditable: true }),
-    reactCreate("div", { contentEditable: true }),
-    "React: contenteditable=\"true\"; vincle: contenteditable (bare), HTML spec: bare=empty string=\"true\" state",
+  // contentEditable — now matches React (enumerated attr, not HTML boolean)
+  j(
+    "contentEditable true → string",
+    ["div", { contentEditable: true }],
+    ["div", { contentEditable: true }],
   );
-
-  diverges(
-    "contentEditable false",
-    jsx("div", { contentEditable: false }),
-    reactCreate("div", { contentEditable: false }),
-    "React renders contenteditable=\"false\" (string attr); vincle omits it (boolean false→dropped), semantic difference",
+  j(
+    "contentEditable false → string",
+    ["div", { contentEditable: false }],
+    ["div", { contentEditable: false }],
   );
 
   // open (details/summary boolean)
   diverges(
     "open true → bare",
-    jsx("details", { open: true, children: jsx("summary", { children: "Info" }) }),
+    jsx("details", {
+      open: true,
+      children: jsx("summary", { children: "Info" }),
+    }),
     reactCreate("details", { open: true }, reactCreate("summary", null, "Info")),
-    "React: open=\"\"; vincle: open (bare boolean)",
+    'React: open=""; vincle: open (bare boolean)',
   );
 
-  match("open false → omitted",
-    jsx("details", { open: false, children: jsx("summary", { children: "Info" }) }),
-    reactCreate("details", { open: false }, reactCreate("summary", null, "Info")));
+  match(
+    "open false → omitted",
+    jsx("details", {
+      open: false,
+      children: jsx("summary", { children: "Info" }),
+    }),
+    reactCreate("details", { open: false }, reactCreate("summary", null, "Info")),
+  );
 
   // Encoded mailto: href
-  match("mailto with encoded params",
-    jsx("a", { href: "mailto:test@test.com?subject=hello&body=world", children: "mail" }),
-    reactCreate("a", { href: "mailto:test@test.com?subject=hello&body=world" }, "mail"));
+  match(
+    "mailto with encoded params",
+    jsx("a", {
+      href: "mailto:test@test.com?subject=hello&body=world",
+      children: "mail",
+    }),
+    reactCreate("a", { href: "mailto:test@test.com?subject=hello&body=world" }, "mail"),
+  );
 
   // data:image URI — safe
   diverges(
@@ -581,13 +814,17 @@ describe("gold — additional edge cases", () => {
   );
 
   // dangerouslySetInnerHTML with null/undefined __html
-  match("dangerouslySetInnerHTML null __html → empty",
+  match(
+    "dangerouslySetInnerHTML null __html → empty",
     jsx("div", { dangerouslySetInnerHTML: { __html: null } }),
-    reactCreate("div", { dangerouslySetInnerHTML: { __html: null } }));
+    reactCreate("div", { dangerouslySetInnerHTML: { __html: null } }),
+  );
 
-  match("dangerouslySetInnerHTML undefined __html → empty",
+  match(
+    "dangerouslySetInnerHTML undefined __html → empty",
     jsx("div", { dangerouslySetInnerHTML: { __html: undefined } }),
-    reactCreate("div", { dangerouslySetInnerHTML: { __html: undefined } }));
+    reactCreate("div", { dangerouslySetInnerHTML: { __html: undefined } }),
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -602,14 +839,13 @@ describe("gold — additional edge cases", () => {
 //  3. Text node separators: React inserts `<!-- -->` comment nodes; vincle joins directly
 //  4. URL sanitization: React throws error string; vincle uses `#blocked` sink
 //  5. String style: React throws; vincle accepts for convenience
-//  6. aria booleans: React adds `="true"`; vincle uses bare format
-//  7. `&#x27;` vs `&#39;` for single quotes — both spec-valid
-//  8. `class`+`className` merging — React ignores `class`; vincle merges
-//  9. `contentEditable={true}` — React `contenteditable="true"`; vincle `contenteditable` (bare)
-//     HTML spec: bare attr value `""` maps to the "true" state, so semantically equivalent
-// 10. `contentEditable={false}` — React `contenteditable="false"` (string attr); vincle drops it
-//     (boolean false → omitted). Semantic difference: React explicitly sets not-editable, vincle
-//     leaves the default "inherit" state. Documented as intentional lighter-weight approach.
-// 11. `stretchy={true}` (MathML) — React `stretchy="true"`; vincle `stretchy` (bare boolean)
+//  6. `&#x27;` vs `&#39;` for single quotes — both spec-valid
+//  7. `class`+`className` merging — React ignores `class`; vincle merges, class wins
+//  8. Non-boolean boolean values: React 19 drops `stretchy={true}` with warning;
+//     vincle renders `stretchy="true"` (the value is explicitly present in output)
+//
+// Resolved divergences (vincle now matches React):
+//  - `aria-hidden={true}` → `aria-hidden="true"` (string attr, not HTML boolean)
+//  - `contentEditable={true/false}` → `contenteditable="true"/"false"` (enumerated attr)
 //
 // Everything else matches React output exactly.

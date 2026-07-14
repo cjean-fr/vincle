@@ -1,11 +1,14 @@
+import type { VNode, ResolvedVNode } from "@vincle/core";
+
+import { describe, it, expect } from "bun:test";
+
 import type { FlowContext } from "./context.js";
-import { renderStream, Defer, Fill } from "./index.js";
+import type { FlowEvent } from "./types.js";
+
 import { NativeAdapter, TurboAdapter } from "./adapters/index.js";
+import { renderStream, Defer, Fill } from "./index.js";
 import { renderToFlowEvents, renderShell, orchestrateFlow } from "./render.js";
 import { collectEvents, collect, type FragmentEvent } from "./test-utils.js";
-import type { FlowEvent } from "./types.js";
-import type { VNode } from "@vincle/core";
-import { describe, it, expect } from "bun:test";
 
 // renderShell only reads ctx through adapter.transformShell; these unit tests
 // pass a stub with no pending fragments.
@@ -64,9 +67,7 @@ describe("renderToFlowEvents", () => {
         TurboAdapter,
       ),
     );
-    const fragments = events.filter(
-      (e): e is FragmentEvent => e.type === "fragment",
-    );
+    const fragments = events.filter((e): e is FragmentEvent => e.type === "fragment");
     expect(fragments.map((p) => p.id)).toEqual(["fragment-1", "fragment-2"]);
   });
 
@@ -94,9 +95,9 @@ describe("renderToFlowEvents", () => {
   it("cancels a stream mid-flight between fragments", async () => {
     const ac = new AbortController();
     async function* items(): AsyncGenerator<VNode, void, undefined> {
-      yield <li>a</li>;
+      yield <li>a</li> as ResolvedVNode;
       await Bun.sleep(50);
-      yield <li>b</li>;
+      yield <li>b</li> as ResolvedVNode;
     }
     const stream = renderToFlowEvents(
       () => (
@@ -140,11 +141,7 @@ describe("renderShell", () => {
   });
 
   it("returns an empty closingTag when there are no closing tags", async () => {
-    const { shellBody, closingTag } = await renderShell(
-      () => <p>no wrapping</p>,
-      {},
-      FAKE_CTX,
-    );
+    const { shellBody, closingTag } = await renderShell(() => <p>no wrapping</p>, {}, FAKE_CTX);
     expect(shellBody).toContain("<p>no wrapping</p>");
     expect(closingTag).toBe("");
   });
@@ -260,9 +257,7 @@ describe("renderStream", () => {
         ),
       )
     ).toString();
-    expect(chunks.indexOf("turbo-stream")).toBeLessThan(
-      chunks.indexOf("</html>"),
-    );
+    expect(chunks.indexOf("turbo-stream")).toBeLessThan(chunks.indexOf("</html>"));
   });
 
   it("streams a Defer nested behind an await", async () => {
@@ -335,7 +330,7 @@ describe("edge cases — render pipeline", () => {
 
   it("mixed one-shot + stream: shell first, fragments between, close last", async () => {
     async function* g() {
-      yield <li>g</li>;
+      yield <li>g</li> as ResolvedVNode;
     }
     const events = await collectEvents(
       renderToFlowEvents(

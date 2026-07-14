@@ -1,14 +1,16 @@
+import type { VNode } from "@vincle/core";
+
+import { raw } from "@vincle/core";
+import { Asset } from "@vincle/vite-plugin";
+
 import { useDocs } from "../context.js";
 import { Nav } from "./Nav.js";
 import { NavToggle } from "./NavToggle.js";
 import { PageFooter } from "./PageFooter.js";
-import { TableOfContents } from "./TableOfContents.js";
 import { SearchDialog } from "./SearchDialog.js";
+import { TableOfContents } from "./TableOfContents.js";
 import { Tabs } from "./Tabs.js";
 import { ThemeToggle, themeInitScript } from "./ThemeToggle.js";
-import type { VNode } from "@vincle/core";
-import { raw } from "@vincle/core";
-import { Asset } from "@vincle/vite-plugin";
 
 const DEFAULT_CSP = [
   "default-src 'self'",
@@ -22,11 +24,7 @@ const DEFAULT_CSP = [
   "form-action 'self'",
 ].join("; ");
 
-const STRUCTURED_DATA_TEMPLATE = (
-  siteUrl: string,
-  title: string,
-  description: string,
-) =>
+const STRUCTURED_DATA_TEMPLATE = (siteUrl: string, title: string, description: string) =>
   raw(
     `<script type="application/ld+json">${JSON.stringify({
       "@context": "https://schema.org",
@@ -53,16 +51,8 @@ export function Layout({ children }: { children: VNode }) {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="color-scheme" content="light dark" />
-        <meta
-          name="theme-color"
-          content="#6366f1"
-          media="(prefers-color-scheme: light)"
-        />
-        <meta
-          name="theme-color"
-          content="#0b0d14"
-          media="(prefers-color-scheme: dark)"
-        />
+        <meta name="theme-color" content="#6366f1" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0b0d14" media="(prefers-color-scheme: dark)" />
         {is404 && <meta name="robots" content="noindex" />}
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         <meta http-equiv="Content-Security-Policy" content={csp} />
@@ -91,23 +81,15 @@ export function Layout({ children }: { children: VNode }) {
         <meta property="og:type" content="website" />
         <meta property="og:title" content={title} />
         <meta property="og:locale" content="en_US" />
-        {description && (
-          <meta property="og:description" content={description} />
-        )}
+        {description && <meta property="og:description" content={description} />}
         {canonical && <meta property="og:url" content={canonical} />}
         {image && <meta property="og:image" content={image} />}
-        <meta
-          name="twitter:card"
-          content={image ? "summary_large_image" : "summary"}
-        />
+        <meta name="twitter:card" content={image ? "summary_large_image" : "summary"} />
         <meta name="twitter:title" content={title} />
-        {description && (
-          <meta name="twitter:description" content={description} />
-        )}
+        {description && <meta name="twitter:description" content={description} />}
         {image && <meta name="twitter:image" content={image} />}
         {themeInitScript}
-        {config.site &&
-          STRUCTURED_DATA_TEMPLATE(config.site, title, description)}
+        {config.site && STRUCTURED_DATA_TEMPLATE(config.site, title, description)}
         <Asset entry="docs-src/client.ts" />
       </head>
       <body class="docs-body bg-[var(--docs-color-bg)] text-[var(--docs-color-text)] antialiased">
@@ -116,7 +98,7 @@ export function Layout({ children }: { children: VNode }) {
         </a>
 
         {/* Sticky top header: logo + nav links + search + theme + mobile menu */}
-        <header class="sticky top-0 z-40 [box-shadow:inset_0_-1px_0_var(--docs-color-border)] bg-[var(--docs-color-bg)]/80 backdrop-blur-xl">
+        <header class="sticky top-0 z-40 bg-[var(--docs-color-bg)]/80 [box-shadow:inset_0_-1px_0_var(--docs-color-border)] backdrop-blur-xl">
           <div class="mx-auto flex h-12 max-w-7xl items-center gap-1 px-4 md:px-6">
             <a
               href="/"
@@ -142,13 +124,9 @@ export function Layout({ children }: { children: VNode }) {
         <div class="docs-shell mx-auto flex min-h-[calc(100vh-3rem)] max-w-7xl px-4 md:px-6">
           {!isHome && <Nav />}
           <div
-            class={`min-w-0 flex-1 flex flex-col ${isHome ? "mx-auto max-w-5xl" : "px-6 md:px-8 lg:px-12"}`}
+            class={`flex min-w-0 flex-1 flex-col ${isHome ? "mx-auto max-w-5xl" : "px-6 md:px-8 lg:px-12"}`}
           >
-            <main
-              id="docs-main"
-              class="docs-main flex-1 py-8 scroll-mt-12"
-              tabindex={-1}
-            >
+            <main id="docs-main" class="docs-main flex-1 scroll-mt-12 py-8" tabindex={-1}>
               {children}
               <PageFooter />
             </main>

@@ -1,13 +1,11 @@
-import { MdxCache } from "./mdx-cache.js";
 import { describe, it, expect } from "bun:test";
 import path from "node:path";
 
+import { MdxCache } from "./mdx-cache.js";
+
 const PAGES_DIR = path.resolve(import.meta.dirname, "../pages");
 const CONTEXT_MDX = path.join(PAGES_DIR, "api/core/context.mdx");
-const INSTALL_MDX = path.join(
-  PAGES_DIR,
-  "guide/getting-started/installation.mdx",
-);
+const INSTALL_MDX = path.join(PAGES_DIR, "guide/getting-started/installation.mdx");
 
 function freshCache(): MdxCache {
   return new MdxCache();
@@ -33,10 +31,7 @@ describe("MdxCache", () => {
 
   it("treats different files as different cache entries", async () => {
     const cache = freshCache();
-    const [a, b] = await Promise.all([
-      cache.load(CONTEXT_MDX),
-      cache.load(INSTALL_MDX),
-    ]);
+    const [a, b] = await Promise.all([cache.load(CONTEXT_MDX), cache.load(INSTALL_MDX)]);
 
     expect(a.Component).not.toBe(b.Component);
     expect(a.meta["title"]).toBe("Context API");

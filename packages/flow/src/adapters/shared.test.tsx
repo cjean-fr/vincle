@@ -1,5 +1,6 @@
-import { createAdapter } from "../adapters/index.js";
 import { describe, it, expect } from "bun:test";
+
+import { createAdapter } from "../adapters/index.js";
 
 describe("createAdapter", () => {
   it("defaults capabilities to full streaming + all merges", () => {

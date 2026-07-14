@@ -4,9 +4,7 @@ declare function getSession(req: Request): Promise<{ userId: string }>;
 const App = () => <div />;
 
 // Per-request context injection in an HTTP server
-const requestCtx = context<{ userId: string; locale: string }>(
-  "my-app:request",
-);
+const requestCtx = context<{ userId: string; locale: string }>("my-app:request");
 
 async function handleRequest(req: Request): Promise<Response> {
   const session = await getSession(req);

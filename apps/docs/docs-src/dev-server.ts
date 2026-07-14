@@ -1,3 +1,11 @@
+import type { ServerWebSocket } from "bun";
+
+import { serve } from "bun";
+import { watch } from "node:fs";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { join, extname, relative, resolve } from "node:path";
+
 import config from "../docs.config.js";
 import {
   initBuild,
@@ -6,12 +14,6 @@ import {
   refreshPages,
   getAllPages,
 } from "./lib/build-engine.js";
-import { serve } from "bun";
-import type { ServerWebSocket } from "bun";
-import { watch } from "node:fs";
-import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-import { join, extname, relative, resolve } from "node:path";
 
 const PORT = Number(process.env["PORT"] ?? 3000);
 const APP_ROOT = resolve(import.meta.dirname!, "..");
@@ -37,9 +39,7 @@ const pagesDir = resolve(config.pages);
 const configFile = resolve(APP_ROOT, "docs.config.ts");
 
 function isPageFile(filePath: string): boolean {
-  return (
-    filePath.startsWith(pagesDir) && watcherExtensions.has(extname(filePath))
-  );
+  return filePath.startsWith(pagesDir) && watcherExtensions.has(extname(filePath));
 }
 
 function fileToUrl(filePath: string): string | null {
@@ -163,10 +163,7 @@ async function main(): Promise<void> {
         return;
       }
 
-      let filePath = join(
-        DIST,
-        url.pathname === "/" ? "index.html" : url.pathname,
-      );
+      let filePath = join(DIST, url.pathname === "/" ? "index.html" : url.pathname);
       if (!existsSync(filePath)) {
         const alt = join(DIST, url.pathname + ".html");
         if (existsSync(alt)) filePath = alt;

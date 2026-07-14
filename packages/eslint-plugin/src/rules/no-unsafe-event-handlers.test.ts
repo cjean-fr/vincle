@@ -1,6 +1,7 @@
-import { noUnsafeEventHandlers } from "./no-unsafe-event-handlers";
 import * as parser from "@typescript-eslint/parser";
 import { RuleTester } from "@typescript-eslint/rule-tester";
+
+import { noUnsafeEventHandlers } from "./no-unsafe-event-handlers";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -14,10 +15,7 @@ const ruleTester = new RuleTester({
 });
 
 ruleTester.run("no-unsafe-event-handlers", noUnsafeEventHandlers, {
-  valid: [
-    '<button class="btn">Click me</button>',
-    '<div data-onclick="none"></div>',
-  ],
+  valid: ['<button class="btn">Click me</button>', '<div data-onclick="none"></div>'],
   invalid: [
     {
       code: "<button onClick={() => {}}>Click me</button>",

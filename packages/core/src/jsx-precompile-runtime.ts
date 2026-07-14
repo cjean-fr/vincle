@@ -1,5 +1,5 @@
-import { RawString } from "./raw.js";
 import { escapeContent } from "./escape.js";
+import { RawString } from "./raw.js";
 import { renderAttr } from "./render-attrs.js";
 
 /**
@@ -14,9 +14,7 @@ import { renderAttr } from "./render-attrs.js";
  * - async iterable → collect + join (Promise)
  * - Promise → resolve then recurse
  */
-export function jsxEscape(
-  v: unknown,
-): RawString | Promise<RawString> {
+export function jsxEscape(v: unknown): RawString | Promise<RawString> {
   if (v instanceof RawString) return v;
   if (v instanceof Promise) return v.then((resolved) => jsxEscape(resolved));
   if (Array.isArray(v)) return escapeArray(v);
@@ -24,7 +22,10 @@ export function jsxEscape(
     // Non-string iterables coerce like the dynamic path (renderChild), instead
     // of falling through to `String(v)` → "[object Set]". The string check
     // above keeps the common text case on the fast path.
-    const anyV = v as { [Symbol.iterator]?: unknown; [Symbol.asyncIterator]?: unknown };
+    const anyV = v as {
+      [Symbol.iterator]?: unknown;
+      [Symbol.asyncIterator]?: unknown;
+    };
     if (typeof anyV[Symbol.iterator] === "function") {
       return escapeArray(Array.from(v as Iterable<unknown>));
     }
@@ -49,9 +50,7 @@ function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
   return new RawString(out);
 }
 
-async function collectAsyncIterable(
-  iterable: AsyncIterable<unknown>,
-): Promise<RawString> {
+async function collectAsyncIterable(iterable: AsyncIterable<unknown>): Promise<RawString> {
   let out = "";
   for await (const item of iterable) {
     const r = jsxEscape(item);
@@ -67,10 +66,7 @@ async function collectAsyncIterable(
  * Uses the same `renderAttr` as the Vincle render pipeline: URL-scheme
  * blocking, CSS safety, name remapping, boolean handling, etc.
  */
-export function jsxAttr(
-  name: string,
-  value: unknown,
-): RawString | Promise<RawString> {
+export function jsxAttr(name: string, value: unknown): RawString | Promise<RawString> {
   const result = renderAttr(name, value);
   if (result instanceof Promise) return result.then((s) => new RawString(s));
   return new RawString(result);

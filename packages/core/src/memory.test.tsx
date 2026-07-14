@@ -1,4 +1,5 @@
 import { describe, it, expect } from "bun:test";
+
 import { renderToString } from "./index.js";
 import { jsx } from "./jsx-runtime.js";
 

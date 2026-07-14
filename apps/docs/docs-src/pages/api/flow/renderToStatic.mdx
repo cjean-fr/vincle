@@ -15,9 +15,7 @@ Build HTML files at compile time. Gives you a context to render all your pages, 
 import { renderToStatic } from "@vincle/flow";
 
 // Pure static — no adapter, no emitFragments
-function renderToStatic(
-  fn: (ctx: PureStaticContext) => Promise<void>,
-): Promise<void>;
+function renderToStatic(fn: (ctx: PureStaticContext) => Promise<void>): Promise<void>;
 
 // With deferred fragments — adapter required
 function renderToStatic(
@@ -37,15 +35,15 @@ function renderToStatic(
 
 ### PureStaticContext
 
-| Method       | Signature                                     | Description                                   |
-| ------------ | --------------------------------------------- | --------------------------------------------- |
+| Method       | Signature                                | Description                                   |
+| ------------ | ---------------------------------------- | --------------------------------------------- |
 | `renderPage` | `(page: () => VNode) => Promise<string>` | Renders a page returning the full HTML string |
 
 ### StaticContext
 
 | Method          | Signature                                                                  | Description                                              |
 | --------------- | -------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `renderPage`    | `(page: () => VNode) => Promise<string>`                              | Renders a page returning the full HTML string            |
+| `renderPage`    | `(page: () => VNode) => Promise<string>`                                   | Renders a page returning the full HTML string            |
 | `emitFragments` | `(emit: (id: string, url: string, html: string) => void) => Promise<void>` | Materializes deferred fragments, passes each to callback |
 
 ## Pure static

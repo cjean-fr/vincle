@@ -37,9 +37,34 @@ you're used to from React:
 | `httpEquiv`     | `http-equiv`     |
 | `acceptCharset` | `accept-charset` |
 
-`class` and `className` are **not merged** — they are separate keys. Pick one.
-This differs from React (which merges them) and matches what most server-rendered
-HTML expects.
+### Conflict resolution: HTML name wins
+
+When both the React-style name (`className`, `htmlFor`, `tabIndex`, …) and the
+HTML-native name (`class`, `for`, `tabindex`, …) appear on the same element,
+the **HTML name wins** and the React name is silently dropped — no merge, no
+warning. This applies to every entry in the remapping table above.
+
+```tsx
+// `class` wins, `className` is dropped
+<div className="foo" class="bar" />
+// → <div class="bar"></div>
+
+// `for` wins, `htmlFor` is dropped
+<label htmlFor="a" for="b">Label</label>
+// → <label for="b">Label</label>
+
+// No conflict — only one specified
+<label htmlFor="email">Email</label>
+// → <label for="email">Email</label>
+```
+
+The rationale: Vincle renders HTML, not React — the HTML-native form is the
+canonical output. React merges both values (classNames together, etc.), but
+Vincle does not. If you use both by accident, the HTML name silently wins.
+
+> **Prefer the HTML-native name** (`class`, `for`, `tabindex`, …) in your
+> codebase. The React aliases are accepted for migration convenience, but the
+> HTML names are unambiguous and match the output.
 
 ## Boolean and falsy values
 

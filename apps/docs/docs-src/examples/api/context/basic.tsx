@@ -14,11 +14,7 @@ const themeCtx = context<"light" | "dark">("my-app:theme");
 function ThemedBox({ children }: { children: VNode }): VNode {
   const theme = useContext(themeCtx);
   return (
-    <div
-      class={
-        theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"
-      }
-    >
+    <div class={theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}>
       {children}
     </div>
   );

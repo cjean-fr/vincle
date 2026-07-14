@@ -1,9 +1,10 @@
-import { initBuild, rebuildAll } from "./build-engine.js";
-import { renderDocument } from "./render-document.js";
 import { describe, it, expect, beforeAll } from "bun:test";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+
+import { initBuild, rebuildAll } from "./build-engine.js";
+import { renderDocument } from "./render-document.js";
 
 const PROJECT_DIR = path.resolve(import.meta.dirname, "../..");
 const DIST_DIR = path.join(PROJECT_DIR, "dist");
@@ -46,9 +47,7 @@ describe("SSG build", () => {
     expect(data[0]).toHaveProperty("url");
     expect(data[0]).toHaveProperty("title");
     expect(data[0]).toHaveProperty("text");
-    const hasBodyText = data.some(
-      (d: { text: string }) => d.text && d.text.length > 50,
-    );
+    const hasBodyText = data.some((d: { text: string }) => d.text && d.text.length > 50);
     expect(hasBodyText).toBe(true);
   });
 
@@ -67,12 +66,8 @@ describe("SSG build", () => {
 
   it("injects Vite assets in pages", async () => {
     const html = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
-    expect(html).toMatch(
-      /<script.*?type="module".*?src="\/assets\/client-.*?\.js".*?>/,
-    );
-    expect(html).toMatch(
-      /<link.*?rel="stylesheet".*?href="\/assets\/client-.*?\.css".*?>/,
-    );
+    expect(html).toMatch(/<script.*?type="module".*?src="\/assets\/client-.*?\.js".*?>/);
+    expect(html).toMatch(/<link.*?rel="stylesheet".*?href="\/assets\/client-.*?\.css".*?>/);
   });
 
   it("includes canonical link when config.site is set", async () => {
@@ -138,9 +133,7 @@ describe("renderDocument", () => {
   });
 
   it("escapes text content", async () => {
-    const html = await renderDocument(() => (
-      <div>{"<script>alert(1)</script>"}</div>
-    ));
+    const html = await renderDocument(() => <div>{"<script>alert(1)</script>"}</div>);
     expect(html).toContain("&lt;script&gt;");
     expect(html).not.toContain("<script>");
   });

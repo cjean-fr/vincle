@@ -9,10 +9,17 @@ export const escapeContent = (str: string): string => {
   for (let i = m.index; i < str.length; i++) {
     let rep: string;
     switch (str.charCodeAt(i)) {
-      case 38: rep = "&amp;"; break;
-      case 60: rep = "&lt;"; break;
-      case 62: rep = "&gt;"; break;
-      default: continue;
+      case 38:
+        rep = "&amp;";
+        break;
+      case 60:
+        rep = "&lt;";
+        break;
+      case 62:
+        rep = "&gt;";
+        break;
+      default:
+        continue;
     }
     if (i !== last) out += str.slice(last, i);
     out += rep;
@@ -29,12 +36,23 @@ export const escapeAttr = (str: string): string => {
   for (let i = m.index; i < str.length; i++) {
     let rep: string;
     switch (str.charCodeAt(i)) {
-      case 38: rep = "&amp;"; break;
-      case 60: rep = "&lt;"; break;
-      case 62: rep = "&gt;"; break;
-      case 34: rep = "&quot;"; break;
-      case 39: rep = "&#39;"; break;
-      default: continue;
+      case 38:
+        rep = "&amp;";
+        break;
+      case 60:
+        rep = "&lt;";
+        break;
+      case 62:
+        rep = "&gt;";
+        break;
+      case 34:
+        rep = "&quot;";
+        break;
+      case 39:
+        rep = "&#39;";
+        break;
+      default:
+        continue;
     }
     if (i !== last) out += str.slice(last, i);
     out += rep;
@@ -45,9 +63,7 @@ export const escapeAttr = (str: string): string => {
 
 // ── Rawtext escaping ──────────────────────────────────────────────────────
 
-export const RAWTEXT_TAGS = new Set([
-  "script", "style", "xmp", "iframe", "noembed", "noframes",
-]);
+export const RAWTEXT_TAGS = new Set(["script", "style", "xmp", "iframe", "noembed", "noframes"]);
 
 const RAWTEXT_REGEXES: Record<string, RegExp> = {};
 for (const tag of RAWTEXT_TAGS) {
@@ -68,11 +84,7 @@ export function escapeRawText(str: string, tag: string): string {
   let last = 0;
 
   for (let i = m.index; i < str.length; i++) {
-    if (
-      str.charCodeAt(i) === 60 &&
-      i + 2 + tagLen <= str.length &&
-      str.charCodeAt(i + 1) === 47
-    ) {
+    if (str.charCodeAt(i) === 60 && i + 2 + tagLen <= str.length && str.charCodeAt(i + 1) === 47) {
       let isMatch = true;
       for (let j = 0; j < tagLen; j++) {
         if ((str.charCodeAt(i + 2 + j) | 32) !== tagLower.charCodeAt(j)) {
@@ -142,12 +154,19 @@ export const isValidTagName = (name: string): boolean => {
 // ── URL scheme validation ─────────────────────────────────────────────────
 
 const REGEX_UNSAFE_PROTOCOLS = /^(?:java|vb)script:/i;
-const REGEX_IMAGE_DATA_URI =
-  /^data:image\/(?:png|jpeg|gif|webp|avif)(?:[;+]|$)/i;
+const REGEX_IMAGE_DATA_URI = /^data:image\/(?:png|jpeg|gif|webp|avif)(?:[;+]|$)/i;
 
 export const URL_ATTRIBUTES = new Set([
-  "href", "src", "action", "formaction", "cite", "poster", "icon", "data",
-  "xlink:href", "srcset",
+  "href",
+  "src",
+  "action",
+  "formaction",
+  "cite",
+  "poster",
+  "icon",
+  "data",
+  "xlink:href",
+  "srcset",
 ]);
 
 export const isSafeScheme = (url: string): boolean => {
@@ -158,21 +177,23 @@ export const isSafeScheme = (url: string): boolean => {
   if (c0 === 109) {
     // "m" — starts with "mailto:"
     if (
-      url.charCodeAt(1) === 97 &&  // "a"
+      url.charCodeAt(1) === 97 && // "a"
       url.charCodeAt(2) === 105 && // "i"
       url.charCodeAt(3) === 108 && // "l"
       url.charCodeAt(4) === 116 && // "t"
       url.charCodeAt(5) === 111 && // "o"
-      url.charCodeAt(6) === 58     // ":"
-    ) return true;
+      url.charCodeAt(6) === 58 // ":"
+    )
+      return true;
   }
   if ((c0 | 32) === 104) {
     // "h" or "H" — starts with "http" (case-insensitive)
     if (
       (url.charCodeAt(1) | 32) === 116 && // "t" or "T"
       (url.charCodeAt(2) | 32) === 116 && // "t" or "T"
-      (url.charCodeAt(3) | 32) === 112    // "p" or "P"
-    ) return true;
+      (url.charCodeAt(3) | 32) === 112 // "p" or "P"
+    )
+      return true;
   }
   const sanitized = sanitize(url).trim();
   if (!sanitized) return true;
@@ -186,12 +207,13 @@ export const isSafeScheme = (url: string): boolean => {
   if (
     sanitized.length > 5 &&
     (sanitized.charCodeAt(0) | 32) === 100 && // "d" or "D" — starts with "data:"
-    (sanitized.charCodeAt(1) | 32) === 97 &&  // "a" or "A"
+    (sanitized.charCodeAt(1) | 32) === 97 && // "a" or "A"
     (sanitized.charCodeAt(2) | 32) === 116 && // "t" or "T"
-    (sanitized.charCodeAt(3) | 32) === 97 &&  // "a" or "A"
-    sanitized.charCodeAt(4) === 58 &&         // ":"
+    (sanitized.charCodeAt(3) | 32) === 97 && // "a" or "A"
+    sanitized.charCodeAt(4) === 58 && // ":"
     !REGEX_IMAGE_DATA_URI.test(sanitized)
-  ) return false;
+  )
+    return false;
   return true;
 };
 
@@ -238,8 +260,56 @@ export const isSafeSrcset = (srcset: string): boolean => {
  * @see https://html.spec.whatwg.org/multipage/syntax.html#void-elements
  */
 export const VOID_ELEMENTS = new Set([
-  "area", "base", "br", "col", "embed", "hr", "img", "input", "link",
-  "meta", "param", "source", "track", "wbr",
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+]);
+
+/**
+ * HTML boolean content attributes — presence maps to true, absence to false.
+ * Everything else (including `contentEditable`, ARIA, MathML attrs) is treated
+ * as a string attribute per spec: `false` renders as `attr="false"`, not as
+ * attribute omitted.
+ */
+export const BOOLEAN_ATTRIBUTES = new Set([
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "declare",
+  "default",
+  "defer",
+  "disabled",
+  "formnovalidate",
+  "hidden",
+  "inert",
+  "ismap",
+  "itemscope",
+  "loop",
+  "multiple",
+  "muted",
+  "nomodule",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "selected",
+  "truespeed",
 ]);
 
 /** Map of React/camelCase DOM attribute names to their HTML equivalents. */

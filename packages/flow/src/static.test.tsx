@@ -1,6 +1,7 @@
-import { renderToStatic, Defer } from "./index.js";
-import { TurboAdapter, NativeAdapter, EsiAdapter } from "./adapters/index.js";
 import { describe, it, expect } from "bun:test";
+
+import { TurboAdapter, NativeAdapter, EsiAdapter } from "./adapters/index.js";
+import { renderToStatic, Defer } from "./index.js";
 
 describe("renderToStatic", () => {
   it("works without options for pure-static rendering", async () => {
@@ -70,9 +71,7 @@ describe("renderToStatic", () => {
               </body>
             </html>
           ));
-          await ctx.emitFragments(
-            (id, url, html) => void written.push({ id, url, html }),
-          );
+          await ctx.emitFragments((id, url, html) => void written.push({ id, url, html }));
         },
         { adapter: TurboAdapter },
       );
@@ -126,9 +125,7 @@ describe("renderToStatic", () => {
               </body>
             </html>
           ));
-          await ctx.emitFragments(
-            (id, _url, html) => void written.push({ id, html }),
-          );
+          await ctx.emitFragments((id, _url, html) => void written.push({ id, html }));
         },
         { adapter: NativeAdapter },
       );

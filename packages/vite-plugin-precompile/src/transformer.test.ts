@@ -1,9 +1,10 @@
-import precompileTransform from "./transformer.js";
-import { jsxAttr } from "@vincle/core/jsx-runtime";
 import { TraceMap, originalPositionFor } from "@jridgewell/trace-mapping";
+import { jsxAttr } from "@vincle/core/jsx-runtime";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
+import precompileTransform from "./transformer.js";
 
 const RT = "@vincle/core/jsx-runtime";
 
@@ -39,21 +40,13 @@ describe("precompileTransform", () => {
   });
 
   it("precompiles JSX nested inside an expression (ternary)", () => {
-    const out = transform(
-      `const a = <div>{cond ? <span>a</span> : <b>b</b>}</div>;`,
-    );
-    expect(out).toContain(
-      "jsxEscape(cond ? jsxTemplate`<span>a</span>` : jsxTemplate`<b>b</b>`)",
-    );
+    const out = transform(`const a = <div>{cond ? <span>a</span> : <b>b</b>}</div>;`);
+    expect(out).toContain("jsxEscape(cond ? jsxTemplate`<span>a</span>` : jsxTemplate`<b>b</b>`)");
   });
 
   it("precompiles JSX returned from a .map() callback", () => {
-    const out = transform(
-      `const a = <ul>{items.map((i) => <li>{i}</li>)}</ul>;`,
-    );
-    expect(out).toContain(
-      "items.map((i) => jsxTemplate`<li>${jsxEscape(i)}</li>`)",
-    );
+    const out = transform(`const a = <ul>{items.map((i) => <li>{i}</li>)}</ul>;`);
+    expect(out).toContain("items.map((i) => jsxTemplate`<li>${jsxEscape(i)}</li>`)");
   });
 
   it("flattens fragments into the parent template", () => {
@@ -67,15 +60,9 @@ describe("precompileTransform", () => {
   });
 
   it("does not emit a closing tag for void elements", () => {
-    expect(transform(`const a = <input disabled />;`)).toContain(
-      "jsxTemplate`<input disabled>`",
-    );
-    expect(transform(`const a = <input value={v} />;`)).toContain(
-      '${jsxAttr("value", v)}>`',
-    );
-    expect(transform(`const a = <input value={v} />;`)).not.toContain(
-      "</input>",
-    );
+    expect(transform(`const a = <input disabled />;`)).toContain("jsxTemplate`<input disabled>`");
+    expect(transform(`const a = <input value={v} />;`)).toContain('${jsxAttr("value", v)}>`');
+    expect(transform(`const a = <input value={v} />;`)).not.toContain("</input>");
   });
 
   it("does not emit a closing tag for dynamic void elements nested in a parent", () => {
@@ -85,18 +72,14 @@ describe("precompileTransform", () => {
   });
 
   it("escapes static literal attribute values", () => {
-    expect(transform(`const a = <div title='a"b'>x</div>;`)).toContain(
-      'title="a&quot;b"',
-    );
-    expect(transform(`const a = <div data-x="a&b<c">x</div>;`)).toContain(
-      'data-x="a&amp;b&lt;c"',
-    );
+    expect(transform(`const a = <div title='a"b'>x</div>;`)).toContain('title="a&quot;b"');
+    expect(transform(`const a = <div data-x="a&b<c">x</div>;`)).toContain('data-x="a&amp;b&lt;c"');
   });
 
   it("does not over-escape clean attribute values", () => {
-    expect(
-      transform(`const a = <a title="go now" class="link">go</a>;`),
-    ).toContain('<a title="go now" class="link">go</a>');
+    expect(transform(`const a = <a title="go now" class="link">go</a>;`)).toContain(
+      '<a title="go now" class="link">go</a>',
+    );
   });
 
   it("emits a proper closing tag for static non-void child elements", () => {
@@ -113,9 +96,9 @@ describe("precompileTransform", () => {
   });
 
   it("keeps nested static elements byte-identical to handwritten HTML", () => {
-    expect(
-      transform(`const a = <div><span class="y">deep</span></div>;`),
-    ).toContain('jsxTemplate`<div><span class="y">deep</span></div>`');
+    expect(transform(`const a = <div><span class="y">deep</span></div>;`)).toContain(
+      'jsxTemplate`<div><span class="y">deep</span></div>`',
+    );
   });
 
   it("collapses JSX whitespace between elements (standard JSX rules)", () => {
@@ -152,15 +135,11 @@ describe("precompileTransform", () => {
       '<div tabindex="0">x</div>',
     );
     // stays static — no runtime call
-    expect(transform(`const a = <div className="box">x</div>;`)).not.toContain(
-      "jsxAttr",
-    );
+    expect(transform(`const a = <div className="box">x</div>;`)).not.toContain("jsxAttr");
   });
 
   it("remaps camelCase boolean attribute names too", () => {
-    expect(transform(`const a = <input readOnly />;`)).toContain(
-      "jsxTemplate`<input readonly>`",
-    );
+    expect(transform(`const a = <input readOnly />;`)).toContain("jsxTemplate`<input readonly>`");
   });
 
   it("lowercases event-handler names and inlines them (Deno-aligned)", () => {
@@ -170,15 +149,13 @@ describe("precompileTransform", () => {
   });
 
   it("inlines URL and style attributes verbatim by default (trusted)", () => {
-    expect(
-      transform(`const a = <a href="javascript:alert(1)">x</a>;`),
-    ).toContain('<a href="javascript:alert(1)">x</a>');
+    expect(transform(`const a = <a href="javascript:alert(1)">x</a>;`)).toContain(
+      '<a href="javascript:alert(1)">x</a>',
+    );
     expect(transform(`const a = <div style="color:red">x</div>;`)).toContain(
       '<div style="color:red">x</div>',
     );
-    expect(transform(`const a = <img srcSet="a.png 1x" />;`)).toContain(
-      '<img srcset="a.png 1x">',
-    );
+    expect(transform(`const a = <img srcSet="a.png 1x" />;`)).toContain('<img srcset="a.png 1x">');
   });
 
   describe("secure mode", () => {
@@ -194,18 +171,14 @@ describe("precompileTransform", () => {
     }
 
     it("sanitizes static URL attributes at build time (output stays static)", () => {
-      const out = transformSecure(
-        `const a = <a href="javascript:alert(1)">x</a>;`,
-      );
+      const out = transformSecure(`const a = <a href="javascript:alert(1)">x</a>;`);
       expect(out).toContain('<a href="#blocked">x</a>');
       expect(out).not.toContain("jsxAttr"); // sanitized at build time, not at runtime
       expect(out).not.toContain("javascript:");
     });
 
     it("keeps safe URLs intact and still remaps names", () => {
-      const out = transformSecure(
-        `const a = <a href="/path" className="link">x</a>;`,
-      );
+      const out = transformSecure(`const a = <a href="/path" className="link">x</a>;`);
       expect(out).toContain('<a href="/path" class="link">x</a>');
     });
 
@@ -234,13 +207,9 @@ describe("precompileTransform", () => {
 
   it("leaves elements with spread attributes untransformed", () => {
     expect(
-      precompileTransform(
-        `const a = <div {...props} id="x" />;`,
-        "/src/app.tsx",
-        {
-          runtimeSource: RT,
-        },
-      ),
+      precompileTransform(`const a = <div {...props} id="x" />;`, "/src/app.tsx", {
+        runtimeSource: RT,
+      }),
     ).toBeNull();
   });
 
@@ -263,8 +232,7 @@ describe("precompileTransform", () => {
       const result = precompileTransform(code, "/src/app.tsx", {
         runtimeSource: RT,
       });
-      if (!result?.map)
-        throw new Error("expected a transform result with a map");
+      if (!result?.map) throw new Error("expected a transform result with a map");
       const lines = result.code.split("\n");
       const lineIdx = lines.findIndex((l) => l.includes(needle));
       if (lineIdx < 0) throw new Error(`"${needle}" not found in output`);
@@ -277,13 +245,9 @@ describe("precompileTransform", () => {
     }
 
     it("emits non-empty mappings when a transform happens", () => {
-      const result = precompileTransform(
-        `const a = <div>{name}</div>;`,
-        "/src/app.tsx",
-        {
-          runtimeSource: RT,
-        },
-      )!;
+      const result = precompileTransform(`const a = <div>{name}</div>;`, "/src/app.tsx", {
+        runtimeSource: RT,
+      })!;
       expect(result.map).toBeDefined();
       expect(result.map!.mappings.length).toBeGreaterThan(0);
     });
@@ -291,10 +255,7 @@ describe("precompileTransform", () => {
     it("maps a dynamic expression back to its source line when the import is prepended", () => {
       // The injected import shifts every line down by one — the map must
       // describe the final code, not the pre-injection code (regression).
-      const code = [
-        `const before = 1;`,
-        `const a = <div>{userName}</div>;`,
-      ].join("\n");
+      const code = [`const before = 1;`, `const a = <div>{userName}</div>;`].join("\n");
       const pos = tracePosition(code, "userName");
       expect(pos.line).toBe(2);
     });
@@ -315,17 +276,13 @@ describe("precompileTransform", () => {
       const out = transform("const a = <div>price `x`</div>;");
       expect(out).toContain("jsxTemplate`<div>price \\`x\\`</div>`");
       // the emitted module parses as valid JS
-      expect(() =>
-        new Bun.Transpiler({ loader: "ts" }).transformSync(out),
-      ).not.toThrow();
+      expect(() => new Bun.Transpiler({ loader: "ts" }).transformSync(out)).not.toThrow();
     });
 
     it("escapes backticks in static attribute values", () => {
       const out = transform("const a = <div title='a`b'>x</div>;");
       expect(out).toContain('title="a\\`b"');
-      expect(() =>
-        new Bun.Transpiler({ loader: "ts" }).transformSync(out),
-      ).not.toThrow();
+      expect(() => new Bun.Transpiler({ loader: "ts" }).transformSync(out)).not.toThrow();
     });
 
     it("serializes namespaced static attributes (xlink:href)", () => {
@@ -334,252 +291,252 @@ describe("precompileTransform", () => {
       expect(out).not.toContain("[object Object]");
     });
 
-  it("decodes then re-escapes entities in static text (Deno-aligned, byte-identical to the runtime)", () => {
-    // Bare `&` → `&amp;`; `&amp;` round-trips to `&amp;`; named entities like
-    // `&copy;` decode to their character (`©`). Verified against Deno's own
-    // precompile transform.
-    const out = transform("const a = <div>fish & chips &amp; &copy;</div>;");
-    expect(out).toContain("jsxTemplate`<div>fish &amp; chips &amp; ©</div>`");
-  });
-
-  it("keeps `<` / `>` escaped after decoding (no breakout via &lt;)", () => {
-    const out = transform("const a = <div>&lt;script&gt;alert(1)&lt;/script&gt;</div>;");
-    expect(out).toContain(
-      "jsxTemplate`<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>`",
-    );
-    expect(out).not.toContain("<script>");
-  });
-
-  it("decodes rawtext (`<style>`/`<script>`) then escapeRawText — matches the runtime, valid CSS/JS", () => {
-    // Unlike Deno (which leaves rawtext entities literal → broken CSS/JS), we
-    // decode like the compiler then apply escapeRawText — the same path
-    // renderChild takes — so `&gt;` becomes a real `>` and the output is valid.
-    const style = transform("const a = <style>.a &gt; .b</style>;");
-    expect(style).toContain("jsxTemplate`<style>.a > .b</style>`");
-    const script = transform("const a = <script>a &amp;&amp; b</script>;");
-    expect(script).toContain("jsxTemplate`<script>a && b</script>`");
-    // But the element's own closing tag is still neutralized (breakout guard).
-    const guard = transform("const a = <script>x &lt;/script&gt; y</script>;");
-    expect(guard).not.toContain("</script> y");
-  });
-});
-
-// ── Runtime integration tests ─────────────────────────────────────────────
-// These verify the transformed code actually executes and produces correct
-// HTML — the same pattern documented on /integration/precompile.
-//
-// Each test creates a custom runtime adapter (simulating the React/Hono/Preact
-// adapter from the docs), writes the transformed output to a temp file, then
-// imports and evaluates it at runtime.
-
-// Write test files inside the package so workspace module resolution works
-// (the package's node_modules has @vincle/core). Anchored on import.meta.dir,
-// not process.cwd(): a root-level `bun test` run would otherwise place them
-// outside the package, where "@vincle/core/*" does not resolve.
-const TMP = join(import.meta.dir, "..", `tmp/.tmp-int-${Date.now()}`);
-
-beforeAll(() => {
-  mkdirSync(TMP, { recursive: true });
-});
-
-afterAll(() => {
-  rmSync(TMP, { recursive: true, force: true });
-});
-
-describe("runtime integration — custom runtimeSource", () => {
-  it("executes the precompiled output with a custom runtime adapter", async () => {
-    const adapterName = `./adapter-${Math.random().toString(36).slice(2)}.ts`;
-    const adapterPath = join(TMP, adapterName.slice(2));
-    const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.ts`);
-
-    // 1. Write the custom runtime adapter (exact pattern from docs examples)
-    writeFileSync(
-      adapterPath,
-      [
-        `export { jsxTemplate, jsxAttr, jsxEscape }`,
-        `  from "@vincle/core/jsx-precompile-runtime";`,
-      ].join("\n"),
-    );
-
-    // 2. Transform JSX with runtimeSource pointing to the custom adapter.
-    //    `name` is in scope because we define it on the same line.
-    const code = [
-      `const name = "world";`,
-      `export const x = <div class="hello">{name}</div>;`,
-    ].join("\n");
-    const result = precompileTransform(code, "/src/app.tsx", {
-      runtimeSource: adapterPath,
+    it("decodes then re-escapes entities in static text (Deno-aligned, byte-identical to the runtime)", () => {
+      // Bare `&` → `&amp;`; `&amp;` round-trips to `&amp;`; named entities like
+      // `&copy;` decode to their character (`©`). Verified against Deno's own
+      // precompile transform.
+      const out = transform("const a = <div>fish & chips &amp; &copy;</div>;");
+      expect(out).toContain("jsxTemplate`<div>fish &amp; chips &amp; ©</div>`");
     });
-    expect(result).not.toBeNull();
-    expect(result!.code).toContain(adapterPath);
 
-    // 3. Write the transformed code to a temp file
-    writeFileSync(outputPath, result!.code);
-
-    // 4. Import and execute the generated module
-    const mod = await import(outputPath) as { x: { value: string } };
-    expect(mod.x.value).toBe('<div class="hello">world</div>');
-  });
-
-  it("works with secure mode + custom runtime", async () => {
-    const adapterName = `./adapter-${Math.random().toString(36).slice(2)}.ts`;
-    const adapterPath = join(TMP, adapterName.slice(2));
-    const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.ts`);
-
-    writeFileSync(
-      adapterPath,
-      [
-        `export { jsxTemplate, jsxAttr, jsxEscape }`,
-        `  from "@vincle/core/jsx-precompile-runtime";`,
-      ].join("\n"),
-    );
-
-    const code = `export const x = <a href="javascript:alert(1)">x</a>;`;
-    const result = precompileTransform(code, "/src/app.tsx", {
-      runtimeSource: adapterPath,
-      secure: true,
-    }, jsxAttr);
-    expect(result).not.toBeNull();
-
-    writeFileSync(outputPath, result!.code);
-    const mod = await import(outputPath) as { x: { value: string } };
-    expect(mod.x.value).toBe('<a href="#blocked">x</a>');
-  });
-
-  it("executes dynamic attributes with a separating space (regression: glued <divtitle=…> output)", async () => {
-    const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.ts`);
-    const code = [
-      `const t = "ok";`,
-      `export const x = <div title={t} class="c">hi</div>;`,
-      `export const y = <input disabled={true} type="text" />;`,
-    ].join("\n");
-    const result = precompileTransform(code, "/src/app.tsx", {
-      runtimeSource: RT,
+    it("keeps `<` / `>` escaped after decoding (no breakout via &lt;)", () => {
+      const out = transform("const a = <div>&lt;script&gt;alert(1)&lt;/script&gt;</div>;");
+      expect(out).toContain("jsxTemplate`<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>`");
+      expect(out).not.toContain("<script>");
     });
-    writeFileSync(outputPath, result!.code);
-    const mod = (await import(outputPath)) as {
-      x: { value: string };
-      y: { value: string };
-    };
-    expect(mod.x.value).toBe('<div title="ok" class="c">hi</div>');
-    expect(mod.y.value).toBe('<input disabled type="text">');
-  });
 
-  it("routes static key/ref through jsxAttr so the runtime drops them, like Deno and the classic path", async () => {
-    const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.ts`);
-    const code = `export const x = <div key="k1" ref="r1" title="ok">hi</div>;`;
-    const result = precompileTransform(code, "/src/app.tsx", {
-      runtimeSource: RT,
+    it("decodes rawtext (`<style>`/`<script>`) then escapeRawText — matches the runtime, valid CSS/JS", () => {
+      // Unlike Deno (which leaves rawtext entities literal → broken CSS/JS), we
+      // decode like the compiler then apply escapeRawText — the same path
+      // renderChild takes — so `&gt;` becomes a real `>` and the output is valid.
+      const style = transform("const a = <style>.a &gt; .b</style>;");
+      expect(style).toContain("jsxTemplate`<style>.a > .b</style>`");
+      const script = transform("const a = <script>a &amp;&amp; b</script>;");
+      expect(script).toContain("jsxTemplate`<script>a && b</script>`");
+      // But the element's own closing tag is still neutralized (breakout guard).
+      const guard = transform("const a = <script>x &lt;/script&gt; y</script>;");
+      expect(guard).not.toContain("</script> y");
     });
-    expect(result!.code).toContain('jsxAttr("key", "k1")');
-    expect(result!.code).toContain('jsxAttr("ref", "r1")');
-    writeFileSync(outputPath, result!.code);
-    const mod = (await import(outputPath)) as { x: { value: string } };
-    // Dropped attributes leave residual spaces — same shape as Deno's output.
-    expect(mod.x.value).toBe('<div   title="ok">hi</div>');
   });
 
-  it("wraps a precompiled child of a component in a JSX expression container (regression: literal JSXText)", async () => {
-    const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
-    const code = [
-      `/** @jsxImportSource @vincle/core */`,
-      `function Comp({ children }: { children?: unknown }) {`,
-      `  return children;`,
-      `}`,
-      `export const x = <Comp><div>x</div></Comp>;`,
-    ].join("\n");
-    const result = precompileTransform(code, "/src/app.tsx", {
-      runtimeSource: RT,
+  // ── Runtime integration tests ─────────────────────────────────────────────
+  // These verify the transformed code actually executes and produces correct
+  // HTML — the same pattern documented on /integration/precompile.
+  //
+  // Each test creates a custom runtime adapter (simulating the React/Hono/Preact
+  // adapter from the docs), writes the transformed output to a temp file, then
+  // imports and evaluates it at runtime.
+
+  // Write test files inside the package so workspace module resolution works
+  // (the package's node_modules has @vincle/core). Anchored on import.meta.dir,
+  // not process.cwd(): a root-level `bun test` run would otherwise place them
+  // outside the package, where "@vincle/core/*" does not resolve.
+  const TMP = join(import.meta.dir, "..", `tmp/.tmp-int-${Date.now()}`);
+
+  beforeAll(() => {
+    mkdirSync(TMP, { recursive: true });
+  });
+
+  afterAll(() => {
+    rmSync(TMP, { recursive: true, force: true });
+  });
+
+  describe("runtime integration — custom runtimeSource", () => {
+    it("executes the precompiled output with a custom runtime adapter", async () => {
+      const adapterName = `./adapter-${Math.random().toString(36).slice(2)}.ts`;
+      const adapterPath = join(TMP, adapterName.slice(2));
+      const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.ts`);
+
+      // 1. Write the custom runtime adapter (exact pattern from docs examples)
+      writeFileSync(
+        adapterPath,
+        [
+          `export { jsxTemplate, jsxAttr, jsxEscape }`,
+          `  from "@vincle/core/jsx-precompile-runtime";`,
+        ].join("\n"),
+      );
+
+      // 2. Transform JSX with runtimeSource pointing to the custom adapter.
+      //    `name` is in scope because we define it on the same line.
+      const code = [
+        `const name = "world";`,
+        `export const x = <div class="hello">{name}</div>;`,
+      ].join("\n");
+      const result = precompileTransform(code, "/src/app.tsx", {
+        runtimeSource: adapterPath,
+      });
+      expect(result).not.toBeNull();
+      expect(result!.code).toContain(adapterPath);
+
+      // 3. Write the transformed code to a temp file
+      writeFileSync(outputPath, result!.code);
+
+      // 4. Import and execute the generated module
+      const mod = (await import(outputPath)) as { x: { value: string } };
+      expect(mod.x.value).toBe('<div class="hello">world</div>');
     });
-    expect(result!.code).toContain("<Comp>{jsxTemplate`<div>x</div>`}</Comp>");
-    writeFileSync(outputPath, result!.code);
-    const mod = (await import(outputPath)) as { x: { value: string } };
-    expect(mod.x.value).toBe("<div>x</div>");
+
+    it("works with secure mode + custom runtime", async () => {
+      const adapterName = `./adapter-${Math.random().toString(36).slice(2)}.ts`;
+      const adapterPath = join(TMP, adapterName.slice(2));
+      const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.ts`);
+
+      writeFileSync(
+        adapterPath,
+        [
+          `export { jsxTemplate, jsxAttr, jsxEscape }`,
+          `  from "@vincle/core/jsx-precompile-runtime";`,
+        ].join("\n"),
+      );
+
+      const code = `export const x = <a href="javascript:alert(1)">x</a>;`;
+      const result = precompileTransform(
+        code,
+        "/src/app.tsx",
+        {
+          runtimeSource: adapterPath,
+          secure: true,
+        },
+        jsxAttr,
+      );
+      expect(result).not.toBeNull();
+
+      writeFileSync(outputPath, result!.code);
+      const mod = (await import(outputPath)) as { x: { value: string } };
+      expect(mod.x.value).toBe('<a href="#blocked">x</a>');
+    });
+
+    it("executes dynamic attributes with a separating space (regression: glued <divtitle=…> output)", async () => {
+      const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.ts`);
+      const code = [
+        `const t = "ok";`,
+        `export const x = <div title={t} class="c">hi</div>;`,
+        `export const y = <input disabled={true} type="text" />;`,
+      ].join("\n");
+      const result = precompileTransform(code, "/src/app.tsx", {
+        runtimeSource: RT,
+      });
+      writeFileSync(outputPath, result!.code);
+      const mod = (await import(outputPath)) as {
+        x: { value: string };
+        y: { value: string };
+      };
+      expect(mod.x.value).toBe('<div title="ok" class="c">hi</div>');
+      expect(mod.y.value).toBe('<input disabled type="text">');
+    });
+
+    it("routes static key/ref through jsxAttr so the runtime drops them, like Deno and the classic path", async () => {
+      const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.ts`);
+      const code = `export const x = <div key="k1" ref="r1" title="ok">hi</div>;`;
+      const result = precompileTransform(code, "/src/app.tsx", {
+        runtimeSource: RT,
+      });
+      expect(result!.code).toContain('jsxAttr("key", "k1")');
+      expect(result!.code).toContain('jsxAttr("ref", "r1")');
+      writeFileSync(outputPath, result!.code);
+      const mod = (await import(outputPath)) as { x: { value: string } };
+      // Dropped attributes leave residual spaces — same shape as Deno's output.
+      expect(mod.x.value).toBe('<div   title="ok">hi</div>');
+    });
+
+    it("wraps a precompiled child of a component in a JSX expression container (regression: literal JSXText)", async () => {
+      const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
+      const code = [
+        `/** @jsxImportSource @vincle/core */`,
+        `function Comp({ children }: { children?: unknown }) {`,
+        `  return children;`,
+        `}`,
+        `export const x = <Comp><div>x</div></Comp>;`,
+      ].join("\n");
+      const result = precompileTransform(code, "/src/app.tsx", {
+        runtimeSource: RT,
+      });
+      expect(result!.code).toContain("<Comp>{jsxTemplate`<div>x</div>`}</Comp>");
+      writeFileSync(outputPath, result!.code);
+      const mod = (await import(outputPath)) as { x: { value: string } };
+      expect(mod.x.value).toBe("<div>x</div>");
+    });
+
+    it("wraps precompiled fragments and dangerouslySetInnerHTML fallback children too", () => {
+      const out1 = transform(`const x = <Comp><>hi</></Comp>;`);
+      expect(out1).toContain("<Comp>{jsxTemplate`hi`}</Comp>");
+      const out2 = transform(
+        `const y = <div dangerouslySetInnerHTML={{ __html: h }}><span>fb</span></div>;`,
+      );
+      expect(out2).toContain("{jsxTemplate`<span>fb</span>`}");
+      // Attribute expressions of a preserved element stay expression position.
+      const out3 = transform(`const z = <Comp icon={<b>i</b>}>t</Comp>;`);
+      expect(out3).toContain("icon={jsxTemplate`<b>i</b>`}");
+      expect(out3).not.toContain("icon={{");
+    });
+
+    it("re-export adapter produces byte-identical transform to direct @vincle/core import", () => {
+      const adapterPath = join(TMP, `adapter-reexport-${Math.random().toString(36).slice(2)}.ts`);
+      writeFileSync(
+        adapterPath,
+        [
+          `export { jsxTemplate, jsxAttr, jsxEscape }`,
+          `  from "@vincle/core/jsx-precompile-runtime";`,
+        ].join("\n"),
+      );
+
+      const code = `const x = <div class="hello">{name}</div>;`;
+      const fromDirect = precompileTransform(code, "/src/app.tsx", {
+        runtimeSource: RT,
+      })!.code;
+      const fromAdapter = precompileTransform(code, "/src/app.tsx", {
+        runtimeSource: adapterPath,
+      })!.code;
+
+      const stripPath = (s: string) =>
+        s.replace(/".*jsx(-precompile)?-runtime"/, "SRC").replace(/".*adapter-.*\.ts"/, "SRC");
+      expect(stripPath(fromDirect)).toBe(stripPath(fromAdapter));
+    });
+
+    it("entities: precompiled output is byte-identical to the dynamic runtime path", async () => {
+      // The invariant that matters (I-04): toggling the plugin on/off must never
+      // change output. The runtime file lets Bun compile the JSX with the
+      // automatic runtime (its own entity decoding); the precompiled file uses
+      // our decode + escapeContent. Both must land on the same bytes.
+      const body = `<div>Tom &amp; Jerry &lt;b&gt; &copy; &mdash; &#169; &#x27; fish & chips &notreal;</div>`;
+      const rand = () => Math.random().toString(36).slice(2);
+
+      const runtimePath = join(TMP, `rt-${rand()}.tsx`);
+      writeFileSync(
+        runtimePath,
+        `/** @jsxImportSource @vincle/core */\nexport const html = ${body};`,
+      );
+      const rtMod = (await import(runtimePath)) as { html: { value: string } };
+
+      const preSrc = precompileTransform(`export const html = ${body};`, "/src/app.tsx", {
+        runtimeSource: RT,
+      })!.code;
+      const prePath = join(TMP, `pre-${rand()}.ts`);
+      writeFileSync(prePath, preSrc);
+      const preMod = (await import(prePath)) as { html: { value: string } };
+
+      expect(preMod.html.value).toBe(rtMod.html.value);
+    });
+
+    it("rawtext: precompiled <style> is byte-identical to the dynamic runtime path", async () => {
+      const rand = () => Math.random().toString(36).slice(2);
+      const body = `<style>.a &gt; .b {"{"}color:red{"}"}</style>`;
+
+      const runtimePath = join(TMP, `rt-${rand()}.tsx`);
+      writeFileSync(
+        runtimePath,
+        `/** @jsxImportSource @vincle/core */\nexport const html = ${body};`,
+      );
+      const rtMod = (await import(runtimePath)) as { html: { value: string } };
+
+      const preSrc = precompileTransform(`export const html = ${body};`, "/src/app.tsx", {
+        runtimeSource: RT,
+      })!.code;
+      const prePath = join(TMP, `pre-${rand()}.ts`);
+      writeFileSync(prePath, preSrc);
+      const preMod = (await import(prePath)) as { html: { value: string } };
+
+      expect(preMod.html.value).toBe(rtMod.html.value);
+    });
   });
-
-  it("wraps precompiled fragments and dangerouslySetInnerHTML fallback children too", () => {
-    const out1 = transform(`const x = <Comp><>hi</></Comp>;`);
-    expect(out1).toContain("<Comp>{jsxTemplate`hi`}</Comp>");
-    const out2 = transform(
-      `const y = <div dangerouslySetInnerHTML={{ __html: h }}><span>fb</span></div>;`,
-    );
-    expect(out2).toContain("{jsxTemplate`<span>fb</span>`}");
-    // Attribute expressions of a preserved element stay expression position.
-    const out3 = transform(`const z = <Comp icon={<b>i</b>}>t</Comp>;`);
-    expect(out3).toContain("icon={jsxTemplate`<b>i</b>`}");
-    expect(out3).not.toContain("icon={{");
-  });
-
-  it("re-export adapter produces byte-identical transform to direct @vincle/core import", () => {
-    const adapterPath = join(TMP, `adapter-reexport-${Math.random().toString(36).slice(2)}.ts`);
-    writeFileSync(
-      adapterPath,
-      [
-        `export { jsxTemplate, jsxAttr, jsxEscape }`,
-        `  from "@vincle/core/jsx-precompile-runtime";`,
-      ].join("\n"),
-    );
-
-    const code = `const x = <div class="hello">{name}</div>;`;
-    const fromDirect = precompileTransform(code, "/src/app.tsx", {
-      runtimeSource: RT,
-    })!.code;
-    const fromAdapter = precompileTransform(code, "/src/app.tsx", {
-      runtimeSource: adapterPath,
-    })!.code;
-
-    const stripPath = (s: string) => s.replace(/".*jsx(-precompile)?-runtime"/, "SRC").replace(/".*adapter-.*\.ts"/, "SRC");
-    expect(stripPath(fromDirect)).toBe(stripPath(fromAdapter));
-  });
-
-  it("entities: precompiled output is byte-identical to the dynamic runtime path", async () => {
-    // The invariant that matters (I-04): toggling the plugin on/off must never
-    // change output. The runtime file lets Bun compile the JSX with the
-    // automatic runtime (its own entity decoding); the precompiled file uses
-    // our decode + escapeContent. Both must land on the same bytes.
-    const body = `<div>Tom &amp; Jerry &lt;b&gt; &copy; &mdash; &#169; &#x27; fish & chips &notreal;</div>`;
-    const rand = () => Math.random().toString(36).slice(2);
-
-    const runtimePath = join(TMP, `rt-${rand()}.tsx`);
-    writeFileSync(
-      runtimePath,
-      `/** @jsxImportSource @vincle/core */\nexport const html = ${body};`,
-    );
-    const rtMod = (await import(runtimePath)) as { html: { value: string } };
-
-    const preSrc = precompileTransform(
-      `export const html = ${body};`,
-      "/src/app.tsx",
-      { runtimeSource: RT },
-    )!.code;
-    const prePath = join(TMP, `pre-${rand()}.ts`);
-    writeFileSync(prePath, preSrc);
-    const preMod = (await import(prePath)) as { html: { value: string } };
-
-    expect(preMod.html.value).toBe(rtMod.html.value);
-  });
-
-  it("rawtext: precompiled <style> is byte-identical to the dynamic runtime path", async () => {
-    const rand = () => Math.random().toString(36).slice(2);
-    const body = `<style>.a &gt; .b {"{"}color:red{"}"}</style>`;
-
-    const runtimePath = join(TMP, `rt-${rand()}.tsx`);
-    writeFileSync(
-      runtimePath,
-      `/** @jsxImportSource @vincle/core */\nexport const html = ${body};`,
-    );
-    const rtMod = (await import(runtimePath)) as { html: { value: string } };
-
-    const preSrc = precompileTransform(
-      `export const html = ${body};`,
-      "/src/app.tsx",
-      { runtimeSource: RT },
-    )!.code;
-    const prePath = join(TMP, `pre-${rand()}.ts`);
-    writeFileSync(prePath, preSrc);
-    const preMod = (await import(prePath)) as { html: { value: string } };
-
-    expect(preMod.html.value).toBe(rtMod.html.value);
-  });
-});
 });

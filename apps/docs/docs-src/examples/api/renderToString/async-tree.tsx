@@ -2,9 +2,7 @@ import { renderToString } from "@vincle/core";
 
 declare const db: {
   posts: {
-    findAll(opts: {
-      limit: number;
-    }): Promise<{ id: number; slug: string; title: string }[]>;
+    findAll(opts: { limit: number }): Promise<{ id: number; slug: string; title: string }[]>;
   };
 };
 

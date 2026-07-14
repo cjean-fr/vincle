@@ -1,6 +1,8 @@
 import { useContext, type JSX, type VNode } from "@vincle/core";
-import { Flow } from "../context.js";
+
 import type { DeferContent, MergeType, OnError } from "../types.js";
+
+import { Flow } from "../context.js";
 
 export interface DeferProps {
   children: DeferContent;

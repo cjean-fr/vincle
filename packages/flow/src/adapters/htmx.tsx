@@ -1,4 +1,5 @@
 import type { MergeType } from "../types.js";
+
 import { createAdapter } from "./shared.js";
 
 const SWAP: Record<MergeType, string> = {

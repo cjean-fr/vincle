@@ -1,6 +1,7 @@
-import { noGlobalJsxNamespace } from "./no-global-jsx-namespace";
 import * as parser from "@typescript-eslint/parser";
 import { RuleTester } from "@typescript-eslint/rule-tester";
+
+import { noGlobalJsxNamespace } from "./no-global-jsx-namespace";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -31,8 +32,7 @@ ruleTester.run("no-global-jsx-namespace", noGlobalJsxNamespace, {
           suggestions: [
             {
               messageId: "useVNode",
-              output:
-                'import type { VNode } from "@vincle/core";\ntype A = VNode;',
+              output: 'import type { VNode } from "@vincle/core";\ntype A = VNode;',
             },
           ],
         },
@@ -41,8 +41,7 @@ ruleTester.run("no-global-jsx-namespace", noGlobalJsxNamespace, {
     {
       // Non-Element member → import auto-fix, but no VNode suggestion.
       code: 'let x: JSX.IntrinsicElements["div"];',
-      output:
-        'import type { JSX } from "@vincle/core";\nlet x: JSX.IntrinsicElements["div"];',
+      output: 'import type { JSX } from "@vincle/core";\nlet x: JSX.IntrinsicElements["div"];',
       errors: [{ messageId: "preferImportedJsx" }],
     },
     {

@@ -1,16 +1,11 @@
+import { raw, renderToString, snapshot, useContext, withScope, type VNode } from "@vincle/core";
+
 import type { Adapter } from "./adapters/index.js";
-import { resolveAssets } from "./assets.js";
 import type { FlowContext } from "./context.js";
+
+import { resolveAssets } from "./assets.js";
 import { Flow, withFlow, initFlowAssets } from "./context.js";
 import { streamFlow } from "./streamFlow.js";
-import {
-  raw,
-  renderToString,
-  snapshot,
-  useContext,
-  withScope,
-  type VNode,
-} from "@vincle/core";
 
 const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
 
@@ -35,9 +30,7 @@ export interface StaticContext extends PureStaticContext {
    * wrapped with `adapter.Frame` and rendered, so `html` is ready to write as
    * is; `url` is the path from `generatePath(id)`.
    */
-  emitFragments(
-    cb: (id: string, url: string, html: string) => void | Promise<void>,
-  ): Promise<void>;
+  emitFragments(cb: (id: string, url: string, html: string) => void | Promise<void>): Promise<void>;
 }
 
 export interface StaticOptions {
@@ -60,9 +53,7 @@ export interface StaticOptions {
  *   }
  * });
  */
-export async function renderToStatic<T>(
-  handler: (ctx: PureStaticContext) => T,
-): Promise<T>;
+export async function renderToStatic<T>(handler: (ctx: PureStaticContext) => T): Promise<T>;
 
 /**
  * Static generation with deferred fragments.
@@ -99,18 +90,13 @@ export async function renderToStatic<T>(
         // The seed keeps the parent Flow context visible, so <Defer>/<Fill>
         // still register into the shared pendingStore.
         renderPage: (node) =>
-          withScope(
-            async () => {
-              initFlowAssets();
-              const html = await renderToString(node());
-              const { assets } = useContext(Flow);
-              const transformed = adapter?.transformShell
-                ? adapter.transformShell(html, ctx)
-                : html;
-              return resolveAssets(transformed, assets);
-            },
-            snapshot(),
-          ),
+          withScope(async () => {
+            initFlowAssets();
+            const html = await renderToString(node());
+            const { assets } = useContext(Flow);
+            const transformed = adapter?.transformShell ? adapter.transformShell(html, ctx) : html;
+            return resolveAssets(transformed, assets);
+          }, snapshot()),
         emitFragments: async (cb) => {
           if (!adapter) {
             throw new Error(

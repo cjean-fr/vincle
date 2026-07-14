@@ -1,5 +1,6 @@
-import precompile, { type PluginConfig } from "./index.js";
 import { describe, it, expect } from "bun:test";
+
+import precompile, { type PluginConfig } from "./index.js";
 
 function errorCtx(): { error: (msg: string) => never } {
   return {
@@ -37,10 +38,7 @@ describe("vite-plugin-precompile", () => {
   });
 
   it("skips node_modules", () => {
-    const result = callTransform(
-      "<div>hello</div>",
-      "/node_modules/foo/test.tsx",
-    );
+    const result = callTransform("<div>hello</div>", "/node_modules/foo/test.tsx");
     expect(result).toBeUndefined();
   });
 
@@ -120,9 +118,7 @@ describe("vite-plugin-precompile", () => {
       },
     };
     // @ts-expect-error — calling internal hook with fake context to test secure mode error handling
-    await expect(plugin.buildStart.call(ctx)).rejects.toThrow(
-      /secure mode/,
-    );
+    await expect(plugin.buildStart.call(ctx)).rejects.toThrow(/secure mode/);
   });
 
   describe("runtime probe", () => {
@@ -146,9 +142,7 @@ describe("vite-plugin-precompile", () => {
       // @ts-expect-error — internal hook
       plugin.configResolved({ esbuild: { jsxImportSource: "node:path" } });
       // @ts-expect-error — internal hook
-      await expect(plugin.buildStart.call(errorCtx())).rejects.toThrow(
-        /failed to probe/,
-      );
+      await expect(plugin.buildStart.call(errorCtx())).rejects.toThrow(/failed to probe/);
     });
 
     it("defaults to @vincle/core/jsx-runtime when no jsxImportSource is set", async () => {

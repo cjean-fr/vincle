@@ -1,32 +1,33 @@
 {
   "name": "@vincle/precompile-core",
   "version": "1.0.0",
-  "type": "module",
   "description": "Shared helpers for @vincle/core JSX precompile transforms",
-  "author": "Christophe Jean",
-  "license": "MIT",
+  "keywords": [
+    "ast",
+    "jsx",
+    "precompile",
+    "transform",
+    "vite"
+  ],
   "homepage": "https://vincle.cjean.fr",
+  "license": "MIT",
+  "author": "Christophe Jean",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vincle/vincle.git",
     "directory": "packages/precompile-core"
   },
-  "keywords": [
-    "jsx",
-    "precompile",
-    "transform",
-    "ast",
-    "vite"
-  ],
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc --noEmit",
     "coverage": "bun test --coverage --coverage-reporter=lcov",
+    "format": "oxfmt",
     "mutation": "stryker run",
     "test": "bun test"
   },

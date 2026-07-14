@@ -1,5 +1,6 @@
-import { useDocs } from "../context.js";
 import type { ResolvedSidebarItem } from "../types.js";
+
+import { useDocs } from "../context.js";
 
 export function Nav() {
   const { sidebar } = useDocs();
@@ -7,24 +8,19 @@ export function Nav() {
   return (
     <nav
       id="docs-nav"
-      class="docs-nav pointer-events-none fixed inset-y-0 left-0 z-40 w-full max-w-xs overflow-y-auto border-r border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] md:pointer-events-auto md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:w-56 md:max-w-none md:shrink-0 md:overflow-y-auto md:border-0 md:bg-transparent md:pr-6 md:pt-6"
+      class="docs-nav pointer-events-none fixed inset-y-0 left-0 z-40 w-full max-w-xs overflow-y-auto border-r border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] md:pointer-events-auto md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:w-56 md:max-w-none md:shrink-0 md:overflow-y-auto md:border-0 md:bg-transparent md:pt-6 md:pr-6"
       aria-label="Primary navigation"
       tabindex={-1}
     >
       {/* Search for mobile */}
-      <div class="border-b border-[var(--docs-color-border)] px-6 pb-4 pt-6 md:hidden">
+      <div class="border-b border-[var(--docs-color-border)] px-6 pt-6 pb-4 md:hidden">
         <button
           data-search-trigger
           type="button"
           class="flex w-full items-center gap-2 rounded-lg border border-[var(--docs-color-border)] px-3 py-2 text-sm text-[var(--docs-color-text-secondary)] transition-colors hover:bg-[var(--docs-color-surface)] hover:text-[var(--docs-color-text)]"
           aria-label="Search documentation"
         >
-          <svg
-            class="size-4 shrink-0"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
-          >
+          <svg class="size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path
               fill-rule="evenodd"
               clip-rule="evenodd"
@@ -63,16 +59,11 @@ function renderNavItem(item: ResolvedSidebarItem, depth: number) {
 
   if (item.kind === "category") {
     return (
-      <div
-        key={item.label}
-        class={`docs-nav-category ${depth === 0 ? "mt-6 first:mt-0" : ""}`}
-      >
+      <div key={item.label} class={`docs-nav-category ${depth === 0 ? "mt-6 first:mt-0" : ""}`}>
         <div class="py-1.5 text-xs font-semibold tracking-wider text-[var(--docs-color-text-secondary)] uppercase">
           {item.label}
         </div>
-        <div class="mt-1">
-          {item.items.map((child) => renderNavItem(child, depth + 1))}
-        </div>
+        <div class="mt-1">{item.items.map((child) => renderNavItem(child, depth + 1))}</div>
       </div>
     );
   }

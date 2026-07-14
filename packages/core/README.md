@@ -137,13 +137,7 @@ import { raw } from "@vincle/core";
 Per-request context with **typed keys** — `AsyncLocalStorage`-backed, no provider components needed, designed for server-side isolation.
 
 ```tsx
-import {
-  context,
-  useContext,
-  setContext,
-  withScope,
-  renderToString,
-} from "@vincle/core";
+import { context, useContext, setContext, withScope, renderToString } from "@vincle/core";
 
 // Define context keys at module level — same key always resolves to the same
 // Symbol within a given @vincle/core instance.
@@ -208,9 +202,7 @@ const Profile = async ({ id }: { id: string }) => {
 const Page = ({ id }: { id: string }) => (
   <html>
     <body>
-      <ErrorBoundary
-        fallback={(error) => <p>Failed: {(error as Error).message}</p>}
-      >
+      <ErrorBoundary fallback={(error) => <p>Failed: {(error as Error).message}</p>}>
         <Profile id={id} />
       </ErrorBoundary>
     </body>

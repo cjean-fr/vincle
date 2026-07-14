@@ -1,8 +1,9 @@
-import { Flow, initFlow } from "../context.js";
-import { Slot } from "../index.js";
-import { TurboAdapter } from "../adapters/index.js";
 import { renderToString, withScope, useContext } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
+
+import { TurboAdapter } from "../adapters/index.js";
+import { Flow, initFlow } from "../context.js";
+import { Slot } from "../index.js";
 
 describe("Slot", () => {
   it("renders a placeholder with no registration when children are absent", async () => {

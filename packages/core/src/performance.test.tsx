@@ -1,6 +1,7 @@
+import { describe, it, expect } from "bun:test";
+
 import { renderToString } from "./index.js";
 import { jsx } from "./jsx-runtime.js";
-import { describe, it, expect } from "bun:test";
 
 const DIV = jsx("div", { class: "foo", children: "hello" });
 
@@ -17,9 +18,7 @@ describe("renderToString — no major regression", () => {
 
   it(`deep tree (100× nested): ${N}× under 500ms`, () => {
     function deep(n: number): any {
-      return n <= 0
-        ? jsx("span", { children: "x" })
-        : jsx("div", { children: deep(n - 1) });
+      return n <= 0 ? jsx("span", { children: "x" }) : jsx("div", { children: deep(n - 1) });
     }
     const start = performance.now();
     for (let i = 0; i < N; i++) {
@@ -43,9 +42,7 @@ describe("renderToString — no major regression", () => {
   it(`style attribute (CSS hex-escape safe): ${N}× under 500ms`, () => {
     const start = performance.now();
     for (let i = 0; i < N; i++) {
-      renderToString(
-        jsx("div", { style: "color:red;background:blue;", children: "x" }),
-      );
+      renderToString(jsx("div", { style: "color:red;background:blue;", children: "x" }));
     }
     expect(performance.now() - start).toBeLessThan(500);
   });

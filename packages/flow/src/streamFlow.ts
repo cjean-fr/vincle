@@ -1,7 +1,8 @@
-import type { PendingStore } from "./pending-store.js";
-import { runFragment } from "./fragment-runner.js";
 import type { AssetState } from "./assets.js";
+import type { PendingStore } from "./pending-store.js";
 import type { FlowEvent, FlowOptions } from "./types.js";
+
+import { runFragment } from "./fragment-runner.js";
 
 /**
  * Drain every registered `Defer` entry, emitting semantic `FlowEvent`s to

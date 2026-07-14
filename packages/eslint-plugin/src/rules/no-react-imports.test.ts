@@ -1,6 +1,7 @@
-import { noReactImports } from "./no-react-imports";
 import * as parser from "@typescript-eslint/parser";
 import { RuleTester } from "@typescript-eslint/rule-tester";
+
+import { noReactImports } from "./no-react-imports";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -9,10 +10,7 @@ const ruleTester = new RuleTester({
 });
 
 ruleTester.run("no-react-imports", noReactImports, {
-  valid: [
-    'import { renderToString } from "@vincle/core";',
-    'import fs from "fs";',
-  ],
+  valid: ['import { renderToString } from "@vincle/core";', 'import fs from "fs";'],
   invalid: [
     {
       code: 'import React from "react";',

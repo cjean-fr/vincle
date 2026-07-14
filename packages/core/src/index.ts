@@ -1,5 +1,5 @@
 export { renderToString, render, ErrorBoundary } from "./render.js";
-export type { VNode, Component } from "./render.js";
+export type { VNode, ResolvedVNode, Component } from "./render.js";
 export {
   context,
   setContext,

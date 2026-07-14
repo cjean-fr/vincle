@@ -1,5 +1,6 @@
-import type { Adapter } from "./adapters/index.js";
 import type { VNode } from "@vincle/core";
+
+import type { Adapter } from "./adapters/index.js";
 
 export type MergeType = "replace" | "append" | "prepend" | "before" | "after";
 
@@ -26,10 +27,7 @@ export type FlowEvent = Shell | Fragment | { type: "close"; html: string };
 
 export type FlowErrorInfo = { id: string; kind: "fragment" | "stream" };
 
-export type OnError = (
-  error: unknown,
-  info: FlowErrorInfo,
-) => VNode | void;
+export type OnError = (error: unknown, info: FlowErrorInfo) => VNode | void;
 
 export interface FlowOptions {
   signal?: AbortSignal;

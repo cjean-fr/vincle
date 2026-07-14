@@ -1,28 +1,24 @@
-import type { Pending } from "./pending-store.js";
-import { resolveAssets, type AssetState } from "./assets.js";
-import type { DeferContent, FlowEvent, FlowOptions } from "./types.js";
 import { renderToString, type VNode } from "@vincle/core";
+
+import type { Pending } from "./pending-store.js";
+import type { DeferContent, FlowEvent, FlowOptions } from "./types.js";
+
+import { resolveAssets, type AssetState } from "./assets.js";
 import { createTimeoutSignal } from "./timeout.js";
 
 const isAsyncIterable = (v: unknown): v is AsyncIterable<VNode> =>
   v != null && typeof (v as any)[Symbol.asyncIterator] === "function";
 
-const isFactory = (c: DeferContent): c is (signal: AbortSignal) => VNode =>
-  typeof c === "function";
+const isFactory = (c: DeferContent): c is (signal: AbortSignal) => VNode => typeof c === "function";
 
 type ClassificationResult =
   | { kind: "value"; value: VNode }
   | { kind: "stream"; iterable: AsyncIterable<VNode> }
   | { kind: "sync-error"; error: unknown };
 
-function classifyEntry(
-  entry: Pending,
-  factorySignal: AbortSignal,
-): ClassificationResult {
+function classifyEntry(entry: Pending, factorySignal: AbortSignal): ClassificationResult {
   try {
-    const value = isFactory(entry.content)
-      ? entry.content(factorySignal)
-      : entry.content;
+    const value = isFactory(entry.content) ? entry.content(factorySignal) : entry.content;
     if (isAsyncIterable(value)) return { kind: "stream", iterable: value };
     return { kind: "value", value };
   } catch (error) {
@@ -94,15 +90,7 @@ export function runFragment(
       // Streams are long-lived; the per-entry timeout doesn't apply to them.
       return {
         stream: true,
-        done: runStream(
-          id,
-          classification.iterable,
-          entry.merge,
-          emit,
-          handle,
-          opts,
-          assets,
-        ),
+        done: runStream(id, classification.iterable, entry.merge, emit, handle, opts, assets),
       };
     }
     case "value": {

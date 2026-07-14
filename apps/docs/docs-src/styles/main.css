@@ -87,12 +87,7 @@ html {
 .docs-code-block,
 .docs-search-results {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(
-      in srgb,
-      var(--docs-color-text-secondary) 35%,
-      transparent
-    )
-    transparent;
+  scrollbar-color: color-mix(in srgb, var(--docs-color-text-secondary) 35%, transparent) transparent;
 }
 
 .docs-body {
@@ -476,8 +471,7 @@ html {
 }
 
 .docs-usecase-card:hover {
-  box-shadow: 0 8px 30px
-    color-mix(in srgb, var(--docs-color-accent) 12%, transparent);
+  box-shadow: 0 8px 30px color-mix(in srgb, var(--docs-color-accent) 12%, transparent);
 }
 
 /* === Stat card hover === */

@@ -2,35 +2,37 @@
   "name": "@vincle/flow",
   "version": "0.9.0",
   "description": "HTML document orchestration layer for @vincle/core",
-  "author": "Christophe Jean",
-  "license": "MIT",
+  "keywords": [
+    "deferred",
+    "dom-patching",
+    "esi",
+    "fragments",
+    "html",
+    "htmx",
+    "jsx",
+    "ssr",
+    "streaming",
+    "turbo"
+  ],
   "homepage": "https://vincle.cjean.fr",
+  "bugs": {
+    "url": "https://github.com/vincle/vincle/issues"
+  },
+  "license": "MIT",
+  "author": "Christophe Jean",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vincle/vincle.git",
     "directory": "packages/flow"
   },
-  "bugs": {
-    "url": "https://github.com/vincle/vincle/issues"
-  },
-  "keywords": [
-    "jsx",
-    "html",
-    "ssr",
-    "streaming",
-    "fragments",
-    "deferred",
-    "htmx",
-    "turbo",
-    "esi",
-    "dom-patching"
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
-  "sideEffects": false,
   "type": "module",
+  "sideEffects": false,
   "types": "./dist/index.d.ts",
-  "engines": {
-    "node": ">=22.0.0"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -69,10 +71,10 @@
     "access": "public"
   },
   "scripts": {
-    "build": "pkgroll --clean-dist --minify",
+    "build": "tsdown",
     "check": "tsc --noEmit",
     "coverage": "bun test --coverage --coverage-reporter=lcov",
-    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "format": "oxfmt",
     "mutation": "stryker run",
     "test": "bun test"
   },
@@ -84,8 +86,8 @@
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@types/bun": "catalog:",
     "@types/react": "^19.2.17",
-    "pkgroll": "catalog:",
     "stryker-mutator-bun-runner": "^0.4.0",
+    "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "peerDependencies": {
@@ -96,9 +98,7 @@
       "optional": true
     }
   },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ]
+  "engines": {
+    "node": ">=22.0.0"
+  }
 }
