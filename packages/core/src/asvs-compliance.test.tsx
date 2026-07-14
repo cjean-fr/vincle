@@ -25,9 +25,9 @@ import { renderToString, raw } from "./index.js";
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("ASVS 1.2.1 — Context-relevant output encoding (L1)", () => {
-  it("escapes & < > in HTML text content", async () => {
+  it("escapes & < in HTML text content", async () => {
     const html = await renderToString(<div>{"a&b<c>d"}</div>);
-    expect(html).toBe("<div>a&amp;b&lt;c&gt;d</div>");
+    expect(html).toBe("<div>a&amp;b&lt;c>d</div>");
   });
 
   it('escapes & < > " in HTML attribute values', async () => {
@@ -175,7 +175,7 @@ describe("ASVS 1.1.2 — Output encoding as final step (L2)", () => {
     expect(malicious).toBe("<script>alert(1)</script>");
     // But the output is escaped
     expect(html1).not.toContain("<script>");
-    expect(html1).toContain("&lt;script&gt;");
+    expect(html1).toContain("&lt;script>");
   });
 });
 
@@ -184,7 +184,7 @@ describe("ASVS 1.3.7 — Template injection protection (L2)", () => {
     const attrs = { title: '"><script>alert(1)</script>' };
     const html = await renderToString(<div {...attrs}>x</div>);
     expect(html).not.toContain("<script>");
-    expect(html).toContain("&quot;&gt;&lt;script&gt;");
+    expect(html).toContain("&quot;>&lt;script>");
   });
 
   it("escapes values even in URL attributes", async () => {
@@ -193,7 +193,7 @@ describe("ASVS 1.3.7 — Template injection protection (L2)", () => {
     // Not a dangerous protocol (doesn't start with javascript:/vbscript:),
     // so it passes URL safety. But the value IS HTML-escaped.
     expect(html).not.toContain("<script>");
-    expect(html).toContain("&quot;&gt;&lt;script&gt;");
+    expect(html).toContain("&quot;>&lt;script>");
   });
 
   it("only bypasses via explicit raw()", async () => {

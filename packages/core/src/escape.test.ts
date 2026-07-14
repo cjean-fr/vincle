@@ -13,9 +13,9 @@ import {
 } from "./escape.js";
 
 describe("escapeContent", () => {
-  it("escapes & < >", () => {
+  it("escapes & and < (spec-required chars only)", () => {
     expect(escapeContent("<b>\"Hello\" & 'World'</b>")).toBe(
-      "&lt;b&gt;\"Hello\" &amp; 'World'&lt;/b&gt;",
+      "&lt;b>\"Hello\" &amp; 'World'&lt;/b>",
     );
   });
 
@@ -28,11 +28,11 @@ describe("escapeContent", () => {
   });
 
   it("escapes all-escapable string", () => {
-    expect(escapeContent("<>&")).toBe("&lt;&gt;&amp;");
+    expect(escapeContent("<>&")).toBe("&lt;>&amp;");
   });
 
   it("escapes when escapable char at position 0", () => {
-    expect(escapeContent("<hello>")).toBe("&lt;hello&gt;");
+    expect(escapeContent("<hello>")).toBe("&lt;hello>");
     expect(escapeContent("&hello")).toBe("&amp;hello");
   });
 
@@ -58,7 +58,10 @@ describe("escapeContent", () => {
   it("handles single char", () => {
     expect(escapeContent("&")).toBe("&amp;");
     expect(escapeContent("<")).toBe("&lt;");
-    expect(escapeContent(">")).toBe("&gt;");
+  });
+
+  it("leaves > verbatim (not spec-required for text content)", () => {
+    expect(escapeContent(">")).toBe(">");
   });
 
   it("handles long string with escapable chars scattered", () => {
@@ -73,8 +76,8 @@ describe("escapeContent", () => {
 });
 
 describe("escapeAttr", () => {
-  it("escapes & < > \" '", () => {
-    expect(escapeAttr("\"><script>'")).toBe("&quot;&gt;&lt;script&gt;&#39;");
+  it("escapes & < \" ' (public API — safe for both quote styles)", () => {
+    expect(escapeAttr("\"><script>'")).toBe("&quot;>&lt;script>&#39;");
   });
 
   it("returns safe string unchanged", () => {
@@ -82,7 +85,7 @@ describe("escapeAttr", () => {
   });
 
   it("handles all-escapable string", () => {
-    expect(escapeAttr("<>&\"'")).toBe("&lt;&gt;&amp;&quot;&#39;");
+    expect(escapeAttr("<>&\"'")).toBe("&lt;>&amp;&quot;&#39;");
   });
 
   it("escapes double-quote at start", () => {
@@ -113,6 +116,10 @@ describe("escapeAttr", () => {
   it("handles single-quote specifically", () => {
     expect(escapeAttr("'")).toBe("&#39;");
     expect(escapeAttr("''''")).toBe("&#39;&#39;&#39;&#39;");
+  });
+
+  it("leaves > verbatim (safe in attributes — cannot break context)", () => {
+    expect(escapeAttr(">")).toBe(">");
   });
 
   it("handles long string with escapable chars at boundaries", () => {
@@ -167,7 +174,7 @@ describe("escapeRawText", () => {
   });
 
   it("falls back to entity escaping for non-rawtext tag", () => {
-    expect(escapeRawText("<b>&", "div")).toBe("&lt;b&gt;&amp;");
+    expect(escapeRawText("<b>&", "div")).toBe("&lt;b>&amp;");
   });
 
   it("escapes </iframe>", () => {

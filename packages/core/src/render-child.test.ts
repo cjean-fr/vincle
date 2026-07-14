@@ -27,7 +27,7 @@ describe("renderChild", () => {
 
   it("escapes a plain string child", () => {
     expect(renderChild("hello")).toBe("hello");
-    expect(renderChild("<b>")).toBe("&lt;b&gt;");
+    expect(renderChild("<b>")).toBe("&lt;b>");
   });
 
   it("handles a number child", () => {

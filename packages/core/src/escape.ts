@@ -1,5 +1,9 @@
-const RE_ESCAPE_CONTENT = /[&<>]/;
-const RE_ESCAPE_ATTR = /[&<>"']/;
+// HTML5 spec escaping strategy:
+// - escapeContent: & and < (text content — all that's required)
+// - escapeAttr (public API, unknown quote context): &, <, ", '
+// https://html.spec.whatwg.org/multipage/parsing.html#escapingString
+const RE_ESCAPE_CONTENT = /[&<]/;
+const RE_ESCAPE_ATTR = /[&<"']/;
 
 export const escapeContent = (str: string): string => {
   const m = RE_ESCAPE_CONTENT.exec(str);
@@ -14,9 +18,6 @@ export const escapeContent = (str: string): string => {
         break;
       case 60:
         rep = "&lt;";
-        break;
-      case 62:
-        rep = "&gt;";
         break;
       default:
         continue;
@@ -41,9 +42,6 @@ export const escapeAttr = (str: string): string => {
         break;
       case 60:
         rep = "&lt;";
-        break;
-      case 62:
-        rep = "&gt;";
         break;
       case 34:
         rep = "&quot;";

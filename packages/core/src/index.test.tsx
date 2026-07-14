@@ -380,7 +380,7 @@ describe("Iterable & Generator Children", () => {
   });
 
   it("escapes string items from an iterable", async () => {
-    expect(await renderToString(<div>{new Set(["<b>"])}</div>)).toBe("<div>&lt;b&gt;</div>");
+    expect(await renderToString(<div>{new Set(["<b>"])}</div>)).toBe("<div>&lt;b></div>");
   });
 
   it("renders a generator yielding mixed primitives and elements", async () => {

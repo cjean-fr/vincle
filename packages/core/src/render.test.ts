@@ -29,7 +29,7 @@ describe("renderToString", () => {
 
   it("escapes plain string content", async () => {
     expect(await renderToString("<script>alert(1)</script>")).toBe(
-      "&lt;script&gt;alert(1)&lt;/script&gt;",
+      "&lt;script>alert(1)&lt;/script>",
     );
   });
 
@@ -53,7 +53,7 @@ describe("renderToString", () => {
   });
 
   it("escapes string items in array", async () => {
-    expect(await renderToString(["<a>", "<b>"])).toBe("&lt;a&gt;&lt;b&gt;");
+    expect(await renderToString(["<a>", "<b>"])).toBe("&lt;a>&lt;b>");
   });
 
   it("renders nested arrays", async () => {
@@ -110,7 +110,7 @@ describe("render (sync)", () => {
   });
 
   it("escapes sync content", () => {
-    expect(render("<script>")).toBe("&lt;script&gt;");
+    expect(render("<script>")).toBe("&lt;script>");
   });
 
   it("returns RawString value verbatim", () => {

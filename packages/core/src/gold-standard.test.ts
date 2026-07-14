@@ -242,10 +242,11 @@ describe("gold — children", () => {
     "React inserts <!-- --> between adjacent text nodes; vincle joins directly",
   );
 
-  j(
+  diverges(
     "escaping in text child",
-    ["p", { children: "<script>alert(1)</script>" }],
-    ["p", null, "<script>alert(1)</script>"],
+    jsx("p", { children: "<script>alert(1)</script>" }),
+    reactCreate("p", null, "<script>alert(1)</script>"),
+    "React escapes > in text content; vincle only escapes & and < per HTML5 spec",
   );
   j("escaping & entity", ["p", { children: "a & b" }], ["p", null, "a & b"]);
 });
@@ -458,7 +459,12 @@ describe("gold — components", () => {
 // 9. ESCAPING / XSS
 // ---------------------------------------------------------------------------
 describe("gold — escaping & XSS", () => {
-  j("angle brackets escaped", ["div", { children: "<script>" }], ["div", null, "<script>"]);
+  diverges(
+    "angle brackets escaped",
+    jsx("div", { children: "<script>" }),
+    reactCreate("div", null, "<script>"),
+    "React escapes > in text content; vincle only escapes & and < per HTML5 spec",
+  );
   j("ampersand escaped", ["div", { children: "a&b" }], ["div", null, "a&b"]);
   j("double quote in attr", ["div", { title: 'he"llo' }], ["div", { title: 'he"llo' }]);
 

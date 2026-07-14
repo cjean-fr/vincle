@@ -105,8 +105,8 @@ describe("precompile path ≡ dynamic path", () => {
     expect(await viaTemplate(asyncGen())).toBe(await viaDynamic(asyncGen()));
 
     // And the concrete expected bytes, so a regression is legible.
-    expect(await viaTemplate(syncGen())).toBe("<div>gen-&lt;z&gt;7</div>");
-    expect(await viaTemplate(asyncGen())).toBe("<div>async-&lt;w&gt;</div>");
+    expect(await viaTemplate(syncGen())).toBe("<div>gen-&lt;z>7</div>");
+    expect(await viaTemplate(asyncGen())).toBe("<div>async-&lt;w></div>");
   });
 
   it("matches on arbitrary trees (property-based)", async () => {

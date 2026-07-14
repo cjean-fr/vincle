@@ -58,7 +58,7 @@ describe("jsx — intrinsic elements", () => {
 
   it("escapes string children", async () => {
     const el = jsx("p", { children: "<script>alert(1)</script>" });
-    expect(await renderToString(el)).toBe("<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>");
+    expect(await renderToString(el)).toBe("<p>&lt;script>alert(1)&lt;/script></p>");
   });
 
   it("preserves CSS custom properties in style", async () => {
@@ -336,7 +336,7 @@ describe("RCDATA elements (textarea, title)", () => {
       children: "</textarea><img src=x onerror=alert(1)>",
     });
     expect(await renderToString(el)).toBe(
-      "<textarea>&lt;/textarea&gt;&lt;img src=x onerror=alert(1)&gt;</textarea>",
+      "<textarea>&lt;/textarea>&lt;img src=x onerror=alert(1)></textarea>",
     );
   });
 
@@ -344,7 +344,7 @@ describe("RCDATA elements (textarea, title)", () => {
     const el = jsx("title", {
       children: "</title><script>alert(1)",
     });
-    expect(await renderToString(el)).toBe("<title>&lt;/title&gt;&lt;script&gt;alert(1)</title>");
+    expect(await renderToString(el)).toBe("<title>&lt;/title>&lt;script>alert(1)</title>");
   });
 });
 
@@ -384,7 +384,7 @@ describe("Precompile path — jsxTemplate", () => {
 
   it("escapes unsafe content", () => {
     const result = jsxTemplate(["<div>", "</div>"], "<script>alert(1)</script>");
-    expect(result.toString()).toBe("<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>");
+    expect(result.toString()).toBe("<div>&lt;script>alert(1)&lt;/script></div>");
   });
 
   it("filters null/undefined/boolean", () => {
@@ -418,7 +418,7 @@ describe("Precompile path — jsxAttr", () => {
 
   it("escapes quotes in attribute values", () => {
     const result = jsxTemplate(["<a ", "></a>"], jsxAttr("title", '"><script>x</script>'));
-    expect(result.toString()).toBe('<a title="&quot;&gt;&lt;script&gt;x&lt;/script&gt;"></a>');
+    expect(result.toString()).toBe('<a title="&quot;>&lt;script>x&lt;/script>"></a>');
   });
 
   it("filters function event handlers but accepts strings", () => {
@@ -529,6 +529,6 @@ describe("createElement — classic-runtime compat (tsc key-after-spread fallbac
     const via = await renderToString(createElement("p", null, "a & b <x>"));
     const auto = await renderToString(jsx("p", { children: "a & b <x>" }));
     expect(via).toBe(auto);
-    expect(via).toBe("<p>a &amp; b &lt;x&gt;</p>");
+    expect(via).toBe("<p>a &amp; b &lt;x></p>");
   });
 });

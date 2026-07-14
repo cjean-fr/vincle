@@ -31,7 +31,7 @@ describe("JSX compiler contract — invariants the runtime depends on", () => {
   it("the decoded string, fed back through the runtime, is re-escaped", async () => {
     // Close the loop: whatever the compiler decodes, the runtime neutralizes.
     const html = await renderToString(jsx("div", { children: "a & b <script>" }));
-    expect(html).toBe("<div>a &amp; b &lt;script&gt;</div>");
+    expect(html).toBe("<div>a &amp; b &lt;script></div>");
   });
 
   it("LIFTS `key` out of props (separate argument, never a prop)", () => {
