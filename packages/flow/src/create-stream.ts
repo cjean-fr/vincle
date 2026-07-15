@@ -6,7 +6,7 @@
  * - `cancel(reason)` and `opts.signal` both feed one combined `AbortSignal`,
  *   which stops the producer and releases any parked `emit()` call.
  */
-export function createFlowStream<T>(
+export function createStream<T>(
   producer: (emit: (t: T) => Promise<void>, signal: AbortSignal) => Promise<void>,
   opts?: { signal?: AbortSignal },
 ): ReadableStream<T> {

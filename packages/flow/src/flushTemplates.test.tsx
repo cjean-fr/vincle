@@ -1,28 +1,29 @@
+import type { ResolvedVNode } from "@vincle/core";
+
 import { describe, it, expect } from "bun:test";
 
 import type { FlowConfig } from "./types.js";
 import type { FlowEvent } from "./types.js";
 
 import { TurboAdapter } from "./adapters/index.js";
-import { renderStream, Fill, Defer } from "./index.js";
-import { createPendingStore, type PendingStore } from "./pending-store.js";
+import { flushTemplates } from "./flushTemplates.js";
+import { renderToStream, Template } from "./index.js";
 import { renderToFlowEvents } from "./render.js";
-import { streamFlow } from "./streamFlow.js";
+import { createTemplateStore, type TemplateStore } from "./template-store.js";
 import { collect, collectEvents, type FragmentEvent } from "./test-utils.js";
-import type { ResolvedVNode } from "@vincle/core";
 
-const drain = async (store: PendingStore, opts?: Parameters<typeof streamFlow>[2]) => {
+const drain = async (store: TemplateStore, opts?: Parameters<typeof flushTemplates>[2]) => {
   const results: FlowEvent[] = [];
-  await streamFlow({ pendingStore: store }, async (ev) => void results.push(ev), opts);
+  await flushTemplates({ templateStore: store }, async (ev) => void results.push(ev), opts);
   return results;
 };
 
 const cfg: FlowConfig = { adapter: TurboAdapter, mode: "streaming" };
 
-describe("streamFlow", () => {
+describe("flushTemplates", () => {
   it("emits a fragment for a one-shot node entry", async () => {
-    const store = createPendingStore(cfg);
-    store.defer("t1", { content: () => <div>Hello</div>, merge: "replace" });
+    const store = createTemplateStore(cfg);
+    store.register("t1", { content: () => <div>Hello</div>, merge: "replace" });
     const results = await drain(store);
     expect(results).toHaveLength(1);
     expect(results[0]!.type).toBe("fragment");
@@ -30,8 +31,8 @@ describe("streamFlow", () => {
   });
 
   it("emits a fragment for plain JSX content (no factory)", async () => {
-    const store = createPendingStore(cfg);
-    store.defer("t2", { content: <div>Plain</div>, merge: "replace" });
+    const store = createTemplateStore(cfg);
+    store.register("t2", { content: <div>Plain</div>, merge: "replace" });
     const results = await drain(store);
     expect(results).toHaveLength(1);
     if (results[0]!.type === "fragment") expect(results[0]!.html).toContain("Plain");
@@ -39,20 +40,20 @@ describe("streamFlow", () => {
 
   it("streams each item of an async-iterable entry", async () => {
     async function* rows() {
-      yield <li>a</li> as ResolvedVNode;
-      yield <li>b</li> as ResolvedVNode;
+      yield (<li>a</li>) as ResolvedVNode;
+      yield (<li>b</li>) as ResolvedVNode;
     }
-    const store = createPendingStore(cfg);
-    store.defer("feed", { content: () => rows(), merge: "append" });
+    const store = createTemplateStore(cfg);
+    store.register("feed", { content: () => rows(), merge: "append" });
     const results = await drain(store);
     const fragments = results.filter((e) => e.type === "fragment");
     expect(fragments).toHaveLength(2);
   });
 
   it("catches a factory throw and continues other entries", async () => {
-    const store = createPendingStore(cfg);
-    store.defer("plain", { content: <div>Plain</div>, merge: "replace" });
-    store.defer("bad", {
+    const store = createTemplateStore(cfg);
+    store.register("plain", { content: <div>Plain</div>, merge: "replace" });
+    store.register("bad", {
       content: () => {
         throw new Error("fail");
       },
@@ -64,8 +65,8 @@ describe("streamFlow", () => {
   });
 
   it("emits an error fallback fragment when onError returns a node", async () => {
-    const store = createPendingStore(cfg);
-    store.defer("bad", {
+    const store = createTemplateStore(cfg);
+    store.register("bad", {
       content: () => {
         throw new Error("fail");
       },
@@ -79,8 +80,8 @@ describe("streamFlow", () => {
   });
 
   it("a per-entry onError overrides the global one", async () => {
-    const store = createPendingStore(cfg);
-    store.defer("bad", {
+    const store = createTemplateStore(cfg);
+    store.register("bad", {
       content: () => {
         throw new Error("fail");
       },
@@ -106,15 +107,15 @@ describe("streamFlow", () => {
           { once: true },
         );
       });
-      return <div>too late</div> as ResolvedVNode;
+      return (<div>too late</div>) as ResolvedVNode;
     };
-    const store = createPendingStore(cfg);
-    store.defer("slow", { content: slow, merge: "replace", timeout: 10 });
+    const store = createTemplateStore(cfg);
+    store.register("slow", { content: slow, merge: "replace", timeout: 10 });
     const results = await drain(store, {
       onError: (err) => <span>{(err as Error).message}</span>,
     });
     if (results[0]!.type === "fragment") {
-      expect(results[0]!.html).toContain('Defer "slow" timed out after 10ms');
+      expect(results[0]!.html).toContain('Template "slow" timed out after 10ms');
       expect(results[0]!.html).not.toContain("too late");
     }
   });
@@ -126,8 +127,8 @@ describe("streamFlow", () => {
           once: true,
         }),
       ) as unknown as ReturnType<() => any>;
-    const store = createPendingStore(cfg);
-    store.defer("slow", { content, merge: "replace" });
+    const store = createTemplateStore(cfg);
+    store.register("slow", { content, merge: "replace" });
     const results = await drain(store, {
       defaultTimeout: 10,
       onError: (err) => <span>{(err as Error).message}</span>,
@@ -144,18 +145,18 @@ describe("edge cases — streaming", () => {
       let i = 0;
       while (!signal.aborted) {
         i++;
-        yield <li>{i}</li> as ResolvedVNode;
+        yield (<li>{i}</li>) as ResolvedVNode;
         await Promise.resolve(); // yield event loop — let abort propagate
       }
     }
-    const stream = renderStream(
+    const stream = renderToStream(
       () => (
         <html>
           <body>
             <ul id="feed" />
-            <Fill target="feed" merge="append">
+            <Template target="feed" merge="append">
               {(signal) => inf(signal!)}
-            </Fill>
+            </Template>
           </body>
         </html>
       ),
@@ -178,17 +179,17 @@ describe("edge cases — streaming", () => {
     async function* many() {
       for (let i = 0; i < 100; i++) {
         produced++;
-        yield <span>{i}</span> as ResolvedVNode;
+        yield (<span>{i}</span>) as ResolvedVNode;
       }
     }
-    const stream = renderStream(
+    const stream = renderToStream(
       () => (
         <html>
           <body>
             <div id="out" />
-            <Fill target="out" merge="append">
+            <Template target="out" merge="append">
               {() => many()}
-            </Fill>
+            </Template>
           </body>
         </html>
       ),
@@ -210,12 +211,12 @@ describe("edge cases — streaming", () => {
         () => (
           <html>
             <body>
-              <Defer>
+              <Template target="crash">
                 {() => {
                   throw new Error("crash");
                 }}
-              </Defer>
-              <Defer>{() => <span>ok</span>}</Defer>
+              </Template>
+              <Template target="ok">{() => <span>ok</span>}</Template>
             </body>
           </html>
         ),
@@ -224,25 +225,25 @@ describe("edge cases — streaming", () => {
       ),
     );
     const fragments = events.filter((e): e is FragmentEvent => e.type === "fragment");
-    expect(fragments.find((p) => p.id === "fragment-1")?.html).toContain("err-fallback");
-    expect(fragments.find((p) => p.id === "fragment-2")?.html).toContain("ok");
+    expect(fragments.find((p) => p.id === "crash")?.html).toContain("err-fallback");
+    expect(fragments.find((p) => p.id === "ok")?.html).toContain("ok");
   });
 
   it("stream throw mid-iteration → onError kind=stream", async () => {
     const errors: Array<{ kind: string }> = [];
     async function* g() {
-      yield <span>first</span> as ResolvedVNode;
+      yield (<span>first</span>) as ResolvedVNode;
       throw new Error("mid-crash");
     }
     await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <body>
               <div id="out" />
-              <Fill target="out" merge="append">
+              <Template target="out" merge="append">
                 {() => g()}
-              </Fill>
+              </Template>
             </body>
           </html>
         ),
@@ -250,7 +251,7 @@ describe("edge cases — streaming", () => {
         {
           onError(_err, info) {
             errors.push(info);
-            return <span>recovered</span> as ResolvedVNode;
+            return (<span>recovered</span>) as ResolvedVNode;
           },
         },
       ),

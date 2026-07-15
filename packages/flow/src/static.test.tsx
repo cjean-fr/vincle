@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 
 import { TurboAdapter, NativeAdapter, EsiAdapter } from "./adapters/index.js";
-import { renderToStatic, Defer } from "./index.js";
+import { renderToStatic, Template } from "./index.js";
 
 describe("renderToStatic", () => {
   it("works without options for pure-static rendering", async () => {
@@ -13,7 +13,7 @@ describe("renderToStatic", () => {
           </body>
         </html>
       ));
-      return { html, count: ctx.pendingStore.size };
+      return { html, count: ctx.templateStore.size };
     });
     expect(result.html).toContain("<p>hi</p>");
     expect(result.count).toBe(0);
@@ -27,20 +27,20 @@ describe("renderToStatic", () => {
         const html = await ctx.renderPage(() => (
           <html>
             <body>
-              <Defer>{() => <span>real</span>}</Defer>
+              <Template target="content">{() => <span>real</span>}</Template>
             </body>
           </html>
         ));
         return {
           html,
-          ids: ctx.pendingStore.pending(new Set()).map(([id]) => id),
+          ids: ctx.templateStore.outstanding(new Set()).map(([id]) => id),
         };
       },
       { adapter: TurboAdapter },
     );
-    expect(result.html).toContain('id="fragment-1"');
+    expect(result.html).toContain('id="content"');
     expect(result.html).not.toContain("turbo-stream");
-    expect(result.ids).toEqual(["fragment-1"]);
+    expect(result.ids).toEqual(["content"]);
   });
 
   it("applies adapter.transformShell — polyfill injected when fragments exist", async () => {
@@ -50,7 +50,7 @@ describe("renderToStatic", () => {
           <html>
             <head></head>
             <body>
-              <Defer>{() => <span>x</span>}</Defer>
+              <Template target="x">{() => <span>x</span>}</Template>
             </body>
           </html>
         )),
@@ -67,7 +67,7 @@ describe("renderToStatic", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Defer>{() => <span>real</span>}</Defer>
+                <Template target="content">{() => <span>real</span>}</Template>
               </body>
             </html>
           ));
@@ -76,8 +76,8 @@ describe("renderToStatic", () => {
         { adapter: TurboAdapter },
       );
       expect(written).toHaveLength(1);
-      expect(written[0]!.id).toBe("fragment-1");
-      expect(written[0]!.url).toBe("/fragments/fragment-1.html");
+      expect(written[0]!.id).toBe("content");
+      expect(written[0]!.url).toBe("/fragments/content.html");
       expect(written[0]!.html).toContain("<turbo-frame");
       expect(written[0]!.html).toContain("<span>real</span>");
     });
@@ -89,7 +89,7 @@ describe("renderToStatic", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Defer>{() => <span>real</span>}</Defer>
+                <Template target="content">{() => <span>real</span>}</Template>
               </body>
             </html>
           ));
@@ -97,21 +97,21 @@ describe("renderToStatic", () => {
         },
         { adapter: TurboAdapter, generatePath: (id) => `/f/${id}.html` },
       );
-      expect(urls).toEqual(["/f/fragment-1.html"]);
+      expect(urls).toEqual(["/f/content.html"]);
     });
 
-    it("throws a clear error when <Defer> is used without an adapter", async () => {
+    it("throws a clear error when <Template> is used without an adapter", async () => {
       const result = renderToStatic(async (ctx: any) => {
         await ctx.renderPage(() => (
           <html>
             <body>
-              <Defer>{() => <span>x</span>}</Defer>
+              <Template target="x">{() => <span>x</span>}</Template>
             </body>
           </html>
         ));
         await ctx.emitFragments(() => {});
       });
-      await expect(result).rejects.toThrow("Defer requires an adapter");
+      await expect(result).rejects.toThrow("Template requires an adapter");
     });
 
     it("wraps each fragment in adapter.Frame when adapter is configured", async () => {
@@ -121,7 +121,7 @@ describe("renderToStatic", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Defer>{() => <span>real</span>}</Defer>
+                <Template target="content">{() => <span>real</span>}</Template>
               </body>
             </html>
           ));
@@ -130,8 +130,8 @@ describe("renderToStatic", () => {
         { adapter: NativeAdapter },
       );
       expect(written).toHaveLength(1);
-      expect(written[0]!.id).toBe("fragment-1");
-      expect(written[0]!.html).toContain('<template for="fragment-1">');
+      expect(written[0]!.id).toBe("content");
+      expect(written[0]!.html).toContain('<template for="content">');
       expect(written[0]!.html).toContain("<span>real</span>");
     });
   });
@@ -143,7 +143,7 @@ describe("renderToStatic", () => {
         const page = await ctx.renderPage(() => (
           <html>
             <body>
-              <Defer>{() => <span>real</span>}</Defer>
+              <Template target="content">{() => <span>real</span>}</Template>
             </body>
           </html>
         ));
@@ -153,24 +153,24 @@ describe("renderToStatic", () => {
       { adapter: EsiAdapter, generatePath: (id) => `/esi/${id}.html` },
     );
     expect(files["index"]).toContain("esi:include");
-    expect(files["index"]).toContain('src="/esi/fragment-1.html"');
-    expect(files["/esi/fragment-1.html"]).toContain("<span>real</span>");
+    expect(files["index"]).toContain('src="/esi/content.html"');
+    expect(files["/esi/content.html"]).toContain("<span>real</span>");
   });
 
-  it("<Defer> with content uses NativeAdapter when explicitly passed", async () => {
+  it("<Template> with content uses NativeAdapter when explicitly passed", async () => {
     const html = await renderToStatic(
       async (ctx) =>
         ctx.renderPage(() => (
           <html>
             <head></head>
             <body>
-              <Defer>{() => <span>real</span>}</Defer>
+              <Template target="content">{() => <span>real</span>}</Template>
             </body>
           </html>
         )),
       { adapter: NativeAdapter },
     );
-    expect(html).toContain('<?start name="fragment-1">'); // Native placeholder marker
+    expect(html).toContain('<?start name="content">'); // Native placeholder marker
     expect(html).toContain("MutationObserver"); // polyfill injected — a fragment exists
   });
 });

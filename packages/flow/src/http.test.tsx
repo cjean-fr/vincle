@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 
 import { NativeAdapter, HtmxAdapter } from "./adapters/index.js";
 import { serve, negotiateHtmx } from "./http.js";
-import { Defer } from "./index.js";
+import { Template } from "./index.js";
 
 describe("HTTP negotiation (decoupled from the adapter)", () => {
   it("negotiateHtmx reads HX-Target and sets Vary", () => {
@@ -70,7 +70,7 @@ describe("HTTP negotiation (decoupled from the adapter)", () => {
           <head></head>
           <body>
             <p>hi</p>
-            <Defer>{() => <span>x</span>}</Defer>
+            <Template target="x">{() => <span>x</span>}</Template>
           </body>
         </html>
       ),

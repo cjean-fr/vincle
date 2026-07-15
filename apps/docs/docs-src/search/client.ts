@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function clearResults() {
     searchResults.replaceChildren();
-    searchResults.classList.add("hidden");
+    searchResults.classList.remove("active");
     searchStatus.classList.remove("hidden");
   }
 
@@ -119,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ),
     );
     searchResults.replaceChildren(...items);
-    searchResults.classList.remove("hidden");
+    searchResults.classList.add("active");
   }
 
   function selectNext() {
@@ -233,7 +233,7 @@ function search(docs: SearchDocument[], query: string): SearchHit[] {
   return docs
     .map((document) => ({ document, score: scoreDocument(document, terms) }))
     .filter((hit) => hit.score > 0)
-    .sort((a, b) => b.score - a.score || a.document.title.localeCompare(b.document.title));
+    .toSorted((a, b) => b.score - a.score || a.document.title.localeCompare(b.document.title));
 }
 
 function scoreDocument(document: SearchDocument, terms: string[]): number {
@@ -296,7 +296,7 @@ function snippet(text: string, query: string, radius = 50): string {
   const match = terms
     .map((term) => ({ term, idx: lower.indexOf(term.toLowerCase()) }))
     .filter((candidate) => candidate.idx >= 0)
-    .sort((a, b) => a.idx - b.idx)[0];
+    .toSorted((a, b) => a.idx - b.idx)[0];
 
   if (!match) {
     return escapeHtml(text.slice(0, 120)) + (text.length > 120 ? "..." : "");

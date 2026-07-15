@@ -11,7 +11,7 @@ export type Adapter = {
   /**
    * Post-process the shell before it enters the stream. Receives the active
    * `FlowContext`, so an adapter can decide based on the real flow state — e.g.
-   * inject a client runtime only when `ctx.pendingStore.size > 0` (fragments
+   * inject a client runtime only when `ctx.templateStore.size > 0` (fragments
    * exist). Always called inside the flow scope, after the shell node renders.
    */
   transformShell?(shell: string, ctx: FlowContext): string;

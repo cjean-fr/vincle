@@ -188,8 +188,7 @@ describe("ReDoS static analysis", () => {
   for (const re of ALL_REGEXES) {
     it(`${re.id}: ${re.file} ${re.name} is structurally safe`, () => {
       const risks = analyze(re.pattern);
-      const rx = new RegExp(re.pattern, re.flags);
-      expect(rx).toBeDefined();
+      new RegExp(re.pattern, re.flags); // throws if invalid
 
       if (risks.length > 0) {
         const msg = risks.map((r) => r.type).join("; ");

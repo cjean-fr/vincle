@@ -1,4 +1,4 @@
-import { Slot, Fill, renderStream } from "@vincle/flow";
+import { Slot, Template, renderToStream } from "@vincle/flow";
 import { NativeAdapter } from "@vincle/flow/adapters";
 import http from "node:http";
 
@@ -24,7 +24,7 @@ function Page() {
         <Slot name="comments">
           <p>Loading comments…</p>
         </Slot>
-        <Fill target="comments">{() => <Comments />}</Fill>
+        <Template target="comments">{() => <Comments />}</Template>
       </body>
     </html>
   );
@@ -32,7 +32,7 @@ function Page() {
 
 http
   .createServer(async (_req, res) => {
-    const stream = renderStream(() => <Page />, NativeAdapter);
+    const stream = renderToStream(() => <Page />, NativeAdapter);
 
     // Shell flushes first; deferred fragments follow as they resolve.
     res.writeHead(200, {

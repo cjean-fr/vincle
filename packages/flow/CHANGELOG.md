@@ -5,7 +5,7 @@
 ### Public API simplification
 
 - **Reduced main export surface.** `@vincle/flow` now exports only the core primitives:
-  `Slot`, `Fill`, `Defer`, `ClientFetch`, `renderStream`, `renderToStatic`.
+  `Slot`, `Fill`, `Defer`, `ClientFetch`, `renderToStream`, `renderToStatic`.
   Everything else — adapters, components, HTTP helpers, utils, types — lives
   under deep import paths:
   - `@vincle/flow/adapters` — `NativeAdapter`, `TurboAdapter`, `HtmxAdapter`,

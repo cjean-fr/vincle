@@ -5,7 +5,7 @@ import { writeFile } from "node:fs/promises";
 
 declare const pages: { Component: () => JSX.Element; out: string }[];
 
-// Pure-static: no <Defer>, no adapter needed.
+// Pure-static: no lazy <Template>, no adapter needed.
 await renderToStatic(async (ctx) => {
   await Promise.all(
     pages.map(async (page) => {

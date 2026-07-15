@@ -27,7 +27,7 @@ function Tabs({ tabs, syncKey }: { tabs: Tab[]; syncKey?: string }) {
         ))}
       </div>
       {tabs.map((tab, i) => (
-        <div data-docs-tab-panel class="docs-tabs-panel" hidden={i !== 0 ? true : undefined}>
+        <div data-docs-tab-panel class={`docs-tab-panel${i === 0 ? " active" : ""}`}>
           {tab.content}
         </div>
       ))}

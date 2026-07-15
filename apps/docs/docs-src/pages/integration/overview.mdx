@@ -12,7 +12,7 @@ sidebar:
 Traditional SSR holds the entire response until every `await` resolves — the
 slowest query sets your time-to-first-byte. Integration breaks that coupling.
 
-You mark slow subtrees with `<Defer>` / `<Fill>`. The page shell ships
+You mark slow subtrees with `<Template>`. The page shell ships
 immediately. Fragments arrive later, each as soon as it resolves. No JavaScript
 framework. No hydration. Just HTML in chunks.
 
@@ -104,7 +104,7 @@ framework. No hydration. Just HTML in chunks.
         <strong class="text-gray-900 dark:text-white">same HTTP response</strong> after the shell.
         One connection, progressive delivery.
       </p>
-      <p class="font-mono text-xs text-gray-500 dark:text-gray-500">renderStream()</p>
+      <p class="font-mono text-xs text-gray-500 dark:text-gray-500">renderToStream()</p>
     </div>
   </div>
   <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">

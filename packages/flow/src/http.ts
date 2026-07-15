@@ -2,7 +2,7 @@ import type { VNode } from "@vincle/core";
 
 import type { FlowOptions, Negotiate, Negotiation, StreamingAdapter } from "./types.js";
 
-import { renderStream } from "./render.js";
+import { renderToStream } from "./render.js";
 
 export type { Negotiate, Negotiation } from "./types.js";
 
@@ -54,7 +54,7 @@ function buildResponse(body: ReadableStream<Uint8Array> | string, init?: Respons
  * `negotiateHtmx`, or your own) to extract per-request hints and headers.
  * Without it, the full page is rendered — the client library extracts its own
  * target. `mode: "fragment"` (shell suppressed) is an explicit opt-in; it only
- * produces output when the targeted content is expressed as `<Defer>` fragments.
+ * produces output when the targeted content is expressed as `<Template>` fragments.
  */
 export async function serve(
   req: Request,
@@ -67,7 +67,7 @@ export async function serve(
     },
 ): Promise<Response> {
   const n = opts?.negotiate?.(req) ?? {};
-  const body = renderStream(() => page(n), adapter, {
+  const body = renderToStream(() => page(n), adapter, {
     ...opts,
     mode: opts?.mode ?? n.mode,
   }).pipeThrough(new TextEncoderStream());

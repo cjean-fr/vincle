@@ -97,7 +97,7 @@ export async function resolveSidebar(
 }
 
 function tabForUrl(tabs: readonly TabConfig[], url: string): TabConfig {
-  const top = url.split("/").filter(Boolean)[0] ?? "";
+  const top = url.split("/").find(Boolean) ?? "";
   return tabs.find((t) => t.slug === top) ?? tabs.find((t) => t.slug === "guide") ?? tabs[0]!;
 }
 
@@ -127,57 +127,61 @@ async function treeToItems(node: TreeNode, currentUrl: string): Promise<Resolved
   const meta = await readDirMeta(node.dir);
   const entries = [...node.children.values()];
 
-  const items: ResolvedSidebarItem[] = [];
   // First, sort by _meta order (ascending), then by label, then by slug.
   const ordered = sortEntries(entries, meta);
 
-  for (const child of ordered) {
-    const entry = meta[child.name] ?? {};
-    if (entry.hidden) continue;
+  const results = await Promise.all(
+    ordered.map(async (child): Promise<ResolvedSidebarItem | null> => {
+      const entry = meta[child.name] ?? {};
+      if (entry.hidden) return null;
 
-    const hasChildren = child.children.size > 0;
-    const label = entry.label ?? entry.title;
+      const hasChildren = child.children.size > 0;
+      const label = entry.label ?? entry.title;
 
-    if (!hasChildren && child.page) {
-      // Leaf page.
-      items.push({
-        kind: "page",
-        label: label ?? child.page.meta.title,
-        href: child.page.url,
-        current: child.page.url === currentUrl,
-      });
-    } else if (hasChildren) {
-      // Category (directory). It may also carry an index page.
-      const childItems = await treeToItems(child, currentUrl);
-      const expanded = childItems.some(
-        (i) => (i.kind === "page" && i.current) || (i.kind === "category" && i.expanded),
-      );
-      const categoryLabel = label ?? child.page?.meta.title ?? titleCase(child.name);
-      items.push({
-        kind: "category",
-        label: categoryLabel,
-        collapsed: entry.collapsed === true && !expanded,
-        expanded,
-        items: childItems,
-      });
-      // If the directory also has its own index page, it is reachable via the
-      // category heading link (first descendant page). Rendered below only
-      // when there is no index page collision — the index becomes the heading.
-    } else if (child.page) {
-      // Directory's own index page with no further children.
-      items.push({
-        kind: "page",
-        label: label ?? child.page.meta.title,
-        href: child.page.url,
-        current: child.page.url === currentUrl,
-      });
-    }
-  }
-  return items;
+      if (!hasChildren && child.page) {
+        // Leaf page.
+        return {
+          kind: "page",
+          label: label ?? child.page.meta.title,
+          href: child.page.url,
+          current: child.page.url === currentUrl,
+        };
+      }
+
+      if (hasChildren) {
+        // Category (directory). It may also carry an index page.
+        const childItems = await treeToItems(child, currentUrl);
+        const expanded = childItems.some(
+          (i) => (i.kind === "page" && i.current) || (i.kind === "category" && i.expanded),
+        );
+        return {
+          kind: "category",
+          label: label ?? child.page?.meta.title ?? titleCase(child.name),
+          collapsed: entry.collapsed === true && !expanded,
+          expanded,
+          items: childItems,
+        };
+      }
+
+      if (child.page) {
+        // Directory's own index page with no further children.
+        return {
+          kind: "page",
+          label: label ?? child.page.meta.title,
+          href: child.page.url,
+          current: child.page.url === currentUrl,
+        };
+      }
+
+      return null;
+    }),
+  );
+
+  return results.filter((r): r is ResolvedSidebarItem => r !== null);
 }
 
 function sortEntries(entries: TreeNode[], meta: DirMeta): TreeNode[] {
-  return [...entries].sort((a, b) => {
+  return entries.toSorted((a, b) => {
     const ma = meta[a.name] ?? {};
     const mb = meta[b.name] ?? {};
     const oa = ma.order ?? Number.POSITIVE_INFINITY;

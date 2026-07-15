@@ -1,8 +1,8 @@
-import { useContext, type JSX } from "@vincle/core";
+import { useContext, type JSX, type VNode } from "@vincle/core";
 
 import { Flow } from "../context.js";
 
-// ClientFetch fetches an HTML fragment, so its `src` is a strict whitelist:
+// Include fetches an HTML fragment, so its `src` is a strict whitelist:
 // http(s) or a relative path only.
 type SchemeOf<S extends string> = S extends `${infer Head}:${string}`
   ? Head extends `${string}${"/" | "?" | "#"}${string}`
@@ -18,11 +18,12 @@ type FetchUrl<S extends string> =
     : Lowercase<SchemeOf<S> & string> extends "http" | "https"
       ? S
       : {
-          __error: "ClientFetch needs an HTML URL — only http(s): or a relative path";
+          __error: "Include needs an HTML URL — only http(s): or a relative path";
         };
 
-export interface ClientFetchProps<S extends string = string> {
+export interface IncludeProps<S extends string = string> {
   src: S & FetchUrl<S>;
+  fallback?: VNode;
 }
 
 function isAllowedUrl(url: string): boolean {
@@ -38,21 +39,19 @@ function isAllowedUrl(url: string): boolean {
   return scheme === "http" || scheme === "https";
 }
 
-export function ClientFetch<const S extends string>(
-  props: ClientFetchProps<S>,
-): JSX.Element | null {
+export function Include<const S extends string>(props: IncludeProps<S>): JSX.Element | null {
   const { config, nextId } = useContext(Flow);
   const id = nextId();
 
-  if (!config.adapter) throw new Error("ClientFetch requires an adapter.");
+  if (!config.adapter) throw new Error("Include requires an adapter.");
   if (!isAllowedUrl(props.src))
     throw new Error(
-      `ClientFetch: "${props.src}" has a forbidden scheme — only http(s): or relative paths are allowed`,
+      `Include: "${props.src}" has a forbidden scheme — only http(s): or relative paths are allowed`,
     );
 
   return config.adapter.Placeholder({
     id,
     src: props.src,
-    children: null,
+    children: props.fallback ?? null,
   }) as JSX.Element | null;
 }

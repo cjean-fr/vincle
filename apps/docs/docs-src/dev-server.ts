@@ -116,8 +116,8 @@ const mimeTypes: Record<string, string> = {
   ".woff2": "font/woff2",
 };
 
-function cleanup(watcher: ReturnType<typeof watch>): void {
-  watcher.close();
+function cleanup(w: ReturnType<typeof watch>): void {
+  w.close();
 }
 
 async function main(): Promise<void> {

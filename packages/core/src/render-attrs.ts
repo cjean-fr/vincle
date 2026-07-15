@@ -96,7 +96,13 @@ function computeAttrMeta(name: string): AttrMeta | null {
   const lcName = attrName.toLowerCase();
   const urlKind: 0 | 1 | 2 =
     lcName === "srcset" ? URL_SRCSET : URL_ATTRIBUTES.has(lcName) ? URL_ATTR : URL_NONE;
-  return { name: attrName, isEvent, isStyle: false, isBoolean: BOOLEAN_ATTRIBUTES.has(lcName), urlKind };
+  return {
+    name: attrName,
+    isEvent,
+    isStyle: false,
+    isBoolean: BOOLEAN_ATTRIBUTES.has(lcName),
+    urlKind,
+  };
 }
 
 function getAttrMeta(name: string): AttrMeta | null {
@@ -182,7 +188,8 @@ export function renderAttrs(props: Record<string, unknown> | null | undefined): 
   let pending: Promise<string>[] | null = null;
 
   for (const key in props) {
-    if (key === "children" || key === "dangerouslySetInnerHTML" || key === "key" || key === "ref") continue;
+    if (key === "children" || key === "dangerouslySetInnerHTML" || key === "key" || key === "ref")
+      continue;
     const meta = getAttrMeta(key);
     if (meta === null) continue;
     // When both a React-style name (className) and its HTML-native counterpart

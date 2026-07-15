@@ -5,7 +5,7 @@ import type { FlowContext } from "./context.js";
 
 import { resolveAssets } from "./assets.js";
 import { Flow, withFlow, initFlowAssets } from "./context.js";
-import { streamFlow } from "./streamFlow.js";
+import { flushTemplates } from "./flushTemplates.js";
 
 const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
 
@@ -26,7 +26,7 @@ export interface PureStaticContext extends FlowContext {
  */
 export interface StaticContext extends PureStaticContext {
   /**
-   * Materialize every pending fragment as a standalone file. Each fragment is
+   * Materialize every pending template as a standalone file. Each is
    * wrapped with `adapter.Frame` and rendered, so `html` is ready to write as
    * is; `url` is the path from `generatePath(id)`.
    */
@@ -41,17 +41,9 @@ export interface StaticOptions {
 }
 
 /**
- * Static generation for pure-static sites (no `<Defer>` content).
+ * Static generation for pure-static sites (no lazy `<Template>` content).
  * Call without options — the handler receives a `PureStaticContext`
  * without `emitFragments`.
- *
- * @example
- * await renderToStatic(async (ctx) => {
- *   for (const page of pages) {
- *     const html = await ctx.renderPage(() => page.component({ ... }));
- *     await Bun.write(page.outPath, "<!DOCTYPE html>\n" + html);
- *   }
- * });
  */
 export async function renderToStatic<T>(handler: (ctx: PureStaticContext) => T): Promise<T>;
 
@@ -59,15 +51,6 @@ export async function renderToStatic<T>(handler: (ctx: PureStaticContext) => T):
  * Static generation with deferred fragments.
  * Pass `{ adapter }` — the handler receives a `StaticContext` with
  * `emitFragments` to materialize fragment files.
- *
- * @example
- * await renderToStatic(async (ctx) => {
- *   for (const page of pages) {
- *     const html = await ctx.renderPage(() => page.component({ ... }));
- *     await Bun.write(page.outPath, "<!DOCTYPE html>\n" + html);
- *   }
- *   await ctx.emitFragments((id, url, html) => Bun.write("./out" + url, html));
- * }, { adapter: NativeAdapter });
  */
 export async function renderToStatic<T>(
   handler: (ctx: StaticContext) => T,
@@ -85,10 +68,6 @@ export async function renderToStatic<T>(
     async (ctx) => {
       const staticCtx: StaticContext = {
         ...ctx,
-        // Each page renders in a child scope with a fresh asset state: dedup
-        // of <Style>/<Script> is per page, never across the pages of a build.
-        // The seed keeps the parent Flow context visible, so <Defer>/<Fill>
-        // still register into the shared pendingStore.
         renderPage: (node) =>
           withScope(async () => {
             initFlowAssets();
@@ -105,10 +84,8 @@ export async function renderToStatic<T>(
                 "Example: renderToStatic(handler, { adapter: NativeAdapter })",
             );
           }
-          await streamFlow(ctx, async (ev) => {
+          await flushTemplates(ctx, async (ev) => {
             if (ev.type === "fragment") {
-              // A materialized fragment file is fetched into pages the server
-              // knows nothing about: dedup its assets within the file only.
               const resolved = await resolveAssets(ev.html, { isolate: true });
               const framed = await renderToString(
                 adapter.Frame({ id: ev.id, children: raw(resolved) }),

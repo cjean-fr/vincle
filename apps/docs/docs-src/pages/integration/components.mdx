@@ -12,16 +12,14 @@ deferred content:
 
 - **`<Slot>`** — a named hole with fallback content rendered immediately in the
   shell
-- **`<Fill>`** — pushes deferred content into a slot, overriding its fallback
-- **`<Defer>`** — a deferred region with a placeholder and fallback in one
-  component
-- **`<ClientFetch>`** — client-side fetch placeholder.
+- **`<Template>`** — pushes content into a slot, sync or lazy (was `Fill`/`Defer`)
+- **`<Include>`** — client-side fetch placeholder (was `ClientFetch`)
 
 ## `<Slot>` — named insertion point
 
 Declares a named hole in the shell. Its `children` are rendered **immediately**
-as placeholder content — visible until a `<Fill>` replaces them. An empty slot
-renders an empty placeholder.
+as placeholder content — visible until a `<Template>` replaces them. An empty
+slot renders an empty placeholder.
 
 ```tsx
 import { Slot } from "@vincle/flow";
@@ -37,22 +35,49 @@ A `Slot` registers nothing in the pending store — it is purely a passive hole.
 `name` is **required** and must be a valid fragment id
 (`/^[a-zA-Z][a-zA-Z0-9_-]*$/`).
 
-## `<Fill>` — push content
+## `<Template>` — fill a slot (sync or lazy)
 
-Pushes deferred content into an existing slot by name. Renders nothing itself
-(returns `null`).
+Pushes content into an existing slot by name. **Unified** — one component for
+both synchronous (was `Fill`) and deferred (was `Defer`) content. The behaviour
+depends on `children`:
+
+| `children` type | `fallback` | Behaviour                                  |
+| --------------- | ---------- | ------------------------------------------ |
+| Plain JSX       | —          | Registers content, no placeholder rendered |
+| Plain JSX       | provided   | Dev warning: `fallback` ignored for sync   |
+| `(signal) => …` | —          | Lazy content, no placeholder               |
+| `(signal) => …` | provided   | Lazy content with placeholder + fallback   |
+
+### Sync — push content, no placeholder
 
 `children` is deferred automatically — plain JSX works:
 
 ```tsx
-<Fill target="page">
+<Template target="page">
   <h1>Hello</h1>
-</Fill>
+</Template>
+```
+
+### Lazy — with placeholder (was `Defer`)
+
+Declares a deferred region with a placeholder in the shell. The `fallback` prop
+defines the content shown immediately:
+
+```tsx
+import { Template } from "@vincle/flow";
+
+<Template target="dashboard" fallback={<p>Loading dashboard…</p>}>
+  <HeavyDashboard />
+</Template>;
 ```
 
 Pass a factory when you need the `AbortSignal` for cancellation:
 
-<CodeExample src="flow/fill.tsx" />
+```tsx
+<Template target="dashboard" fallback={<p>Loading dashboard…</p>}>
+  {(signal) => <HeavyDashboard signal={signal} />}
+</Template>
+```
 
 ### Merge types
 
@@ -69,33 +94,7 @@ Pass a factory when you need the `AbortSignal` for cancellation:
 Not every adapter supports all merge types — an unsupported merge is rejected
 at registration with a clear error.
 
-## `<Defer>` — deferred region with placeholder
-
-Declares a deferred region with a placeholder in the shell. The `fallback` prop
-defines the content shown immediately. `children` is deferred automatically —
-plain JSX works without a thunk:
-
-```tsx
-import { Defer } from "@vincle/flow";
-
-<Defer name="dashboard" fallback={<p>Loading dashboard…</p>}>
-  <HeavyDashboard />
-</Defer>;
-```
-
-Pass a factory when you need the `AbortSignal` for cancellation:
-
-```tsx
-<Defer name="dashboard" fallback={<p>Loading dashboard…</p>}>
-  {(signal) => <HeavyDashboard signal={signal} />}
-</Defer>
-```
-
-`<Defer>` is equivalent to a `<Slot>` + `<Fill>` pair, but in a single
-declaration. It is useful when a component needs its own placeholder without
-relying on an external layout slot.
-
-## `<ClientFetch>` — client-side fetch
+## `<Include>` — client-side fetch
 
 Browser fetches the fragment from a URL after the shell lands. No server-push
 required — works with any static file server.
@@ -104,7 +103,7 @@ required — works with any static file server.
 
 ## Content forms
 
-Both `<Fill>` and `<Defer>` accept children in either form:
+`Template` accepts children in either form:
 
 | Children                     | Behaviour                                                          |
 | ---------------------------- | ------------------------------------------------------------------ |
@@ -153,12 +152,12 @@ factory — you never need to call `.then()` or `for await` yourself.
 
 ## Common props
 
-| Prop       | Applies to      | Meaning                                                   |
-| ---------- | --------------- | --------------------------------------------------------- |
-| `name`     | `Slot`          | id of the placeholder (required)                          |
-| `name`     | `Defer`         | id of the placeholder (auto-generated if omitted)         |
-| `target`   | `Fill`          | target slot id to push content into                       |
-| `fallback` | `Defer`         | placeholder content shown in the shell                    |
-| `merge`    | `Defer`, `Fill` | how content applies to its target (default `"replace"`)   |
-| `timeout`  | `Defer`, `Fill` | per-fragment render timeout in ms                         |
-| `onError`  | `Defer`, `Fill` | per-fragment error handler, overriding the renderer's one |
+| Prop       | Applies to | Meaning                                                   |
+| ---------- | ---------- | --------------------------------------------------------- |
+| `name`     | `Slot`     | id of the placeholder (required)                          |
+| `target`   | `Template` | target slot id to push content into                       |
+| `fallback` | `Template` | placeholder content shown in the shell (lazy only)        |
+| `merge`    | `Template` | how content applies to its target (default `"replace"`)   |
+| `timeout`  | `Template` | per-fragment render timeout in ms                         |
+| `onError`  | `Template` | per-fragment error handler, overriding the renderer's one |
+| `src`      | `Include`  | URL the browser fetches for the fragment content          |

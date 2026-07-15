@@ -9,10 +9,7 @@ export async function discoverPages(config: ResolvedDocsConfig): Promise<Page[]>
   const handlers = config.handlers;
   const extensions = Object.keys(handlers);
   const found = await walk(pagesDir, extensions);
-  const pages: Page[] = [];
-  for (const file of found) {
-    pages.push(await loadFile(file, pagesDir, config, handlers));
-  }
+  const pages = await Promise.all(found.map((file) => loadFile(file, pagesDir, config, handlers)));
   pages.sort((a, b) => a.url.localeCompare(b.url));
   return pages;
 }
@@ -47,17 +44,20 @@ export function findPageFile(config: ResolvedDocsConfig, url: string): string | 
 }
 
 async function walk(dir: string, extensions: string[]): Promise<string[]> {
-  const out: string[] = [];
-  if (!existsSync(dir)) return out;
+  if (!existsSync(dir)) return [];
   const entries = await readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === ".compiled") continue;
-      out.push(...(await walk(fullPath, extensions)));
-    } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(ext))) {
-      out.push(fullPath);
-    }
-  }
-  return out;
+  const results = await Promise.all(
+    entries.map(async (entry) => {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === ".compiled") return [];
+        return walk(fullPath, extensions);
+      }
+      if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(ext))) {
+        return [fullPath];
+      }
+      return [];
+    }),
+  );
+  return results.flat();
 }

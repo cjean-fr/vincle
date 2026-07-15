@@ -383,6 +383,18 @@ html {
   padding-block: 1rem;
 }
 
+/* === Nav toggle press === */
+.docs-nav-toggle {
+  transition:
+    transform var(--docs-transition-fast),
+    color var(--docs-transition-fast),
+    background-color var(--docs-transition-fast);
+}
+
+.docs-nav-toggle:active {
+  transform: scale(0.95);
+}
+
 /* === Feature cards === */
 .docs-feature-card {
   transition:
@@ -506,6 +518,14 @@ html {
   color: var(--docs-color-accent);
 }
 
+.docs-tab-panel {
+  transition: opacity 150ms var(--ease-out);
+}
+.docs-tab-panel:not(.active) {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* === Table of contents === */
 .docs-toc-track {
   position: relative;
@@ -519,7 +539,7 @@ html {
   background: var(--docs-color-accent);
   border-radius: 1px;
   pointer-events: none;
-  transition: top var(--docs-transition-normal);
+  transition: top 200ms var(--ease-in-out);
   z-index: 1;
 }
 
@@ -557,14 +577,14 @@ html {
   grid-area: 1 / 1;
   pointer-events: none;
   transition:
-    opacity var(--docs-transition-slow),
-    scale var(--docs-transition-slow),
-    rotate var(--docs-transition-slow);
+    opacity 200ms var(--ease-in-out),
+    scale 200ms var(--ease-in-out),
+    rotate 200ms var(--ease-in-out);
 }
 
 .docs-theme-toggle-sun {
   opacity: 0;
-  scale: 0.5;
+  scale: 0.75;
   rotate: 90deg;
 }
 
@@ -580,8 +600,16 @@ html {
 
 .dark .docs-theme-toggle-moon {
   opacity: 0;
-  scale: 0.5;
+  scale: 0.75;
   rotate: -90deg;
+}
+
+.docs-search-results {
+  opacity: 0;
+  transition: opacity 100ms var(--ease-out);
+}
+.docs-search-results.active {
+  opacity: 1;
 }
 
 /* === Search dialog: morph from trigger (open) / fade back (close) === */

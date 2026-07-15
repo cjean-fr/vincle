@@ -94,7 +94,7 @@ in your source passes any linter but is a real vulnerability:
 ```
 
 The same URL-scheme blocking, unsafe-CSS dropping, and name remapping that
-the runtime applies to *dynamic* values also applies to static ones —
+the runtime applies to _dynamic_ values also applies to static ones —
 but resolved before the browser runs a single byte.
 
 ### How it works
@@ -116,13 +116,13 @@ export default defineConfig({
 
 ### What is caught?
 
-| Attack surface              | Example                                          | Secure mode output       |
-| --------------------------- | ------------------------------------------------ | ------------------------ |
-| `javascript:` URLs          | `<a href="javascript:alert(1)">x</a>`            | `<a href="#blocked">x`   |
-| `vbscript:` URLs            | `<a href="vbscript:msgbox">x</a>`                | `<a href="#blocked">x`   |
-| Unsafe `data:` URLs         | `<iframe src="data:text/html,<script>…">`        | `<iframe src="#blocked">` |
-| `on*` event handlers        | `<button onclick="alert(1)">x</button>`           | `<button>x</button>`     |
-| React names in output       | `<div className="box">x</div>`                   | `<div class="box">x`     |
+| Attack surface        | Example                                   | Secure mode output        |
+| --------------------- | ----------------------------------------- | ------------------------- |
+| `javascript:` URLs    | `<a href="javascript:alert(1)">x</a>`     | `<a href="#blocked">x`    |
+| `vbscript:` URLs      | `<a href="vbscript:msgbox">x</a>`         | `<a href="#blocked">x`    |
+| Unsafe `data:` URLs   | `<iframe src="data:text/html,<script>…">` | `<iframe src="#blocked">` |
+| `on*` event handlers  | `<button onclick="alert(1)">x</button>`   | `<button>x</button>`      |
+| React names in output | `<div className="box">x</div>`            | `<div class="box">x`      |
 
 ### Opting out: Deno-precompile-compatible mode
 

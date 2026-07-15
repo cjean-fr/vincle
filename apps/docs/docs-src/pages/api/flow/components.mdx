@@ -11,7 +11,7 @@ Components for deferring content in the HTML shell. Imported from `@vincle/flow`
 
 ## Slot
 
-Declares a named insertion point in the shell. Its children render immediately as placeholder content, visible until a `Fill` replaces them.
+Declares a named insertion point in the shell. Its children render immediately as placeholder content, visible until a `Template` replaces them.
 
 <CodeExample src="flow/fill-signal.tsx" />
 
@@ -22,40 +22,27 @@ Declares a named insertion point in the shell. Its children render immediately a
 | `name`     | `string` | —       | Fragment id, required. Must match `/^[a-zA-Z][a-zA-Z0-9_-]*$/` |
 | `children` | `VNode`  | —       | Fallback content rendered immediately in the shell             |
 
-## Fill
+## Template
 
-Pushes deferred content into an existing slot by name. Renders nothing itself.
+Pushes content into a target slot by name. Unified — handles both sync and lazy content:
 
-<CodeExample src="flow/fill.tsx" />
-
-**Props:**
-
-| Prop       | Type                                                        | Default     | Description                               |
-| ---------- | ----------------------------------------------------------- | ----------- | ----------------------------------------- |
-| `target`   | `string`                                                    | —           | Target slot id to push content into       |
-| `children` | `VNode \| ((signal: AbortSignal) => VNode)`                 | —           | Deferred content (plain JSX or factory)   |
-| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target element |
-| `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms         |
-| `onError`  | `(error: Error) => VNode`                                   | —           | Per-fragment error handler                |
-
-## Defer
-
-Declares a deferred region with a placeholder and content in one component. Equivalent to a `Slot` + `Fill` pair.
+- **Sync** (plain JSX `children`) → registers content, no placeholder (was `Fill`)
+- **Lazy** (factory `children`) → deferred, with optional `fallback` placeholder (was `Defer`)
 
 <CodeExample src="flow/defer-signal.tsx" />
 
 **Props:**
 
-| Prop       | Type                                                        | Default        | Description                             |
-| ---------- | ----------------------------------------------------------- | -------------- | --------------------------------------- |
-| `name`     | `string`                                                    | auto-generated | Fragment id                             |
-| `fallback` | `VNode`                                                     | —              | Placeholder content shown in the shell  |
-| `children` | `VNode \| ((signal: AbortSignal) => VNode)`                 | —              | Deferred content (plain JSX or factory) |
-| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"`    | How content applies to the target       |
-| `timeout`  | `number`                                                    | —              | Per-fragment render timeout in ms       |
-| `onError`  | `(error: Error) => VNode`                                   | —              | Per-fragment error handler              |
+| Prop       | Type                                                        | Default     | Description                            |
+| ---------- | ----------------------------------------------------------- | ----------- | -------------------------------------- |
+| `target`   | `string`                                                    | —           | Target slot id to push content into    |
+| `fallback` | `VNode`                                                     | —           | Placeholder shown while rendering lazy |
+| `children` | `VNode \| ((signal: AbortSignal) => VNode)`                 | —           | Content (plain JSX or factory)         |
+| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target      |
+| `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms      |
+| `onError`  | `(error: Error) => VNode`                                   | —           | Per-fragment error handler             |
 
-## ClientFetch
+## Include
 
 Browser fetches a fragment from a URL after the shell lands. No server-push required — works with any static file server.
 
@@ -63,13 +50,14 @@ Browser fetches a fragment from a URL after the shell lands. No server-push requ
 
 **Props:**
 
-| Prop  | Type     | Default | Description                            |
-| ----- | -------- | ------- | -------------------------------------- |
-| `src` | `string` | —       | URL of the fragment HTML file to fetch |
+| Prop       | Type     | Default | Description                            |
+| ---------- | -------- | ------- | -------------------------------------- |
+| `src`      | `string` | —       | URL of the fragment HTML file to fetch |
+| `fallback` | `VNode`  | —       | Placeholder shown while fetching       |
 
 ## Content forms
 
-Both `Fill` and `Defer` accept children in either form:
+`Template` accepts children in either form:
 
 | Children                     | Behaviour                                                          |
 | ---------------------------- | ------------------------------------------------------------------ |

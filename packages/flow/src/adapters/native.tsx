@@ -36,7 +36,7 @@ export const WebPlatformAdapter = createAdapter({
 /**
  * Decorate any adapter with the ~550 B inline polyfill for the WICG
  * Declarative Partial Updates API. The polyfill is injected into `<head>`
- * only when fragments are present (`ctx.pendingStore.size > 0`).
+ * only when fragments are present (`ctx.templateStore.size > 0`).
  *
  * Useful when you want to use `WebPlatformAdapter` in browsers that do
  * not yet support `<template for>` natively.
@@ -46,7 +46,7 @@ export function withPolyfill<T extends Adapter>(adapter: T): T {
     ...adapter,
     transformShell: (shell, ctx) => {
       const transformed = adapter.transformShell ? adapter.transformShell(shell, ctx) : shell;
-      if (ctx.pendingStore.size === 0) return transformed;
+      if (ctx.templateStore.size === 0) return transformed;
       return injectIntoHead(transformed, POLYFILL_SCRIPT);
     },
   } as T;

@@ -5,8 +5,8 @@ import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
 
 import { resolveAssets } from "./assets.js";
 import { withFlow, type FlowContext } from "./context.js";
-import { createFlowStream } from "./create-flow-stream.js";
-import { streamFlow } from "./streamFlow.js";
+import { createStream } from "./create-stream.js";
+import { flushTemplates } from "./flushTemplates.js";
 
 const REGEX_SHELL_CLOSE = /((?:<\/body>)?\s*<\/html>\s*)$/;
 
@@ -18,11 +18,6 @@ const REGEX_SHELL_CLOSE = /((?:<\/body>)?\s*<\/html>\s*)$/;
  *
  * @returns The transformed shell body (minus closing tags) and the raw closing
  *   tag, so callers can emit them as separate `shell` / `close` events.
- *
- * @example
- * const { shellBody, closingTag } = await renderShell(() => <App />, adapter);
- * // shellBody: "<html><body><p>hi</p>"
- * // closingTag: "\n</body>\n</html>"
  */
 export async function renderShell(
   node: () => VNode,
@@ -43,13 +38,10 @@ export async function renderShell(
 }
 
 /**
- * Run the full streaming sequence: emit shell → drain fragments → emit close.
+ * Run the full streaming sequence: emit shell → drain templates → emit close.
  * Skips shell/close when `opts.mode === "fragment"`.
- *
- * Encapsulates the three‑step orchestration so `renderToFlowEvents` focuses on
- * stream lifecycle.
  */
-export async function orchestrateFlow(
+export async function runSequence(
   emit: (ev: FlowEvent) => Promise<void>,
   signal: AbortSignal,
   node: () => VNode,
@@ -58,27 +50,23 @@ export async function orchestrateFlow(
 ): Promise<void> {
   await withFlow(
     async (ctx) => {
-      const { pendingStore } = ctx;
+      const { templateStore } = ctx;
       try {
         if (signal.aborted) return;
         const { shellBody, closingTag } = await renderShell(node, adapter, ctx);
         if (opts.mode !== "fragment") {
           await emit({ type: "shell", html: shellBody });
         }
-        // Fragments render after the shell went out: resolve their asset
-        // markers against the same request state, so a name the shell (or an
-        // earlier fragment) already emitted vanishes and a new one lands
-        // inline with the first fragment that declares it.
         const emitResolved = async (ev: FlowEvent) =>
           emit(
             ev.type === "fragment" ? { ...ev, html: await resolveAssets(ev.html, ctx.assets) } : ev,
           );
-        await streamFlow({ pendingStore }, emitResolved, { ...opts, signal });
+        await flushTemplates({ templateStore }, emitResolved, { ...opts, signal });
         if (opts.mode !== "fragment" && closingTag) {
           await emit({ type: "close", html: closingTag });
         }
       } finally {
-        pendingStore.clear();
+        templateStore.clear();
       }
     },
     { adapter, mode: "streaming" },
@@ -87,33 +75,22 @@ export async function orchestrateFlow(
 
 /**
  * Return a `ReadableStream<FlowEvent>` with proper backpressure and cancellation.
- *
- * - `pull()` is called by the consumer; `emit()` waits when `desiredSize <= 0`.
- * - `cancel(reason)` and `opts.signal` both feed one combined `AbortSignal`
- *   (pre-aborted signals included), which stops fragment rendering, generator
- *   iteration, and releases any producer parked on backpressure.
  */
 export function renderToFlowEvents(
   node: () => VNode,
   adapter: StreamingAdapter,
   opts: FlowOptions & { mode?: "full" | "fragment" } = {},
 ): ReadableStream<FlowEvent> {
-  return createFlowStream((emit, signal) => orchestrateFlow(emit, signal, node, adapter, opts), {
+  return createStream((emit, signal) => runSequence(emit, signal, node, adapter, opts), {
     signal: opts.signal,
   });
 }
 
 /**
  * Render to a `ReadableStream<string>` of adapter-encoded HTML — the shell
- * followed by each fragment as wire-format markup. This is the stream you
- * put in an HTTP response body. Non-streaming adapters (ESI) are rejected
- * at compile time.
- *
- * @example
- * const stream = renderStream(() => <App />, NativeAdapter);
- * const stream = renderStream(() => <App />, TurboAdapter);
+ * followed by each fragment as wire-format markup.
  */
-export function renderStream(
+export function renderToStream(
   node: () => VNode,
   adapter: StreamingAdapter,
   opts?: FlowOptions & { mode?: "full" | "fragment" },

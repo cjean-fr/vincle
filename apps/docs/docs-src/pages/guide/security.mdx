@@ -142,18 +142,18 @@ hardcoded markup. Never pass user input directly to `raw()`.
 Seven independent layers protect your output. No single bypass — except
 `raw()` — can defeat all of them.
 
-|   # | Layer                      | Mechanism                                          | Stops                                                   |
-| --: | -------------------------- | -------------------------------------------------- | ------------------------------------------------------- |
-|   1 | Type System                | `RawString` branded type — explicit trust boundary | Accidental trust of untrusted strings                   |
-|   2 | HTML Escaping              | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>`, `"` injection in text and attributes     |
-|   3 | URL Filtering              | `isSafeScheme` — allowlist of safe schemes         | `javascript:`, `vbscript:`, unsafe `data:` URIs         |
-|   4 | Event Handler Filter       | `on*` functions dropped, string values preserved   | XSS via <code>onclick</code>, <code>onload</code>, etc. |
-|   5 | Build-time Sanitization    | `@vincle/vite-plugin-precompile` defaults to       | Literal `javascript:`, unsafe CSS, `on*` — at build time|
-|    |                            | `secure: true` — static attributes run through     | before the browser parses any HTML                      |
-|    |                            | the same `jsxAttr` as dynamic values, at build     |                                                         |
-|    |                            | time, not at runtime                               |                                                         |
-|   6 | Tag & Attr Validation      | `isValidTagName` / `isValidAttrName`               | Injection through malformed tag or attribute names      |
-|   7 | Rawtext Escaping           | `escapeRawText` — backslash `<\/tag>` not entities | `</script>`/`</style>` breakout — unlike Preact/React   |
+|   # | Layer                   | Mechanism                                          | Stops                                                    |
+| --: | ----------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+|   1 | Type System             | `RawString` branded type — explicit trust boundary | Accidental trust of untrusted strings                    |
+|   2 | HTML Escaping           | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>`, `"` injection in text and attributes      |
+|   3 | URL Filtering           | `isSafeScheme` — allowlist of safe schemes         | `javascript:`, `vbscript:`, unsafe `data:` URIs          |
+|   4 | Event Handler Filter    | `on*` functions dropped, string values preserved   | XSS via <code>onclick</code>, <code>onload</code>, etc.  |
+|   5 | Build-time Sanitization | `@vincle/vite-plugin-precompile` defaults to       | Literal `javascript:`, unsafe CSS, `on*` — at build time |
+|     |                         | `secure: true` — static attributes run through     | before the browser parses any HTML                       |
+|     |                         | the same `jsxAttr` as dynamic values, at build     |                                                          |
+|     |                         | time, not at runtime                               |                                                          |
+|   6 | Tag & Attr Validation   | `isValidTagName` / `isValidAttrName`               | Injection through malformed tag or attribute names       |
+|   7 | Rawtext Escaping        | `escapeRawText` — backslash `<\/tag>` not entities | `</script>`/`</style>` breakout — unlike Preact/React    |
 
 Each layer is independently verifyable — see [Invariants](#invariants).
 
@@ -184,16 +184,16 @@ sanitizer first, then pass the result via `raw()`.
 
 Each invariant is enforced by property-based (fuzz) or unit tests:
 
-|  #   | Guarantee                                                          | Enforced by                              |
-| :--: | ------------------------------------------------------------------ | ---------------------------------------- |
-| I-01 | No raw `<` or `>` from untrusted input                             | `escape.fuzz.test.ts`, `escape.test.ts`  |
-| I-02 | No dangerous URL schemes pass through                              | `escape.fuzz.test.ts` (2000+ fuzz cases) |
-| I-03 | No function-valued `on*` event handlers leak to HTML               | `jsx-runtime.test.ts`                    |
-| I-04 | Precompile ≡ dynamic path — byte-identical in non-rawtext contexts (secure mode default ensures same `jsxAttr` path) | `precompile.fuzz.test.ts` |
-| I-05 | Content escaping is reversible (injective)                         | `escape.fuzz.test.ts`                    |
-| I-06 | Concurrent renders isolated — no cross-request leakage             | `context.test.ts`                        |
-| I-07 | No implicit `RawString` creation                                   | Code review                              |
-| I-08 | Invalid tag names fail fast (throw TypeError)                      | `jsx-runtime.test.ts`                    |
+|  #   | Guarantee                                                                                                            | Enforced by                              |
+| :--: | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| I-01 | No raw `<` or `>` from untrusted input                                                                               | `escape.fuzz.test.ts`, `escape.test.ts`  |
+| I-02 | No dangerous URL schemes pass through                                                                                | `escape.fuzz.test.ts` (2000+ fuzz cases) |
+| I-03 | No function-valued `on*` event handlers leak to HTML                                                                 | `jsx-runtime.test.ts`                    |
+| I-04 | Precompile ≡ dynamic path — byte-identical in non-rawtext contexts (secure mode default ensures same `jsxAttr` path) | `precompile.fuzz.test.ts`                |
+| I-05 | Content escaping is reversible (injective)                                                                           | `escape.fuzz.test.ts`                    |
+| I-06 | Concurrent renders isolated — no cross-request leakage                                                               | `context.test.ts`                        |
+| I-07 | No implicit `RawString` creation                                                                                     | Code review                              |
+| I-08 | Invalid tag names fail fast (throw TypeError)                                                                        | `jsx-runtime.test.ts`                    |
 
 ## ASVS Compliance
 

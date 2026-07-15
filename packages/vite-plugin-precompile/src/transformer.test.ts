@@ -335,7 +335,8 @@ describe("precompileTransform", () => {
 
     it("keeps `<` / `>` escaped after decoding (no breakout via &lt;)", () => {
       const out = transform("const a = <div>&lt;script&gt;alert(1)&lt;/script&gt;</div>;");
-      expect(out).toContain("jsxTemplate`<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>`");
+      expect(out).toContain("jsxTemplate`<div>&lt;script>alert(1)&lt;/script></div>`");
+
       expect(out).not.toContain("<script>");
     });
 
@@ -564,10 +565,15 @@ describe("precompileTransform", () => {
       );
       const rtMod = (await import(runtimePath)) as { html: { value: string } };
 
-      const preSrc = precompileTransform(`export const html = ${body};`, "/src/app.tsx", {
-        runtimeSource: RT,
-        secure: true,
-      }, jsxAttr)!.code;
+      const preSrc = precompileTransform(
+        `export const html = ${body};`,
+        "/src/app.tsx",
+        {
+          runtimeSource: RT,
+          secure: true,
+        },
+        jsxAttr,
+      )!.code;
       const prePath = join(TMP, `pre-${rand()}.ts`);
       writeFileSync(prePath, preSrc);
       const preMod = (await import(prePath)) as { html: { value: string } };

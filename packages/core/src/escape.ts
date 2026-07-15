@@ -163,6 +163,8 @@ export const URL_ATTRIBUTES = new Set([
   "poster",
   "icon",
   "data",
+  "background",
+  "longdesc",
   "xlink:href",
   "srcset",
 ]);

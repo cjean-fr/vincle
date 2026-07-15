@@ -1,18 +1,6 @@
-import type { RuleModule } from "../types.js";
+import { URL_ATTRIBUTES } from "@vincle/core/html";
 
-const URL_ATTRIBUTES = new Set([
-  "href",
-  "src",
-  "action",
-  "formaction",
-  "cite",
-  "poster",
-  "icon",
-  "data",
-  "background",
-  "longdesc",
-  "xlink:href",
-]);
+import type { RuleModule } from "../types.js";
 
 function normalizeScheme(url: string): string {
   return url

@@ -1,4 +1,4 @@
-import { Defer } from "@vincle/flow";
+import { Template } from "@vincle/flow";
 
 async function HeavyDashboard({ signal }: { signal: AbortSignal }) {
   const data = await fetch("https://api.example.com/dashboard", {
@@ -11,6 +11,6 @@ async function HeavyDashboard({ signal }: { signal: AbortSignal }) {
 // fallback is shown in the shell immediately.
 // The factory receives an AbortSignal — if the request takes too long
 // or the client disconnects, the fetch aborts automatically.
-<Defer name="dashboard" fallback={<p>Loading dashboard…</p>}>
+<Template target="dashboard" fallback={<p>Loading dashboard…</p>}>
   {(signal) => <HeavyDashboard signal={signal} />}
-</Defer>;
+</Template>;

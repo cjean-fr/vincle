@@ -1,7 +1,7 @@
 import { renderToString, type VNode } from "@vincle/core";
 
-import type { Pending } from "./pending-store.js";
-import type { DeferContent, FlowEvent, FlowOptions } from "./types.js";
+import type { TemplateEntry } from "./template-store.js";
+import type { FlowEvent, FlowOptions, TemplateContent } from "./types.js";
 
 import { resolveAssets, type AssetState } from "./assets.js";
 import { createTimeoutSignal } from "./timeout.js";
@@ -9,14 +9,15 @@ import { createTimeoutSignal } from "./timeout.js";
 const isAsyncIterable = (v: unknown): v is AsyncIterable<VNode> =>
   v != null && typeof (v as any)[Symbol.asyncIterator] === "function";
 
-const isFactory = (c: DeferContent): c is (signal: AbortSignal) => VNode => typeof c === "function";
+const isFactory = (c: TemplateContent): c is (signal: AbortSignal) => VNode =>
+  typeof c === "function";
 
 type ClassificationResult =
   | { kind: "value"; value: VNode }
   | { kind: "stream"; iterable: AsyncIterable<VNode> }
   | { kind: "sync-error"; error: unknown };
 
-function classifyEntry(entry: Pending, factorySignal: AbortSignal): ClassificationResult {
+function classifyEntry(entry: TemplateEntry, factorySignal: AbortSignal): ClassificationResult {
   try {
     const value = isFactory(entry.content) ? entry.content(factorySignal) : entry.content;
     if (isAsyncIterable(value)) return { kind: "stream", iterable: value };
@@ -48,22 +49,16 @@ async function emitError(
 export type FragmentResult = { stream: boolean; done: Promise<void> };
 
 /**
- * Resolve a single deferred entry: create the timer+signal, invoke the
+ * Resolve a single template entry: create the timer+signal, invoke the
  * factory (if any), classify the result, and return the work.
  *
  * The returned `{ stream, done }` pair lets the drain loop route one-shots
  * (barrier) vs streams (run concurrently). Classification is synchronous so
  * the caller never has to await a plain value to classify it.
- *
- * @example
- * const emit = async (ev) => { /* … *\/ };
- * // Plain JSX (deferred automatically) or a factory function:
- * const { done } = runFragment("my-id", { content: <span>hi<\/span>, merge: "replace" }, emit, {});
- * await done;
  */
 export function runFragment(
   id: string,
-  entry: Pending,
+  entry: TemplateEntry,
   emit: (ev: FlowEvent) => Promise<void>,
   opts: FlowOptions,
   assets?: AssetState | null,
@@ -87,7 +82,6 @@ export function runFragment(
     }
     case "stream": {
       cleanup();
-      // Streams are long-lived; the per-entry timeout doesn't apply to them.
       return {
         stream: true,
         done: runStream(id, classification.iterable, entry.merge, emit, handle, opts, assets),
@@ -118,15 +112,13 @@ export function runFragment(
 async function runStream(
   id: string,
   iterable: AsyncIterable<VNode>,
-  merge: Pending["merge"],
+  merge: TemplateEntry["merge"],
   emit: (ev: FlowEvent) => Promise<void>,
   onError: FlowOptions["onError"],
   opts: FlowOptions,
   assets?: AssetState | null,
 ): Promise<void> {
   const it = iterable[Symbol.asyncIterator]();
-  // A generator parked in next() (e.g. awaiting an event that never fires)
-  // would otherwise pin streamFlow forever after abort — race it.
   const aborted = opts.signal
     ? new Promise<IteratorResult<VNode>>((resolve) => {
         const onAbort = () => resolve({ done: true, value: undefined });
@@ -137,7 +129,7 @@ async function runStream(
   try {
     while (true) {
       const step = Promise.resolve(it.next());
-      if (aborted) step.catch(() => {}); // ignored if abort wins the race
+      if (aborted) step.catch(() => {});
       const r = await (aborted ? Promise.race([step, aborted]) : step);
       if (r.done) break;
       const raw = await renderToString(r.value);

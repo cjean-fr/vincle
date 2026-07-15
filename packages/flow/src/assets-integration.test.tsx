@@ -2,13 +2,13 @@ import { describe, it, expect } from "bun:test";
 
 import { NativeAdapter } from "./adapters/index.js";
 import { Style, Script } from "./components/index.js";
-import { renderStream, renderToStatic, Defer } from "./index.js";
+import { renderToStream, renderToStatic, Template } from "./index.js";
 import { collect } from "./test-utils.js";
 
 describe("Style/Script — render pipeline integration", () => {
   it("deduplicates same name across shell", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <head>
@@ -34,7 +34,7 @@ describe("Style/Script — render pipeline integration", () => {
   it("only evaluates factory once for duplicate names", async () => {
     let count = 0;
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <body>
@@ -65,7 +65,7 @@ describe("Style/Script — render pipeline integration", () => {
 
   it("different names resolved independently", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <body>
@@ -85,7 +85,7 @@ describe("Style/Script — render pipeline integration", () => {
 
   it("resolves Script with module attribute", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <head>
@@ -107,7 +107,7 @@ describe("Style/Script — render pipeline integration", () => {
 
   it("resolves Script with defer", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <head>
@@ -129,7 +129,7 @@ describe("Style/Script — render pipeline integration", () => {
 
   it("resolves Script with src", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <head>
@@ -149,21 +149,21 @@ describe("Style/Script — render pipeline integration", () => {
 
   it("deduplicates name across fragments: emitted in shell → removed from fragment", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <head>
               <Style name="shared">{"body { color: red }"}</Style>
             </head>
             <body>
-              <Defer name="frag1">
+              <Template target="frag1">
                 {() => (
                   <div>
-                    <Style name="shared">{"body { color: blue }"}</Style>
+                    <Style name="shared">{"body { color: red }"}</Style>
                     <span>from fragment</span>
                   </div>
                 )}
-              </Defer>
+              </Template>
             </body>
           </html>
         ),
@@ -180,19 +180,19 @@ describe("Style/Script — render pipeline integration", () => {
 
   it("resolves new name in fragment not seen in shell", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <head></head>
             <body>
-              <Defer name="frag1">
+              <Template target="frag1">
                 {() => (
                   <div>
                     <Style name="inline">{" .inline { }"}</Style>
                     <span>from fragment</span>
                   </div>
                 )}
-              </Defer>
+              </Template>
             </body>
           </html>
         ),

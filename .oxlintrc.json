@@ -31,7 +31,10 @@
     "max-lines": "off",
     "max-depth": "off",
     "max-nested-callbacks": "off",
-    "init-declarations": "off"
+    "init-declarations": "off",
+    "no-underscore-dangle": ["warn", { "allow": ["__html", "__brand"] }],
+    "unicorn/require-module-specifiers": "off",
+    "eslint/no-await-in-loop": "off"
   },
   "overrides": [
     {
@@ -67,7 +70,8 @@
     {
       "files": ["apps/docs/docs-src/examples/**"],
       "rules": {
-        "no-unused-vars": "off"
+        "no-unused-vars": "off",
+        "no-await-in-loop": "off"
       }
     },
     {
@@ -85,6 +89,7 @@
     {
       "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.test-d.ts"],
       "rules": {
+        "no-await-in-loop": "off",
         "no-explicit-any": "off",
         "no-non-null-assertion": "off",
         "no-unsafe-assignment": "off",
@@ -95,6 +100,7 @@
         "no-confusing-void-expression": "off",
         "no-unused-expressions": "off",
         "no-useless-spread": "off",
+        "no-new": "off",
         "require-await": "off",
         "await-thenable": "off",
         "restrict-template-expressions": "off",

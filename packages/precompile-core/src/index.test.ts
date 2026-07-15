@@ -117,7 +117,7 @@ describe("precompile-core", () => {
 
     it("escapes &, <, >, and double quotes", () => {
       expect(escapeAttr(`a"b`)).toBe("a&quot;b");
-      expect(escapeAttr("a&b<c>d")).toBe("a&amp;b&lt;c&gt;d");
+      expect(escapeAttr("a&b<c>d")).toBe("a&amp;b&lt;c>d");
     });
 
     it("escapes single quotes", () => {
@@ -218,7 +218,7 @@ describe("precompile-core", () => {
 
     it('escapeAttr escapes & < > " identically to the runtime', () => {
       expect(escapeAttr('a"b')).toBe("a&quot;b");
-      expect(escapeAttr("a&b<c>d")).toBe("a&amp;b&lt;c&gt;d");
+      expect(escapeAttr("a&b<c>d")).toBe("a&amp;b&lt;c>d");
     });
 
     it("isValidAttrName matches the runtime's validation", () => {

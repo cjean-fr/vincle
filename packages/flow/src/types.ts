@@ -9,7 +9,7 @@ export interface AdapterCapabilities {
   merges: readonly MergeType[];
 }
 
-export type DeferContent = VNode | ((signal: AbortSignal) => VNode);
+export type TemplateContent = VNode | ((signal: AbortSignal) => VNode);
 
 export interface Shell {
   type: "shell";

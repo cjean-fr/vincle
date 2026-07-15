@@ -29,7 +29,7 @@ import { injectToc, renderTocHtml } from "./toc.js";
 function mapConcurrent<T, R>(
   items: T[],
   fn: (item: T) => Promise<R>,
-  concurrency: number,
+  maxConcurrency: number,
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let index = 0;
@@ -39,7 +39,7 @@ function mapConcurrent<T, R>(
       results[i] = await fn(items[i]!);
     }
   };
-  const pool = Math.min(concurrency, items.length) || 1;
+  const pool = Math.min(maxConcurrency, items.length) || 1;
   return Promise.all(Array.from({ length: pool }, worker)).then(() => results);
 }
 
@@ -161,7 +161,7 @@ async function renderPages(pages: Page[]): Promise<{ url: string; title: string;
 }
 
 function tabForPage(tabs: readonly TabConfig[], url: string): TabConfig | null {
-  const top = url.split("/").filter(Boolean)[0] ?? "";
+  const top = url.split("/").find(Boolean) ?? "";
   return tabs.find((t) => t.slug === top) ?? null;
 }
 
@@ -241,11 +241,11 @@ async function copyPublicAssets(): Promise<void> {
   const publicDir = path.resolve(config.pages, "../../public");
   if (!existsSync(publicDir)) return;
   const entries = await readdir(publicDir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.isFile()) {
-      await copyFile(path.join(publicDir, entry.name), path.join(config.out, entry.name));
-    }
-  }
+  await Promise.all(
+    entries
+      .filter((e) => e.isFile())
+      .map((e) => copyFile(path.join(publicDir, e.name), path.join(config.out, e.name))),
+  );
 }
 
 export function getAllPages(): Page[] {

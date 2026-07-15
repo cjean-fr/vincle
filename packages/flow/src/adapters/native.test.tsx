@@ -5,7 +5,7 @@ import type { FlowContext } from "../context.js";
 
 import { NativeAdapter, NATIVE_POLYFILL, nativePolyfillHash } from "../adapters/index.js";
 
-const ctxWith = (size: number) => ({ pendingStore: { size } }) as unknown as FlowContext;
+const ctxWith = (size: number) => ({ templateStore: { size } }) as unknown as FlowContext;
 
 describe("NativeAdapter", () => {
   it("patches are declarative templates — never per-fragment scripts (CSP)", async () => {
@@ -41,7 +41,7 @@ describe("NativeAdapter", () => {
       }),
     );
     expect(ph).not.toContain("<script>alert(1)");
-    expect(ph).toContain("&quot;&gt;&lt;script&gt;");
+    expect(ph).toContain("&quot;>&lt;script>");
   });
 
   it("exposes the polyfill source and a stable CSP hash for it", async () => {

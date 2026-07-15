@@ -16,7 +16,7 @@ export function Slot(props: SlotProps): JSX.Element | null {
     throw new Error(
       "Slot requires an adapter. " +
         "Pass { adapter: ... } to renderToStatic " +
-        "or use an adapter with renderStream.",
+        "or use an adapter with renderToStream.",
     );
 
   return adapter.Placeholder({

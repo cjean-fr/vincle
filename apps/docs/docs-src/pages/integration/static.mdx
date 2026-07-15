@@ -8,7 +8,7 @@ sidebar:
 # Static generation
 
 Build HTML files at compile time. `renderToStatic` gives you a context to
-render all your pages, then emit fragment files if any page uses `<Defer>`.
+render all your pages, then emit fragment files if any page uses `<Template>` with a lazy factory.
 Fragments are fetched by the browser after the shell page loads — no streaming
 connection required.
 
@@ -26,7 +26,7 @@ If you need fragments to arrive in the same HTTP response as the shell, use
 
 ## Pure static
 
-No `<Defer>` in your pages? Call `renderToStatic` without an adapter.
+No lazy `<Template>` in your pages? Call `renderToStatic` without an adapter.
 `ctx.renderPage` applies any configured shell transforms and returns the full
 HTML string — ready to write to a file.
 
@@ -45,7 +45,7 @@ deferred fragment is rendered and passed to your callback with its id, its URL
 <CodeExample src="flow/deferred-static.tsx" />
 
 The browser loads the shell page first, then fetches each fragment URL
-independently using `<ClientFetch>`. Fragment files can be cached aggressively
+independently using `<Include>`. Fragment files can be cached aggressively
 — they are static HTML files with predictable URLs.
 
 ## Fragment file naming
@@ -56,6 +56,6 @@ The `generatePath` option controls where fragments are written:
 | -------------- | ----------------------------------- | -------------------------- |
 | `generatePath` | `(id) => \`/fragments/${id}.html\`` | URL path for each fragment |
 
-The same path must be declared in the page's `<ClientFetch src="...">` so the
+The same path must be declared in the page's `<Include src="...">` so the
 browser knows where to find each fragment. Use a consistent convention across
 your build script and templates to keep them in sync.

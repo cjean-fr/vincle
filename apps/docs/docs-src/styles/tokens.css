@@ -28,9 +28,12 @@
   --docs-header-height: 3rem;
   --docs-content-padding: 1.5rem;
 
-  --docs-transition-fast: 150ms ease;
-  --docs-transition-normal: 200ms ease;
-  --docs-transition-slow: 300ms ease;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  --docs-transition-fast: 150ms var(--ease-out);
+  --docs-transition-normal: 200ms var(--ease-out);
+  --docs-transition-slow: 300ms var(--ease-out);
 }
 
 .dark {

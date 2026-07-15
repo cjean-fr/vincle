@@ -3,12 +3,12 @@ import { describe, it, expect } from "bun:test";
 import type { FlowContext } from "./context.js";
 
 import { createAdapter, NativeAdapter, TurboAdapter } from "./adapters/index.js";
-import { renderStream, Defer } from "./index.js";
+import { renderToStream, Template } from "./index.js";
 import { collect } from "./test-utils.js";
 import { composeShell, injectIntoHead } from "./utils.js";
 
 // These transforms ignore the ctx; pass a stub to satisfy the signature.
-const CTX = { pendingStore: { size: 0 } } as unknown as FlowContext;
+const CTX = { templateStore: { size: 0 } } as unknown as FlowContext;
 
 describe("composeShell", () => {
   it("applies transforms left-to-right", () => {
@@ -37,12 +37,12 @@ describe("composeShell", () => {
       transformShell: composeShell(NativeAdapter.transformShell, metadata()),
     });
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <head></head>
             <body>
-              <Defer>{() => <span>d</span>}</Defer>
+              <Template target="d">{() => <span>d</span>}</Template>
             </body>
           </html>
         ),

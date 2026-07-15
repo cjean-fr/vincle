@@ -16,7 +16,7 @@ function activate(container: Element, index: number): void {
     btn.classList.toggle("dark:text-gray-400", !active);
   });
   panels.forEach((panel, i) => {
-    panel.toggleAttribute("hidden", i !== index);
+    panel.classList.toggle("active", i === index);
   });
 }
 

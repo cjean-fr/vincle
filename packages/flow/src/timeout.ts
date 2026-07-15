@@ -19,7 +19,10 @@ export function createTimeoutSignal(
   }
 
   const timer = new AbortController();
-  const tid = setTimeout(() => timer.abort(new Error(`Defer "${id}" timed out after ${ms}ms`)), ms);
+  const tid = setTimeout(
+    () => timer.abort(new Error(`Template "${id}" timed out after ${ms}ms`)),
+    ms,
+  );
 
   const factorySignal =
     requestSignal && timer

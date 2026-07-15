@@ -98,7 +98,7 @@ function autoDetectTabs(pagesDir: string): TabConfig[] {
       return existsSync(full) && statSync(full).isDirectory();
     })
     .map((name) => ({ label: titleCase(name), slug: name }))
-    .sort((a, b) => a.slug.localeCompare(b.slug));
+    .toSorted((a, b) => a.slug.localeCompare(b.slug));
 }
 
 function titleCase(slug: string): string {

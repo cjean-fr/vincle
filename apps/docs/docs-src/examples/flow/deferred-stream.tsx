@@ -1,4 +1,4 @@
-import { Slot, Fill, Defer, renderStream } from "@vincle/flow";
+import { Slot, Template, renderToStream } from "@vincle/flow";
 import { NativeAdapter } from "@vincle/flow/adapters";
 
 declare function fetchComments(): Promise<{ text: string }[]>;
@@ -15,7 +15,7 @@ async function Comments() {
 }
 
 // <Slot> declares the placeholder with fallback content in the shell.
-// <Fill> pushes the real content, which replaces it when resolved.
+// <Template> pushes the real content, which replaces it when resolved.
 function Page() {
   return (
     <html>
@@ -24,7 +24,7 @@ function Page() {
         <Slot name="comments">
           <p>Loading comments…</p>
         </Slot>
-        <Fill target="comments">{() => <Comments />}</Fill>
+        <Template target="comments">{() => <Comments />}</Template>
       </body>
     </html>
   );
@@ -32,4 +32,4 @@ function Page() {
 
 // The shell is sent immediately; deferred fragments stream
 // in as they resolve. NativeAdapter injects a ~550 B polyfill.
-const stream = renderStream(() => <Page />, NativeAdapter);
+const stream = renderToStream(() => <Page />, NativeAdapter);

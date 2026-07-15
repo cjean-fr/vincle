@@ -32,7 +32,9 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
    * paths. Falls back to Vincle's `escapeContent` when the runtime has no
    * `jsxEscape` export (should not happen for compatible runtimes).
    */
-  let renderEscape: ((value: unknown) => string | { value: string } | Promise<string | { value: string }>) | null = null;
+  let renderEscape:
+    | ((value: unknown) => string | { value: string } | Promise<string | { value: string }>)
+    | null = null;
 
   /**
    * When jsxImportSource is set, this holds the candidate path
@@ -142,7 +144,9 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       try {
         const mod = (await import(/* @vite-ignore */ source)) as {
           jsxAttr?: RenderAttr;
-          jsxEscape?: (value: unknown) => string | { value: string } | Promise<string | { value: string }>;
+          jsxEscape?: (
+            value: unknown,
+          ) => string | { value: string } | Promise<string | { value: string }>;
         };
         if (typeof mod.jsxAttr === "function") {
           renderAttr = mod.jsxAttr;

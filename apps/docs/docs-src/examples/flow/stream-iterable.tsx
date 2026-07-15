@@ -1,11 +1,11 @@
-import { Fill } from "@vincle/flow";
+import { Template } from "@vincle/flow";
 
 declare function fetchRows(page: number): Promise<{ id: number; name: string }[]>;
 
 // Each yield produces an independent patch with the configured merge type.
 function Feed() {
   return (
-    <Fill target="feed" merge="append">
+    <Template target="feed" merge="append">
       {async function* () {
         let page = 1;
         while (true) {
@@ -16,6 +16,6 @@ function Feed() {
           }
         }
       }}
-    </Fill>
+    </Template>
   );
 }

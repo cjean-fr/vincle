@@ -50,6 +50,7 @@
     "@typescript-eslint/parser": "catalog:",
     "@typescript-eslint/rule-tester": "catalog:",
     "@typescript-eslint/utils": "catalog:",
+    "@vincle/core": "workspace:*",
     "eslint": "catalog:",
     "typescript": "npm:@typescript/typescript6"
   },

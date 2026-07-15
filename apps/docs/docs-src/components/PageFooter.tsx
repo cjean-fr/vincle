@@ -14,10 +14,10 @@ export function PageFooter() {
           {prev ? (
             <a
               href={prev.href}
-              class="inline-flex items-center gap-1 text-sm font-medium text-[var(--docs-color-accent)] transition-colors hover:text-[var(--docs-color-accent-hover)]"
+              class="inline-flex items-center gap-1 text-sm font-medium text-[var(--docs-color-accent)] transition-colors hover:text-[var(--docs-color-accent-hover)] group"
             >
               <svg
-                class="size-3.5"
+                class="size-3.5 transition-transform -translate-x-0 group-hover:-translate-x-0.5"
                 viewBox="0 0 16 16"
                 fill="none"
                 stroke="currentColor"
@@ -35,11 +35,11 @@ export function PageFooter() {
           {next ? (
             <a
               href={next.href}
-              class="inline-flex items-center gap-1 text-sm font-medium text-[var(--docs-color-accent)] transition-colors hover:text-[var(--docs-color-accent-hover)]"
+              class="inline-flex items-center gap-1 text-sm font-medium text-[var(--docs-color-accent)] transition-colors hover:text-[var(--docs-color-accent-hover)] group"
             >
               {next.label}
               <svg
-                class="size-3.5"
+                class="size-3.5 transition-transform translate-x-0 group-hover:translate-x-0.5"
                 viewBox="0 0 16 16"
                 fill="none"
                 stroke="currentColor"

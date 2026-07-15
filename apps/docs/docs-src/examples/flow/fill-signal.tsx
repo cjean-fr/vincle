@@ -1,4 +1,4 @@
-import { Slot, Fill } from "@vincle/flow";
+import { Slot, Template } from "@vincle/flow";
 
 async function LiveComments({ signal }: { signal: AbortSignal }) {
   const res = await fetch("https://api.example.com/comments", {
@@ -28,9 +28,9 @@ function Page() {
           a client disconnect cancels the pending HTTP
           call automatically — no orphaned work.
         */}
-        <Fill target="comments" timeout={5000}>
+        <Template target="comments" timeout={5000}>
           {(signal) => <LiveComments signal={signal} />}
-        </Fill>
+        </Template>
       </body>
     </html>
   );

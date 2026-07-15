@@ -3,48 +3,43 @@ import { context, setContext, useContext, withScope, type ContextKey } from "@vi
 import type { FlowConfig } from "./types.js";
 
 import { createAssetState, type AssetState } from "./assets.js";
-import { createPendingStore, type Pending, type PendingStore } from "./pending-store.js";
+import { createTemplateStore, type TemplateEntry, type TemplateStore } from "./template-store.js";
 
 export type { FlowConfig } from "./types.js";
 
 export interface FlowContext {
   config: FlowConfig;
-  /** Internal deferred-work store. */
-  pendingStore: PendingStore;
+  /** Internal template-content store. */
+  templateStore: TemplateStore;
   /** Named asset state for `<Style name>` / `<Script name>` dedup. */
   assets: AssetState;
 
   nextId: () => string;
   /**
-   * Register deferred work to render into the DOM element with this `id`.
+   * Register template content to render into the DOM element with this `id`.
    * Validates the id and that `merge` is supported by the active adapter.
    */
-  defer(id: string, entry: Pending): void;
+  registerTemplate(id: string, entry: TemplateEntry): void;
 }
 
 export const Flow: ContextKey<FlowContext> = context<FlowContext>("@vincle/flow:flow");
 
 export function initFlow(config: FlowConfig): void {
   let counter = 0;
-  const store = createPendingStore(config);
+  const store = createTemplateStore(config);
   const assets = createAssetState();
   setContext(Flow, {
     config,
-    pendingStore: store,
+    templateStore: store,
     assets,
     nextId: () => `${config.idPrefix ?? "fragment-"}${++counter}`,
-    defer(id, entry) {
-      store.defer(id, entry);
+    registerTemplate(id, entry) {
+      store.register(id, entry);
     },
   });
 }
 
 export function initFlowAssets(): void {
-  // Replace the Flow context entry in THIS scope with a copy that has a fresh
-  // asset state — never mutate the shared context object in place. `withScope`
-  // gives each child scope its own context map, so `setContext` here is
-  // scope-local: parallel `renderPage` calls (Promise.all in an SSG build) get
-  // independent asset states instead of racing on one shared `.assets`.
   const current = useContext(Flow);
   setContext(Flow, { ...current, assets: createAssetState() });
 }

@@ -1,39 +1,60 @@
-import { renderToString, withScope, useContext } from "@vincle/core";
 import type { ResolvedVNode } from "@vincle/core";
+
+import { renderToString, withScope, useContext } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
 import { TurboAdapter, NativeAdapter } from "../adapters/index.js";
 import { Flow, initFlow } from "../context.js";
-import { Defer, Fill, Slot } from "../index.js";
-import { renderStream } from "../render.js";
+import { Template, Slot } from "../index.js";
+import { renderToStream } from "../render.js";
 import { collect } from "../test-utils.js";
 
-describe("Defer", () => {
+describe("Template — sync content (no placeholder)", () => {
+  it("registers sync content without rendering a placeholder", async () => {
+    await withScope(async () => {
+      initFlow({ adapter: TurboAdapter, mode: "streaming" });
+      const html = await renderToString(
+        <Template target="toast-list" merge="append">
+          <li>Notification</li>
+        </Template>,
+      );
+      expect(html).toBe("");
+      const entries = useContext(Flow).templateStore.outstanding(new Set());
+      expect(entries.find(([id]) => id === "toast-list")?.[1].merge).toBe("append");
+    });
+  });
+});
+
+describe("Template — lazy content (placeholder)", () => {
   it("renders a placeholder and registers content (streaming mode)", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const html = await renderToString(<Defer>{() => <span>content</span>}</Defer>);
-      expect(html).toContain('id="fragment-1"');
-      const { pendingStore } = useContext(Flow);
-      expect(pendingStore.size).toBe(1);
+      const html = await renderToString(
+        <Template target="content">{() => <span>content</span>}</Template>,
+      );
+      expect(html).toContain('id="content"');
+      const { templateStore } = useContext(Flow);
+      expect(templateStore.size).toBe(1);
     });
   });
 
   it("accepts a factory returning a node", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const html = await renderToString(<Defer>{() => <span>inline</span>}</Defer>);
-      expect(html).toContain('id="fragment-1"');
-      const { pendingStore } = useContext(Flow);
-      expect(pendingStore.size).toBe(1);
+      const html = await renderToString(
+        <Template target="inline">{() => <span>inline</span>}</Template>,
+      );
+      expect(html).toContain('id="inline"');
+      const { templateStore } = useContext(Flow);
+      expect(templateStore.size).toBe(1);
     });
   });
 
-  it("honours an explicit name", async () => {
+  it("honours an explicit target", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      await renderToString(<Defer name="cart">{() => <span>x</span>}</Defer>);
-      const entries = useContext(Flow).pendingStore.pending(new Set());
+      await renderToString(<Template target="cart">{() => <span>x</span>}</Template>);
+      const entries = useContext(Flow).templateStore.outstanding(new Set());
       expect(entries.find(([id]) => id === "cart")).toBeDefined();
     });
   });
@@ -42,11 +63,11 @@ describe("Defer", () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       await renderToString(
-        <Defer name="list" merge="append">
+        <Template target="list" merge="append">
           {() => <li>item</li>}
-        </Defer>,
+        </Template>,
       );
-      const entries = useContext(Flow).pendingStore.pending(new Set());
+      const entries = useContext(Flow).templateStore.outstanding(new Set());
       expect(entries.find(([id]) => id === "list")?.[1].merge).toBe("append");
     });
   });
@@ -55,13 +76,13 @@ describe("Defer", () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       const html = await renderToString(
-        <Defer>
+        <Template target="plain">
           <span>plain</span>
-        </Defer>,
+        </Template>,
       );
-      expect(html).toContain('id="fragment-1"');
-      const { pendingStore } = useContext(Flow);
-      expect(pendingStore.size).toBe(1);
+      expect(html).toBe("");
+      const { templateStore } = useContext(Flow);
+      expect(templateStore.size).toBe(1);
     });
   });
 
@@ -72,27 +93,29 @@ describe("Defer", () => {
         mode: "static",
         generatePath: (id) => `/f/${id}.html`,
       });
-      const html = await renderToString(<Defer>{() => <span>content</span>}</Defer>);
-      expect(html).toContain('src="/f/fragment-1.html"');
+      const html = await renderToString(
+        <Template target="content">{() => <span>content</span>}</Template>,
+      );
+      expect(html).toContain('src="/f/content.html"');
     });
   });
 });
 
-describe("Defer — streaming sequences (async-iterable child)", () => {
+describe("Template — streaming sequences (async-iterable child)", () => {
   it("streams each yield as an append fragment", async () => {
     async function* rows() {
-      yield <li>a</li> as ResolvedVNode;
-      yield <li>b</li> as ResolvedVNode;
+      yield (<li>a</li>) as ResolvedVNode;
+      yield (<li>b</li>) as ResolvedVNode;
     }
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <body>
               <ul id="feed" />
-              <Fill target="feed" merge="append">
+              <Template target="feed" merge="append">
                 {() => rows()}
-              </Fill>
+              </Template>
             </body>
           </html>
         ),
@@ -105,19 +128,19 @@ describe("Defer — streaming sequences (async-iterable child)", () => {
     expect(html).toContain('action="append"');
   });
 
-  it("streams even with no other deferred content present", async () => {
+  it("streams even with no other template content present", async () => {
     async function* rows() {
-      yield <li>only</li> as ResolvedVNode;
+      yield (<li>only</li>) as ResolvedVNode;
     }
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <body>
               <ul id="feed" />
-              <Fill target="feed" merge="append">
+              <Template target="feed" merge="append">
                 {() => rows()}
-              </Fill>
+              </Template>
             </body>
           </html>
         ),
@@ -128,25 +151,25 @@ describe("Defer — streaming sequences (async-iterable child)", () => {
     expect(html).toContain("</html>");
   });
 
-  it("a streaming Defer registered inside a one-shot Defer factory is picked up", async () => {
+  it("a streaming Template registered inside a one-shot Template factory is picked up", async () => {
     async function* inner() {
-      yield <li>streamed</li> as ResolvedVNode;
+      yield (<li>streamed</li>) as ResolvedVNode;
     }
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <body>
-              <Defer>
+              <Template target="deferred">
                 {() => (
                   <div>
                     deferred
-                    <Fill target="feed" merge="append">
+                    <Template target="feed" merge="append">
                       {() => inner()}
-                    </Fill>
+                    </Template>
                   </div>
                 )}
-              </Defer>
+              </Template>
             </body>
           </html>
         ),
@@ -158,10 +181,10 @@ describe("Defer — streaming sequences (async-iterable child)", () => {
   });
 });
 
-describe("edge cases — Defer", () => {
+describe("edge cases — Template", () => {
   it("NativeAdapter escapes a hostile id in the processing instruction", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <body>
@@ -173,6 +196,6 @@ describe("edge cases — Defer", () => {
       ),
     );
     expect(html).not.toContain("<script>alert(1)");
-    expect(html).toContain("&lt;script&gt;");
+    expect(html).toContain("&lt;script>");
   });
 });

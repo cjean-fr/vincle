@@ -3,15 +3,15 @@ import { describe, it, expect } from "bun:test";
 
 import { TurboAdapter } from "../adapters/index.js";
 import { Flow, initFlow } from "../context.js";
-import { ClientFetch } from "../index.js";
+import { Include } from "../index.js";
 
-describe("ClientFetch", () => {
+describe("Include", () => {
   it("renders a placeholder pointing at src, registers nothing", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const html = await renderToString(<ClientFetch src="/api/fragment" />);
+      const html = await renderToString(<Include src="/api/fragment" />);
       expect(html).toContain('src="/api/fragment"');
-      expect(useContext(Flow).pendingStore.size).toBe(0);
+      expect(useContext(Flow).templateStore.size).toBe(0);
     });
   });
 
@@ -19,7 +19,7 @@ describe("ClientFetch", () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       const dynamic: string = "/api/" + Math.random().toString(36).slice(2);
-      const html = await renderToString(<ClientFetch src={dynamic} />);
+      const html = await renderToString(<Include src={dynamic} />);
       expect(html).toContain(dynamic);
     });
   });
@@ -28,7 +28,7 @@ describe("ClientFetch", () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       await expect(
-        renderToString(<ClientFetch src={"javascript:alert(1)" as string} />),
+        renderToString(<Include src={"javascript:alert(1)" as string} />),
       ).rejects.toThrow(/forbidden scheme/);
     });
   });

@@ -10,7 +10,7 @@ Use `@vincle/core` alone for SSG, emails, and pure SSR. Add `@vincle/flow` when 
 | ------------------------- | -------------------------------------------------- |
 | Renders JSX → HTML string | Adds deferred fragments + streaming patch delivery |
 | Server-only, zero runtime | Emits adapter-specific markup for DOM updates      |
-| `renderToString()`        | `renderStream()` / `renderToStatic()`              |
+| `renderToString()`        | `renderToStream()` / `renderToStatic()`            |
 | —                         | Adapters: Turbo, HTMX, Native, WebPlatform, ESI    |
 
 ## Why deferred regions in streaming SSR
@@ -43,14 +43,14 @@ bun add @vincle/flow
 
 ## Components
 
-@vincle/flow provides four declarative primitives for deferred content. Each works with any adapter, in both streaming and static generation.
+@vincle/flow provides three declarative primitives for deferred content — a unified family built around **Slot** (the hole) and **Template** (the content that fills it). Each works with any adapter, in both streaming and static generation.
 
 ### `<Slot>` — a named insertion point with fallback content
 
-Declares a named insertion point in the shell. Its `children` are rendered immediately as placeholder content — visible in the initial HTML until a `<Fill target="…">` overrides them. An empty slot tells the adapter to render an empty placeholder.
+Declares a named insertion point in the shell. Its `children` are rendered immediately as placeholder content — visible in the initial HTML until a `<Template target="…">` overrides them.
 
 ```tsx
-import { Slot, Fill } from "@vincle/flow";
+import { Slot, Template } from "@vincle/flow";
 
 function Layout() {
   return (
@@ -69,112 +69,104 @@ function Layout() {
 
 // Elsewhere in the tree (or a different component):
 function PageContent() {
-  return <Fill target="page">{() => <h1>Hello</h1>}</Fill>;
+  return <Template target="page">{() => <h1>Hello</h1>}</Template>;
 }
 ```
 
-`Slot` registers nothing in the pending store — it is purely a passive hole. The `children` are the initial fallback, visible until a `<Fill>` pushes deferred content that patches the placeholder.
+`Slot` registers nothing in the pending store — it is purely a passive hole. The `children` are the initial fallback, visible until a `<Template>` pushes deferred content that patches the placeholder.
 
-### `<Fill>` — push content into a slot
+### `<Template>` — fill a slot (sync or lazy)
 
-Pushes deferred content into an existing slot by name. Renders nothing itself (returns `null`).
+Pushes content into a target slot by name. **Unified** — one component for both synchronous and deferred content. The behaviour depends on `children`:
 
-`children` is deferred automatically by the descriptor system — you can pass plain JSX:
+| `children` type     | `fallback` | Behaviour                                              |
+| ------------------- | ---------- | ------------------------------------------------------ |
+| `VNode` (plain JSX) | —          | Registers content, no placeholder (was `Fill`)         |
+| `VNode` (plain JSX) | provided   | **Warning dev** — `fallback` ignored for sync content  |
+| `(signal) => …`     | —          | Lazy content, no placeholder                           |
+| `(signal) => …`     | provided   | Lazy content with placeholder + fallback (was `Defer`) |
+
+**Sync** — plain JSX, no placeholder:
 
 ```tsx
-import { Fill } from "@vincle/flow";
+import { Template } from "@vincle/flow";
 
-// Plain JSX — deferred automatically (no thunk needed)
-<Fill target="page"><h1>Hello</h1></Fill>
-<Fill target="comments"><Comments /></Fill>
+<Template target="page"><h1>Hello</h1></Template>
+<Template target="comments"><Comments /></Template>
 ```
 
-For **cancellation** (`AbortSignal` tied to request lifetime and per-fragment timeout), pass a factory:
+**Lazy with placeholder** — factory + fallback (was `Defer`):
 
 ```tsx
-// One-shot: factory returns a node
-<Fill target="page">{() => <h1>Hello</h1>}</Fill>
+<Template target="comments" fallback={<p>Loading…</p>}>
+  {() => <Comments />}
+</Template>
+```
 
-// Async: factory returns a Promise
-<Fill target="comments">{() => <Comments />}</Fill>
+**Cancellable** — factory receives `AbortSignal` (request lifetime + per-fragment timeout):
 
-// Stream: factory returns an AsyncIterable — each yield is a separate patch
-<Fill target="feed" merge="append">
+```tsx
+// One-shot
+<Template target="page">{() => <h1>Hello</h1>}</Template>
+
+// Async
+<Template target="comments">{() => <Comments />}</Template>
+
+// Stream — each yield is a separate patch
+<Template target="feed" merge="append">
   {() => liveRows()}
-</Fill>
+</Template>
 
-// Cancellable factory with timeout — receives AbortSignal
-<Fill target="dashboard" timeout={2000}>
+// With timeout — receives AbortSignal
+<Template target="dashboard" timeout={2000}>
   {(signal) => <Dashboard signal={signal} />}
-</Fill>
+</Template>
 ```
 
-### `<Defer>` — deferred content (streaming or SSG)
+The factory is invoked lazily — only when the fragment is about to render. It receives an `AbortSignal` for cancellation and must return a renderable JSX node (or a `Promise` / `AsyncIterable` thereof — the runtime unwraps these automatically).
 
-Declares a deferred region with a placeholder in the shell. The `fallback` prop defines placeholder content shown immediately. `children` is deferred automatically — no thunk required:
+`Template` without `fallback` renders nothing itself (returns `null`), like the old `Fill`. With `fallback`, it renders a placeholder in the shell and replaces it when content resolves, like the old `Defer`.
 
-```tsx
-import { Defer, Fill } from "@vincle/flow";
+### `<Include>` — client-side fetch only
 
-// Plain JSX — deferred automatically
-<Defer name="comments" fallback={<p>Loading…</p>}>
-  <Comments />
-</Defer>
-
-// Same pattern with Slot for the placeholder + Fill for the content:
-<Slot name="comments"><p>Loading…</p></Slot>
-<Fill target="comments"><Comments /></Fill>
-```
-
-Pass a factory when you need the `AbortSignal` for cancellation:
+Renders a placeholder with a `src` attribute — the browser fetches the fragment after the shell lands. No server-push, works with any static host.
 
 ```tsx
-// Cancellable — receives AbortSignal (request lifetime + timeout)
-<Defer name="dashboard" fallback={<p>Loading…</p>}>
-  {(signal) => <HeavyDashboard signal={signal} />}
-</Defer>
-```
+import { Include } from "@vincle/flow";
 
-### `<ClientFetch>` — client-side fetch only
-
-Renders a placeholder with a `src` attribute — the browser fetches the fragment after the shell lands. No server-push, works with any static host. Renders no deferred work on the server.
-
-```tsx
-import { ClientFetch } from "@vincle/flow";
-
-<ClientFetch src="/fragments/comments.html" />;
+<Include src="/fragments/comments.html" />;
+<Include src="/fragments/stats.html" fallback={<Spinner />} />;
 
 // @ts-expect-error — dangerous schemes are rejected at compile time
-<ClientFetch src="javascript:alert(1)" />;
+<Include src="javascript:alert(1)" />;
 ```
 
 `src` uses a strict **whitelist**: for string **literals**, only `http(s):` and relative paths compile. Every other scheme (`javascript:`, `data:`, `mailto:`, …) is a compile-time error — exactly what a fragment fetch needs. Dynamic `string` values pass through and remain the caller's responsibility.
 
+Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/issues/2791) and ESI `<esi:include>` — short, standard, self-explanatory.
+
 ### Content forms
 
-`Defer` and `Fill` accept deferred content in either form:
+`Template` accepts content in either form:
 
 | Child                        | Behaviour                                                             |
 | ---------------------------- | --------------------------------------------------------------------- |
 | JSX node (plain children)    | Deferred automatically — executes when the fragment renders           |
 | `(signal: AbortSignal) => …` | **Cancellable** — receives `AbortSignal` (request cancel + `timeout`) |
 
-The factory is invoked lazily and receives an `AbortSignal` for cancellation. It must return a renderable JSX node (or a `Promise` / `AsyncIterable` thereof — the runtime unwraps these automatically).
-
 `Slot` children are plain JSX (not deferred) — they render immediately as the fallback placeholder in the shell.
 
 ### Common props
 
-| Prop       | Applies to      | Meaning                                                             |
-| ---------- | --------------- | ------------------------------------------------------------------- |
-| `name`     | `Slot`          | id of the placeholder (required)                                    |
-| `name`     | `Defer`         | id of the placeholder (auto-generated if omitted)                   |
-| `target`   | `Fill`          | target slot id to push content into                                 |
-| `fallback` | `Defer`         | placeholder content shown in the shell while deferred content loads |
-| `merge`    | `Defer`, `Fill` | how content applies to its target (default `"replace"`) — see below |
-| `timeout`  | `Defer`, `Fill` | per-fragment render timeout in ms                                   |
-| `onError`  | `Defer`, `Fill` | per-fragment error handler, overriding the renderer's `onError`     |
-| `src`      | `ClientFetch`   | URL the browser fetches for the fragment content                    |
+| Prop       | Applies to | Meaning                                                             |
+| ---------- | ---------- | ------------------------------------------------------------------- |
+| `name`     | `Slot`     | id of the placeholder (required)                                    |
+| `target`   | `Template` | target slot id to push content into                                 |
+| `fallback` | `Template` | placeholder content shown in the shell (only for lazy factories)    |
+| `merge`    | `Template` | how content applies to its target (default `"replace"`) — see below |
+| `timeout`  | `Template` | per-fragment render timeout in ms                                   |
+| `onError`  | `Template` | per-fragment error handler, overriding the renderer's `onError`     |
+| `src`      | `Include`  | URL the browser fetches for the fragment content                    |
 
 ### Merge types
 
@@ -217,7 +209,7 @@ type AdapterCapabilities = {
 };
 ```
 
-This is surfaced in the type system. `renderStream` / `serve` require a streaming adapter, so **`EsiAdapter` is rejected at compile time** there — ESI composition happens at the CDN, via `renderToStatic` + `emitFragments`. An unsupported `merge` fails fast at registration.
+This is surfaced in the type system. `renderToStream` / `serve` require a streaming adapter, so **`EsiAdapter` is rejected at compile time** there — ESI composition happens at the CDN, via `renderToStatic` + `emitFragments`. An unsupported `merge` fails fast at registration.
 
 #### `NativeAdapter` (default — ~550 B polyfill)
 
@@ -250,17 +242,17 @@ Pure WICG spec — no JS at all. Requires `chrome://flags/#enable-experimental-w
 For **SSG with a CDN ESI processor** (Varnish, Fastly, nginx ESI module). The shell contains `<esi:include src="…">` tags; the CDN fetches each fragment independently, applies separate TTLs, and assembles the final response before it reaches the browser. `"replace"` only; no client-side JS.
 
 ```tsx
-// Defer with ESI — placeholder becomes esi:include, content renders the fragment
-<Defer name="nav" fallback={<span>Loading nav…</span>}>
+// Template with ESI — placeholder becomes esi:include, content renders the fragment
+<Template target="nav" fallback={<span>Loading nav…</span>}>
   {(signal) => <Nav signal={signal} />}
-</Defer>
-<Defer name="feed" fallback={<span>Loading feed…</span>}>
+</Template>
+<Template target="feed" fallback={<span>Loading feed…</span>}>
   {(signal) => <Feed signal={signal} />}
-</Defer>
+</Template>
 // Plain JSX also works when no signal is needed:
-<Defer name="footer" fallback={<span>Loading…</span>}>
+<Template target="footer" fallback={<span>Loading…</span>}>
   <Footer />
-</Defer>
+</Template>
 ```
 
 ## Usage
@@ -268,15 +260,15 @@ For **SSG with a CDN ESI processor** (Varnish, Fastly, nginx ESI module). The sh
 ### Streaming (server pushes fragments)
 
 ```tsx
-import { renderStream, Defer } from "@vincle/flow";
+import { renderToStream, Template } from "@vincle/flow";
 
-const stream = renderStream(() => (
+const stream = renderToStream(() => (
   <html>
     <body>
       <header>Fast</header>
-      <Defer name="dashboard">
+      <Template target="dashboard" fallback={<p>Loading…</p>}>
         <HeavyDashboard />
-      </Defer>
+      </Template>
     </body>
   </html>
 ));
@@ -364,20 +356,19 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 ### Components
 
-| Export        | Import path               | Description                                                                  |
-| ------------- | ------------------------- | ---------------------------------------------------------------------------- |
-| `Slot`        | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder |
-| `Fill`        | `@vincle/flow`            | Push content into a slot by target id; renders nothing                       |
-| `Defer`       | `@vincle/flow`            | Deferred content with a placeholder; fills when resolved                     |
-| `ClientFetch` | `@vincle/flow`            | Client-side fetch placeholder — no server deferral                           |
-| `Style`       | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                            |
-| `Script`      | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                           |
+| Export     | Import path               | Description                                                                  |
+| ---------- | ------------------------- | ---------------------------------------------------------------------------- |
+| `Slot`     | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder |
+| `Template` | `@vincle/flow`            | Push content into a slot — sync (plain JSX) or lazy (factory)                |
+| `Include`  | `@vincle/flow`            | Client-side fetch placeholder — no server deferral                           |
+| `Style`    | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                            |
+| `Script`   | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                           |
 
 ### Renderers
 
 | Export               | Import path         | Description                                                                                   |
 | -------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
-| `renderStream`       | `@vincle/flow`      | Streams shell + fragments as a `ReadableStream<string>` via the given `adapter`               |
+| `renderToStream`     | `@vincle/flow`      | Streams shell + fragments as a `ReadableStream<string>` via the given `adapter`               |
 | `renderToFlowEvents` | `@vincle/flow`      | Lower level: `ReadableStream<FlowEvent>` (semantic events) with backpressure and cancellation |
 | `renderToStatic`     | `@vincle/flow`      | Runs `handler` in a static render scope                                                       |
 | `serve`              | `@vincle/flow/http` | Full HTTP `Response` builder                                                                  |
@@ -415,7 +406,7 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `MergeType`           | `@vincle/flow/types`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"`            |
 | `FlowEvent`           | `@vincle/flow/types`    | `{ type: "shell" \| "fragment" \| "close", … }`                        |
 | `Negotiation`         | `@vincle/flow/types`    | `{ headers?, mode?, target? }`                                         |
-| `DeferContent`        | `@vincle/flow/types`    | `VNode \| ((signal: AbortSignal) => VNode)`                            |
+| `TemplateContent`     | `@vincle/flow/types`    | `VNode \| ((signal: AbortSignal) => VNode)`                            |
 
 ### Utilities
 

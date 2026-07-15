@@ -158,8 +158,16 @@ describe("gold — attributes", () => {
 
   // --- aria-* attributes ---
   // vincle now matches React: ARIA attrs are string attributes, not HTML booleans
-  j("aria-hidden true → string", ["div", { "aria-hidden": true }], ["div", { "aria-hidden": true }]);
-  j("aria-hidden false → string", ["div", { "aria-hidden": false }], ["div", { "aria-hidden": false }]);
+  j(
+    "aria-hidden true → string",
+    ["div", { "aria-hidden": true }],
+    ["div", { "aria-hidden": true }],
+  );
+  j(
+    "aria-hidden false → string",
+    ["div", { "aria-hidden": false }],
+    ["div", { "aria-hidden": false }],
+  );
   j("aria-label string", ["div", { "aria-label": "hello" }], ["div", { "aria-label": "hello" }]);
 
   // --- data-* attributes ---

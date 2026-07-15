@@ -72,7 +72,7 @@ export function SearchDialog() {
 
         <ul
           id="search-results"
-          class="docs-search-results m-0 hidden max-h-[60vh] overflow-y-auto py-2"
+          class="docs-search-results m-0 max-h-[60vh] overflow-y-auto py-2"
           role="listbox"
           aria-label="Search results"
         ></ul>

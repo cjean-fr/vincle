@@ -6,7 +6,7 @@ import { writeFile } from "node:fs/promises";
 
 declare const pages: { Component: () => JSX.Element; out: string }[];
 
-// Pages use <Defer>: emit fragment files after rendering all pages.
+// Pages use <Template> with lazy factories: emit fragment files after rendering all pages.
 await renderToStatic(
   async (ctx) => {
     for (const page of pages) {

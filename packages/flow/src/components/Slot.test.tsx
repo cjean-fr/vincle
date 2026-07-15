@@ -11,7 +11,7 @@ describe("Slot", () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       const html = await renderToString(<Slot name="sidebar" />);
       expect(html).toContain('id="sidebar"');
-      expect(useContext(Flow).pendingStore.size).toBe(0);
+      expect(useContext(Flow).templateStore.size).toBe(0);
     });
   });
 
@@ -25,8 +25,8 @@ describe("Slot", () => {
       );
       expect(html).toContain('id="main"');
       expect(html).toContain("<span>content</span>");
-      const { pendingStore } = useContext(Flow);
-      expect(pendingStore.size).toBe(0);
+      const { templateStore } = useContext(Flow);
+      expect(templateStore.size).toBe(0);
     });
   });
 });

@@ -1,15 +1,15 @@
-import type { DeferContent, FlowConfig, MergeType, OnError } from "./types.js";
+import type { FlowConfig, MergeType, OnError, TemplateContent } from "./types.js";
 
 import { assertFragmentId } from "./utils.js";
 
 /**
- * A unit of deferred work, keyed by its target DOM `id`. The renderer decides
- * at drain time whether `content` is a one-shot patch or a live stream — see
- * `streamFlow`. The factory receives an `AbortSignal` combining the request
- * signal with this entry's own `timeout` (if any).
+ * A unit of template content, keyed by its target DOM `id`. The renderer
+ * decides at drain time whether `content` is a one-shot patch or a live
+ * stream — see `flushTemplates`. The factory receives an `AbortSignal`
+ * combining the request signal with this entry's own `timeout` (if any).
  */
-export type Pending = {
-  content: DeferContent;
+export type TemplateEntry = {
+  content: TemplateContent;
   merge: MergeType;
   /** Per-fragment render timeout in ms. Falls back to FlowOptions.defaultTimeout. */
   timeout?: number;
@@ -18,56 +18,56 @@ export type Pending = {
 };
 
 /**
- * Internal storage for pending deferred work.
+ * Internal storage for registered template entries.
  *
  * Hides the `Map` implementation behind a narrow interface so callers don't
  * depend on the storage primitive. Iteration logic (filtering processed ids)
- * lives here rather than in `streamFlow`.
+ * lives here rather than in `flushTemplates`.
  */
-export type PendingStore = {
-  /** Register or overwrite a deferred entry for `id`. Validates merge support. */
-  defer(id: string, entry: Pending): void;
+export type TemplateStore = {
+  /** Register or overwrite an entry for `id`. Validates merge support. */
+  register(id: string, entry: TemplateEntry): void;
   /** Entries whose id is not in `processed`. */
-  pending(processed: Set<string>): Array<[string, Pending]>;
+  outstanding(processed: Set<string>): Array<[string, TemplateEntry]>;
   /** True when at least one entry is not in `processed`. */
-  hasPending(processed: Set<string>): boolean;
+  hasOutstanding(processed: Set<string>): boolean;
   /** Total registered entries (including processed ones). */
   readonly size: number;
   /** Purge all entries to eagerly release closures and references. */
   clear(): void;
 };
 
-const storeMaps = new WeakMap<PendingStore, Map<string, Pending>>();
+const storeMaps = new WeakMap<TemplateStore, Map<string, TemplateEntry>>();
 
-export function createPendingStore(config: FlowConfig): PendingStore {
-  const map = new Map<string, Pending>();
+export function createTemplateStore(config: FlowConfig): TemplateStore {
+  const map = new Map<string, TemplateEntry>();
   const merges: readonly string[] = config.adapter?.capabilities.merges ?? [];
-  const store: PendingStore = {
-    defer(id, entry) {
-      assertFragmentId(id, "Defer");
+  const store: TemplateStore = {
+    register(id, entry) {
+      assertFragmentId(id, "Template");
       if (!config.adapter) {
         throw new Error(
-          "Defer requires an adapter. " +
+          "Template requires an adapter. " +
             "Pass { adapter: ... } to renderToStatic " +
-            "or use an adapter with renderStream.",
+            "or use an adapter with renderToStream.",
         );
       }
       if (!merges.includes(entry.merge)) {
         throw new Error(
-          `Defer: merge="${entry.merge}" is not supported by this adapter ` +
+          `Template: merge="${entry.merge}" is not supported by this adapter ` +
             `(supports: ${merges.join(", ")}).`,
         );
       }
       map.set(id, entry);
     },
-    pending(processed) {
-      const result: Array<[string, Pending]> = [];
+    outstanding(processed) {
+      const result: Array<[string, TemplateEntry]> = [];
       for (const [id, entry] of map) {
         if (!processed.has(id)) result.push([id, entry]);
       }
       return result;
     },
-    hasPending(processed) {
+    hasOutstanding(processed) {
       for (const id of map.keys()) {
         if (!processed.has(id)) return true;
       }
@@ -85,14 +85,14 @@ export function createPendingStore(config: FlowConfig): PendingStore {
 }
 
 /** @internal Test helper — exposes the underlying Map for assertion. */
-export function debugStore(store: PendingStore): {
-  get(id: string): Pending | undefined;
+export function debugTemplateStore(store: TemplateStore): {
+  get(id: string): TemplateEntry | undefined;
   has(id: string): boolean;
   keys(): IterableIterator<string>;
-  entries(): IterableIterator<[string, Pending]>;
+  entries(): IterableIterator<[string, TemplateEntry]>;
 } {
   const map = storeMaps.get(store);
-  if (!map) throw new Error("debugStore: not a valid PendingStore");
+  if (!map) throw new Error("debugTemplateStore: not a valid TemplateStore");
   return {
     get(id) {
       return map.get(id);

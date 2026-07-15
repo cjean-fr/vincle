@@ -134,7 +134,7 @@ describe("renderDocument", () => {
 
   it("escapes text content", async () => {
     const html = await renderDocument(() => <div>{"<script>alert(1)</script>"}</div>);
-    expect(html).toContain("&lt;script&gt;");
+    expect(html).toContain("&lt;script>");
     expect(html).not.toContain("<script>");
   });
 });

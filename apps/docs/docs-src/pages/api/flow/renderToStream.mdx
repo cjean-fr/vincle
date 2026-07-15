@@ -1,20 +1,20 @@
 ---
-title: renderStream
+title: renderToStream
 sidebar:
   group: Flow API
   order: 3
 ---
 
-# renderStream
+# renderToStream
 
 Returns a `ReadableStream<string>`. The shell chunk is emitted first; fragment chunks follow as they resolve.
 
 ## Signature
 
 ```tsx
-import { renderStream } from "@vincle/flow";
+import { renderToStream } from "@vincle/flow";
 
-function renderStream(page: () => VNode, options?: StreamOptions): ReadableStream<string>;
+function renderToStream(page: () => VNode, options?: StreamOptions): ReadableStream<string>;
 ```
 
 ## Options

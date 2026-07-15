@@ -23,12 +23,12 @@ An adapter controls how placeholders and patches are encoded in the HTML shell. 
 
 ## Usage
 
-Pass an adapter to `renderStream` or `renderToStatic`. When omitted, `NativeAdapter` is the default:
+Pass an adapter to `renderToStream` or `renderToStatic`. When omitted, `NativeAdapter` is the default:
 
 ```tsx
-import { renderStream } from "@vincle/flow";
+import { renderToStream } from "@vincle/flow";
 
-const stream = renderStream(() => <Page />);
+const stream = renderToStream(() => <Page />);
 // Defaults to NativeAdapter
 ```
 

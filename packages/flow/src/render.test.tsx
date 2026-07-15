@@ -6,13 +6,13 @@ import type { FlowContext } from "./context.js";
 import type { FlowEvent } from "./types.js";
 
 import { NativeAdapter, TurboAdapter } from "./adapters/index.js";
-import { renderStream, Defer, Fill } from "./index.js";
-import { renderToFlowEvents, renderShell, orchestrateFlow } from "./render.js";
+import { renderToStream, Template } from "./index.js";
+import { renderToFlowEvents, renderShell, runSequence } from "./render.js";
 import { collectEvents, collect, type FragmentEvent } from "./test-utils.js";
 
 // renderShell only reads ctx through adapter.transformShell; these unit tests
 // pass a stub with no pending fragments.
-const FAKE_CTX = { pendingStore: { size: 0 } } as unknown as FlowContext;
+const FAKE_CTX = { templateStore: { size: 0 } } as unknown as FlowContext;
 
 describe("renderToFlowEvents", () => {
   it("emits shell + close when there is nothing deferred", async () => {
@@ -37,7 +37,7 @@ describe("renderToFlowEvents", () => {
         () => (
           <html>
             <body>
-              <Defer>{() => <span>content</span>}</Defer>
+              <Template target="content">{() => <span>content</span>}</Template>
             </body>
           </html>
         ),
@@ -47,20 +47,20 @@ describe("renderToFlowEvents", () => {
     expect(events.map((e) => e.type)).toEqual(["shell", "fragment", "close"]);
   });
 
-  it("streams a synchronously-nested Defer after its parent", async () => {
+  it("streams a synchronously-nested Template after its parent", async () => {
     const events = await collectEvents(
       renderToFlowEvents(
         () => (
           <html>
             <body>
-              <Defer>
+              <Template target="outer">
                 {() => (
                   <section>
                     OUTER
-                    <Defer>{() => <span>INNER-SYNC</span>}</Defer>
+                    <Template target="inner">{() => <span>INNER-SYNC</span>}</Template>
                   </section>
                 )}
-              </Defer>
+              </Template>
             </body>
           </html>
         ),
@@ -68,7 +68,7 @@ describe("renderToFlowEvents", () => {
       ),
     );
     const fragments = events.filter((e): e is FragmentEvent => e.type === "fragment");
-    expect(fragments.map((p) => p.id)).toEqual(["fragment-1", "fragment-2"]);
+    expect(fragments.map((p) => p.id)).toEqual(["outer", "inner"]);
   });
 
   it("propagates an external AbortSignal — stream closes after it fires", async () => {
@@ -95,18 +95,18 @@ describe("renderToFlowEvents", () => {
   it("cancels a stream mid-flight between fragments", async () => {
     const ac = new AbortController();
     async function* items(): AsyncGenerator<VNode, void, undefined> {
-      yield <li>a</li> as ResolvedVNode;
+      yield (<li>a</li>) as ResolvedVNode;
       await Bun.sleep(50);
-      yield <li>b</li> as ResolvedVNode;
+      yield (<li>b</li>) as ResolvedVNode;
     }
     const stream = renderToFlowEvents(
       () => (
         <html>
           <body>
             <ul id="feed" />
-            <Fill target="feed" merge="append">
+            <Template target="feed" merge="append">
               {() => items()}
-            </Fill>
+            </Template>
           </body>
         </html>
       ),
@@ -160,12 +160,12 @@ describe("renderShell", () => {
   });
 });
 
-describe("orchestrateFlow", () => {
-  it("emits shell, then runs streamFlow, then emits close in full mode", async () => {
+describe("runSequence", () => {
+  it("emits shell, then runs flushTemplates, then emits close in full mode", async () => {
     const events: FlowEvent[] = [];
     const emit = async (ev: FlowEvent) => void events.push(ev);
     const ac = new AbortController();
-    await orchestrateFlow(
+    await runSequence(
       emit,
       ac.signal,
       () => (
@@ -185,7 +185,7 @@ describe("orchestrateFlow", () => {
     const events: FlowEvent[] = [];
     const emit = async (ev: FlowEvent) => void events.push(ev);
     const ac = new AbortController();
-    await orchestrateFlow(
+    await runSequence(
       emit,
       ac.signal,
       () => (
@@ -206,7 +206,7 @@ describe("orchestrateFlow", () => {
     const emit = async (ev: FlowEvent) => void events.push(ev);
     const ac = new AbortController();
     ac.abort();
-    await orchestrateFlow(
+    await runSequence(
       emit,
       ac.signal,
       () => (
@@ -223,15 +223,15 @@ describe("orchestrateFlow", () => {
   });
 });
 
-describe("renderStream", () => {
+describe("renderToStream", () => {
   it("renders stream with NativeAdapter when passed explicitly", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <head></head>
             <body>
-              <Defer>{() => <span>x</span>}</Defer>
+              <Template target="x">{() => <span>x</span>}</Template>
             </body>
           </html>
         ),
@@ -245,11 +245,11 @@ describe("renderStream", () => {
   it("sends </html> after fragment chunks", async () => {
     const chunks = (
       await collect(
-        renderStream(
+        renderToStream(
           () => (
             <html>
               <body>
-                <Defer>{() => <span>content</span>}</Defer>
+                <Template target="content">{() => <span>content</span>}</Template>
               </body>
             </html>
           ),
@@ -260,22 +260,22 @@ describe("renderStream", () => {
     expect(chunks.indexOf("turbo-stream")).toBeLessThan(chunks.indexOf("</html>"));
   });
 
-  it("streams a Defer nested behind an await", async () => {
+  it("streams a Template nested behind an await", async () => {
     const Inner = async () => {
       await Promise.resolve();
       return (
         <section>
           OUTER
-          <Defer>{() => <span>INNER-ASYNC</span>}</Defer>
+          <Template target="inner">{() => <span>INNER-ASYNC</span>}</Template>
         </section>
       );
     };
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <body>
-              <Defer>{() => <Inner />}</Defer>
+              <Template target="outer">{() => <Inner />}</Template>
             </body>
           </html>
         ),
@@ -283,8 +283,8 @@ describe("renderStream", () => {
       ),
     );
     expect(html).toContain("INNER-ASYNC");
-    const parent = html.indexOf('target="fragment-1"');
-    const child = html.indexOf('target="fragment-2"');
+    const parent = html.indexOf('target="outer"');
+    const child = html.indexOf('target="inner"');
     expect(parent).toBeGreaterThan(-1);
     expect(parent).toBeLessThan(child);
   });
@@ -312,13 +312,13 @@ describe("edge cases — render pipeline", () => {
 
   it("transformShell is applied exactly once on the streaming path", async () => {
     const html = await collect(
-      renderStream(
+      renderToStream(
         () => (
           <html>
             <head></head>
             <body>
               <p>hi</p>
-              <Defer>{() => <span>d</span>}</Defer>
+              <Template target="d">{() => <span>d</span>}</Template>
             </body>
           </html>
         ),
@@ -330,17 +330,17 @@ describe("edge cases — render pipeline", () => {
 
   it("mixed one-shot + stream: shell first, fragments between, close last", async () => {
     async function* g() {
-      yield <li>g</li> as ResolvedVNode;
+      yield (<li>g</li>) as ResolvedVNode;
     }
     const events = await collectEvents(
       renderToFlowEvents(
         () => (
           <html>
             <body>
-              <Defer>{() => <span>d</span>}</Defer>
-              <Fill target="feed" merge="append">
+              <Template target="d">{() => <span>d</span>}</Template>
+              <Template target="feed" merge="append">
                 {() => g()}
-              </Fill>
+              </Template>
             </body>
           </html>
         ),

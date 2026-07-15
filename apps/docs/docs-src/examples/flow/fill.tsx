@@ -1,17 +1,17 @@
-import { Fill } from "@vincle/flow";
+import { Template } from "@vincle/flow";
 
 // Push content into a slot that already exists
 // (<Slot name="cart-badge">).
-// <Fill> renders nothing itself — just registers the content.
+// <Template> with a factory renders nothing itself — just registers the content.
 function LiveBadge({ count }: { count: number }) {
-  return <Fill target="cart-badge">{() => <span>{count}</span>}</Fill>;
+  return <Template target="cart-badge">{() => <span>{count}</span>}</Template>;
 }
 
 // merge: "replace" | "append" | "prepend" | "before" | "after"
 function AppendLog() {
   return (
-    <Fill target="log-list" merge="append">
+    <Template target="log-list" merge="append">
       {() => <li>New entry</li>}
-    </Fill>
+    </Template>
   );
 }
