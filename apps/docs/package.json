@@ -11,7 +11,7 @@
     "preview": "vite preview --outDir dist",
     "format": "oxfmt",
     "test": "bun test",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit && tsc --noEmit -p docs-src/examples/tsconfig.json"
   },
   "dependencies": {
     "@vincle/core": "workspace:*",

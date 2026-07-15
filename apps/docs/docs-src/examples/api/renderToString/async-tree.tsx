@@ -6,6 +6,7 @@ declare const db: {
   };
 };
 
+// @ts-expect-error — TS1062: async component returns Promise<VNode>, TS7 detects thenable cycle (runtime OK)
 const Feed = async () => {
   const posts = await db.posts.findAll({ limit: 10 });
   return (

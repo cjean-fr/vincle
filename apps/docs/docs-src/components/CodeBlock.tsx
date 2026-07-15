@@ -30,7 +30,7 @@ function renderPlain(code: string): string {
 
 function makeCodeBlock(body: string): VNode {
   return (
-    <div class="docs-code-block group relative my-4" translate="no">
+    <div class="docs-code-block group relative" translate="no">
       {raw(body)}
     </div>
   ) as VNode;

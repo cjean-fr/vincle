@@ -5,3 +5,18 @@ export { renderToStream, renderToFlowEvents } from "./render.js";
 export { renderToStatic } from "./static.js";
 export type { PureStaticContext, StaticContext, StaticOptions } from "./static.js";
 export type { FlowContext } from "./context.js";
+export type {
+  MergeType,
+  AdapterCapabilities,
+  TemplateContent,
+  Shell,
+  Fragment,
+  FlowEvent,
+  FlowErrorInfo,
+  OnError,
+  FlowOptions,
+  FlowConfig,
+  Negotiation,
+  Negotiate,
+  StreamingAdapter,
+} from "./types.js";

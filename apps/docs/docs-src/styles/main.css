@@ -369,14 +369,18 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
-.docs-code-block pre,
-.expressive-code pre {
+.docs-code-block pre {
   overflow-x: auto;
 }
 
 .docs-prose .docs-code-block,
-.docs-prose .expressive-code {
+.docs-prose > .expressive-code {
   margin-block: 1.5rem;
+}
+
+/* Inside tabs, the tab container already has my-4 — avoid double spacing */
+.docs-tabs .docs-code-block {
+  margin-block: 0;
 }
 
 .expressive-code .frame:not(.has-title):not(.is-terminal) pre code {
@@ -518,12 +522,8 @@ html {
   color: var(--docs-color-accent);
 }
 
-.docs-tab-panel {
-  transition: opacity 150ms var(--ease-out);
-}
 .docs-tab-panel:not(.active) {
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 /* === Table of contents === */

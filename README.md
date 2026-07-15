@@ -9,7 +9,7 @@ Monorepo of high-performance, type-safe tools built around JSX-to-HTML rendering
 | Package                                         | Description                                                                                                       |
 | :---------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
 | [`@vincle/core`](./packages/core)               | JSX-to-HTML string renderer. Zero dependencies.                                                                   |
-| [`@vincle/flow`](./packages/flow)               | Deferred fragments, streaming, and DOM patching — the `<Defer>` primitive + Turbo / HTMX / Native / ESI adapters. |
+| [`@vincle/flow`](./packages/flow)               | Deferred fragments, streaming, and DOM patching — `<Slot>`, `<Template>`, `<Include>` + Turbo / HTMX / Native / ESI adapters. |
 | [`@vincle/vite-plugin`](./packages/vite-plugin) | Vite asset integration — `<Asset>`, `assetUrl`, manifest resolution.                                              |
 
 ### Tooling

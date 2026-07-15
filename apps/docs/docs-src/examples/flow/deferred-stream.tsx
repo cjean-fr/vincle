@@ -3,6 +3,7 @@ import { NativeAdapter } from "@vincle/flow/adapters";
 
 declare function fetchComments(): Promise<{ text: string }[]>;
 
+// @ts-expect-error — TS1062: async component returns Promise<VNode>, TS7 detects thenable cycle (runtime OK)
 async function Comments() {
   const items = await fetchComments();
   return (

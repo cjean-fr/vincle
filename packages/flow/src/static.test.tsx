@@ -157,6 +157,122 @@ describe("renderToStatic", () => {
     expect(files["/esi/content.html"]).toContain("<span>real</span>");
   });
 
+  describe("SSG stress — concurrency (regression: initFlowAssets race)", () => {
+    const PAGE_COUNT = 50;
+
+    it("renders many pages concurrently without cross-contamination", async () => {
+      const pages = await Promise.all(
+        Array.from({ length: PAGE_COUNT }, (_, i) =>
+          renderToStatic(async (ctx) =>
+            ctx.renderPage(() => (
+              <html>
+                <body>
+                  <p>page-{i}</p>
+                </body>
+              </html>
+            )),
+          ),
+        ),
+      );
+
+      expect(pages).toHaveLength(PAGE_COUNT);
+      for (let i = 0; i < PAGE_COUNT; i++) {
+        expect(pages[i]).toContain(`<p>page-${i}</p>`);
+        // Verify no other page's content leaked in
+        for (let j = 0; j < PAGE_COUNT; j++) {
+          if (j !== i) {
+            expect(pages[i]).not.toContain(`<p>page-${j}</p>`);
+          }
+        }
+      }
+    });
+
+    it("renders many pages with fragments concurrently", async () => {
+      const pages = await Promise.all(
+        Array.from({ length: PAGE_COUNT }, (_, i) =>
+          renderToStatic(
+            async (ctx) => {
+              const html = await ctx.renderPage(() => (
+                <html>
+                  <body>
+                    <p>page-{i}</p>
+                    <Template target={`frag-${i}`}>{() => <span>frag-{i}</span>}</Template>
+                  </body>
+                </html>
+              ));
+              return { html, ids: ctx.templateStore.outstanding(new Set()).map(([id]) => id) };
+            },
+            { adapter: TurboAdapter },
+          ),
+        ),
+      );
+
+      expect(pages).toHaveLength(PAGE_COUNT);
+      for (let i = 0; i < PAGE_COUNT; i++) {
+        const page = pages[i]!;
+        expect(page.html).toContain(`<p>page-${i}</p>`);
+        expect(page.ids).toEqual([`frag-${i}`]);
+      }
+    });
+
+    it("handles mixed load with and without fragments, high concurrency", async () => {
+      // Even indices: pure static (no options). Odd indices: with fragments (adapter).
+      const [purePages, fragmentPages]: [
+        Array<{ html: string; ids: string[] }>,
+        Array<{ html: string; ids: string[] }>,
+      ] = await Promise.all([
+        Promise.all(
+          Array.from({ length: PAGE_COUNT / 2 }, (_, k) => {
+            const i = k * 2;
+            return renderToStatic(async (ctx) => {
+              const html = await ctx.renderPage(() => (
+                <html>
+                  <body>
+                    <p>page-{i}</p>
+                  </body>
+                </html>
+              ));
+              return { html, ids: ctx.templateStore.outstanding(new Set()).map(([id]) => id) };
+            });
+          }),
+        ),
+        Promise.all(
+          Array.from({ length: PAGE_COUNT / 2 }, (_, k) => {
+            const i = k * 2 + 1;
+            return renderToStatic(
+              async (ctx) => {
+                const html = await ctx.renderPage(() => (
+                  <html>
+                    <body>
+                      <p>page-{i}</p>
+                      <Template target={`t-${i}`}>{() => <span>odd-{i}</span>}</Template>
+                    </body>
+                  </html>
+                ));
+                return {
+                  html,
+                  ids: ctx.templateStore.outstanding(new Set()).map(([id]) => id),
+                };
+              },
+              { adapter: TurboAdapter },
+            );
+          }),
+        ),
+      ]);
+
+      for (let k = 0; k < PAGE_COUNT / 2; k++) {
+        const pure = purePages[k]!;
+        const frag = fragmentPages[k]!;
+        const iEven = k * 2;
+        const iOdd = k * 2 + 1;
+        expect(pure.html).toContain(`<p>page-${iEven}</p>`);
+        expect(pure.ids).toHaveLength(0);
+        expect(frag.html).toContain(`<p>page-${iOdd}</p>`);
+        expect(frag.ids).toEqual([`t-${iOdd}`]);
+      }
+    });
+  });
+
   it("<Template> with content uses NativeAdapter when explicitly passed", async () => {
     const html = await renderToStatic(
       async (ctx) =>

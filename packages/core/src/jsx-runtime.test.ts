@@ -85,12 +85,12 @@ describe("jsx — intrinsic elements", () => {
     const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
     try {
       const el = jsx("button", {
-        onClick: () => {},
+        onToggle: () => {},
         children: "Click",
       });
       expect(await renderToString(el)).toBe("<button>Click</button>");
       expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(String(warnSpy.mock.calls[0]?.[0])).toContain("onClick");
+      expect(String(warnSpy.mock.calls[0]?.[0])).toContain("onToggle");
     } finally {
       warnSpy.mockRestore();
     }

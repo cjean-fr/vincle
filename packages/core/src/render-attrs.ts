@@ -54,8 +54,6 @@ function isEventHandler(name: string): boolean {
   );
 }
 
-const warnedEventHandlers = new Set<string>();
-
 // ── Attribute meta cache ─────────────────────────────────────────────────
 
 const URL_NONE = 0;
@@ -133,13 +131,10 @@ export function renderAttr(name: string, value: unknown): Awaitable<string> {
 
   if (meta.isEvent) {
     if (typeof value === "function") {
-      if (!warnedEventHandlers.has(name)) {
-        warnedEventHandlers.add(name);
-        console.warn(
-          `[vincle/core] Event handler "${name}" was passed a function. ` +
-            "This is not supported in static HTML rendering. Use a string instead.",
-        );
-      }
+      console.warn(
+        `[vincle/core] Event handler "${name}" was passed a function. ` +
+          "This is not supported in static HTML rendering. Use a string instead.",
+      );
       return "";
     }
     if (typeof value !== "string") return "";

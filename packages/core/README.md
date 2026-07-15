@@ -402,7 +402,7 @@ _Ryzen 7 PRO 8840HS, median of 3 runs._
 
 Use [`@vincle/flow`](https://github.com/vincle/vincle/tree/main/packages/flow):
 
-- Adds `<Defer>` (deferred + streaming fragments), `<Slot>`/`<Fill>`, `<ClientFetch>`
+- Adds `<Slot>`, `<Template>` (deferred + streaming fragments), `<Include>`
 - Adapters for Native DOM updates, Turbo Streams, HTMX, ESI, and the Web Platform
 
 ---

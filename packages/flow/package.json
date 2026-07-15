@@ -54,10 +54,6 @@
       "types": "./dist/utils.d.ts",
       "default": "./dist/utils.js"
     },
-    "./types": {
-      "types": "./dist/types.d.ts",
-      "default": "./dist/types.js"
-    },
     "./context": {
       "types": "./dist/context.d.ts",
       "default": "./dist/context.js"
