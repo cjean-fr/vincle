@@ -403,10 +403,10 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `FlowContext`         | `@vincle/flow`          | Flow render context                                                    |
 | `PureStaticContext`   | `@vincle/flow`          | Static generation context (no `emitFragments`)                         |
 | `StaticContext`       | `@vincle/flow`          | Static generation context with `emitFragments`                         |
-| `MergeType`           | `@vincle/flow/types`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"`            |
-| `FlowEvent`           | `@vincle/flow/types`    | `{ type: "shell" \| "fragment" \| "close", … }`                        |
-| `Negotiation`         | `@vincle/flow/types`    | `{ headers?, mode?, target? }`                                         |
-| `TemplateContent`     | `@vincle/flow/types`    | `VNode \| ((signal: AbortSignal) => VNode)`                            |
+| `MergeType`           | `@vincle/flow`          | `"replace" \| "append" \| "prepend" \| "before" \| "after"`            |
+| `FlowEvent`           | `@vincle/flow`          | `{ type: "shell" \| "fragment" \| "close", … }`                        |
+| `Negotiation`         | `@vincle/flow`          | `{ headers?, mode?, target? }`                                         |
+| `TemplateContent`     | `@vincle/flow`          | `VNode \| ((signal: AbortSignal) => VNode)`                            |
 
 ### Utilities
 
