@@ -152,11 +152,7 @@ function finalizeNode(this: void, r: Rendered): Node {
   return r.then((s) => new RawString(s));
 }
 
-function renderComponent(
-  this: void,
-  comp: Component,
-  props: Record<string, unknown>,
-): Node {
+function renderComponent(this: void, comp: Component, props: Record<string, unknown>): Node {
   try {
     const result = comp(props);
     // Already-rendered RawString from a nested jsx() call — pass through as-is.

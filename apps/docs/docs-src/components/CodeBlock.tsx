@@ -69,7 +69,7 @@ export function CodeBlock({ code, language = "text", meta }: CodeBlockProps): VN
       .then(({ renderedGroupAst, styles }) => {
         if (styles.size) head.push([...styles].join(""));
         const style = head.length ? `<style>${head.join("")}</style>` : "";
-        return handleResult(style + toHtml(renderedGroupAst));
+        return handleResult(style + toHtml(renderedGroupAst as any));
       })
       .catch(() => makeCodeBlock(renderPlain(cleaned)));
   });

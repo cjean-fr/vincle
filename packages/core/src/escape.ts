@@ -8,23 +8,17 @@ const RE_ESCAPE_ATTR = /[&<"']/;
 export const escapeContent = (str: string): string => {
   const m = RE_ESCAPE_CONTENT.exec(str);
   if (!m) return str;
-  let out = "";
-  let last = 0;
+  let out = "",
+    last = 0;
   for (let i = m.index; i < str.length; i++) {
-    let rep: string;
-    switch (str.charCodeAt(i)) {
-      case 38:
-        rep = "&amp;";
-        break;
-      case 60:
-        rep = "&lt;";
-        break;
-      default:
-        continue;
+    const c = str.charCodeAt(i);
+    if (c === 38) {
+      out += str.slice(last, i) + "&amp;";
+      last = i + 1;
+    } else if (c === 60) {
+      out += str.slice(last, i) + "&lt;";
+      last = i + 1;
     }
-    if (i !== last) out += str.slice(last, i);
-    out += rep;
-    last = i + 1;
   }
   return out + str.slice(last);
 };
@@ -32,29 +26,28 @@ export const escapeContent = (str: string): string => {
 export const escapeAttr = (str: string): string => {
   const m = RE_ESCAPE_ATTR.exec(str);
   if (!m) return str;
-  let out = "";
-  let last = 0;
+  let out = "",
+    last = 0;
   for (let i = m.index; i < str.length; i++) {
-    let rep: string;
-    switch (str.charCodeAt(i)) {
+    const c = str.charCodeAt(i);
+    switch (c) {
       case 38:
-        rep = "&amp;";
+        out += str.slice(last, i) + "&amp;";
+        last = i + 1;
         break;
       case 60:
-        rep = "&lt;";
+        out += str.slice(last, i) + "&lt;";
+        last = i + 1;
         break;
       case 34:
-        rep = "&quot;";
+        out += str.slice(last, i) + "&quot;";
+        last = i + 1;
         break;
       case 39:
-        rep = "&#39;";
+        out += str.slice(last, i) + "&#39;";
+        last = i + 1;
         break;
-      default:
-        continue;
     }
-    if (i !== last) out += str.slice(last, i);
-    out += rep;
-    last = i + 1;
   }
   return out + str.slice(last);
 };
@@ -71,33 +64,22 @@ for (const tag of RAWTEXT_TAGS) {
 export function escapeRawText(str: string, tag: string): string {
   if (!RAWTEXT_TAGS.has(tag)) return escapeContent(str);
 
-  const re = RAWTEXT_REGEXES[tag];
-  if (!re) return str;
-  const m = re.exec(str);
+  const m = RAWTEXT_REGEXES[tag]!.exec(str);
   if (!m) return str;
 
   const tagLen = tag.length;
-  const tagLower = tag.toLowerCase();
-  let out = "";
-  let last = 0;
+  const closeTag = `</${tag.toLowerCase()}`;
+  const lower = str.toLowerCase();
+  let out = "",
+    last = 0;
+  let idx = m.index;
 
-  for (let i = m.index; i < str.length; i++) {
-    if (str.charCodeAt(i) === 60 && i + 2 + tagLen <= str.length && str.charCodeAt(i + 1) === 47) {
-      let isMatch = true;
-      for (let j = 0; j < tagLen; j++) {
-        if ((str.charCodeAt(i + 2 + j) | 32) !== tagLower.charCodeAt(j)) {
-          isMatch = false;
-          break;
-        }
-      }
-      if (isMatch) {
-        if (i !== last) out += str.slice(last, i);
-        out += `<\\${str.slice(i + 1, i + 2 + tagLen)}`;
-        i += 1 + tagLen;
-        last = i + 1;
-      }
-    }
+  while (idx !== -1) {
+    out += str.slice(last, idx) + `<\\${str.slice(idx + 1, idx + 2 + tagLen)}`;
+    last = idx + 2 + tagLen;
+    idx = lower.indexOf(closeTag, last);
   }
+
   return out + str.slice(last);
 }
 

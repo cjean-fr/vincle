@@ -8,7 +8,7 @@ export const wrapTables = defineHastPlugin({
       return {
         type: "element",
         tagName: "div",
-        properties: { className: "docs-table-wrapper" },
+        properties: { className: ["docs-table-wrapper"] },
         children: [node],
       };
     },
