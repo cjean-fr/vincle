@@ -4,7 +4,6 @@ import {
   render,
   renderToString,
   raw,
-  ErrorBoundary,
   context,
   setContext,
   useContext,
@@ -138,96 +137,16 @@ describe("render (sync)", () => {
   });
 });
 
-describe("ErrorBoundary", () => {
-  it("catches sync error and renders fallback", async () => {
-    function Boom(): never {
-      throw new Error("fail");
-    }
-    const html = await renderToString(
-      jsx(ErrorBoundary, {
-        fallback: raw("<p>fallback</p>"),
-        children: jsx(Boom, {}),
-      }),
-    );
-    expect(html).toBe("<p>fallback</p>");
-  });
-
-  it("catches async error", async () => {
-    async function AsyncBoom(): Promise<any> {
-      await Promise.resolve();
-      throw new Error("async-fail");
-    }
-    const html = await renderToString(
-      jsx(ErrorBoundary, {
-        fallback: raw("<p>caught</p>"),
-        children: jsx(AsyncBoom, {}),
-      }),
-    );
-    expect(html).toBe("<p>caught</p>");
-  });
-
-  it("catches Promise child rejection", async () => {
-    const html = await renderToString(
-      jsx(ErrorBoundary, {
-        fallback: raw("<p>caught-promise</p>"),
-        children: Promise.reject(new Error("rejected")),
-      }),
-    );
-    expect(html).toBe("<p>caught-promise</p>");
-  });
-
-  it("fallback function receives the error", async () => {
-    function Boom(): never {
-      throw new Error("broken-part");
-    }
-    const html = await renderToString(
-      jsx(ErrorBoundary, {
-        fallback: (e: unknown) => raw(`<p>Error: ${(e as Error).message}</p>`),
-        children: jsx(Boom, {}),
-      }),
-    );
-    expect(html).toBe("<p>Error: [Boom] broken-part</p>");
-  });
-
-  it("silently passes normal children", async () => {
-    const html = await renderToString(
-      jsx(ErrorBoundary, {
-        fallback: raw("<p>fail</p>"),
-        children: raw("<span>ok</span>"),
-      }),
-    );
-    expect(html).toBe("<span>ok</span>");
-  });
-
-  it("passes through when no children", async () => {
-    const html = await renderToString(jsx(ErrorBoundary, { fallback: raw("<p>fail</p>") }));
-    expect(html).toBe("");
-  });
-
-  it("throws TypeError when called directly outside jsx()", () => {
-    expect(() => ErrorBoundary({ children: raw("test") })).toThrow(
-      "[vincle/core] ErrorBoundary must be used within jsx(), not called directly.",
-    );
-  });
-});
-
 describe("Error annotation", () => {
   it("annotates sync error with component name", async () => {
     function Boom(): never {
       throw new Error("fail");
     }
-    const orig = console.error;
-    console.error = () => {};
     try {
-      const html = await renderToString(
-        jsx(ErrorBoundary, {
-          fallback: (e: unknown) => raw(`<p>${(e as Error).message}</p>`),
-          children: jsx(Boom, {}),
-        }),
-      );
-      expect(html).toBe("<p>[Boom] fail</p>");
-    } finally {
-      console.error = orig;
+      await renderToString(jsx(Boom, {}));
+      throw new Error("expected to throw");
+    } catch (e) {
+      expect((e as Error).message).toBe("[Boom] fail");
     }
   });
 
@@ -235,18 +154,11 @@ describe("Error annotation", () => {
     const Crash: () => never = () => {
       throw "string-boom" as never;
     };
-    const orig = console.error;
-    console.error = () => {};
     try {
-      const html = await renderToString(
-        jsx(ErrorBoundary, {
-          fallback: (e: unknown) => raw(`<p>${(e as Error).message}</p>`),
-          children: jsx(Crash, {}),
-        }),
-      );
-      expect(html).toBe("<p>[Crash] string-boom</p>");
-    } finally {
-      console.error = orig;
+      await renderToString(jsx(Crash, {}));
+      throw new Error("expected to throw");
+    } catch (e) {
+      expect((e as Error).message).toBe("[Crash] string-boom");
     }
   });
 
@@ -254,18 +166,11 @@ describe("Error annotation", () => {
     const Crash: () => never = () => {
       throw 42 as never;
     };
-    const orig = console.error;
-    console.error = () => {};
     try {
-      const html = await renderToString(
-        jsx(ErrorBoundary, {
-          fallback: (e: unknown) => raw(`<p>${(e as Error).message}</p>`),
-          children: jsx(Crash, {}),
-        }),
-      );
-      expect(html).toBe("<p>[Crash] 42</p>");
-    } finally {
-      console.error = orig;
+      await renderToString(jsx(Crash, {}));
+      throw new Error("expected to throw");
+    } catch (e) {
+      expect((e as Error).message).toBe("[Crash] 42");
     }
   });
 });
@@ -340,42 +245,24 @@ describe("Context API", () => {
   });
 });
 
-describe("RenderError propagation", () => {
-  it("propagates RenderError inside a synchronous array", async () => {
+describe("Error propagation", () => {
+  it("propagates error inside a synchronous array", () => {
     function Boom(): never {
       throw new Error("sync-arr");
     }
-    await expect(renderToString(jsx("div", { children: [jsx(Boom, {}), "ok"] }))).rejects.toThrow(
-      "sync-arr",
+    expect(() => renderToString(jsx("div", { children: [jsx(Boom, {}), "ok"] }))).toThrow(
+      "[Boom] sync-arr",
     );
   });
 
-  it("propagates RenderError in async array", async () => {
+  it("propagates error in async array", async () => {
     async function AsyncBoom(): Promise<never> {
       await Promise.resolve();
       throw new Error("async-arr");
     }
     await expect(
       renderToString(jsx("div", { children: [Promise.resolve("a"), jsx(AsyncBoom, {})] })),
-    ).rejects.toThrow("async-arr");
-  });
-
-  it("stops at first RenderError in sync array", async () => {
-    const order: string[] = [];
-    function Boom(): never {
-      order.push("boom");
-      throw new Error("x");
-    }
-    function Late(): string {
-      order.push("late");
-      return "y";
-    }
-    await expect(
-      renderToString(jsx("div", { children: [jsx(Boom, {}), jsx(Late, {})] })),
-    ).rejects.toThrow("x");
-    // Both jsx() calls are eager, so both components execute.
-    // RenderError propagation stops the *render* loop, not the jsx evaluation.
-    expect(order).toEqual(["boom", "late"]);
+    ).rejects.toThrow("[AsyncBoom] async-arr");
   });
 });
 
@@ -401,13 +288,12 @@ describe("Error annotation edge cases", () => {
       Object.freeze(e);
       throw e;
     }
-    const html = await renderToString(
-      jsx(ErrorBoundary, {
-        fallback: () => raw("<p>ok</p>"),
-        children: jsx(Boom, {}),
-      }),
-    );
-    expect(html).toBe("<p>ok</p>");
+    try {
+      await renderToString(jsx(Boom, {}));
+      throw new Error("expected to throw");
+    } catch (e) {
+      expect((e as Error).message).toBe("[Boom] fail");
+    }
   });
 
   it("handles non-extensible error objects", async () => {
@@ -416,13 +302,12 @@ describe("Error annotation edge cases", () => {
       Object.preventExtensions(e);
       throw e;
     }
-    const html = await renderToString(
-      jsx(ErrorBoundary, {
-        fallback: () => raw("<p>ok</p>"),
-        children: jsx(Boom, {}),
-      }),
-    );
-    expect(html).toBe("<p>ok</p>");
+    try {
+      await renderToString(jsx(Boom, {}));
+      throw new Error("expected to throw");
+    } catch (e) {
+      expect((e as Error).message).toBe("[Boom] fail");
+    }
   });
 
   it("strips previous annotation prefix in re-annotation", async () => {

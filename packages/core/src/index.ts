@@ -1,4 +1,4 @@
-export { renderToString, render, ErrorBoundary } from "./render.js";
+export { renderToString, render } from "./render.js";
 export type { VNode, ResolvedVNode, Component } from "./render.js";
 export {
   context,

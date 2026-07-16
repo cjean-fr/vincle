@@ -2,7 +2,7 @@ import { describe, it, expect, spyOn } from "bun:test";
 
 import type { VNode } from "./index.js";
 
-import { renderToString, raw, ErrorBoundary, Fragment } from "./index.js";
+import { renderToString, raw, Fragment } from "./index.js";
 import { jsx, jsxDEV, jsxAttr, jsxTemplate, createElement } from "./jsx-runtime.js";
 import { renderAttr } from "./render-attrs.js";
 
@@ -188,18 +188,11 @@ describe("jsx — components", () => {
     function Boom(): never {
       throw new Error("fail");
     }
-    const orig = console.error;
-    console.error = () => {};
     try {
-      const html = await renderToString(
-        jsx(ErrorBoundary, {
-          fallback: (e: unknown) => raw(`<p>${(e as Error).message}</p>`),
-          children: jsx(Boom, {}),
-        }),
-      );
-      expect(html).toBe("<p>[Boom] fail</p>");
-    } finally {
-      console.error = orig;
+      await renderToString(jsx(Boom, {}));
+      throw new Error("expected to throw");
+    } catch (e) {
+      expect((e as Error).message).toBe("[Boom] fail");
     }
   });
 
@@ -214,18 +207,12 @@ describe("jsx — components", () => {
     const Boom = () => {
       throw new HttpError(503);
     };
-    const orig = console.error;
-    console.error = () => {};
     try {
-      const html = await renderToString(
-        jsx(ErrorBoundary, {
-          fallback: (e: unknown) => raw(`<p>${(e as HttpError).status}</p>`),
-          children: jsx(Boom, {}),
-        }),
-      );
-      expect(html).toBe("<p>503</p>");
-    } finally {
-      console.error = orig;
+      await renderToString(jsx(Boom, {}));
+      throw new Error("expected to throw");
+    } catch (e) {
+      expect(e).toBeInstanceOf(HttpError);
+      expect((e as HttpError).status).toBe(503);
     }
   });
 });

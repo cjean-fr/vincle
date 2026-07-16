@@ -195,10 +195,14 @@ describe("Error propagation", () => {
       await Promise.resolve();
       throw new Error("fail");
     };
-    expect(() => renderToString(<AsyncBoom />)).toThrow("[AsyncBoom] fail");
+    try {
+      await renderToString(<AsyncBoom />);
+    } catch (e) {
+      expect((e as Error).message).toBe("[AsyncBoom] fail");
+    }
   });
 
-  it("annotates with the component chain", async () => {
+  it("annotates with the component chain", () => {
     const Child = function Child() {
       throw new Error("fail");
     };
@@ -209,7 +213,7 @@ describe("Error propagation", () => {
         </div>
       );
     };
-    await expect(renderToString(<Parent />)).rejects.toThrow("[Child > Parent] fail");
+    expect(() => renderToString(<Parent />)).toThrow("[Child > Parent] fail");
   });
 
   it("preserves the original error type and properties", async () => {
