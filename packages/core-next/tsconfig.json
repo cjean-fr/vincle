@@ -1,0 +1,11 @@
+{
+  "extends": "../typescript-config/react.json",
+  "compilerOptions": {   
+    "jsx": "react-jsx",
+    "jsxImportSource": "./src",
+    "outDir": "./dist",
+    "rootDir": "./",
+  
+    "types": ["bun"]
+  }
+}

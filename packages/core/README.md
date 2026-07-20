@@ -187,44 +187,6 @@ const markdownHtml = await renderMarkdown("# Hello");
 <div dangerouslySetInnerHTML={{ __html: "<b>trusted</b>" }} />
 ```
 
-### 🛡️ Error Boundaries
-
-Catch rendering errors from child components and display a fallback instead. Works at any depth — nested boundaries are supported.
-
-```tsx
-import { ErrorBoundary } from "@vincle/core";
-
-const Profile = async ({ id }: { id: string }) => {
-  const user = await db.users.find(id);
-  return <h1>{user.name}</h1>;
-};
-
-const Page = ({ id }: { id: string }) => (
-  <html>
-    <body>
-      <ErrorBoundary fallback={(error) => <p>Failed: {(error as Error).message}</p>}>
-        <Profile id={id} />
-      </ErrorBoundary>
-    </body>
-  </html>
-);
-
-const html = await renderToString(<Page id="42" />);
-// On success:  <html><body><h1>Alice</h1></body></html>
-// On error:    <html><body><p>Failed: not found</p></body></html>
-```
-
-**How it works:**
-
-Every JSX expression produces a lazy **descriptor** — a plain object `{ type, props, key }` — instead of eagerly rendering. `renderToString` walks descriptors at render time, where `ErrorBoundary` wraps its children in a try/catch:
-
-- `fallback` receives the caught error: `(error: unknown) => VNode`
-- Errors propagate up to the nearest boundary (React-style)
-- Uncaught errors are annotated with the component name in the error message: `[Profile] not found`
-- Errors not caught by any boundary reject the `renderToString` promise
-
-`ErrorBoundary` is identified by an internal symbol — it produces no wrapper HTML, not even a comment.
-
 ---
 
 ## API Reference
@@ -234,7 +196,6 @@ Every JSX expression produces a lazy **descriptor** — a plain object `{ type, 
 | `renderToString(node)`     | `Promise<string>`          | Renders JSX tree to HTML string.                                                                          |
 | `raw(string)`              | `RawString`                | Marks HTML as trusted (no escape).                                                                        |
 | `Fragment`                 | `symbol`                   | Standard JSX Fragment (`<>…</>`).                                                                         |
-| `ErrorBoundary`            | `Component`                | Catches child rendering errors, renders `fallback(error)` instead.                                        |
 | `context<T>(key)`          | `ContextKey<T>`            | Creates a typed, namespaced context token. `key` is a globally-unique string (e.g. `"@org/pkg:purpose"`). |
 | `setContext(token, value)` | `void`                     | Writes to current scope.                                                                                  |
 | `useContext(token)`        | `T`                        | Reads from current scope; **throws if absent**.                                                           |
@@ -363,7 +324,6 @@ _Ryzen 7 PRO 8840HS, median of 3 runs._
 
 ### ✅ What @vincle/core Does
 
-- **Lazy descriptors:** JSX produces `{ type, props, key }` — no rendering until `renderToString` walks the tree, which enables `ErrorBoundary` to catch errors at any depth.
 - **No virtual DOM:** The descriptor tree is walked once and concatenated — no reconciliation, no diffing.
 - **Async-first:** Components can `await` directly in render body.
 - **Scoped context:** Typed, nestable context for server-side rendering.
@@ -381,7 +341,6 @@ _Ryzen 7 PRO 8840HS, median of 3 runs._
 | Feature                | @vincle/core             | React               |
 | ---------------------- | ------------------------ | ------------------- |
 | Async in render        | ✅ Yes                   | ❌ No (needs hooks) |
-| Error boundaries       | ✅ Yes (`ErrorBoundary`) | ✅ Yes              |
 | Context model          | ✅ Scoped per-request    | ❌ Provider-based   |
 | Virtual DOM            | ❌ No                    | ✅ Yes              |
 | Hooks                  | ❌ No                    | ✅ Yes              |
