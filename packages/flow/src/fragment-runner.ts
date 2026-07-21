@@ -63,7 +63,7 @@ export function runFragment(
   assets?: AssetState | null,
 ): FragmentResult {
   const handle = entry.onError ?? opts.onError;
-  const { signal, cleanup } = createTimeoutSignal(
+  const { cleanup } = createTimeoutSignal(
     entry.timeout ?? opts.defaultTimeout,
     opts.signal,
     id,

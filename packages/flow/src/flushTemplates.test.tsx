@@ -1,4 +1,4 @@
-import type { ResolvedVNode } from "@vincle/core";
+import type { ResolvedVNode, VNode } from "@vincle/core";
 
 import { describe, it, expect } from "bun:test";
 

@@ -29,7 +29,7 @@ describe("Template — async content (placeholder)", () => {
   it("renders a placeholder and registers promise content (streaming mode)", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const AsyncContent = async () => <span>content</span>;
+      const AsyncContent = async () => <span>content</span> as ResolvedVNode;
       const html = await renderToString(
         <Template target="content">
           <AsyncContent />
@@ -44,7 +44,7 @@ describe("Template — async content (placeholder)", () => {
   it("accepts a promise returning a node", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const AsyncContent = async () => <span>inline</span>;
+      const AsyncContent = async () => <span>inline</span> as ResolvedVNode;
       const html = await renderToString(
         <Template target="inline">
           <AsyncContent />
@@ -59,7 +59,7 @@ describe("Template — async content (placeholder)", () => {
   it("honours an explicit target", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const AsyncContent = async () => <span>x</span>;
+      const AsyncContent = async () => <span>x</span> as ResolvedVNode;
       await renderToString(
         <Template target="cart">
           <AsyncContent />
@@ -73,7 +73,7 @@ describe("Template — async content (placeholder)", () => {
   it("stores an explicit merge type", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const AsyncContent = async () => <li>item</li>;
+      const AsyncContent = async () => <li>item</li> as ResolvedVNode;
       await renderToString(
         <Template target="list" merge="append">
           <AsyncContent />
@@ -105,7 +105,7 @@ describe("Template — async content (placeholder)", () => {
         mode: "static",
         generatePath: (id) => `/f/${id}.html`,
       });
-      const AsyncContent = async () => <span>content</span>;
+      const AsyncContent = async () => <span>content</span> as ResolvedVNode;
       const html = await renderToString(
         <Template target="content">
           <AsyncContent />
