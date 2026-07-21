@@ -1,3 +1,7 @@
+// Gate for React→HTML name resolution: only names with an uppercase letter can
+// be a React alias (className, htmlFor, …) or need lowercasing.
+const RE_HAS_UPPER = /[A-Z]/;
+
 // ── React → HTML attribute name map ──────────────────────────────────
 const ATTRIBUTE_NAME_MAP = new Map<string, string>([
   ["htmlFor", "for"],
@@ -49,14 +53,22 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
       );
     }
 
-    // Resolve React name → HTML name, then lowercase (HTML attrs are case-insensitive)
+    // Resolve React name → HTML name. Every key in ATTRIBUTE_NAME_MAP contains an
+    // uppercase letter (className, htmlFor, tabIndex, …), and HTML attribute names
+    // are already lowercase, so a name with no uppercase needs neither the Map
+    // lookup nor toLowerCase — pass it straight through. This skips both for the
+    // common case (class, id, href, data-*, aria-*).
     let attrName = key;
-    const mapped = ATTRIBUTE_NAME_MAP.get(key);
-    if (mapped !== undefined) attrName = mapped;
-    else attrName = attrName.toLowerCase();
-
-    // When both React name and HTML name appear, HTML wins — skip React name
-    if (mapped !== undefined && mapped in attrs) continue;
+    if (RE_HAS_UPPER.test(key)) {
+      const mapped = ATTRIBUTE_NAME_MAP.get(key);
+      if (mapped !== undefined) {
+        // When both React name and HTML name appear, HTML wins — skip React name
+        if (mapped in attrs) continue;
+        attrName = mapped;
+      } else {
+        attrName = key.toLowerCase();
+      }
+    }
 
     // Style object → string
     if (attrName === "style" && typeof value === "object" && !Array.isArray(value)) {

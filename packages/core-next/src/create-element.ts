@@ -2,11 +2,7 @@ import { VNode } from "./jsx-runtime.js";
 import { buildAttrs } from "./attrs.js";
 import { RawString } from "./raw.js";
 import { escapeHtml, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
-
-const VOID = new Set([
-  "area", "base", "br", "col", "embed", "hr", "img", "input",
-  "link", "meta", "param", "source", "track", "wbr",
-]);
+import { serializeElement } from "./serialize.js";
 
 const RE_INVALID_TAG = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
 
@@ -32,6 +28,7 @@ function createElement(vnode: unknown, rawtextTag?: string): string {
   }
   if (typeof vnode === "number") return String(vnode);
   if (vnode instanceof RawString) return vnode.value;
+  if (Array.isArray(vnode)) return renderChildren(vnode, rawtextTag);
   if (!(vnode instanceof VNode)) return escapeHtml(String(vnode));
 
   if (typeof vnode.tag === "function") {
@@ -52,18 +49,9 @@ function createElement(vnode: unknown, rawtextTag?: string): string {
   }
 
   const attrStr = buildAttrs(attrs);
-
-  if (RAWTEXT_TAGS.has(tag)) {
-    const content = children !== undefined ? renderChildren(children, tag) : "";
-    return `<${tag}${attrStr}>${content}</${tag}>`;
-  }
-
-  if (!children && VOID.has(tag)) {
-    return `<${tag}${attrStr}/>`;
-  }
-
-  const content = children !== undefined ? renderChildren(children, rawtextTag) : "";
-  return `<${tag}${attrStr}>${content}</${tag}>`;
+  const childTag = RAWTEXT_TAGS.has(tag) ? tag : rawtextTag;
+  const content = children !== undefined ? renderChildren(children, childTag) : "";
+  return serializeElement(tag, attrStr, content, !!children);
 }
 
 function renderChildren(children: unknown, rawtextTag?: string): string {
