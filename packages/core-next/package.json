@@ -1,12 +1,16 @@
 {
   "name": "core-next",
-  "module": "index.ts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^7.0.2"
-  },
-  "private": true,
-  "type": "module"
+  }
 }

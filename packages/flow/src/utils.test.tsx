@@ -42,7 +42,7 @@ describe("composeShell", () => {
           <html>
             <head></head>
             <body>
-              <Template target="d">{() => <span>d</span>}</Template>
+              <Template target="d"><span>d</span></Template>
             </body>
           </html>
         ),

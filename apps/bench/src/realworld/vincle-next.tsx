@@ -1,4 +1,4 @@
-/** @jsxImportSource ../../../../packages/core-next/src */
+/** @jsxImportSource core-next */
 import type { Purchase } from "./data.js";
 
 function Purchase({ name, price, quantity }: Purchase) {
@@ -146,7 +146,7 @@ function RealWorldPage(name: string, purchases: Purchase[]) {
   );
 }
 
-import { renderToString } from "../../../../packages/core-next/src/create-element.js";
+import { renderToString } from "core-next";
 
 export const render = (name: string, purchases: Purchase[]): string =>
   renderToString(RealWorldPage(name, purchases));

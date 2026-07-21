@@ -157,12 +157,10 @@ describe("Style/Script — render pipeline integration", () => {
             </head>
             <body>
               <Template target="frag1">
-                {() => (
-                  <div>
-                    <Style name="shared">{"body { color: red }"}</Style>
-                    <span>from fragment</span>
-                  </div>
-                )}
+                <div>
+                  <Style name="shared">{"body { color: red }"}</Style>
+                  <span>from fragment</span>
+                </div>
               </Template>
             </body>
           </html>
@@ -186,12 +184,10 @@ describe("Style/Script — render pipeline integration", () => {
             <head></head>
             <body>
               <Template target="frag1">
-                {() => (
-                  <div>
-                    <Style name="inline">{" .inline { }"}</Style>
-                    <span>from fragment</span>
-                  </div>
-                )}
+                <div>
+                  <Style name="inline">{" .inline { }"}</Style>
+                  <span>from fragment</span>
+                </div>
               </Template>
             </body>
           </html>

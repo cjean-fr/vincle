@@ -23,7 +23,7 @@ const cfg: FlowConfig = { adapter: TurboAdapter, mode: "streaming" };
 describe("flushTemplates", () => {
   it("emits a fragment for a one-shot node entry", async () => {
     const store = createTemplateStore(cfg);
-    store.register("t1", { content: () => <div>Hello</div>, merge: "replace" });
+    store.register("t1", { content: <div>Hello</div>, merge: "replace" });
     const results = await drain(store);
     expect(results).toHaveLength(1);
     expect(results[0]!.type).toBe("fragment");
@@ -44,34 +44,28 @@ describe("flushTemplates", () => {
       yield (<li>b</li>) as ResolvedVNode;
     }
     const store = createTemplateStore(cfg);
-    store.register("feed", { content: () => rows(), merge: "append" });
+    store.register("feed", { content: rows(), merge: "append" });
     const results = await drain(store);
     const fragments = results.filter((e) => e.type === "fragment");
     expect(fragments).toHaveLength(2);
   });
 
-  it("catches a factory throw and continues other entries", async () => {
+  it("handles rejected promise content via onError", async () => {
     const store = createTemplateStore(cfg);
-    store.register("plain", { content: <div>Plain</div>, merge: "replace" });
-    store.register("bad", {
-      content: () => {
-        throw new Error("fail");
-      },
-      merge: "replace",
-    });
-    const results = await drain(store);
-    expect(results).toHaveLength(1);
-    if (results[0]!.type === "fragment") expect(results[0]!.id).toBe("plain");
-  });
+    // Use withResolvers: promise starts pending, rejected only when drain runs
+    const { promise, reject } = Promise.withResolvers<VNode>();
+    const content = promise.then(
+      () => { throw new Error("fail"); },
+      () => { throw new Error("fail"); },
+    );
+    content.catch(() => {}); // suppress unhandled rejection
 
-  it("emits an error fallback fragment when onError returns a node", async () => {
-    const store = createTemplateStore(cfg);
-    store.register("bad", {
-      content: () => {
-        throw new Error("fail");
-      },
-      merge: "replace",
-    });
+    store.register("bad", { content: content as any, merge: "replace" });
+
+    // Start drain and reject synchronously — renderToString will await content
+    // which rejects via the .then() chain
+    reject(new Error("trigger"));
+
     const results = await drain(store, {
       onError: () => <span>error-fallback</span>,
     });
@@ -81,72 +75,36 @@ describe("flushTemplates", () => {
 
   it("a per-entry onError overrides the global one", async () => {
     const store = createTemplateStore(cfg);
+    const { promise, reject } = Promise.withResolvers<VNode>();
+    const content = promise.then(
+      () => { throw new Error("fail"); },
+      () => { throw new Error("fail"); },
+    );
+    content.catch(() => {});
+
     store.register("bad", {
-      content: () => {
-        throw new Error("fail");
-      },
+      content: content as any,
       merge: "replace",
       onError: () => <span>local</span>,
     });
+
+    reject(new Error("trigger"));
+
     const results = await drain(store, {
       onError: () => <span>global</span>,
     });
     if (results[0]!.type === "fragment") expect(results[0]!.html).toContain("local");
   });
-
-  it("aborts a factory that exceeds its timeout and routes to onError", async () => {
-    const slow = async (signal: AbortSignal) => {
-      await new Promise<void>((resolve, reject) => {
-        const t = setTimeout(resolve, 1000);
-        signal.addEventListener(
-          "abort",
-          () => {
-            clearTimeout(t);
-            reject(signal.reason);
-          },
-          { once: true },
-        );
-      });
-      return (<div>too late</div>) as ResolvedVNode;
-    };
-    const store = createTemplateStore(cfg);
-    store.register("slow", { content: slow, merge: "replace", timeout: 10 });
-    const results = await drain(store, {
-      onError: (err) => <span>{(err as Error).message}</span>,
-    });
-    if (results[0]!.type === "fragment") {
-      expect(results[0]!.html).toContain('Template "slow" timed out after 10ms');
-      expect(results[0]!.html).not.toContain("too late");
-    }
-  });
-
-  it("applies defaultTimeout when a factory sets no timeout of its own", async () => {
-    const content = (signal: AbortSignal) =>
-      new Promise((_, reject) =>
-        signal.addEventListener("abort", () => reject(signal.reason), {
-          once: true,
-        }),
-      ) as unknown as ReturnType<() => any>;
-    const store = createTemplateStore(cfg);
-    store.register("slow", { content, merge: "replace" });
-    const results = await drain(store, {
-      defaultTimeout: 10,
-      onError: (err) => <span>{(err as Error).message}</span>,
-    });
-    if (results[0]!.type === "fragment") expect(results[0]!.html).toContain("timed out after 10ms");
-  });
 });
 
 describe("edge cases — streaming", () => {
   it("reader cancel stops an infinite generator", async () => {
-    // Use a cooperative generator that yields control so the abort signal
-    // can propagate before the next iteration.
-    async function* inf(signal: AbortSignal) {
+    async function* inf() {
       let i = 0;
-      while (!signal.aborted) {
+      while (true) {
         i++;
         yield (<li>{i}</li>) as ResolvedVNode;
-        await Promise.resolve(); // yield event loop — let abort propagate
+        await Promise.resolve();
       }
     }
     const stream = renderToStream(
@@ -155,7 +113,7 @@ describe("edge cases — streaming", () => {
           <body>
             <ul id="feed" />
             <Template target="feed" merge="append">
-              {(signal) => inf(signal!)}
+              {inf()}
             </Template>
           </body>
         </html>
@@ -168,8 +126,6 @@ describe("edge cases — streaming", () => {
     await reader.read(); // fragment 2
     await reader.read(); // fragment 3
     await reader.cancel();
-    // After cancel, the signal is aborted → generator stops.
-    // The reader should be done (no more chunks).
     const last = await reader.read();
     expect(last.done).toBe(true);
   });
@@ -188,7 +144,7 @@ describe("edge cases — streaming", () => {
           <body>
             <div id="out" />
             <Template target="out" merge="append">
-              {() => many()}
+              {many()}
             </Template>
           </body>
         </html>
@@ -205,21 +161,29 @@ describe("edge cases — streaming", () => {
     expect(produced).toBe(100);
   });
 
-  it("factory throw with onError → error fragment, good siblings still emit", async () => {
+  it("rejected promise with onError → error fragment, good siblings still emit", async () => {
     const events = await collectEvents(
       renderToFlowEvents(
-        () => (
-          <html>
-            <body>
-              <Template target="crash">
-                {() => {
-                  throw new Error("crash");
-                }}
-              </Template>
-              <Template target="ok">{() => <span>ok</span>}</Template>
-            </body>
-          </html>
-        ),
+        () => {
+          const { promise, reject } = Promise.withResolvers<VNode>();
+          const content = promise.then(
+            () => { throw new Error("crash"); },
+            () => { throw new Error("crash"); },
+          );
+          content.catch(() => {});
+          reject(new Error("trigger"));
+
+          return (
+            <html>
+              <body>
+                <Template target="crash">{content as any}</Template>
+                <Template target="ok">
+                  <span>ok</span>
+                </Template>
+              </body>
+            </html>
+          );
+        },
         TurboAdapter,
         { onError: () => <div>err-fallback</div> },
       ),
@@ -242,7 +206,7 @@ describe("edge cases — streaming", () => {
             <body>
               <div id="out" />
               <Template target="out" merge="append">
-                {() => g()}
+                {g()}
               </Template>
             </body>
           </html>

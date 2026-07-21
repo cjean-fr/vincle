@@ -10,13 +10,14 @@
 
 // ── Re-exports ───────────────────────────────────────────────────────────────
 
-export { renderToString } from "./src/create-element.js";
+import { renderToString as _renderToString } from "./src/create-element.js";
+export { _renderToString as renderToString };
 
 /**
  * Alias for {@link renderToString}. Exported for API parity with `@vincle/core`.
  * If you need async rendering, use `renderToString` (sync-only in this version).
  */
-export const render = renderToString;
+export const render = _renderToString;
 
 export { raw, RawString } from "./src/raw.js";
 export type { RawString as RawStringType } from "./src/raw.js";

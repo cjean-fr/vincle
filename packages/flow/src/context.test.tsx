@@ -22,18 +22,18 @@ describe("context.registerTemplate()", () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       const { registerTemplate, templateStore } = useContext(Flow);
-      registerTemplate("badge", { content: () => <span>42</span>, merge: "replace" });
+      registerTemplate("badge", { content: <span>42</span>, merge: "replace" });
       expect(templateStore.size).toBe(1);
       expect(templateStore.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
         "replace",
       );
-      registerTemplate("badge", { content: () => <span>43</span>, merge: "append" });
+      registerTemplate("badge", { content: <span>43</span>, merge: "append" });
       expect(templateStore.size).toBe(1);
       expect(templateStore.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
         "append",
       );
       expect(() =>
-        registerTemplate("has space", { content: () => <span />, merge: "replace" }),
+        registerTemplate("has space", { content: <span />, merge: "replace" }),
       ).toThrow(/valid fragment id/);
     });
   });
@@ -84,7 +84,7 @@ describe("context.registerTemplate()", () => {
       });
       expect(() =>
         useContext(Flow).registerTemplate("x", {
-          content: () => <span />,
+          content: <span />,
           merge: "append",
         }),
       ).toThrow(/not supported/);

@@ -9,7 +9,7 @@ import { createTimeoutSignal } from "./timeout.js";
 const isAsyncIterable = (v: unknown): v is AsyncIterable<VNode> =>
   v != null && typeof (v as any)[Symbol.asyncIterator] === "function";
 
-const isFactory = (c: TemplateContent): c is (signal: AbortSignal) => VNode =>
+const isLazyFactory = (c: TemplateContent): c is () => VNode =>
   typeof c === "function";
 
 type ClassificationResult =
@@ -17,9 +17,9 @@ type ClassificationResult =
   | { kind: "stream"; iterable: AsyncIterable<VNode> }
   | { kind: "sync-error"; error: unknown };
 
-function classifyEntry(entry: TemplateEntry, factorySignal: AbortSignal): ClassificationResult {
+function classifyEntry(entry: TemplateEntry): ClassificationResult {
   try {
-    const value = isFactory(entry.content) ? entry.content(factorySignal) : entry.content;
+    const value = isLazyFactory(entry.content) ? entry.content() : entry.content;
     if (isAsyncIterable(value)) return { kind: "stream", iterable: value };
     return { kind: "value", value };
   } catch (error) {
@@ -49,8 +49,7 @@ async function emitError(
 export type FragmentResult = { stream: boolean; done: Promise<void> };
 
 /**
- * Resolve a single template entry: create the timer+signal, invoke the
- * factory (if any), classify the result, and return the work.
+ * Resolve a single template entry: classify the content and return the work.
  *
  * The returned `{ stream, done }` pair lets the drain loop route one-shots
  * (barrier) vs streams (run concurrently). Classification is synchronous so
@@ -64,13 +63,13 @@ export function runFragment(
   assets?: AssetState | null,
 ): FragmentResult {
   const handle = entry.onError ?? opts.onError;
-  const { factorySignal, cleanup } = createTimeoutSignal(
+  const { signal, cleanup } = createTimeoutSignal(
     entry.timeout ?? opts.defaultTimeout,
     opts.signal,
     id,
   );
 
-  const classification = classifyEntry(entry, factorySignal);
+  const classification = classifyEntry(entry);
 
   switch (classification.kind) {
     case "sync-error": {

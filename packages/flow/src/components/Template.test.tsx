@@ -25,12 +25,15 @@ describe("Template — sync content (no placeholder)", () => {
   });
 });
 
-describe("Template — lazy content (placeholder)", () => {
-  it("renders a placeholder and registers content (streaming mode)", async () => {
+describe("Template — async content (placeholder)", () => {
+  it("renders a placeholder and registers promise content (streaming mode)", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
+      const AsyncContent = async () => <span>content</span>;
       const html = await renderToString(
-        <Template target="content">{() => <span>content</span>}</Template>,
+        <Template target="content">
+          <AsyncContent />
+        </Template>,
       );
       expect(html).toContain('id="content"');
       const { templateStore } = useContext(Flow);
@@ -38,11 +41,14 @@ describe("Template — lazy content (placeholder)", () => {
     });
   });
 
-  it("accepts a factory returning a node", async () => {
+  it("accepts a promise returning a node", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
+      const AsyncContent = async () => <span>inline</span>;
       const html = await renderToString(
-        <Template target="inline">{() => <span>inline</span>}</Template>,
+        <Template target="inline">
+          <AsyncContent />
+        </Template>,
       );
       expect(html).toContain('id="inline"');
       const { templateStore } = useContext(Flow);
@@ -53,7 +59,12 @@ describe("Template — lazy content (placeholder)", () => {
   it("honours an explicit target", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      await renderToString(<Template target="cart">{() => <span>x</span>}</Template>);
+      const AsyncContent = async () => <span>x</span>;
+      await renderToString(
+        <Template target="cart">
+          <AsyncContent />
+        </Template>,
+      );
       const entries = useContext(Flow).templateStore.outstanding(new Set());
       expect(entries.find(([id]) => id === "cart")).toBeDefined();
     });
@@ -62,9 +73,10 @@ describe("Template — lazy content (placeholder)", () => {
   it("stores an explicit merge type", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
+      const AsyncContent = async () => <li>item</li>;
       await renderToString(
         <Template target="list" merge="append">
-          {() => <li>item</li>}
+          <AsyncContent />
         </Template>,
       );
       const entries = useContext(Flow).templateStore.outstanding(new Set());
@@ -72,7 +84,7 @@ describe("Template — lazy content (placeholder)", () => {
     });
   });
 
-  it("accepts plain JSX children (no thunk needed)", async () => {
+  it("accepts plain JSX children (no placeholder)", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       const html = await renderToString(
@@ -93,8 +105,11 @@ describe("Template — lazy content (placeholder)", () => {
         mode: "static",
         generatePath: (id) => `/f/${id}.html`,
       });
+      const AsyncContent = async () => <span>content</span>;
       const html = await renderToString(
-        <Template target="content">{() => <span>content</span>}</Template>,
+        <Template target="content">
+          <AsyncContent />
+        </Template>,
       );
       expect(html).toContain('src="/f/content.html"');
     });
@@ -114,7 +129,7 @@ describe("Template — streaming sequences (async-iterable child)", () => {
             <body>
               <ul id="feed" />
               <Template target="feed" merge="append">
-                {() => rows()}
+                {rows()}
               </Template>
             </body>
           </html>
@@ -139,7 +154,7 @@ describe("Template — streaming sequences (async-iterable child)", () => {
             <body>
               <ul id="feed" />
               <Template target="feed" merge="append">
-                {() => rows()}
+                {rows()}
               </Template>
             </body>
           </html>
@@ -151,24 +166,25 @@ describe("Template — streaming sequences (async-iterable child)", () => {
     expect(html).toContain("</html>");
   });
 
-  it("a streaming Template registered inside a one-shot Template factory is picked up", async () => {
+  it("a streaming Template registered inside a one-shot async Template is picked up", async () => {
     async function* inner() {
       yield (<li>streamed</li>) as ResolvedVNode;
     }
+    const Outer = () => (
+      <div>
+        deferred
+        <Template target="feed" merge="append">
+          {inner()}
+        </Template>
+      </div>
+    );
     const html = await collect(
       renderToStream(
         () => (
           <html>
             <body>
               <Template target="deferred">
-                {() => (
-                  <div>
-                    deferred
-                    <Template target="feed" merge="append">
-                      {() => inner()}
-                    </Template>
-                  </div>
-                )}
+                <Outer />
               </Template>
             </body>
           </html>

@@ -37,6 +37,7 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
   let out = "";
 
   for (const key in attrs) {
+    if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML") continue;
     let value = attrs[key];
     if (value === null || value === undefined) continue;
 

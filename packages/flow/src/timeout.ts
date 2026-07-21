@@ -1,21 +1,21 @@
 /**
  * Create a per-entry timeout signal that aborts with a descriptive error when
  * the timeout fires. Combines with the parent request signal via
- * `AbortSignal.any` so the factory aborts on whichever comes first.
+ * `AbortSignal.any` so async work aborts on whichever comes first.
  *
  * Returns the combined signal and a cleanup function that must be called when
- * the deferred work finishes (success, error, or stream) to prevent the timer
- * from keeping the process alive.
+ * the work finishes (success, error, or stream) to prevent the timer from
+ * keeping the process alive.
  */
 export function createTimeoutSignal(
   timeoutMs: number | undefined,
   requestSignal: AbortSignal | undefined,
   id: string,
-): { factorySignal: AbortSignal; cleanup: () => void } {
+): { signal: AbortSignal; cleanup: () => void } {
   const ms = timeoutMs;
   if (ms == null) {
     const signal = requestSignal ?? new AbortController().signal;
-    return { factorySignal: signal, cleanup: () => {} };
+    return { signal, cleanup: () => {} };
   }
 
   const timer = new AbortController();
@@ -24,13 +24,13 @@ export function createTimeoutSignal(
     ms,
   );
 
-  const factorySignal =
+  const combined =
     requestSignal && timer
       ? AbortSignal.any([requestSignal, timer.signal])
       : (requestSignal ?? timer.signal);
 
   return {
-    factorySignal,
+    signal: combined,
     cleanup: () => clearTimeout(tid),
   };
 }

@@ -37,7 +37,7 @@ describe("renderToFlowEvents", () => {
         () => (
           <html>
             <body>
-              <Template target="content">{() => <span>content</span>}</Template>
+              <Template target="content"><span>content</span></Template>
             </body>
           </html>
         ),
@@ -48,19 +48,22 @@ describe("renderToFlowEvents", () => {
   });
 
   it("streams a synchronously-nested Template after its parent", async () => {
+    const InnerContent = async () => <span>INNER-SYNC</span>;
+    const Outer = async () => {
+      await Promise.resolve();
+      return (
+        <section>
+          OUTER
+          <Template target="inner"><InnerContent /></Template>
+        </section>
+      );
+    };
     const events = await collectEvents(
       renderToFlowEvents(
         () => (
           <html>
             <body>
-              <Template target="outer">
-                {() => (
-                  <section>
-                    OUTER
-                    <Template target="inner">{() => <span>INNER-SYNC</span>}</Template>
-                  </section>
-                )}
-              </Template>
+              <Template target="outer"><Outer /></Template>
             </body>
           </html>
         ),
@@ -105,7 +108,7 @@ describe("renderToFlowEvents", () => {
           <body>
             <ul id="feed" />
             <Template target="feed" merge="append">
-              {() => items()}
+              {items()}
             </Template>
           </body>
         </html>
@@ -231,7 +234,7 @@ describe("renderToStream", () => {
           <html>
             <head></head>
             <body>
-              <Template target="x">{() => <span>x</span>}</Template>
+              <Template target="x"><span>x</span></Template>
             </body>
           </html>
         ),
@@ -249,7 +252,7 @@ describe("renderToStream", () => {
           () => (
             <html>
               <body>
-                <Template target="content">{() => <span>content</span>}</Template>
+                <Template target="content"><span>content</span></Template>
               </body>
             </html>
           ),
@@ -261,12 +264,16 @@ describe("renderToStream", () => {
   });
 
   it("streams a Template nested behind an await", async () => {
+    const InnerContent = async () => {
+      await Promise.resolve();
+      return <span>INNER-ASYNC</span>;
+    };
     const Inner = async () => {
       await Promise.resolve();
       return (
         <section>
           OUTER
-          <Template target="inner">{() => <span>INNER-ASYNC</span>}</Template>
+          <Template target="inner"><InnerContent /></Template>
         </section>
       );
     };
@@ -275,7 +282,7 @@ describe("renderToStream", () => {
         () => (
           <html>
             <body>
-              <Template target="outer">{() => <Inner />}</Template>
+              <Template target="outer"><Inner /></Template>
             </body>
           </html>
         ),
@@ -318,7 +325,7 @@ describe("edge cases — render pipeline", () => {
             <head></head>
             <body>
               <p>hi</p>
-              <Template target="d">{() => <span>d</span>}</Template>
+              <Template target="d"><span>d</span></Template>
             </body>
           </html>
         ),
@@ -337,9 +344,9 @@ describe("edge cases — render pipeline", () => {
         () => (
           <html>
             <body>
-              <Template target="d">{() => <span>d</span>}</Template>
+              <Template target="d"><span>d</span></Template>
               <Template target="feed" merge="append">
-                {() => g()}
+                {g()}
               </Template>
             </body>
           </html>

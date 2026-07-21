@@ -4,6 +4,20 @@ import type { MergeType, OnError, TemplateContent } from "../types.js";
 
 import { Flow } from "../context.js";
 
+const isAsyncIterable = (v: unknown): v is AsyncIterable<VNode> =>
+  v != null && typeof (v as any)[Symbol.asyncIterator] === "function";
+
+const isThenable = (v: unknown): v is Promise<VNode> =>
+  v instanceof Promise ||
+  (v != null && typeof (v as any).then === "function");
+
+function isAsyncContent(children: VNode): boolean {
+  if (children instanceof Promise) return true;
+  if (isAsyncIterable(children)) return true;
+  if (Array.isArray(children)) return children.some((c) => isThenable(c) || isAsyncIterable(c));
+  return false;
+}
+
 export interface TemplateProps {
   target: string;
   children: TemplateContent;
@@ -16,19 +30,7 @@ export interface TemplateProps {
 export function Template(props: TemplateProps): JSX.Element | null {
   const { config, registerTemplate } = useContext(Flow);
   const { target, children, merge, timeout, onError, fallback } = props;
-  const isLazy = typeof children === "function";
-
-  // Dev warning: fallback ignored for sync content
-  if (!isLazy && fallback !== undefined) {
-    if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
-      console.warn(
-        `[vincle/flow] <Template target="${target}">: ` +
-          "`fallback` is ignored for synchronous content (plain JSX). " +
-          "Pass a factory function as children to use fallback: " +
-          `<Template target="${target}" fallback={...}>{() => children}</Template>`,
-      );
-    }
-  }
+  const lazy = typeof children === "function" || isAsyncContent(children as VNode);
 
   registerTemplate(target, {
     content: children,
@@ -37,21 +39,21 @@ export function Template(props: TemplateProps): JSX.Element | null {
     onError,
   });
 
-  if (isLazy) {
-    if (!config.adapter)
-      throw new Error(
-        "Template requires an adapter for lazy content. " +
-          "Pass { adapter: ... } to renderToStatic " +
-          "or use an adapter with renderToStream.",
-      );
-
-    return config.adapter.Placeholder({
-      id: target,
-      src: config.mode === "static" ? config.generatePath(target) : null,
-      children: fallback ?? null,
-    }) as JSX.Element | null;
+  if (!lazy) {
+    // Sync content — no placeholder, just registered for inline flush
+    return null;
   }
 
-  // Sync content — no placeholder, just registration (was Fill)
-  return null;
+  if (!config.adapter)
+    throw new Error(
+      "Template requires an adapter for async content. " +
+        "Pass { adapter: ... } to renderToStatic " +
+        "or use an adapter with renderToStream.",
+    );
+
+  return config.adapter.Placeholder({
+    id: target,
+    src: config.mode === "static" ? config.generatePath(target) : null,
+    children: fallback ?? null,
+  }) as JSX.Element | null;
 }

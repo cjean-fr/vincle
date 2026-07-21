@@ -22,12 +22,13 @@ describe("renderToStatic", () => {
   });
 
   it("collects fragments without flushing them", async () => {
+    const AsyncContent = async () => <span>real</span>;
     const result = await renderToStatic(
       async (ctx) => {
         const html = await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="content">{() => <span>real</span>}</Template>
+              <Template target="content"><AsyncContent /></Template>
             </body>
           </html>
         ));
@@ -44,13 +45,14 @@ describe("renderToStatic", () => {
   });
 
   it("applies adapter.transformShell — polyfill injected when fragments exist", async () => {
+    const AsyncContent = async () => <span>x</span>;
     const result = await renderToStatic(
       async (ctx) =>
         ctx.renderPage(() => (
           <html>
             <head></head>
             <body>
-              <Template target="x">{() => <span>x</span>}</Template>
+              <Template target="x"><AsyncContent /></Template>
             </body>
           </html>
         )),
@@ -67,7 +69,7 @@ describe("renderToStatic", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Template target="content">{() => <span>real</span>}</Template>
+                <Template target="content"><span>real</span></Template>
               </body>
             </html>
           ));
@@ -89,7 +91,7 @@ describe("renderToStatic", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Template target="content">{() => <span>real</span>}</Template>
+                <Template target="content"><span>real</span></Template>
               </body>
             </html>
           ));
@@ -101,11 +103,12 @@ describe("renderToStatic", () => {
     });
 
     it("throws a clear error when <Template> is used without an adapter", async () => {
+      const AsyncContent = async () => <span>x</span>;
       const result = renderToStatic(async (ctx: any) => {
         await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="x">{() => <span>x</span>}</Template>
+              <Template target="x"><AsyncContent /></Template>
             </body>
           </html>
         ));
@@ -121,7 +124,7 @@ describe("renderToStatic", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Template target="content">{() => <span>real</span>}</Template>
+                <Template target="content"><span>real</span></Template>
               </body>
             </html>
           ));
@@ -138,12 +141,13 @@ describe("renderToStatic", () => {
 
   it("ESI: placeholders become esi:include, fragments materialize as-is", async () => {
     const files: Record<string, string> = {};
+    const AsyncContent = async () => <span>real</span>;
     await renderToStatic(
       async (ctx) => {
         const page = await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="content">{() => <span>real</span>}</Template>
+              <Template target="content"><AsyncContent /></Template>
             </body>
           </html>
         ));
@@ -178,7 +182,6 @@ describe("renderToStatic", () => {
       expect(pages).toHaveLength(PAGE_COUNT);
       for (let i = 0; i < PAGE_COUNT; i++) {
         expect(pages[i]).toContain(`<p>page-${i}</p>`);
-        // Verify no other page's content leaked in
         for (let j = 0; j < PAGE_COUNT; j++) {
           if (j !== i) {
             expect(pages[i]).not.toContain(`<p>page-${j}</p>`);
@@ -192,11 +195,12 @@ describe("renderToStatic", () => {
         Array.from({ length: PAGE_COUNT }, (_, i) =>
           renderToStatic(
             async (ctx) => {
+              const AsyncContent = async () => <span>frag-{i}</span>;
               const html = await ctx.renderPage(() => (
                 <html>
                   <body>
                     <p>page-{i}</p>
-                    <Template target={`frag-${i}`}>{() => <span>frag-{i}</span>}</Template>
+                    <Template target={`frag-${i}`}><AsyncContent /></Template>
                   </body>
                 </html>
               ));
@@ -216,7 +220,6 @@ describe("renderToStatic", () => {
     });
 
     it("handles mixed load with and without fragments, high concurrency", async () => {
-      // Even indices: pure static (no options). Odd indices: with fragments (adapter).
       const [purePages, fragmentPages]: [
         Array<{ html: string; ids: string[] }>,
         Array<{ html: string; ids: string[] }>,
@@ -241,11 +244,12 @@ describe("renderToStatic", () => {
             const i = k * 2 + 1;
             return renderToStatic(
               async (ctx) => {
+                const AsyncContent = async () => <span>odd-{i}</span>;
                 const html = await ctx.renderPage(() => (
                   <html>
                     <body>
                       <p>page-{i}</p>
-                      <Template target={`t-${i}`}>{() => <span>odd-{i}</span>}</Template>
+                      <Template target={`t-${i}`}><AsyncContent /></Template>
                     </body>
                   </html>
                 ));
@@ -273,14 +277,15 @@ describe("renderToStatic", () => {
     });
   });
 
-  it("<Template> with content uses NativeAdapter when explicitly passed", async () => {
+  it("<Template> with async content uses NativeAdapter when explicitly passed", async () => {
+    const AsyncContent = async () => <span>real</span>;
     const html = await renderToStatic(
       async (ctx) =>
         ctx.renderPage(() => (
           <html>
             <head></head>
             <body>
-              <Template target="content">{() => <span>real</span>}</Template>
+              <Template target="content"><AsyncContent /></Template>
             </body>
           </html>
         )),

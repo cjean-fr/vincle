@@ -5,8 +5,7 @@ import { assertFragmentId } from "./utils.js";
 /**
  * A unit of template content, keyed by its target DOM `id`. The renderer
  * decides at drain time whether `content` is a one-shot patch or a live
- * stream — see `flushTemplates`. The factory receives an `AbortSignal`
- * combining the request signal with this entry's own `timeout` (if any).
+ * stream — see `flushTemplates`.
  */
 export type TemplateEntry = {
   content: TemplateContent;
