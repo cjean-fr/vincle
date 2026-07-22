@@ -1,4 +1,5 @@
-export { renderToString, renderToStringAsync } from "./create-element.js";
+export { renderToString } from "./create-element.js";
+export { renderToStringAsync } from "./create-element-async.js";
 export { VNode } from "./jsx-runtime.js";
 export type { ResolvedVNode, Component } from "./jsx-runtime.js";
 export {

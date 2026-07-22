@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { jsx, jsxs, Fragment, VNode, renderToString, renderToStringAsync } from "./jsx-runtime.js";
+import { jsx, jsxs, Fragment, VNode } from "./jsx-runtime.js";
+import { renderToString } from "./create-element.js";
+import { renderToStringAsync } from "./create-element-async.js";
 
 describe("bigint", () => {
   test("bigint as text content", () => {

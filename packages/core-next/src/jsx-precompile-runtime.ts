@@ -1,5 +1,5 @@
 import {
-  ATTRIBUTE_NAME_MAP,
+  resolveAttrName,
   BOOLEAN_ATTRIBUTES,
   escapeAttr,
   styleToString,
@@ -71,8 +71,8 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
     );
   }
 
-  // Resolve React name → HTML name
-  const attrName = ATTRIBUTE_NAME_MAP.get(name) ?? name;
+  // Resolve React name → HTML name (resolveAttrName lowercases by itself)
+  const attrName = resolveAttrName(name);
 
   if (value instanceof RawString) {
     return new RawString(` ${attrName}="${value.value}"`);
