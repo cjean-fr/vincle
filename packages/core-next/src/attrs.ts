@@ -2,24 +2,10 @@ import { escapeAttr } from "./escape.js";
 import { RawString } from "./raw.js";
 import { URL_ATTRIBUTES, isSafeScheme } from "./url-safety.js";
 
-// Gate for React→HTML name resolution: only names with an uppercase letter can
-// be a React alias (className, htmlFor, …) or need lowercasing.
-const RE_HAS_UPPER = /[A-Z]/;
-
 // ── React → HTML attribute name resolution ──────────────────────────
-//
 // Switch over Map.get: JSC compiles string switches to a jump table / trie,
 // ~25% faster than Map.get (0.095 vs 0.128 µs per lookup, measured on JSC FTL).
-// Keep the Map export for downstream consumers (precompile-core etc.) but the
-// hot path in buildAttrs and jsxAttr uses the switch directly.
 
-/**
- * Resolve a React camelCase attr name to its HTML equivalent.
- *
- * Non‑React names (or unknown camelCase names) are lowercased in the default
- * branch, so callers never need a fallback — the returned string is always the
- * HTML attribute name to emit.
- */
 export function resolveAttrName(key: string): string {
   switch (key) {
     case "className":     return "class";
@@ -81,6 +67,13 @@ const BOOLEAN_ATTRIBUTES = new Set([
   "novalidate", "open", "playsinline", "readonly", "required",
   "reversed", "selected", "truespeed",
 ]);
+
+// Gate for React→HTML name resolution: only names with an uppercase letter can
+// be a React alias (className, htmlFor, …) or need lowercasing.
+const RE_HAS_UPPER = /[A-Z]/;
+
+// Style camelCase → kebab regex (module-level, compiled once)
+const RE_STYLE_CAMEL = /[A-Z]/g;
 
 // ── Build attributes string (single pass: normalize + emit) ────────
 //
@@ -144,14 +137,7 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
 
     // Array class → string (for loop, no filter/join)
     if (attrName === "class" && Array.isArray(value)) {
-      let s = "";
-      for (let i = 0; i < value.length; i++) {
-        const item = value[i];
-        if (item && typeof item === "string") {
-          if (s) s += " ";
-          s += item;
-        }
-      }
+      const s = classToString(value as unknown[]);
       if (!s) continue;
       out += ` class="${escapeAttr(s)}"`;
       continue;
@@ -163,7 +149,13 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
       continue;
     }
 
-    // number / bigint / other object with toString
+    // number / bigint — safe, no URL check needed
+    if (type === "number" || type === "bigint") {
+      out += ` ${attrName}="${value}"`;
+      continue;
+    }
+
+    // Fallback: any other object with toString
     let str = String(value);
     if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) str = "#blocked";
     out += ` ${attrName}="${escapeAttr(str)}"`;
@@ -172,13 +164,26 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
   return out;
 }
 
+// ── Array class → string ─────────────────────────────────────────────
+function classToString(value: unknown[]): string {
+  let s = "";
+  for (let i = 0; i < value.length; i++) {
+    const item = value[i];
+    if (item && typeof item === "string") {
+      if (s) s += " ";
+      s += item;
+    }
+  }
+  return s;
+}
+
 // ── Style object → CSS string ───────────────────────────────────────
 function styleToString(obj: Record<string, string | number | null | undefined>): string {
   let out = "";
   for (const key in obj) {
     const value = obj[key];
     if (value === null || value === undefined) continue;
-    const prop = key.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+    const prop = key.replace(RE_STYLE_CAMEL, (m) => "-" + m.toLowerCase());
     if (out) out += ";";
     out += `${prop}:${value}`;
   }

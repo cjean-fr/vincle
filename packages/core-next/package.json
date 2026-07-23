@@ -8,7 +8,8 @@
     "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "mitata": "^1.0.34"
   },
   "peerDependencies": {
     "typescript": "^7.0.2"
