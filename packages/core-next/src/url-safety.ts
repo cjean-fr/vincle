@@ -2,8 +2,7 @@ const REGEX_UNSAFE_PROTOCOLS = /^(?:java|vb)script:/i;
 const REGEX_IMAGE_DATA_URI = /^data:image\/(?:png|jpeg|gif|webp|avif)(?:[;+]|$)/i;
 
 export const URL_ATTRIBUTES = new Set([
-  "href", "src", "action", "formaction", "cite", "poster",
-  "icon", "data", "background", "longdesc", "xlink:href", "srcset",
+  "href", "src", "action", "formaction", "xlink:href",
 ]);
 
 export function isSafeScheme(url: string): boolean {
@@ -52,19 +51,4 @@ export function isSafeScheme(url: string): boolean {
   return true;
 }
 
-const REGEX_SRCSET_CANDIDATE = /^(\S+)(?:\s+(?:\d+w|\d+(?:\.\d+)?x))?\s*$/;
 
-export function isSafeSrcset(srcset: string): boolean {
-  const trimmed = srcset.trim();
-  if (!trimmed) return true;
-  for (const raw of trimmed.split(",")) {
-    const candidate = raw.trim();
-    if (!candidate) return false;
-    const m = REGEX_SRCSET_CANDIDATE.exec(candidate);
-    if (!m) return false;
-    const url = m[1];
-    if (!url) return false;
-    if (!isSafeScheme(url)) return false;
-  }
-  return true;
-}

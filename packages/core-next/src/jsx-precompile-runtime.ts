@@ -1,12 +1,12 @@
+import { escapeAttr } from "./escape.js";
 import {
   resolveAttrName,
   BOOLEAN_ATTRIBUTES,
-  escapeAttr,
   styleToString,
 } from "./attrs.js";
 import { escapeHtml } from "./create-element.js";
 import { RawString, raw } from "./raw.js";
-import { URL_ATTRIBUTES, isSafeScheme, isSafeSrcset } from "./url-safety.js";
+import { isSafeScheme } from "./url-safety.js";
 
 export function jsxEscape(v: unknown): RawString | Promise<RawString> {
   if (v instanceof RawString) return v;
@@ -118,11 +118,14 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
   }
 
   let str = String(value);
-
-  if (attrName === "srcset") {
-    if (!isSafeSrcset(str)) str = "#blocked";
-  } else if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) {
-    str = "#blocked";
+  switch (attrName) {
+    case "href":
+    case "src":
+    case "action":
+    case "formaction":
+    case "xlink:href":
+      if (!isSafeScheme(str)) str = "#blocked";
+      break;
   }
 
   return new RawString(` ${attrName}="${escapeAttr(str)}"`);

@@ -1,3 +1,7 @@
+import { escapeAttr } from "./escape.js";
+import { RawString } from "./raw.js";
+import { URL_ATTRIBUTES, isSafeScheme } from "./url-safety.js";
+
 // Gate for React→HTML name resolution: only names with an uppercase letter can
 // be a React alias (className, htmlFor, …) or need lowercasing.
 const RE_HAS_UPPER = /[A-Z]/;
@@ -79,21 +83,20 @@ const BOOLEAN_ATTRIBUTES = new Set([
 ]);
 
 // ── Build attributes string (single pass: normalize + emit) ────────
+//
+// Dispatch is ordered by real-world frequency: string values dominate (class,
+// id, href, data-*, aria-*, …), so they take the first, coercion-free branch —
+// `String(value)` is only paid for the rare non-string fallthrough. Keeping the
+// hot branch monomorphic and coercion-free is the measured win over a
+// normalize-then-emit structure (JSC/V8 inline caches).
 export function buildAttrs(attrs: Record<string, unknown>): string {
   let out = "";
 
   for (const key in attrs) {
     if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML") continue;
-    let value = attrs[key];
+    const value = attrs[key];
     if (value === null || value === undefined) continue;
-
-    // Functions cannot be serialized to HTML — fail hard
-    if (typeof value === "function") {
-      throw new Error(
-        `[vincle/core] Attribute "${key}" received a function as value. ` +
-          "Functions are not serializable to HTML. Did you forget to call a component or pass a string?",
-      );
-    }
+    const type = typeof value;
 
     // Resolve React name → HTML name (className→class, htmlFor→for, …).
     // resolveAttrName lowercases unknown camelCase names on its own, so the
@@ -105,9 +108,38 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
       if (attrName in attrs) continue;
     }
 
+    // String — dominant case, no coercion.
+    if (type === "string") {
+      // URL safety — block javascript:/vbscript: in href, src, action, formaction, xlink:href
+      let str = value as string;
+      if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) str = "#blocked";
+      out += ` ${attrName}="${escapeAttr(str)}"`;
+      continue;
+    }
+
+    // Boolean attribute
+    if (type === "boolean") {
+      if (BOOLEAN_ATTRIBUTES.has(attrName)) {
+        if (value) out += ` ${attrName}`;
+      } else {
+        out += ` ${attrName}="${value}"`;
+      }
+      continue;
+    }
+
+    // Functions cannot be serialized to HTML — fail hard
+    if (type === "function") {
+      throw new Error(
+        `[vincle/core] Attribute "${key}" received a function as value. ` +
+          "Functions are not serializable to HTML. Did you forget to call a component or pass a string?",
+      );
+    }
+
     // Style object → string
-    if (attrName === "style" && typeof value === "object" && !Array.isArray(value)) {
-      value = styleToString(value as Record<string, string | number | null | undefined>);
+    if (attrName === "style" && type === "object" && !Array.isArray(value)) {
+      const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
+      out += ` style="${escapeAttr(styleStr)}"`;
+      continue;
     }
 
     // Array class → string (for loop, no filter/join)
@@ -121,21 +153,20 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
         }
       }
       if (!s) continue;
-      value = s;
-    }
-
-    // Boolean attribute
-    if (typeof value === "boolean") {
-      if (BOOLEAN_ATTRIBUTES.has(attrName)) {
-        if (value) out += ` ${attrName}`;
-      } else {
-        // Non-boolean HTML attr with boolean value → render as string
-        out += ` ${attrName}="${value}"`;
-      }
+      out += ` class="${escapeAttr(s)}"`;
       continue;
     }
 
-    out += ` ${attrName}="${escapeAttr(String(value))}"`;
+    // RawString bypass — developer explicitly opts out
+    if (value instanceof RawString) {
+      out += ` ${attrName}="${value.value}"`;
+      continue;
+    }
+
+    // number / bigint / other object with toString
+    let str = String(value);
+    if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) str = "#blocked";
+    out += ` ${attrName}="${escapeAttr(str)}"`;
   }
 
   return out;
@@ -154,14 +185,4 @@ function styleToString(obj: Record<string, string | number | null | undefined>):
   return out;
 }
 
-// ── Attribute value escaping ────────────────────────────────────────
-function escapeAttr(str: string): string {
-  let out = "", start = 0;
-  for (let i = 0; i < str.length; i++) {
-    const c = str.charCodeAt(i);
-    if (c === 38)      { out += str.slice(start, i) + "&amp;";  start = i + 1; } // &
-    else if (c === 34) { out += str.slice(start, i) + "&quot;"; start = i + 1; } // "
-    else if (c === 60) { out += str.slice(start, i) + "&lt;";   start = i + 1; } // <
-  }
-  return start === 0 ? str : out + str.slice(start);
-}
+

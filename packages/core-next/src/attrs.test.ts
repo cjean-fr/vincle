@@ -32,4 +32,50 @@ describe("buildAttrs URL safety", () => {
     const r = buildAttrs({ className: "foo" });
     expect(r).toContain('class="foo"');
   });
+
+  test("blocks vbscript: href", () => {
+    const r = buildAttrs({ href: "vbscript:msgbox(1)" });
+    expect(r).toContain("#blocked");
+  });
+
+  test("blocks javascript: action", () => {
+    const r = buildAttrs({ action: "javascript:alert(1)" });
+    expect(r).toContain("#blocked");
+  });
+
+  test("blocks javascript: formaction", () => {
+    const r = buildAttrs({ formaction: "javascript:alert(1)" });
+    expect(r).toContain("#blocked");
+  });
+
+  test("xlink:href is blocked (SVG <a> execution vector)", () => {
+    const r = buildAttrs({ xlinkHref: "javascript:alert(1)" });
+    expect(r).toContain("#blocked");
+  });
+
+  test("srcset is not checked (no JS execution vector)", () => {
+    const r = buildAttrs({ srcSet: "javascript:alert(1) 1x" });
+    expect(r).toContain('srcset="javascript:alert(1) 1x"');
+  });
+
+  test("RawString bypasses URL safety", () => {
+    const r = buildAttrs({ href: raw("javascript:fn()") });
+    expect(r).toContain('href="javascript:fn()"');
+    expect(r).not.toContain("#blocked");
+  });
+
+  test("mailto: href passes through", () => {
+    const r = buildAttrs({ href: "mailto:user@example.com" });
+    expect(r).toContain("mailto:user@example.com");
+  });
+
+  test("data:image href passes through", () => {
+    const r = buildAttrs({ href: "data:image/png;base64,abc" });
+    expect(r).toContain("data:image/png;base64,abc");
+  });
+
+  test("non-image data: URI is blocked", () => {
+    const r = buildAttrs({ href: "data:text/html,<script>alert(1)</script>" });
+    expect(r).toContain("#blocked");
+  });
 });
