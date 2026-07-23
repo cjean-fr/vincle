@@ -1,0 +1,92 @@
+{
+  "name": "@vincle/core",
+  "version": "1.0.0-beta.1",
+  "description": "VNode-based JSX-to-HTML string renderer. Zero dependencies. Secure by default.",
+  "keywords": [
+    "async",
+    "html",
+    "jsx",
+    "render",
+    "security",
+    "ssg",
+    "ssr",
+    "typescript",
+    "vnode",
+    "xss-prevention",
+    "zero-dependency"
+  ],
+  "homepage": "https://vincle.cjean.fr",
+  "bugs": {
+    "url": "https://github.com/vincle/vincle/issues"
+  },
+  "license": "MIT",
+  "author": "Christophe Jean",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vincle/vincle.git",
+    "directory": "packages/core"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "default": "./dist/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-dev-runtime.d.ts",
+      "default": "./dist/jsx-dev-runtime.js"
+    },
+    "./jsx-precompile-runtime": {
+      "types": "./dist/jsx-precompile-runtime.d.ts",
+      "default": "./dist/jsx-precompile-runtime.js"
+    },
+    "./html": {
+      "types": "./dist/html.d.ts",
+      "default": "./dist/html.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc --noEmit",
+    "coverage": "bun test --coverage --coverage-reporter=lcov",
+    "format": "oxfmt",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "^19.2.3",
+    "fast-check": "catalog:",
+    "preact": "^10.29.7",
+    "preact-render-to-string": "^6.7.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "@types/react": "^19"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
