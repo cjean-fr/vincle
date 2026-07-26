@@ -8,69 +8,93 @@ import { URL_ATTRIBUTES, isSafeScheme } from "./url-safety.js";
 
 export function resolveAttrName(key: string): string {
   switch (key) {
-    case "className":     return "class";
-    case "htmlFor":       return "for";
-    case "acceptCharset": return "accept-charset";
-    case "httpEquiv":     return "http-equiv";
-    case "xlinkHref":     return "xlink:href";
-    case "xmlnsXlink":    return "xmlns:xlink";
-    case "xmlLang":       return "xml:lang";
-    case "xmlBase":       return "xml:base";
-    case "xmlSpace":      return "xml:space";
-    case "tabIndex":      return "tabindex";
-    case "readOnly":      return "readonly";
-    case "maxLength":     return "maxlength";
-    case "minLength":     return "minlength";
-    case "autoFocus":     return "autofocus";
-    case "autoPlay":      return "autoplay";
-    case "autoComplete":  return "autocomplete";
-    case "encType":       return "enctype";
-    case "noValidate":    return "novalidate";
-    case "dateTime":      return "datetime";
-    case "srcSet":        return "srcset";
-    default:              return key.toLowerCase();
+    case "className":
+      return "class";
+    case "htmlFor":
+      return "for";
+    case "acceptCharset":
+      return "accept-charset";
+    case "httpEquiv":
+      return "http-equiv";
+    case "xlinkHref":
+      return "xlink:href";
+    case "xmlnsXlink":
+      return "xmlns:xlink";
+    case "xmlLang":
+      return "xml:lang";
+    case "xmlBase":
+      return "xml:base";
+    case "xmlSpace":
+      return "xml:space";
+    case "tabIndex":
+      return "tabindex";
+    case "readOnly":
+      return "readonly";
+    case "maxLength":
+      return "maxlength";
+    case "minLength":
+      return "minlength";
+    case "autoFocus":
+      return "autofocus";
+    case "autoPlay":
+      return "autoplay";
+    case "autoComplete":
+      return "autocomplete";
+    case "encType":
+      return "enctype";
+    case "noValidate":
+      return "novalidate";
+    case "dateTime":
+      return "datetime";
+    case "srcSet":
+      return "srcset";
+    default:
+      return key.toLowerCase();
   }
 }
 
-// ── React → HTML attribute name map (backward compat) ───────────────
-// Kept as a Map export for downstream consumers (precompile-core, core stable).
-// Hot paths should use resolveAttrName() directly.
-const ATTRIBUTE_NAME_MAP: ReadonlyMap<string, string> = new Map([
-  ["htmlFor", "for"],
-  ["className", "class"],
-  ["acceptCharset", "accept-charset"],
-  ["httpEquiv", "http-equiv"],
-  ["xlinkHref", "xlink:href"],
-  ["xmlnsXlink", "xmlns:xlink"],
-  ["xmlLang", "xml:lang"],
-  ["xmlBase", "xml:base"],
-  ["xmlSpace", "xml:space"],
-  ["tabIndex", "tabindex"],
-  ["readOnly", "readonly"],
-  ["maxLength", "maxlength"],
-  ["minLength", "minlength"],
-  ["autoFocus", "autofocus"],
-  ["autoPlay", "autoplay"],
-  ["autoComplete", "autocomplete"],
-  ["encType", "enctype"],
-  ["noValidate", "novalidate"],
-  ["dateTime", "datetime"],
-  ["srcSet", "srcset"],
-]);
-
 // ── HTML boolean attributes ─────────────────────────────────────────
-const BOOLEAN_ATTRIBUTES = new Set([
-  "allowfullscreen", "async", "autofocus", "autoplay",
-  "checked", "controls", "declare", "default", "defer",
-  "disabled", "formnovalidate", "hidden", "inert", "ismap",
-  "itemscope", "loop", "multiple", "muted", "nomodule",
-  "novalidate", "open", "playsinline", "readonly", "required",
-  "reversed", "selected", "truespeed",
+export const BOOLEAN_ATTRIBUTES = new Set([
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "declare",
+  "default",
+  "defer",
+  "disabled",
+  "formnovalidate",
+  "hidden",
+  "inert",
+  "ismap",
+  "itemscope",
+  "loop",
+  "multiple",
+  "muted",
+  "nomodule",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "selected",
+  "truespeed",
 ]);
 
 // Gate for React→HTML name resolution: only names with an uppercase letter can
 // be a React alias (className, htmlFor, …) or need lowercasing.
 const RE_HAS_UPPER = /[A-Z]/;
+
+// Reject attribute names that can break out of a tag: whitespace, "'<>/=\`, control chars.
+// A valid name consists entirely of characters NOT in the forbidden set.
+const RE_INVALID_ATTR_NAME = /[\s"'<>/=\p{C}]/u;
+
+export function isValidAttrName(name: string): boolean {
+  return !RE_INVALID_ATTR_NAME.test(name);
+}
 
 // Style camelCase → kebab regex (module-level, compiled once)
 const RE_STYLE_CAMEL = /[A-Z]/g;
@@ -86,7 +110,8 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
   let out = "";
 
   for (const key in attrs) {
-    if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML") continue;
+    if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
+      continue;
     const value = attrs[key];
     if (value === null || value === undefined) continue;
     const type = typeof value;
@@ -100,6 +125,9 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
       // When both React name and HTML name appear, HTML wins — skip React alias
       if (attrName in attrs) continue;
     }
+
+    // Attribute name safety — reject names that could break out of the tag
+    if (RE_INVALID_ATTR_NAME.test(attrName)) continue;
 
     // String — dominant case, no coercion.
     if (type === "string") {
@@ -189,5 +217,3 @@ function styleToString(obj: Record<string, string | number | null | undefined>):
   }
   return out;
 }
-
-

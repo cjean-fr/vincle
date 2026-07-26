@@ -1,6 +1,6 @@
 import { renderToString, type VNode } from "@vincle/core";
 
-function Layout({ title, children }: { title: string; children: VNode }) {
+function Layout({ title, children }: { title: string; children: VNode | VNode[] }) {
   return (
     <html lang="en">
       <head>

@@ -19,7 +19,7 @@
  *
  * @module
  */
-import { context, setContext, useContext, type ContextKey, type VNode } from "@vincle/core";
+import { context, setContext, useContext, jsxs, Fragment, type ContextKey, type VNode } from "@vincle/core";
 import { readFile, access } from "node:fs/promises";
 
 /** A single chunk in a Vite manifest. Mirrors `vite.ManifestChunk`. */
@@ -171,7 +171,7 @@ function resolveProd(scope: ViteScope, entry: string): VNode {
   } else {
     out.push(<script type="module" src={entryUrl}></script>);
   }
-  return out;
+  return jsxs(Fragment, { children: out });
 }
 
 function visitImports(

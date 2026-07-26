@@ -3,10 +3,12 @@ import { raw, renderToString, type VNode } from "@vincle/core";
 import type { FlowContext } from "../context.js";
 import type { AdapterCapabilities, FlowEvent, MergeType } from "../types.js";
 
+type Child = VNode | string | null;
+
 export type Adapter = {
-  Placeholder(props: { id: string; src: string | null; children: VNode }): VNode;
-  Patch(props: { id: string; children: VNode; merge: MergeType }): VNode;
-  Frame(props: { id: string; children: VNode }): VNode;
+  Placeholder(props: { id: string; src: string | null; children: Child }): VNode;
+  Patch(props: { id: string; children: Child; merge: MergeType }): VNode;
+  Frame(props: { id: string; children: Child }): VNode;
   capabilities: AdapterCapabilities;
   /**
    * Post-process the shell before it enters the stream. Receives the active
@@ -23,7 +25,7 @@ function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent,
     async transform(ev, c) {
       if (ev.type === "fragment") {
         const wire = await renderToString(
-          adapter.Patch({ id: ev.id, children: raw(ev.html), merge: ev.merge }),
+          adapter.Patch({ id: ev.id, children: raw(ev.html) as unknown as VNode, merge: ev.merge }),
         );
         c.enqueue(wire + "\n");
       } else {

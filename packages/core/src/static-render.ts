@@ -1,3 +1,5 @@
+import { buildAttrs } from "./attrs.js";
+import { escapeContent, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
 /**
  * Single-pass static fold.
  *
@@ -17,8 +19,6 @@
  * two renderers stay byte-equivalent (locked by path-equivalence.test.ts).
  */
 import { RawString } from "./raw.js";
-import { buildAttrs } from "./attrs.js";
-import { escapeHtml, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
 import { serializeElement } from "./serialize.js";
 
 /** Sentinel returned by `tryRenderStatic` when the subtree cannot be folded. */
@@ -36,12 +36,13 @@ export function tryRenderStatic(
     if (key === "children" || key === "key" || key === "ref") continue;
     const v = props[key];
     if (key === "dangerouslySetInnerHTML") return NOT_STATIC;
-    if (key === "style" && typeof v === "object" && v !== null && !Array.isArray(v)) return NOT_STATIC;
+    if (key === "style" && typeof v === "object" && v !== null && !Array.isArray(v))
+      return NOT_STATIC;
     if (key === "class" && Array.isArray(v)) return NOT_STATIC;
     if (v instanceof Promise) return NOT_STATIC;
   }
 
-  const children = props.children;
+  const children = props["children"];
   const childTag = RAWTEXT_TAGS.has(tag) ? tag : undefined;
 
   sawDynamic = false;
@@ -65,7 +66,7 @@ function foldChildren(children: unknown, rawtextTag?: string): string {
 function foldChild(child: unknown, rawtextTag?: string): string {
   if (child === null || child === undefined || typeof child === "boolean") return "";
   if (typeof child === "string") {
-    return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeHtml(child);
+    return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
   }
   if (typeof child === "number") return String(child);
   if (child instanceof RawString) return child.value;

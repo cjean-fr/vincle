@@ -9,11 +9,11 @@ import { createTimeoutSignal } from "./timeout.js";
 const isAsyncIterable = (v: unknown): v is AsyncIterable<VNode> =>
   v != null && typeof (v as any)[Symbol.asyncIterator] === "function";
 
-const isLazyFactory = (c: TemplateContent): c is () => VNode =>
+const isLazyFactory = (c: TemplateContent): c is (() => VNode) | (() => AsyncIterable<VNode>) =>
   typeof c === "function";
 
 type ClassificationResult =
-  | { kind: "value"; value: VNode }
+  | { kind: "value"; value: VNode | string }
   | { kind: "stream"; iterable: AsyncIterable<VNode> }
   | { kind: "sync-error"; error: unknown };
 

@@ -10,20 +10,20 @@ export const EsiAdapter = createAdapter({
 
   Placeholder: ({ src, children }) => {
     if (src) {
-      return raw(`<esi:include src="${escapeAttr(src)}" />`);
+      return raw(`<esi:include src="${escapeAttr(src)}" />`) as unknown as VNode;
     }
-    return children;
+    return children as VNode;
   },
 
-  Patch: ({ id, children }) => {
-    return [
-      raw(`<esi:inline name="${id}" fetchable="yes">`),
-      children,
-      raw(`</esi:inline>`),
-    ] as VNode;
-  },
+  Patch: ({ id, children }) => (
+    <>
+      {raw(`<esi:inline name="${id}" fetchable="yes">`)}
+      {children}
+      {raw(`</esi:inline>`)}
+    </>
+  ),
 
-  Frame: ({ children }) => children,
+  Frame: ({ children }) => children as VNode,
 
   encode(): TransformStream<FlowEvent, string> {
     throw new Error(

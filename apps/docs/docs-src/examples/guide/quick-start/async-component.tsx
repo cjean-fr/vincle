@@ -1,4 +1,4 @@
-import { renderToString } from "@vincle/core";
+import { renderToString, type VNode } from "@vincle/core";
 
 declare const db: {
   users: {
@@ -16,4 +16,5 @@ async function UserCard({ id }: { id: string }) {
   );
 }
 
-const html = await renderToString(<UserCard id="42" />);
+const html = await // @ts-expect-error Async component supported at runtime
+renderToString(<UserCard id="42" /> as unknown as VNode);

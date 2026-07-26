@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { jsx, Fragment, VNode } from "./jsx-runtime.js";
+
 import { renderToString } from "./create-element.js";
+import { jsx, Fragment, VNode } from "./jsx-runtime.js";
 import { raw } from "./raw.js";
 
 /**
@@ -24,9 +25,9 @@ type Builder = (tag: any, props: any) => unknown;
 function nv(tag: any, attributes: Record<string, unknown> | null): unknown {
   const props = attributes ?? {};
   const finalChildren =
-    props.dangerouslySetInnerHTML !== undefined
-      ? raw(String((props.dangerouslySetInnerHTML as { __html: unknown }).__html ?? ""))
-      : props.children;
+    props["dangerouslySetInnerHTML"] !== undefined
+      ? raw(String((props["dangerouslySetInnerHTML"] as { __html: unknown }).__html ?? ""))
+      : props["children"];
   return new VNode(tag, props, finalChildren);
 }
 
@@ -48,24 +49,24 @@ const RAWTEXT = ["script", "style"];
 const TEXTS = [
   "hello world",
   "a & b < c > d",
-  '"quoted" & \'apos\'',
+  "\"quoted\" & 'apos'",
   "café ☕ résumé",
   "</script> injection & <div>",
   "1 < 2 && 3 > 0",
   "",
 ];
 
-const pick = <T,>(arr: T[], r: () => number): T => arr[Math.floor(r() * arr.length)]!;
+const pick = <T>(arr: T[], r: () => number): T => arr[Math.floor(r() * arr.length)]!;
 
 function randProps(r: () => number): Record<string, unknown> {
   const p: Record<string, unknown> = {};
-  if (r() < 0.4) p.class = r() < 0.5 ? "foo bar" : ["a", r() < 0.5 ? "" : "b", "c"];
-  if (r() < 0.3) p.id = "id" + Math.floor(r() * 100);
-  if (r() < 0.25) p.title = pick(TEXTS, r);
-  if (r() < 0.2) p.disabled = r() < 0.5;
-  if (r() < 0.15) p.style = { color: "red", fontSize: 12 };
+  if (r() < 0.4) p["class"] = r() < 0.5 ? "foo bar" : ["a", r() < 0.5 ? "" : "b", "c"];
+  if (r() < 0.3) p["id"] = "id" + Math.floor(r() * 100);
+  if (r() < 0.25) p["title"] = pick(TEXTS, r);
+  if (r() < 0.2) p["disabled"] = r() < 0.5;
+  if (r() < 0.15) p["style"] = { color: "red", fontSize: 12 };
   if (r() < 0.1) p["data-x"] = Math.floor(r() * 10);
-  if (r() < 0.08) p.dangerouslySetInnerHTML = { __html: "<b>raw</b> & stuff" };
+  if (r() < 0.08) p["dangerouslySetInnerHTML"] = { __html: "<b>raw</b> & stuff" };
   return p;
 }
 
@@ -126,7 +127,7 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   const tag = pick(TAGS, r);
   const props = randProps(r);
   const nKids = Math.floor(r() * 4);
-  props.children =
+  props["children"] =
     nKids === 1 ? gen(h, r, depth - 1) : Array.from({ length: nKids }, () => gen(h, r, depth - 1));
   return h(tag, props);
 }

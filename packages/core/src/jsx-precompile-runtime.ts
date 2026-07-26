@@ -1,31 +1,15 @@
+import { resolveAttrName, BOOLEAN_ATTRIBUTES } from "./attrs.js";
+import { escapeAttr } from "./escape.js";
 import { escapeContent } from "./escape.js";
-import { RawString } from "./raw.js";
-import { renderAttr } from "./render-attrs.js";
+import { RawString, raw } from "./raw.js";
+import { isSafeScheme } from "./url-safety.js";
 
-/**
- * Coerce a raw value to an already-escaped `RawString`, mirroring the dynamic
- * path's `renderChild` so precompiled output stays byte-identical:
- * - null / undefined / boolean → `""`
- * - `RawString` → pass-through (from nested jsxTemplate, jsxEscape, or Vincle)
- * - string → HTML-escaped via `escapeContent`
- * - number → `String(number)`
- * - Array → map + join
- * - sync iterable (Set, Map, generator, …) → materialize + join
- * - async iterable → collect + join (Promise)
- * - Promise → resolve then recurse
- */
 export function jsxEscape(v: unknown): RawString | Promise<RawString> {
   if (v instanceof RawString) return v;
   if (v instanceof Promise) return v.then((resolved) => jsxEscape(resolved));
   if (Array.isArray(v)) return escapeArray(v);
   if (v != null && typeof v !== "string") {
-    // Non-string iterables coerce like the dynamic path (renderChild), instead
-    // of falling through to `String(v)` → "[object Set]". The string check
-    // above keeps the common text case on the fast path.
-    const anyV = v as {
-      [Symbol.iterator]?: unknown;
-      [Symbol.asyncIterator]?: unknown;
-    };
+    const anyV = v as { [Symbol.iterator]?: unknown; [Symbol.asyncIterator]?: unknown };
     if (typeof anyV[Symbol.iterator] === "function") {
       return escapeArray(Array.from(v as Iterable<unknown>));
     }
@@ -59,29 +43,134 @@ async function collectAsyncIterable(iterable: AsyncIterable<unknown>): Promise<R
   return new RawString(out);
 }
 
-/**
- * Serialize a JSX attribute (name + value) into an HTML attribute string.
- * Returns a `RawString` so `jsxTemplate` won't re-escape it.
- *
- * Uses the same `renderAttr` as the Vincle render pipeline: URL-scheme
- * blocking, CSS safety, name remapping, boolean handling, etc.
- */
 export function jsxAttr(name: string, value: unknown): RawString | Promise<RawString> {
-  const result = renderAttr(name, value);
-  if (result instanceof Promise) return result.then((s) => new RawString(s));
-  return new RawString(result);
+  if (value instanceof Promise) {
+    return value.then((v) => jsxAttr(name, v));
+  }
+
+  if (value == null) return raw("");
+
+  // Children, key, ref are never rendered as attributes
+  if (name === "children" || name === "key" || name === "ref" || name === "dangerouslySetInnerHTML")
+    return raw("");
+
+  if (typeof value === "function") {
+    if (isEventHandler(name)) {
+      console.warn(
+        `[vincle/core] Event handler "${name}" was passed a function. ` +
+          "This is not supported in static HTML rendering. Use a string instead.",
+      );
+      return raw("");
+    }
+    throw new Error(
+      `[vincle/core] Attribute "${name}" received a function as value. ` +
+        "Functions are not serializable to HTML.",
+    );
+  }
+
+  // Resolve React name → HTML name (resolveAttrName lowercases by itself)
+  const attrName = resolveAttrName(name);
+
+  if (value instanceof RawString) {
+    return new RawString(` ${attrName}="${value.value}"`);
+  }
+
+  // Style object → string
+  if (attrName === "style" && typeof value === "object" && !Array.isArray(value)) {
+    const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
+    if (!styleStr) return raw("");
+    return new RawString(` style="${escapeAttr(styleStr)}"`);
+  }
+
+  // Class array → string
+  if (attrName === "class" && Array.isArray(value)) {
+    let s = "";
+    for (let i = 0; i < value.length; i++) {
+      const item = value[i];
+      if (item && typeof item === "string") {
+        if (s) s += " ";
+        s += item;
+      }
+    }
+    if (!s) return raw("");
+    return new RawString(` class="${escapeAttr(s)}"`);
+  }
+
+  // Boolean attribute
+  if (typeof value === "boolean") {
+    if (BOOLEAN_ATTRIBUTES.has(attrName)) {
+      return value ? raw(` ${attrName}`) : raw("");
+    }
+    return new RawString(` ${attrName}="${value}"`);
+  }
+
+  // Event handlers — warn and drop
+  if (isEventHandler(attrName)) {
+    if (typeof value !== "string") return raw("");
+    console.warn(
+      `[vincle/core] Event handler "${name}" was passed as a string value. ` +
+        "Event handlers are not rendered in static HTML.",
+    );
+    return raw(` ${attrName}="${escapeAttr(value)}"`);
+  }
+
+  let str = String(value);
+  switch (attrName) {
+    case "href":
+    case "src":
+    case "action":
+    case "formaction":
+    case "xlink:href":
+      if (!isSafeScheme(str)) str = "#blocked";
+      break;
+  }
+
+  return new RawString(` ${attrName}="${escapeAttr(str)}"`);
 }
 
-/**
- * Concatenate static template slices with interpolated values.
- *
- * Each value is expected to be a `RawString` (from `jsxEscape` or `jsxAttr`)
- * or a raw value that will be coerced. Nested `jsxTemplate` calls produce
- * `RawString`, so they are safe to nest:
- *
- * @example
- * jsxTemplate`<div>${jsxEscape(content)} ${jsxTemplate`<span>${n}</span>`}</div>`
- */
+const ON_MASK = ("o".charCodeAt(0) << 8) | "n".charCodeAt(0);
+
+function isEventHandler(name: string): boolean {
+  const c2 = name.charCodeAt(2) | 32;
+  return (
+    (((name.charCodeAt(0) | 32) << 8) | (name.charCodeAt(1) | 32)) === ON_MASK &&
+    c2 >= 97 &&
+    c2 <= 122
+  );
+}
+
+function styleToString(obj: Record<string, string | number | null | undefined>): string {
+  let out = "";
+  for (const key in obj) {
+    const value = obj[key];
+    if (value === null || value === undefined) continue;
+    const prop = key.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+    if (out) out += ";";
+    out += `${prop}:${value}`;
+  }
+  return out;
+}
+
+function coerce(v: unknown): string {
+  if (v == null || v === true || v === false) return "";
+  if (typeof v === "string") return escapeContent(v);
+  if (typeof v === "number" || typeof v === "bigint") return String(v);
+  if (Array.isArray(v)) return v.map((x) => coerce(x)).join("");
+  if (v != null && typeof (v as { [Symbol.iterator]?: unknown })[Symbol.iterator] === "function") {
+    return coerce(Array.from(v as Iterable<unknown>));
+  }
+  return escapeContent(String(v));
+}
+
+function join(templates: ArrayLike<string>, values: string[]): string {
+  let out = templates[0] ?? "";
+  for (let i = 0; i < values.length; i++) {
+    out += values[i]!;
+    out += templates[i + 1] ?? "";
+  }
+  return out;
+}
+
 export function jsxTemplate(
   templates: ArrayLike<string>,
   ...values: unknown[]
@@ -97,34 +186,7 @@ export function jsxTemplate(
   return new RawString(join(templates, values.map(loose)));
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────
-
-/** Convert any value to its HTML-safe string form. */
-function coerce(v: unknown): string {
-  if (v == null || v === true || v === false) return "";
-  if (typeof v === "string") return escapeContent(v);
-  if (typeof v === "number") return String(v);
-  if (Array.isArray(v)) return v.map((x) => coerce(x)).join("");
-  // Sync iterables (Set, Map, generator) — match the dynamic path rather than
-  // stringifying to "[object Set]". Async iterables can't be awaited here (a
-  // raw template slot is synchronous); they fall through to String(v).
-  if (v != null && typeof (v as { [Symbol.iterator]?: unknown })[Symbol.iterator] === "function") {
-    return coerce(Array.from(v as Iterable<unknown>));
-  }
-  return escapeContent(String(v));
-}
-
-/** Unwrap a template-slot value: RawString → its inner text, otherwise coerce. */
 function loose(v: unknown): string {
   if (v instanceof RawString) return v.value;
   return coerce(v);
-}
-
-function join(templates: ArrayLike<string>, values: string[]): string {
-  let out = templates[0] ?? "";
-  for (let i = 0; i < values.length; i++) {
-    out += values[i]!;
-    out += templates[i + 1] ?? "";
-  }
-  return out;
 }

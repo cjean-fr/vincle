@@ -1,4 +1,4 @@
-import type { ResolvedVNode } from "@vincle/core";
+import type { ResolvedVNode, VNode } from "@vincle/core";
 
 import { renderToString, withScope, useContext } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
@@ -32,7 +32,10 @@ describe("Template — async content (placeholder)", () => {
       const AsyncContent = async () => <span>content</span> as ResolvedVNode;
       const html = await renderToString(
         <Template target="content">
-          <AsyncContent />
+        {
+          // @ts-expect-error Async component supported at runtime
+          <AsyncContent /> as unknown as VNode
+        }
         </Template>,
       );
       expect(html).toContain('id="content"');
@@ -47,7 +50,10 @@ describe("Template — async content (placeholder)", () => {
       const AsyncContent = async () => <span>inline</span> as ResolvedVNode;
       const html = await renderToString(
         <Template target="inline">
-          <AsyncContent />
+        {
+          // @ts-expect-error Async component supported at runtime
+          <AsyncContent /> as unknown as VNode
+        }
         </Template>,
       );
       expect(html).toContain('id="inline"');
@@ -62,7 +68,10 @@ describe("Template — async content (placeholder)", () => {
       const AsyncContent = async () => <span>x</span> as ResolvedVNode;
       await renderToString(
         <Template target="cart">
-          <AsyncContent />
+        {
+          // @ts-expect-error Async component supported at runtime
+          <AsyncContent /> as unknown as VNode
+        }
         </Template>,
       );
       const entries = useContext(Flow).templateStore.outstanding(new Set());
@@ -76,7 +85,10 @@ describe("Template — async content (placeholder)", () => {
       const AsyncContent = async () => <li>item</li> as ResolvedVNode;
       await renderToString(
         <Template target="list" merge="append">
-          <AsyncContent />
+        {
+          // @ts-expect-error Async component supported at runtime
+          <AsyncContent /> as unknown as VNode
+        }
         </Template>,
       );
       const entries = useContext(Flow).templateStore.outstanding(new Set());
@@ -108,7 +120,10 @@ describe("Template — async content (placeholder)", () => {
       const AsyncContent = async () => <span>content</span> as ResolvedVNode;
       const html = await renderToString(
         <Template target="content">
-          <AsyncContent />
+        {
+          // @ts-expect-error Async component supported at runtime
+          <AsyncContent /> as unknown as VNode
+        }
         </Template>,
       );
       expect(html).toContain('src="/f/content.html"');

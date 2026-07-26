@@ -1,5 +1,5 @@
-import { raw } from "@vincle/core";
+import { raw, type VNode } from "@vincle/core";
 
-export function TableOfContents() {
-  return raw("<aside data-toc-placeholder></aside>");
+export function TableOfContents(): VNode {
+  return raw("<aside data-toc-placeholder></aside>") as unknown as VNode;
 }

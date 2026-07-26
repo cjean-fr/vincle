@@ -1,4 +1,4 @@
-import { renderToString } from "@vincle/core";
+import { renderToString, type VNode } from "@vincle/core";
 
 declare const db: {
   posts: {
@@ -6,7 +6,6 @@ declare const db: {
   };
 };
 
-// @ts-expect-error — TS1062: async component returns Promise<VNode>, TS7 detects thenable cycle (runtime OK)
 const Feed = async () => {
   const posts = await db.posts.findAll({ limit: 10 });
   return (
@@ -22,4 +21,5 @@ const Feed = async () => {
 
 // renderToString awaits the entire tree, including
 // nested async components
-const html = await renderToString(<Feed />);
+const html = await // @ts-expect-error Async component supported at runtime
+renderToString(<Feed /> as unknown as VNode);

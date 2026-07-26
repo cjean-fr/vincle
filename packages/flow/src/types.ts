@@ -9,7 +9,20 @@ export interface AdapterCapabilities {
   merges: readonly MergeType[];
 }
 
-export type TemplateContent = VNode | (() => VNode);
+/**
+ * Content that can be rendered as a template fragment.
+ *
+ * - `VNode` — one-shot sync render
+ * - `string` — raw HTML (stored verbatim, rendered later)
+ * - `() => VNode` — lazy factory (synchronous)
+ * - `AsyncIterable<VNode>` — streaming (each yielded VNode is flushed)
+ */
+export type TemplateContent =
+  | VNode
+  | string
+  | (() => VNode)
+  | AsyncIterable<VNode>
+  | (() => AsyncIterable<VNode>);
 
 export interface Shell {
   type: "shell";

@@ -1,5 +1,6 @@
-export { renderToString, render } from "./render.js";
-export type { VNode, ResolvedVNode, Component } from "./render.js";
+export { renderToString } from "./create-element.js";
+export { renderToStringAsync } from "./create-element-async.js";
+export { VNode } from "./jsx-runtime.js";
 export {
   context,
   setContext,
@@ -10,14 +11,6 @@ export {
 } from "./context.js";
 export type { ContextKey, ContextMap } from "./context.js";
 export { raw, RawString } from "./raw.js";
-export { Fragment, createElement } from "./jsx-runtime.js";
+export { Fragment } from "./jsx-runtime.js";
 
-export type {
-  CSSProperties,
-  StringEventHandlers,
-  StaticAttributes,
-  HTMLAttributes,
-  SVGAttributes,
-} from "./types-jsx.js";
-
-export type { JSX } from "./jsx-runtime.js";
+export type { CSSProperties } from "./types-jsx.js";

@@ -1,18 +1,24 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "packageManager": "npm",
-  "testRunner": "bun",
-  "plugins": ["stryker-mutator-bun-runner"],
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "bun test"
+  },
   "mutate": [
-    "src/render.ts",
-    "src/render-attrs.ts",
+    "src/create-element.ts",
+    "src/create-element-async.ts",
+    "src/attrs.ts",
     "src/escape.ts",
     "src/context.ts",
     "src/raw.ts",
+    "src/serialize.ts",
+    "src/static-render.ts",
+    "src/url-safety.ts",
     "src/index.ts",
     "src/jsx-runtime.ts",
     "src/jsx-dev-runtime.ts",
-    "src/utils/html.ts"
+    "src/jsx-precompile-runtime.ts"
   ],
   "mutator": {
     "excludedMutations": ["BlockStatement"]
@@ -25,7 +31,5 @@
     "low": 65,
     "break": 65
   },
-  "testFiles": ["src/**/*.test.ts", "src/**/*.test.tsx"],
-  "ignorePatterns": ["**/performance.test.{ts,tsx}", "**/memory.test.{ts,tsx}"],
   "timeoutMS": 30000
 }

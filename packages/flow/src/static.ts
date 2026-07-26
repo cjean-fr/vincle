@@ -88,7 +88,7 @@ export async function renderToStatic<T>(
             if (ev.type === "fragment") {
               const resolved = await resolveAssets(ev.html, { isolate: true });
               const framed = await renderToString(
-                adapter.Frame({ id: ev.id, children: raw(resolved) }),
+                adapter.Frame({ id: ev.id, children: raw(resolved) as unknown as VNode }),
               );
               await cb(ev.id, generatePath(ev.id), framed);
             }

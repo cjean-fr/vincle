@@ -2,16 +2,10 @@
   "extends": "../typescript-config/react.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core",
+    "jsxImportSource": "./src",
     "outDir": "./dist",
     "rootDir": "./",
-    "paths": {
-      "@vincle/core": ["./src/index.ts"],
-      "@vincle/core/jsx-runtime": ["./src/jsx-runtime.ts"],
-      "@vincle/core/jsx-dev-runtime": ["./src/jsx-dev-runtime.ts"],
-      "@vincle/core/html": ["./src/utils/html.ts"]
-    },
-    "types": ["bun", "react"]
-  },
-  "include": ["src"]
+
+    "types": ["bun"]
+  }
 }

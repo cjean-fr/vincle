@@ -49,13 +49,13 @@
     "@oxc-project/types": "^0.139.0",
     "bun": "^1.3.14",
     "lefthook": "^2.1.10",
-    "lint-staged": "^17.1.0",
+    "lint-staged": "^17.2.0",
     "oxc-parser": "^0.139.0",
     "oxc-transform": "^0.139.0",
     "oxfmt": "^0.58.0",
-    "oxlint": "^1.74.0",
+    "oxlint": "^1.75.0",
     "tailwindcss": "^4.3.3",
-    "turbo": "^2.10.5"
+    "turbo": "^2.10.7"
   },
   "peerDependencies": {
     "typescript": "^7.0.2"

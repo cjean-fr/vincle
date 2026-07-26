@@ -1,4 +1,4 @@
-import { raw, type VNode } from "@vincle/core";
+import { raw } from "@vincle/core";
 import { escapeAttr } from "@vincle/core/html";
 
 import { injectIntoHead } from "../utils.js";
@@ -11,12 +11,23 @@ export { NATIVE_POLYFILL, nativePolyfillHash } from "./native-polyfill.js";
 export const WebPlatformAdapter = createAdapter({
   Placeholder: function ({ id, src, children }) {
     const safeId = escapeAttr(id);
-    const open: VNode = raw(`<?start name="${safeId}">`);
-    const close: VNode = raw(`<?end>`);
     if (src) {
-      return [open, children, close, <template htmlFor={id} data-src={src} />];
+      return (
+        <>
+          {raw(`<?start name="${safeId}">`)}
+          {children}
+          {raw(`<?end>`)}
+          <template htmlFor={id} data-src={src} />
+        </>
+      );
     }
-    return [open, children, close];
+    return (
+      <>
+        {raw(`<?start name="${safeId}">`)}
+        {children}
+        {raw(`<?end>`)}
+      </>
+    );
   },
 
   Patch: ({ id, children, merge }) => {

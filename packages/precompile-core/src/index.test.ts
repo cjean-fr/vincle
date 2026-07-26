@@ -14,7 +14,7 @@ import {
   RUNTIME_SOURCE,
   VOID_ELEMENTS,
   URL_ATTRIBUTES,
-  ATTRIBUTE_NAME_MAP,
+  resolveAttrName,
 } from "./index.js";
 
 describe("precompile-core", () => {
@@ -120,8 +120,8 @@ describe("precompile-core", () => {
       expect(escapeAttr("a&b<c>d")).toBe("a&amp;b&lt;c>d");
     });
 
-    it("escapes single quotes", () => {
-      expect(escapeAttr("a'b")).toBe("a&#39;b");
+    it("does not escape single quotes (runtime uses double-quoted attrs, ' is safe)", () => {
+      expect(escapeAttr("a'b")).toBe("a'b");
     });
   });
 
@@ -129,7 +129,8 @@ describe("precompile-core", () => {
     it("is true for URL-bearing attributes", () => {
       expect(isUrlAttribute("href")).toBe(true);
       expect(isUrlAttribute("src")).toBe(true);
-      expect(isUrlAttribute("srcset")).toBe(true);
+      expect(isUrlAttribute("action")).toBe(true);
+      expect(isUrlAttribute("formaction")).toBe(true);
       expect(isUrlAttribute("xlink:href")).toBe(true);
     });
 
@@ -205,15 +206,19 @@ describe("precompile-core", () => {
     it("URL_ATTRIBUTES matches expected URL-bearing attributes", () => {
       expect(URL_ATTRIBUTES.has("href")).toBe(true);
       expect(URL_ATTRIBUTES.has("src")).toBe(true);
-      expect(URL_ATTRIBUTES.has("srcset")).toBe(true);
+      expect(URL_ATTRIBUTES.has("action")).toBe(true);
+      expect(URL_ATTRIBUTES.has("formaction")).toBe(true);
+      expect(URL_ATTRIBUTES.has("xlink:href")).toBe(true);
       expect(URL_ATTRIBUTES.has("class")).toBe(false);
+      expect(URL_ATTRIBUTES.has("srcset")).toBe(false);
     });
 
-    it("ATTRIBUTE_NAME_MAP maps camelCase JSX attrs to HTML", () => {
-      expect(ATTRIBUTE_NAME_MAP.get("className")).toBe("class");
-      expect(ATTRIBUTE_NAME_MAP.get("htmlFor")).toBe("for");
-      expect(ATTRIBUTE_NAME_MAP.get("tabIndex")).toBe("tabindex");
-      expect(ATTRIBUTE_NAME_MAP.get("unknownProp")).toBeUndefined();
+    it("resolveAttrName maps camelCase JSX attrs to HTML", () => {
+      expect(resolveAttrName("className")).toBe("class");
+      expect(resolveAttrName("htmlFor")).toBe("for");
+      expect(resolveAttrName("tabIndex")).toBe("tabindex");
+      expect(resolveAttrName("srcSet")).toBe("srcset");
+      expect(resolveAttrName("unknownProp")).toBe("unknownprop");
     });
 
     it('escapeAttr escapes & < > " identically to the runtime', () => {
@@ -239,10 +244,9 @@ describe("precompile-core", () => {
       const barrel = await import("@vincle/core/html");
       expect(barrel.VOID_ELEMENTS).toBeInstanceOf(Set);
       expect(barrel.URL_ATTRIBUTES).toBeInstanceOf(Set);
-      expect(barrel.ATTRIBUTE_NAME_MAP).toBeInstanceOf(Map);
+      expect(typeof barrel.resolveAttrName).toBe("function");
       expect(typeof barrel.escapeAttr).toBe("function");
       expect(typeof barrel.isValidAttrName).toBe("function");
-      expect(typeof barrel.isValidTagName).toBe("function");
     });
   });
 });

@@ -1,4 +1,5 @@
 import { Slot, Template } from "@vincle/flow";
+import type { VNode } from "@vincle/core";
 
 async function LiveComments() {
   const res = await fetch("https://api.example.com/comments");
@@ -21,7 +22,10 @@ function Page() {
         </Slot>
 
         <Template target="comments" timeout={5000}>
-          <LiveComments />
+          {
+            // @ts-expect-error Async component supported at runtime
+            <LiveComments /> as unknown as VNode
+          }
         </Template>
       </body>
     </html>

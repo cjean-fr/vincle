@@ -33,8 +33,8 @@ import { render as realworldNext } from "./realworld/vincle-next.js";
 type KitaCreate = typeof kita;
 
 // --- core-next ---
-import { jsx as njsx, Fragment as nfrag } from "core-next/jsx-runtime";
-import { renderToString as nextRender } from "core-next";
+import { jsx as njsx, Fragment as nfrag } from "@vincle/core/jsx-runtime";
+import { renderToString as nextRender } from "@vincle/core";
 
 // ---------------------------------------------------------------------------
 // Async benchmark — @vincle/core only (React/Preact don't support async components)

@@ -100,7 +100,7 @@ const ALL_REGEXES: RegexEntry[] = [
   },
   {
     id: 9,
-    file: "render.ts",
+    file: "attrs.ts",
     name: "REGEX_CAMEL_TO_KEBAB",
     pattern: "[A-Z]",
     flags: "g",
@@ -360,5 +360,5 @@ it("each regex compiles with its declared flags", () => {
 it("every source file referenced has a regex declared", () => {
   const files = new Set(ALL_REGEXES.map((r) => r.file));
   expect(files.has("escape.ts")).toBe(true);
-  expect(files.has("render.ts")).toBe(true);
+  expect(files.has("attrs.ts")).toBe(true);
 });

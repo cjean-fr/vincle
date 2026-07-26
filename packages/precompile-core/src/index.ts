@@ -2,10 +2,10 @@ import {
   VOID_ELEMENTS,
   URL_ATTRIBUTES,
   RAWTEXT_TAGS,
-  ATTRIBUTE_NAME_MAP,
+  resolveAttrName,
   escapeContent,
   escapeAttr,
-  escapeRawText,
+  escapeRawTagContent,
   isValidAttrName,
 } from "@vincle/core/html";
 import { decodeHTMLStrict } from "entities";
@@ -14,10 +14,10 @@ export {
   VOID_ELEMENTS,
   URL_ATTRIBUTES,
   RAWTEXT_TAGS,
-  ATTRIBUTE_NAME_MAP,
+  resolveAttrName,
   escapeContent,
   escapeAttr,
-  escapeRawText,
+  escapeRawTagContent,
   isValidAttrName,
 };
 
@@ -116,7 +116,7 @@ export function isUrlAttribute(name: string): boolean {
  * build time so static attributes stay inlined — same as Deno's precompile.
  */
 export function remapAttrName(name: string): string {
-  return ATTRIBUTE_NAME_MAP.get(name) ?? name;
+  return resolveAttrName(name);
 }
 
 const REGEX_EVENT_HANDLER = /^on[a-z]/i;

@@ -1,62 +1,13 @@
 {
   "name": "@vincle/core",
-  "version": "1.0.0-beta.1",
-  "description": "JSX-to-HTML string renderer. Zero dependencies. Fully typed.",
-  "keywords": [
-    "async",
-    "html",
-    "jsx",
-    "render",
-    "security",
-    "ssg",
-    "ssr",
-    "typescript",
-    "xss-prevention",
-    "zero-dependency"
-  ],
-  "homepage": "https://vincle.cjean.fr",
-  "bugs": {
-    "url": "https://github.com/vincle/vincle/issues"
-  },
-  "license": "MIT",
-  "author": "Christophe Jean",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vincle/vincle.git",
-    "directory": "packages/core"
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
+  "private": true,
   "type": "module",
-  "sideEffects": false,
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./jsx-runtime": {
-      "types": "./dist/jsx-runtime.d.ts",
-      "default": "./dist/jsx-runtime.js"
-    },
-    "./jsx-dev-runtime": {
-      "types": "./dist/jsx-dev-runtime.d.ts",
-      "default": "./dist/jsx-dev-runtime.js"
-    },
-    "./jsx-precompile-runtime": {
-      "types": "./dist/jsx-precompile-runtime.d.ts",
-      "default": "./dist/jsx-precompile-runtime.js"
-    },
-    "./html": {
-      "types": "./dist/utils/html.d.ts",
-      "default": "./dist/utils/html.js"
-    }
-  },
-  "publishConfig": {
-    "access": "public"
+    ".": "./index.ts",
+    "./html": "./src/html.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts",
+    "./jsx-precompile-runtime": "./src/jsx-precompile-runtime.ts"
   },
   "scripts": {
     "build": "tsdown",
@@ -70,26 +21,11 @@
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@types/bun": "catalog:",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "fast-check": "catalog:",
-    "preact": "^10.29.7",
-    "preact-render-to-string": "^6.7.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "@types/react": "catalog:",
     "stryker-mutator-bun-runner": "^0.4.0",
-    "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "tsdown": "catalog:"
   },
   "peerDependencies": {
-    "@types/react": "^19"
-  },
-  "peerDependenciesMeta": {
-    "@types/react": {
-      "optional": true
-    }
-  },
-  "engines": {
-    "node": ">=22.0.0"
+    "typescript": "^7.0.2"
   }
 }

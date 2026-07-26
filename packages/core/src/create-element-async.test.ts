@@ -1,29 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { jsx, jsxs, Fragment, VNode } from "./jsx-runtime.js";
-import { renderToString } from "./create-element.js";
+
 import { renderToStringAsync } from "./create-element-async.js";
-
-describe("bigint", () => {
-  test("bigint as text content", () => {
-    const v = jsx("div", { children: 9007199254740993n });
-    expect(renderToString(v)).toBe("<div>9007199254740993</div>");
-  });
-
-  test("bigint as component child", () => {
-    const v = jsx("div", { children: [jsx("span", {}), 42n] });
-    expect(renderToString(v)).toBe("<div><span></span>42</div>");
-  });
-
-  test("bigint mixed with string", () => {
-    const v = jsx("div", { children: ["count: ", 100n] });
-    expect(renderToString(v)).toBe("<div>count: 100</div>");
-  });
-
-  test("bigint in nested tree", () => {
-    const v = jsx("div", { children: jsx("p", { children: 0n }) });
-    expect(renderToString(v)).toBe("<div><p>0</p></div>");
-  });
-});
+import { renderToString } from "./create-element.js";
+import { jsx, Fragment } from "./jsx-runtime.js";
 
 describe("renderToStringAsync", () => {
   test("sync tree returns same as renderToString", async () => {
@@ -70,7 +49,7 @@ describe("renderToStringAsync", () => {
         Promise.resolve(jsx("b", { children: "bold" })),
       ],
     });
-    expect(await renderToStringAsync(v)).toBe('<a>link</a> text <b>bold</b>');
+    expect(await renderToStringAsync(v)).toBe("<a>link</a> text <b>bold</b>");
   });
 
   test("Promise<VNode> at root", async () => {
@@ -85,5 +64,13 @@ describe("renderToStringAsync", () => {
     }
     const v = jsx("ul", { children: gen() });
     expect(await renderToStringAsync(v)).toBe("<ul><li>one</li><li>two</li></ul>");
+  });
+
+  test("component returning Promise<bigint>", async () => {
+    function AsyncBigint() {
+      return Promise.resolve(42n);
+    }
+    const v = jsx("div", { children: jsx(AsyncBigint, {}) });
+    expect(await renderToStringAsync(v)).toBe("<div>42</div>");
   });
 });

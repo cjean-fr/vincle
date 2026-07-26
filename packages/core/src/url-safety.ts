@@ -1,9 +1,7 @@
 const REGEX_UNSAFE_PROTOCOLS = /^(?:java|vb)script:/i;
 const REGEX_IMAGE_DATA_URI = /^data:image\/(?:png|jpeg|gif|webp|avif)(?:[;+]|$)/i;
 
-export const URL_ATTRIBUTES = new Set([
-  "href", "src", "action", "formaction", "xlink:href",
-]);
+export const URL_ATTRIBUTES = new Set(["href", "src", "action", "formaction", "xlink:href"]);
 
 export function isSafeScheme(url: string): boolean {
   const c0 = url.charCodeAt(0);
@@ -50,5 +48,3 @@ export function isSafeScheme(url: string): boolean {
     return false;
   return true;
 }
-
-

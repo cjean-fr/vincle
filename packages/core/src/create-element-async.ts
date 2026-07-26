@@ -1,7 +1,7 @@
-import { VNode } from "./jsx-runtime.js";
 import { buildAttrs } from "./attrs.js";
+import { escapeContent, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
+import { VNode } from "./jsx-runtime.js";
 import { RawString } from "./raw.js";
-import { escapeHtml, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
 import { serializeElement } from "./serialize.js";
 
 const RE_INVALID_TAG = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
@@ -25,14 +25,11 @@ function renderToStringAsync(node: unknown): string | Promise<string> {
   return createElementAsync(node);
 }
 
-function createElementAsync(
-  vnode: unknown,
-  rawtextTag?: string,
-): string | Promise<string> {
+function createElementAsync(vnode: unknown, rawtextTag?: string): string | Promise<string> {
   // ── Sync fast path (same as create-element.ts) ──
   if (vnode === null || vnode === undefined || typeof vnode === "boolean") return "";
   if (typeof vnode === "string") {
-    return rawtextTag ? escapeRawTagContent(vnode, rawtextTag) : escapeHtml(vnode);
+    return rawtextTag ? escapeRawTagContent(vnode, rawtextTag) : escapeContent(vnode);
   }
   if (typeof vnode === "number" || typeof vnode === "bigint") return String(vnode);
   if (vnode instanceof RawString) return vnode.value;
@@ -46,7 +43,7 @@ function createElementAsync(
   }
 
   if (Array.isArray(vnode)) return renderChildrenAsync(vnode, rawtextTag);
-  if (!(vnode instanceof VNode)) return escapeHtml(String(vnode));
+  if (!(vnode instanceof VNode)) return escapeContent(String(vnode));
 
   // ── Component ──
   if (typeof vnode.tag === "function") {
@@ -92,10 +89,7 @@ function createElementAsync(
   return serializeElement(tag, attrStr, "", false);
 }
 
-function renderChildrenAsync(
-  children: unknown,
-  rawtextTag?: string,
-): string | Promise<string> {
+function renderChildrenAsync(children: unknown, rawtextTag?: string): string | Promise<string> {
   if (!Array.isArray(children)) {
     return createElementAsync(children, rawtextTag);
   }
@@ -120,8 +114,8 @@ function renderChildrenAsync(
   }
 
   // At least one async child — resolve all in parallel
-  return Promise.all(children.map((child) => createElementAsync(child, rawtextTag))).then(
-    (parts) => parts.join(""),
+  return Promise.all(children.map((child) => createElementAsync(child, rawtextTag))).then((parts) =>
+    parts.join(""),
   );
 }
 

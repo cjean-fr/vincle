@@ -1,7 +1,7 @@
-import { VNode } from "./jsx-runtime.js";
 import { buildAttrs } from "./attrs.js";
+import { escapeContent, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
+import { VNode } from "./jsx-runtime.js";
 import { RawString } from "./raw.js";
-import { escapeHtml, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
 import { serializeElement } from "./serialize.js";
 
 const RE_INVALID_TAG = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
@@ -24,12 +24,12 @@ function renderToString(node: unknown): string {
 function createElement(vnode: unknown, rawtextTag?: string): string {
   if (vnode === null || vnode === undefined || typeof vnode === "boolean") return "";
   if (typeof vnode === "string") {
-    return rawtextTag ? escapeRawTagContent(vnode, rawtextTag) : escapeHtml(vnode);
+    return rawtextTag ? escapeRawTagContent(vnode, rawtextTag) : escapeContent(vnode);
   }
   if (typeof vnode === "number") return String(vnode);
   if (vnode instanceof RawString) return vnode.value;
   if (Array.isArray(vnode)) return renderChildren(vnode, rawtextTag);
-  if (!(vnode instanceof VNode)) return escapeHtml(String(vnode));
+  if (!(vnode instanceof VNode)) return escapeContent(String(vnode));
 
   if (typeof vnode.tag === "function") {
     return createElement(vnode.tag(vnode.attrs), rawtextTag);
@@ -57,7 +57,7 @@ function createElement(vnode: unknown, rawtextTag?: string): string {
 function renderChildren(children: unknown, rawtextTag?: string): string {
   if (!Array.isArray(children)) {
     if (typeof children === "string") {
-      return rawtextTag ? escapeRawTagContent(children, rawtextTag) : escapeHtml(children);
+      return rawtextTag ? escapeRawTagContent(children, rawtextTag) : escapeContent(children);
     }
     if (typeof children === "number") return String(children);
     if (children == null || children === true || children === false) return "";

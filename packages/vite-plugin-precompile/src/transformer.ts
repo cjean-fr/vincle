@@ -15,7 +15,7 @@ import {
   decodeJsxEntities,
   escapeAttr,
   escapeContent,
-  escapeRawText,
+  escapeRawTagContent,
   hasSpreadOrInnerHTML,
   isEventHandlerName,
   isLowercaseTag,
@@ -439,11 +439,11 @@ function emitChildren(
         appendStatic(parts, collapsed);
       } else if (rawtextTag) {
         // Secure mode rawtext: decode entities (like the compiler does),
-        // then apply escapeRawText — Vincle's extra protection against
+        // then apply escapeRawTagContent — Vincle's extra protection against
         // </script>/</style> breakout. The runtime's jsxEscape does not
         // handle rawtext context, so we don't use it here.
         const decoded = decodeJsxEntities(collapsed);
-        appendStatic(parts, escapeRawText(decoded, rawtextTag));
+        appendStatic(parts, escapeRawTagContent(decoded, rawtextTag));
       } else {
         // Non-rawtext text: decode entities, then escape using the runtime's
         // own jsxEscape when available (secure mode), or Vincle's

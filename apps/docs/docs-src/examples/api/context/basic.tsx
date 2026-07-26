@@ -11,7 +11,7 @@ import {
 const themeCtx = context<"light" | "dark">("my-app:theme");
 
 // 2. A component that reads from context
-function ThemedBox({ children }: { children: VNode }): VNode {
+function ThemedBox({ children }: { children: VNode | string }): VNode {
   const theme = useContext(themeCtx);
   return (
     <div class={theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}>

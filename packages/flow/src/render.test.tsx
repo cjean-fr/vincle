@@ -54,7 +54,9 @@ describe("renderToFlowEvents", () => {
       return (
         <section>
           OUTER
-          <Template target="inner"><InnerContent /></Template>
+        <Template target="inner">
+          {InnerContent() as unknown as VNode}
+        </Template>
         </section>
       );
     };
@@ -63,7 +65,9 @@ describe("renderToFlowEvents", () => {
         () => (
           <html>
             <body>
-              <Template target="outer"><Outer /></Template>
+            <Template target="outer">
+              {Outer() as unknown as VNode}
+            </Template>
             </body>
           </html>
         ),
@@ -273,7 +277,9 @@ describe("renderToStream", () => {
       return (
         <section>
           OUTER
-          <Template target="inner"><InnerContent /></Template>
+        <Template target="inner">
+          {InnerContent() as unknown as VNode}
+        </Template>
         </section>
       );
     };
@@ -282,7 +288,9 @@ describe("renderToStream", () => {
         () => (
           <html>
             <body>
-              <Template target="outer"><Inner /></Template>
+            <Template target="outer">
+              {Inner() as unknown as VNode}
+            </Template>
             </body>
           </html>
         ),

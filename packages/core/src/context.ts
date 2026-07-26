@@ -1,4 +1,4 @@
-import type { Awaitable } from "./render.js";
+type Awaitable<T> = T | Promise<T>;
 
 declare const __brand: unique symbol;
 

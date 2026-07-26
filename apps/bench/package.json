@@ -10,8 +10,7 @@
   },
   "dependencies": {
     "@vincle/core": "workspace:*",
-    "@vincle/kita-html": "workspace:*",
-    "core-next": "workspace:*"
+    "@vincle/kita-html": "workspace:*"
   },
   "devDependencies": {
     "@kitajs/html": "5.0.0-next.1",
