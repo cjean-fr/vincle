@@ -9,8 +9,7 @@
 
 // ── Renderers ─────────────────────────────────────────────────────────────
 
-export { renderToString } from "./src/create-element.js";
-export { renderToStringAsync } from "./src/create-element-async.js";
+export { renderToString } from "./src/create-element-async.js";
 
 // ── JSX runtime ────────────────────────────────────────────────────────────
 

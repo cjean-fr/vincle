@@ -72,14 +72,14 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
   const attrName = resolveAttrName(name);
 
   if (value instanceof RawString) {
-    return new RawString(` ${attrName}="${value.value}"`);
+    return new RawString(`${attrName}="${value.value}"`);
   }
 
   // Style object → string
   if (attrName === "style" && typeof value === "object" && !Array.isArray(value)) {
     const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
     if (!styleStr) return raw("");
-    return new RawString(` style="${escapeAttr(styleStr)}"`);
+    return new RawString(`style="${escapeAttr(styleStr)}"`);
   }
 
   // Class array → string
@@ -93,15 +93,15 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
       }
     }
     if (!s) return raw("");
-    return new RawString(` class="${escapeAttr(s)}"`);
+    return new RawString(`class="${escapeAttr(s)}"`);
   }
 
   // Boolean attribute
   if (typeof value === "boolean") {
     if (BOOLEAN_ATTRIBUTES.has(attrName)) {
-      return value ? raw(` ${attrName}`) : raw("");
+      return value ? raw(attrName) : raw("");
     }
-    return new RawString(` ${attrName}="${value}"`);
+    return new RawString(`${attrName}="${value}"`);
   }
 
   // Event handlers — warn and drop
@@ -111,7 +111,7 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
       `[vincle/core] Event handler "${name}" was passed as a string value. ` +
         "Event handlers are not rendered in static HTML.",
     );
-    return raw(` ${attrName}="${escapeAttr(value)}"`);
+    return raw(`${attrName}="${escapeAttr(value)}"`);
   }
 
   let str = String(value);
@@ -125,7 +125,7 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
       break;
   }
 
-  return new RawString(` ${attrName}="${escapeAttr(str)}"`);
+  return new RawString(`${attrName}="${escapeAttr(str)}"`);
 }
 
 const ON_MASK = ("o".charCodeAt(0) << 8) | "n".charCodeAt(0);
@@ -178,15 +178,16 @@ export function jsxTemplate(
   for (const v of values) {
     if (v instanceof Promise) {
       return Promise.all(values).then((resolved) => {
-        const parts = resolved.map(loose);
+        const parts = resolved.map(coerceRawString);
         return new RawString(join(templates, parts));
       });
     }
   }
-  return new RawString(join(templates, values.map(loose)));
+  return new RawString(join(templates, values.map(coerceRawString)));
 }
 
-function loose(v: unknown): string {
+/** Like `coerce`, but lets `RawString` through without double-escaping. */
+function coerceRawString(v: unknown): string {
   if (v instanceof RawString) return v.value;
   return coerce(v);
 }

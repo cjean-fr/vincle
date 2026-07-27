@@ -4,7 +4,6 @@ import {
   collapseJsxWhitespace,
   escapeAttr,
   isEventHandlerName,
-  isLower,
   isLowercaseTag,
   isUrlAttribute,
   isValidAttrName,
@@ -18,30 +17,23 @@ import {
 } from "./index.js";
 
 describe("precompile-core", () => {
-  describe("isLower", () => {
+  describe("isLowercaseTag", () => {
     it("returns true for lowercase first char", () => {
-      expect(isLower("div")).toBe(true);
-      expect(isLower("span")).toBe(true);
-      expect(isLower("svg")).toBe(true);
-      expect(isLower("a")).toBe(true);
+      expect(isLowercaseTag("div")).toBe(true);
+      expect(isLowercaseTag("span")).toBe(true);
+      expect(isLowercaseTag("svg")).toBe(true);
+      expect(isLowercaseTag("a")).toBe(true);
     });
 
     it("returns false for uppercase first char", () => {
-      expect(isLower("Div")).toBe(false);
-      expect(isLower("MyComponent")).toBe(false);
-      expect(isLower("A")).toBe(false);
+      expect(isLowercaseTag("Div")).toBe(false);
+      expect(isLowercaseTag("MyComponent")).toBe(false);
+      expect(isLowercaseTag("A")).toBe(false);
     });
 
     it("returns false for non-alpha first char", () => {
-      expect(isLower("123")).toBe(false);
-      expect(isLower("")).toBe(false);
-    });
-  });
-
-  describe("isLowercaseTag", () => {
-    it("delegates to isLower", () => {
-      expect(isLowercaseTag("div")).toBe(true);
-      expect(isLowercaseTag("MyComponent")).toBe(false);
+      expect(isLowercaseTag("123")).toBe(false);
+      expect(isLowercaseTag("")).toBe(false);
     });
   });
 

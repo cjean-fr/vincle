@@ -6,6 +6,8 @@
   "scripts": {
     "bench": "NODE_ENV=production bun run src/bench.ts",
     "bench:ci": "mkdir -p results && NODE_ENV=production bun run src/bench.ts | tee results/benchmark.txt",
+    "bench:js": "NODE_ENV=production bun run src/bench.js",
+    "bench:js:ci": "mkdir -p results && NODE_ENV=production bun run src/bench.js | tee results/benchmark-js.txt",
     "format": "oxfmt"
   },
   "dependencies": {

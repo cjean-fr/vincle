@@ -1,18 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-import { renderToStringAsync } from "./create-element-async.js";
-import { renderToString } from "./create-element.js";
+import { renderToString } from "./create-element-async.js";
 import { jsx, Fragment } from "./jsx-runtime.js";
 
-describe("renderToStringAsync", () => {
-  test("sync tree returns same as renderToString", async () => {
+describe("renderToString (async)", () => {
+  test("sync tree renders correctly", async () => {
     const v = jsx("div", { className: "x", children: "hello" });
-    expect(await renderToStringAsync(v)).toBe(renderToString(v));
+    expect(await renderToString(v)).toBe('<div class="x">hello</div>');
   });
 
   test("bigint works in async path", async () => {
     const v = jsx("div", { children: 42n });
-    expect(await renderToStringAsync(v)).toBe("<div>42</div>");
+    expect(await renderToString(v)).toBe("<div>42</div>");
   });
 
   test("component returning Promise<VNode>", async () => {
@@ -20,7 +19,7 @@ describe("renderToStringAsync", () => {
       return Promise.resolve(jsx("span", { children: "loaded" }));
     }
     const v = jsx("div", { children: jsx(AsyncComp, {}) });
-    expect(await renderToStringAsync(v)).toBe("<div><span>loaded</span></div>");
+    expect(await renderToString(v)).toBe("<div><span>loaded</span></div>");
   });
 
   test("component returning Promise<string>", async () => {
@@ -28,7 +27,7 @@ describe("renderToStringAsync", () => {
       return Promise.resolve("async text");
     }
     const v = jsx("div", { children: jsx(AsyncLabel, {}) });
-    expect(await renderToStringAsync(v)).toBe("<div>async text</div>");
+    expect(await renderToString(v)).toBe("<div>async text</div>");
   });
 
   test("Promise in children array (parallel)", async () => {
@@ -38,7 +37,7 @@ describe("renderToStringAsync", () => {
         Promise.resolve(jsx("span", { children: "b" })),
       ],
     });
-    expect(await renderToStringAsync(v)).toBe("<div><span>a</span><span>b</span></div>");
+    expect(await renderToString(v)).toBe("<div><span>a</span><span>b</span></div>");
   });
 
   test("Fragment with async children", async () => {
@@ -49,12 +48,12 @@ describe("renderToStringAsync", () => {
         Promise.resolve(jsx("b", { children: "bold" })),
       ],
     });
-    expect(await renderToStringAsync(v)).toBe("<a>link</a> text <b>bold</b>");
+    expect(await renderToString(v)).toBe("<a>link</a> text <b>bold</b>");
   });
 
   test("Promise<VNode> at root", async () => {
     const p = Promise.resolve(jsx("main", { children: "root" }));
-    expect(await renderToStringAsync(p)).toBe("<main>root</main>");
+    expect(await renderToString(p)).toBe("<main>root</main>");
   });
 
   test("async iterable as children", async () => {
@@ -63,7 +62,7 @@ describe("renderToStringAsync", () => {
       yield jsx("li", { children: "two" });
     }
     const v = jsx("ul", { children: gen() });
-    expect(await renderToStringAsync(v)).toBe("<ul><li>one</li><li>two</li></ul>");
+    expect(await renderToString(v)).toBe("<ul><li>one</li><li>two</li></ul>");
   });
 
   test("component returning Promise<bigint>", async () => {
@@ -71,6 +70,6 @@ describe("renderToStringAsync", () => {
       return Promise.resolve(42n);
     }
     const v = jsx("div", { children: jsx(AsyncBigint, {}) });
-    expect(await renderToStringAsync(v)).toBe("<div>42</div>");
+    expect(await renderToString(v)).toBe("<div>42</div>");
   });
 });

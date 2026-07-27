@@ -77,7 +77,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
       const esbuild = resolvedConfig.esbuild;
       const jsxImportSource =
-        esbuild && typeof esbuild === "object" ? esbuild.jsxImportSource : undefined;
+        esbuild && typeof esbuild === "object" ? (esbuild as { jsxImportSource?: string }).jsxImportSource : undefined;
       if (jsxImportSource) {
         candidateFrameworkRuntime = `${jsxImportSource}${FRAMEWORK_RUNTIME_SUFFIX}`;
       }

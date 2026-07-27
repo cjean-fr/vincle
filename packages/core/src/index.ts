@@ -1,5 +1,4 @@
-export { renderToString } from "./create-element.js";
-export { renderToStringAsync } from "./create-element-async.js";
+export { renderToString } from "./create-element-async.js";
 export { VNode } from "./jsx-runtime.js";
 export {
   context,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { renderToString } from "./create-element.js";
-import { jsx, Fragment, VNode } from "./jsx-runtime.js";
+import { jsx, jsxAttr, Fragment, VNode } from "./jsx-runtime.js";
 import { RawString } from "./raw.js";
 
 // The hybrid model folds fully-static subtrees to a RawString at jsx() time;
@@ -101,5 +101,75 @@ describe("static subtree fold", () => {
   test("fragment (function tag) is NOT folded", () => {
     const node = jsx(Fragment as any, { children: [jsx("div", {})] });
     expect(node).toBeInstanceOf(VNode);
+  });
+});
+
+describe("jsxAttr", () => {
+  test("string value", () => {
+    const r = jsxAttr("class", "foo") as RawString;
+    expect(r).toBeInstanceOf(RawString);
+    expect(r.value).toBe('class="foo"');
+  });
+
+  test("number value", () => {
+    const r = jsxAttr("tabindex", 42) as RawString;
+    expect(r.value).toBe('tabindex="42"');
+  });
+
+  test("boolean true for boolean attribute", () => {
+    const r = jsxAttr("disabled", true) as RawString;
+    expect(r.value).toBe("disabled");
+  });
+
+  test("boolean false for boolean attribute", () => {
+    const r = jsxAttr("disabled", false) as RawString;
+    expect(r.value).toBe("");
+  });
+
+  test("null/undefined are skipped", () => {
+    expect((jsxAttr("hidden", null) as RawString).value).toBe("");
+    expect((jsxAttr("hidden", undefined) as RawString).value).toBe("");
+  });
+
+  test("children/key/ref/dangerouslySetInnerHTML are dropped", () => {
+    expect((jsxAttr("children", "x") as RawString).value).toBe("");
+    expect((jsxAttr("key", "k1") as RawString).value).toBe("");
+    expect((jsxAttr("ref", "r1") as RawString).value).toBe("");
+    expect((jsxAttr("dangerouslySetInnerHTML", { __html: "" }) as RawString).value).toBe("");
+  });
+
+  test("className remaps to class", () => {
+    const r = jsxAttr("className", "box") as RawString;
+    expect(r.value).toBe('class="box"');
+  });
+
+  test("style object serializes", () => {
+    const r = jsxAttr("style", { color: "red", fontSize: "14px" }) as RawString;
+    expect(r.value).toBe('style="color:red;font-size:14px"');
+  });
+
+  test("class array joins", () => {
+    const r = jsxAttr("class", ["a", "b"]) as RawString;
+    expect(r.value).toBe('class="a b"');
+  });
+
+  test("URL safety blocks javascript:", () => {
+    const r = jsxAttr("href", "javascript:alert(1)") as RawString;
+    expect(r.value).toContain("#blocked");
+  });
+
+  test("safe URL passes through", () => {
+    const r = jsxAttr("href", "/page") as RawString;
+    expect(r.value).toBe('href="/page"');
+  });
+
+  test("non-boolean attribute with boolean true renders as string", () => {
+    const r = jsxAttr("data-active", true) as RawString;
+    expect(r.value).toBe('data-active="true"');
+  });
+
+  test("attribute escaping", () => {
+    const r = jsxAttr("title", 'hello "world"') as RawString;
+    expect(r.value).toBe('title="hello &quot;world&quot;"');
   });
 });

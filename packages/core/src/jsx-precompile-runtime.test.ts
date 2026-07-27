@@ -24,13 +24,13 @@ describe("jsxTemplate", () => {
   });
 
   test("template with dynamic attribute", () => {
-    expect(r(jsxTemplate`<div${jsxAttr("class", "foo")}>text</div>`).value).toBe(
+    expect(r(jsxTemplate`<div ${jsxAttr("class", "foo")}>text</div>`).value).toBe(
       '<div class="foo">text</div>',
     );
   });
 
   test("template with multiple dynamic parts", () => {
-    expect(r(jsxTemplate`<a${jsxAttr("href", "/page")}>${jsxEscape("click")}</a>`).value).toBe(
+    expect(r(jsxTemplate`<a ${jsxAttr("href", "/page")}>${jsxEscape("click")}</a>`).value).toBe(
       '<a href="/page">click</a>',
     );
   });
@@ -43,11 +43,11 @@ describe("jsxTemplate", () => {
   });
 
   test("boolean attribute true", () => {
-    expect(r(jsxTemplate`<input${jsxAttr("disabled", true)}>`).value).toBe("<input disabled>");
+    expect(r(jsxTemplate`<input ${jsxAttr("disabled", true)}>`).value).toBe("<input disabled>");
   });
 
   test("boolean attribute false", () => {
-    expect(r(jsxTemplate`<input${jsxAttr("disabled", false)}>`).value).toBe("<input>");
+    expect(r(jsxTemplate`<input ${jsxAttr("disabled", false)}>`).value).toBe("<input >");
   });
 
   test("null/undefined attribute", () => {
@@ -56,25 +56,25 @@ describe("jsxTemplate", () => {
   });
 
   test("className mapping", () => {
-    expect(r(jsxTemplate`<div${jsxAttr("className", "box")}>text</div>`).value).toBe(
+    expect(r(jsxTemplate`<div ${jsxAttr("className", "box")}>text</div>`).value).toBe(
       '<div class="box">text</div>',
     );
   });
 
   test("style string attribute", () => {
-    expect(r(jsxTemplate`<div${jsxAttr("style", "color:red")}>text</div>`).value).toBe(
+    expect(r(jsxTemplate`<div ${jsxAttr("style", "color:red")}>text</div>`).value).toBe(
       '<div style="color:red">text</div>',
     );
   });
 
   test("style object attribute", () => {
     expect(
-      r(jsxTemplate`<div${jsxAttr("style", { color: "red", fontSize: "14px" })}>text</div>`).value,
+      r(jsxTemplate`<div ${jsxAttr("style", { color: "red", fontSize: "14px" })}>text</div>`).value,
     ).toBe('<div style="color:red;font-size:14px">text</div>');
   });
 
   test("class array", () => {
-    expect(r(jsxTemplate`<div${jsxAttr("class", ["a", "b"])}>text</div>`).value).toBe(
+    expect(r(jsxTemplate`<div ${jsxAttr("class", ["a", "b"])}>text</div>`).value).toBe(
       '<div class="a b">text</div>',
     );
   });
@@ -90,7 +90,7 @@ describe("jsxTemplate", () => {
   });
 
   test("htmlFor mapping", () => {
-    expect(r(jsxTemplate`<label${jsxAttr("htmlFor", "email")}>Email</label>`).value).toBe(
+    expect(r(jsxTemplate`<label ${jsxAttr("htmlFor", "email")}>Email</label>`).value).toBe(
       '<label for="email">Email</label>',
     );
   });
@@ -100,24 +100,24 @@ describe("jsxTemplate", () => {
   });
 
   test("blocks javascript: href via jsxTemplate", () => {
-    expect(r(jsxTemplate`<a${jsxAttr("href", "javascript:alert(1)")}>x</a>`).value).toBe(
+    expect(r(jsxTemplate`<a ${jsxAttr("href", "javascript:alert(1)")}>x</a>`).value).toBe(
       '<a href="#blocked">x</a>',
     );
   });
 
   test("allows http href", () => {
-    expect(r(jsxAttr("href", "https://example.com")).value).toBe(' href="https://example.com"');
+    expect(r(jsxAttr("href", "https://example.com")).value).toBe('href="https://example.com"');
   });
 
   test("allows relative href", () => {
-    expect(r(jsxAttr("href", "/page")).value).toBe(' href="/page"');
-    expect(r(jsxAttr("href", "#section")).value).toBe(' href="#section"');
-    expect(r(jsxAttr("href", "?query")).value).toBe(' href="?query"');
+    expect(r(jsxAttr("href", "/page")).value).toBe('href="/page"');
+    expect(r(jsxAttr("href", "#section")).value).toBe('href="#section"');
+    expect(r(jsxAttr("href", "?query")).value).toBe('href="?query"');
   });
 
   test("allows mailto href", () => {
     expect(r(jsxAttr("href", "mailto:test@example.com")).value).toBe(
-      ' href="mailto:test@example.com"',
+      'href="mailto:test@example.com"',
     );
   });
 
@@ -126,7 +126,7 @@ describe("jsxTemplate", () => {
   });
 
   test("safe src is unaffected", () => {
-    expect(r(jsxAttr("src", "/image.png")).value).toBe(' src="/image.png"');
+    expect(r(jsxAttr("src", "/image.png")).value).toBe('src="/image.png"');
   });
 
   test("blocks javascript: src", () => {
@@ -134,12 +134,12 @@ describe("jsxTemplate", () => {
   });
 
   test("non-URL attribute is not checked", () => {
-    expect(r(jsxAttr("id", "javascript:is-ok-here")).value).toBe(' id="javascript:is-ok-here"');
+    expect(r(jsxAttr("id", "javascript:is-ok-here")).value).toBe('id="javascript:is-ok-here"');
   });
 
   test("allows javascript: in srcset (no JS execution vector)", () => {
     expect(r(jsxAttr("srcSet", "javascript:alert(1) 1x")).value).toBe(
-      ' srcset="javascript:alert(1) 1x"',
+      'srcset="javascript:alert(1) 1x"',
     );
   });
 

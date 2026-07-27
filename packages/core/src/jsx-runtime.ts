@@ -1,5 +1,6 @@
 import { raw } from "./raw.js";
 import { tryRenderStatic, NOT_STATIC } from "./static-render.js";
+import { jsxAttr, jsxEscape, jsxTemplate } from "./jsx-precompile-runtime.js";
 
 class VNode {
   readonly tag: string | ((props: any) => any);
@@ -49,4 +50,4 @@ function Fragment({ children }: { children?: unknown }): VNode {
   return children as unknown as VNode;
 }
 
-export { jsx, jsxs, Fragment, VNode };
+export { jsx, jsxs, jsxAttr, jsxEscape, jsxTemplate, Fragment, VNode };

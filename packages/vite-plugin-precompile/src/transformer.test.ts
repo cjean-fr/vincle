@@ -1,4 +1,5 @@
 import { TraceMap, originalPositionFor } from "@jridgewell/trace-mapping";
+import { renderToString } from "@vincle/core";
 import { jsxAttr, jsxEscape } from "@vincle/core/jsx-runtime";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -335,7 +336,7 @@ describe("precompileTransform", () => {
 
     it("keeps `<` / `>` escaped after decoding (no breakout via &lt;)", () => {
       const out = transform("const a = <div>&lt;script&gt;alert(1)&lt;/script&gt;</div>;");
-      expect(out).toContain("jsxTemplate`<div>&lt;script>alert(1)&lt;/script></div>`");
+      expect(out).toContain("jsxTemplate`<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>`");
 
       expect(out).not.toContain("<script>");
     });
@@ -489,8 +490,8 @@ describe("precompileTransform", () => {
       });
       expect(result!.code).toContain("<Comp>{jsxTemplate`<div>x</div>`}</Comp>");
       writeFileSync(outputPath, result!.code);
-      const mod = (await import(outputPath)) as { x: { value: string } };
-      expect(mod.x.value).toBe("<div>x</div>");
+      const mod = (await import(outputPath)) as { x: unknown };
+      expect(renderToString(mod.x)).toBe("<div>x</div>");
     });
 
     it("wraps precompiled fragments and dangerouslySetInnerHTML fallback children too", () => {

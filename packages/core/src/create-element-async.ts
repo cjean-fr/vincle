@@ -21,11 +21,11 @@ function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
   return value != null && typeof value === "object" && Symbol.asyncIterator in value;
 }
 
-function renderToStringAsync(node: unknown): string | Promise<string> {
-  return createElementAsync(node);
+function renderToString(node: unknown): Promise<string> {
+  return Promise.resolve(createElement(node));
 }
 
-function createElementAsync(vnode: unknown, rawtextTag?: string): string | Promise<string> {
+function createElement(vnode: unknown, rawtextTag?: string): string | Promise<string> {
   // ── Sync fast path (same as create-element.ts) ──
   if (vnode === null || vnode === undefined || typeof vnode === "boolean") return "";
   if (typeof vnode === "string") {
@@ -36,7 +36,7 @@ function createElementAsync(vnode: unknown, rawtextTag?: string): string | Promi
 
   // ── Async primitives ──
   if (vnode instanceof Promise) {
-    return vnode.then((resolved) => createElementAsync(resolved, rawtextTag));
+    return vnode.then((resolved) => createElement(resolved, rawtextTag));
   }
   if (isAsyncIterable(vnode)) {
     return collectAsyncIterable(vnode, rawtextTag);
@@ -54,12 +54,12 @@ function createElementAsync(vnode: unknown, rawtextTag?: string): string | Promi
       return Promise.reject(e);
     }
     if (result instanceof Promise) {
-      return result.then((r) => createElementAsync(r, rawtextTag));
+      return result.then((r) => createElement(r, rawtextTag));
     }
     if (isAsyncIterable(result)) {
       return collectAsyncIterable(result, rawtextTag);
     }
-    return createElementAsync(result, rawtextTag);
+    return createElement(result, rawtextTag);
   }
 
   // ── Regular element ──
@@ -91,7 +91,7 @@ function createElementAsync(vnode: unknown, rawtextTag?: string): string | Promi
 
 function renderChildrenAsync(children: unknown, rawtextTag?: string): string | Promise<string> {
   if (!Array.isArray(children)) {
-    return createElementAsync(children, rawtextTag);
+    return createElement(children, rawtextTag);
   }
   if (children.length === 0) return "";
 
@@ -108,13 +108,13 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
   if (!needsAsync) {
     let out = "";
     for (let i = 0; i < children.length; i++) {
-      out += createElementAsync(children[i]!, rawtextTag);
+      out += createElement(children[i]!, rawtextTag);
     }
     return out;
   }
 
   // At least one async child — resolve all in parallel
-  return Promise.all(children.map((child) => createElementAsync(child, rawtextTag))).then((parts) =>
+  return Promise.all(children.map((child) => createElement(child, rawtextTag))).then((parts) =>
     parts.join(""),
   );
 }
@@ -125,10 +125,10 @@ async function collectAsyncIterable(
 ): Promise<string> {
   let out = "";
   for await (const chunk of iterable) {
-    const rendered = createElementAsync(chunk, rawtextTag);
+    const rendered = createElement(chunk, rawtextTag);
     out += rendered instanceof Promise ? await rendered : rendered;
   }
   return out;
 }
 
-export { renderToStringAsync };
+export { renderToString };
