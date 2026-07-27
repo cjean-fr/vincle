@@ -1,4 +1,4 @@
-/** @jsxImportSource @vincle/kita-html */
+/** @jsxImportSource @kitajs/html */
 import type { Purchase } from "./data.js";
 
 function Purchase({ name, price, quantity }: Purchase) {

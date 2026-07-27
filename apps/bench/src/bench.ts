@@ -28,13 +28,9 @@ import { render as realworldKita } from "./realworld/kitajs.js";
 import { render as realworldPreact } from "./realworld/preact.js";
 import { render as realworldReact } from "./realworld/react.js";
 import { render as realworldVincle } from "./realworld/vincle.js";
-import { render as realworldNext } from "./realworld/vincle-next.js";
+
 
 type KitaCreate = typeof kita;
-
-// --- core-next ---
-import { jsx as njsx, Fragment as nfrag } from "@vincle/core/jsx-runtime";
-import { renderToString as nextRender } from "@vincle/core";
 
 // ---------------------------------------------------------------------------
 // Async benchmark — @vincle/core only (React/Preact don't support async components)
@@ -144,36 +140,6 @@ function textAppHono() {
   return honoJsx("div", {}, children);
 }
 
-// --- core-next builder functions ---
-
-function textAppNext() {
-  const children = new Array(TEXT_REPEATS);
-  for (let i = 0; i < TEXT_REPEATS; i++) {
-    children[i] = njsx("div", {
-      children: [
-        njsx("span", { class: "foo", "data-testid": "foo", children: BAVARIA_1 }),
-        njsx("span", { class: "bar", "data-testid": "bar", children: BAVARIA_2 }),
-      ],
-    });
-  }
-  return njsx("div", { children });
-}
-
-function stackNext(depth: number): any {
-  if (depth <= 0) {
-    return njsx("div", {
-      children: njsx("span", { class: "foo", "data-testid": "stack", children: "deep stack" }),
-    });
-  }
-  return njsx("div", { children: stackNext(depth - 1) });
-}
-
-function stackAppNext() {
-  const children = new Array(STACK_REPEATS);
-  for (let i = 0; i < STACK_REPEATS; i++) children[i] = stackNext(STACK_DEPTH);
-  return njsx("div", { children });
-}
-
 // --- Stack bench (10× 1000-deep recursive PassThrough) ---
 
 function stackVincle(depth: number): any {
@@ -240,9 +206,6 @@ group(`text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`, () => {
   bench("@vincle/core", async () => {
     await renderToString(textAppVincle());
   });
-  bench("core-next", () => {
-    nextRender(textAppNext());
-  });
   bench("react (renderToStaticMarkup)", () => {
     renderToStaticMarkup(textAppReact());
   });
@@ -260,9 +223,6 @@ group(`text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`, () => {
 group(`stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`, () => {
   bench("@vincle/core", async () => {
     await renderToString(stackAppVincle());
-  });
-  bench("core-next", () => {
-    nextRender(stackAppNext());
   });
   bench("react (renderToStaticMarkup)", () => {
     renderToStaticMarkup(stackAppReact());
@@ -282,9 +242,6 @@ group(`realworld — full page, ${PURCHASES.length} purchases (kitajs port)`, ()
   bench("@vincle/core", async () => {
     await realworldVincle(NAME, PURCHASES);
   });
-  bench("core-next", () => {
-    realworldNext(NAME, PURCHASES);
-  });
   bench("react (renderToStaticMarkup)", () => {
     realworldReact(NAME, PURCHASES);
   });
@@ -299,4 +256,23 @@ group(`realworld — full page, ${PURCHASES.length} purchases (kitajs port)`, ()
   });
 });
 
-await run();
+const { benchmarks } = await run();
+
+// ── ratio vs @vincle/core ──
+const REF = "@vincle/core";
+const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 0 }).padStart(14);
+
+let refOps = 0;
+for (const trial of benchmarks) {
+  for (const r of trial.runs) {
+    const ops = 1e9 / r.stats!.avg;
+    if (r.name === REF) {
+      if (refOps > 0) console.log();
+      refOps = ops;
+      console.log(`  ${r.name.padEnd(35)} ${fmt(ops)}  ref`);
+    } else {
+      const ratio = (refOps / ops).toFixed(2);
+      console.log(`  ${r.name.padEnd(35)} ${fmt(ops)}  ×${ratio}`);
+    }
+  }
+}

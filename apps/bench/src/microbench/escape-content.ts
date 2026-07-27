@@ -11,36 +11,10 @@
  */
 import { bench, group } from "mitata";
 import { escapeContent as vincleEscape } from "@vincle/core/html";
-import { escapeHtml as kitajsEscape } from "@kitajs/html";
 
 // ── Implémentations locales pour isoler chaque stratégie ─────────────────
 
 const RE_ONLY_AMP_LT = /[&<]/;
-
-/** Vincle's algorithm extracré localement : charCodeAt, &/< only, slice building */
-function local_vincle(str: string): string {
-  const m = RE_ONLY_AMP_LT.exec(str);
-  if (!m) return str;
-  let out = "";
-  let last = 0;
-  for (let i = m.index; i < str.length; i++) {
-    let rep: string;
-    switch (str.charCodeAt(i)) {
-      case 38:
-        rep = "&amp;";
-        break;
-      case 60:
-        rep = "&lt;";
-        break;
-      default:
-        continue;
-    }
-    if (i !== last) out += str.slice(last, i);
-    out += rep;
-    last = i + 1;
-  }
-  return out + str.slice(last);
-}
 
 /** Kitajs's algorithm mais limité à & et < seulement (apples-to-apples) */
 function local_kitajs_limited(value: string): string {
@@ -69,7 +43,6 @@ function local_kitajs_limited(value: string): string {
 function local_hybrid(str: string): string {
   const m = RE_ONLY_AMP_LT.exec(str);
   if (!m) return str;
-  return Bun.escapeHTML(str);
   const length = str.length;
   let escaped = "",
     start = m.index,
@@ -188,7 +161,6 @@ function local_hybrid_noskip(str: string): string {
 // Short strings
 const SHORT_CLEAN = "hello world, this is a test";
 const SHORT_AMP = "a & b & c";
-const SHORT_LT = "a < b < c";
 const SHORT_MIXED = "<a> & <b>";
 
 // Medium strings (~200 chars)
@@ -217,12 +189,8 @@ function makeLongEscaped(len: number, freq: number): string {
   return s;
 }
 
-const LONG_CLEAN_1K = makeLongClean(1024);
 const LONG_CLEAN_10K = makeLongClean(10_240);
-const LONG_CLEAN_100K = makeLongClean(102_400);
-const LONG_ESC_1K = makeLongEscaped(1024, 10);     // ~10% escape chars
 const LONG_ESC_10K = makeLongEscaped(10_240, 10);
-const LONG_ESC_SPARSE_10K = makeLongEscaped(10_240, 100);  // ~1% escape
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -230,18 +198,6 @@ type EscapeFn = (s: string) => string;
 
 function benchImpl(name: string, fn: EscapeFn, fixture: string): void {
   bench(name, () => fn(fixture));
-}
-
-function benchGroup(
-  label: string,
-  fixture: string,
-  fns: [string, EscapeFn][],
-): void {
-  group(label, () => {
-    for (const [name, fn] of fns) {
-      benchImpl(name, fn, fixture);
-    }
-  });
 }
 
 // ── Register benchmarks ─────────────────────────────────────────────────

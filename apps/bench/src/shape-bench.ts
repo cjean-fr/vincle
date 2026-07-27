@@ -72,12 +72,6 @@ function renderTF_idx(n: VTupleF): string {
   return `<${tag} class="${className||''}">${children||''}</${tag}>`;
 }
 
-// Tuple flat — destructure locals
-function renderTF_des(n: VTupleF): string {
-  const [tag, children, className] = n;
-  return `<${tag} class="${className||''}">${children||''}</${tag}>`;
-}
-
 // ═════════════════════════════════════════════════════════════════════
 // CREATE
 // ═════════════════════════════════════════════════════════════════════

@@ -25,7 +25,7 @@ import { renderToReadableStream } from "preact-render-to-string/stream";
 import type { VNode as PVNode } from "preact";
 
 // --- @kitajs/html v4 ---
-import { jsx as kjsx, Fragment as kfrag } from "@kitajs/html/jsx-runtime";
+import { jsx as kjsx } from "@kitajs/html/jsx-runtime";
 import { renderToStream as kitaRenderToStream, Suspense as KitaSuspense } from "@kitajs/html/suspense";
 
 // ---------------------------------------------------------------------------

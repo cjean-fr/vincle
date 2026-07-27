@@ -24,11 +24,10 @@
       "name": "@vincle/bench",
       "version": "0.0.0",
       "dependencies": {
+        "@kitajs/html": "^5.0.0-next.1",
         "@vincle/core": "workspace:*",
-        "@vincle/kita-html": "workspace:*",
       },
       "devDependencies": {
-        "@kitajs/html": "5.0.0-next.1",
         "@types/bun": "catalog:",
         "@types/react": "^19",
         "@types/react-dom": "^19",
@@ -117,10 +116,6 @@
       "optionalPeers": [
         "@types/react",
       ],
-    },
-    "packages/kita-html": {
-      "name": "@vincle/kita-html",
-      "version": "0.0.1",
     },
     "packages/precompile-core": {
       "name": "@vincle/precompile-core",
@@ -771,8 +766,6 @@
     "@vincle/eslint-plugin": ["@vincle/eslint-plugin@workspace:packages/eslint-plugin"],
 
     "@vincle/flow": ["@vincle/flow@workspace:packages/flow"],
-
-    "@vincle/kita-html": ["@vincle/kita-html@workspace:packages/kita-html"],
 
     "@vincle/precompile-core": ["@vincle/precompile-core@workspace:packages/precompile-core"],
 

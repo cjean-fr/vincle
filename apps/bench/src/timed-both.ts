@@ -43,7 +43,7 @@ for (let s = 0; s < SAMPLES; s++) {
 }
 
 function stats(arr: number[]) {
-  const s = arr.slice().sort((a, b) => a - b);
+  const s = arr.toSorted((a, b) => a - b);
   const min = s[0], max = s[s.length - 1];
   const med = s.length % 2 === 0
     ? (s[s.length / 2 - 1] + s[s.length / 2]) / 2

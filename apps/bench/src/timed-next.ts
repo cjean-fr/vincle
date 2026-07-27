@@ -21,7 +21,7 @@ for (let s = 0; s < SAMPLES; s++) {
 }
 
 // Stats
-const sorted = samples.slice().sort((a, b) => a - b);
+const sorted = samples.toSorted((a, b) => a - b);
 const wallMin = sorted[0];
 const wallMed = sorted.length % 2 === 0
   ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2

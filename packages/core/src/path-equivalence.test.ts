@@ -74,7 +74,7 @@ function genLeaf(r: () => number): unknown {
   const roll = r();
   if (roll < 0.45) return pick(TEXTS, r);
   if (roll < 0.6) return Math.floor(r() * 1000);
-  if (roll < 0.72) return r() < 0.33 ? null : r() < 0.5 ? undefined : r() < 0.5 ? true : false;
+  if (roll < 0.72) return r() < 0.33 ? null : r() < 0.5 ? undefined : r() < 0.5;
   if (roll < 0.85) return raw("<em>" + pick(TEXTS, r) + "</em>");
   if (roll < 0.95) return BigInt(Math.floor(r() * 10000));
   return "";

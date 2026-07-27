@@ -3,11 +3,36 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./index.ts",
-    "./html": "./src/html.ts",
-    "./jsx-runtime": "./src/jsx-runtime.ts",
-    "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts",
-    "./jsx-precompile-runtime": "./src/jsx-precompile-runtime.ts"
+    ".": {
+      "types": "./index.ts",
+      "bun": "./index.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./html": {
+      "types": "./src/html.ts",
+      "bun": "./src/html.ts",
+      "import": "./dist/html.mjs",
+      "default": "./dist/html.mjs"
+    },
+    "./jsx-runtime": {
+      "types": "./src/jsx-runtime.ts",
+      "bun": "./src/jsx-runtime.ts",
+      "import": "./dist/jsx-runtime.mjs",
+      "default": "./dist/jsx-runtime.mjs"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./src/jsx-dev-runtime.ts",
+      "bun": "./src/jsx-dev-runtime.ts",
+      "import": "./dist/jsx-dev-runtime.mjs",
+      "default": "./dist/jsx-dev-runtime.mjs"
+    },
+    "./jsx-precompile-runtime": {
+      "types": "./src/jsx-precompile-runtime.ts",
+      "bun": "./src/jsx-precompile-runtime.ts",
+      "import": "./dist/jsx-precompile-runtime.mjs",
+      "default": "./dist/jsx-precompile-runtime.mjs"
+    }
   },
   "scripts": {
     "build": "tsdown",
