@@ -40,6 +40,22 @@ describe("renderToString (async)", () => {
     expect(await renderToString(v)).toBe("<div><span>a</span><span>b</span></div>");
   });
 
+  test("async component as non-first child in an otherwise-sync array", async () => {
+    // Regression: the child pre-scan used to check `child instanceof Promise`
+    // on the *raw* children, before any component was invoked. An async
+    // component shows up there as a plain VNode (tag = function) — its
+    // Promise-ness only appears after calling it — so it slipped through the
+    // fast sync path and got string-coerced into "[object Promise]".
+    async function Async() {
+      await Promise.resolve();
+      return jsx("span", { children: "ok" });
+    }
+    const v = jsx("div", {
+      children: [jsx("p", { children: "static" }), jsx(Async, {})],
+    });
+    expect(await renderToString(v)).toBe("<div><p>static</p><span>ok</span></div>");
+  });
+
   test("Fragment with async children", async () => {
     const v = jsx(Fragment, {
       children: [

@@ -1,6 +1,6 @@
 import type React from "react";
 
-type Awaitable<T> = T | Promise<T>;
+import type { Awaitable } from "./types.js";
 
 type VNode = import("./jsx-runtime.js").VNode;
 

@@ -158,5 +158,5 @@ export interface Page {
   outPath: string;
   handler: string;
   meta: PageMeta;
-  Component: (props: object) => import("@vincle/core").VNode;
+  Component: (props: object) => import("@vincle/core").JSX.Element;
 }

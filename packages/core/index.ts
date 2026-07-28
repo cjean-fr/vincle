@@ -42,11 +42,16 @@ export type { RawString as RawStringType } from "./src/raw.js";
 // `import { type JSX } from "@vincle/core"` (used by @vincle/flow).
 
 import type { VNode } from "./src/jsx-runtime.js";
+import type { RawString } from "./src/raw.js";
+import type { Awaitable } from "./src/types.js";
 
+// `RawString` is a first-class renderable leaf (see `renderNode` in
+// create-element(-async).ts, which special-cases `instanceof RawString`
+// before ever touching `VNode`) — it belongs in `Element`, not behind a cast.
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
-    type Element = VNode | Promise<VNode>;
+    type Element = Awaitable<VNode | RawString>;
     type IntrinsicElements = {
       [K in string]: Record<string, unknown> & { children?: unknown };
     };
@@ -55,7 +60,7 @@ declare global {
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace JSX {
-  export type Element = VNode | Promise<VNode>;
+  export type Element = Awaitable<VNode | RawString>;
   export type IntrinsicElements = {
     [K in string]: Record<string, unknown> & { children?: unknown };
   };
@@ -64,6 +69,7 @@ export namespace JSX {
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export type { CSSProperties } from "./src/types-jsx.js";
+export type { Awaitable } from "./src/types.js";
 
 /** @internal Resolved VNode — same as VNode, used by @vincle/flow types. */
 export type ResolvedVNode = VNode;

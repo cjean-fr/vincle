@@ -11,7 +11,7 @@ import expressiveCode from "satteri-expressive-code";
 import { wrapTables } from "./hast-plugins.js";
 
 export interface CompiledMdx {
-  Component: (props: object) => import("@vincle/core").VNode;
+  Component: (props: object) => import("@vincle/core").JSX.Element;
   meta: Record<string, unknown>;
 }
 
@@ -98,7 +98,7 @@ export class MdxCache {
     file: string,
     code: string,
   ): Promise<{
-    default: (props: object) => import("@vincle/core").VNode;
+    default: (props: object) => import("@vincle/core").JSX.Element;
   }> {
     const pagesDir = path.resolve(import.meta.dirname, "../pages");
     const rel = path.relative(pagesDir, file);

@@ -89,37 +89,24 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
   }
   if (children.length === 0) return "";
 
-  // Fast sync path — no Promise/async-iterable in sight
+  // Un enfant ne révèle sa nature async qu'après rendu : un VNode à
+  // tag-fonction (composant) peut résoudre en Promise sans que le child brut
+  // soit lui-même une Promise ou un AsyncIterable — un pré-scan des children
+  // bruts (avant appel des composants) le raterait. On rend donc chaque
+  // enfant une seule fois et on décide sync/async sur le résultat obtenu.
   let needsAsync = false;
+  const parts = new Array<string | Promise<string>>(children.length);
   for (let i = 0; i < children.length; i++) {
-    const child = children[i];
-    if (child instanceof Promise || isAsyncIterable(child)) {
-      needsAsync = true;
-      break;
-    }
+    const child = children[i]!;
+    const part = typeof child === "string"
+      ? rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child)
+      : renderNode(child);
+    if (part instanceof Promise) needsAsync = true;
+    parts[i] = part;
   }
 
-  if (!needsAsync) {
-    let out = "";
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i]!;
-      // Les strings directes sont échappées avec rawtextTag local ici
-      if (typeof child === "string") {
-        out += rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
-      } else {
-        out += renderNode(child);
-      }
-    }
-    return out;
-  }
-
-  // At least one async child — resolve all in parallel
-  return Promise.all(children.map((child) => {
-    if (typeof child === "string") {
-      return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
-    }
-    return renderNode(child);
-  })).then((parts) => parts.join(""));
+  if (!needsAsync) return (parts as string[]).join("");
+  return Promise.all(parts).then((resolved) => resolved.join(""));
 }
 
 async function collectAsyncIterable(

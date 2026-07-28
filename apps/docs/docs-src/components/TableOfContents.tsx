@@ -1,5 +1,5 @@
-import { raw, type VNode } from "@vincle/core";
+import { raw, type JSX } from "@vincle/core";
 
-export function TableOfContents(): VNode {
-  return raw("<aside data-toc-placeholder></aside>") as unknown as VNode;
+export function TableOfContents(): JSX.Element {
+  return raw("<aside data-toc-placeholder></aside>");
 }

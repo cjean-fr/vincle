@@ -1,4 +1,4 @@
-import type { ResolvedVNode, VNode } from "@vincle/core";
+import type { ResolvedVNode } from "@vincle/core";
 
 import { describe, it, expect } from "bun:test";
 
@@ -30,7 +30,7 @@ describe("renderToStatic", () => {
         const html = await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="content">{AsyncContent() as unknown as VNode}</Template>
+              <Template target="content">{AsyncContent()}</Template>
             </body>
           </html>
         ));
@@ -54,7 +54,7 @@ describe("renderToStatic", () => {
           <html>
             <head></head>
             <body>
-              <Template target="x">{AsyncContent() as unknown as VNode}</Template>
+              <Template target="x">{AsyncContent()}</Template>
             </body>
           </html>
         )),
@@ -114,7 +114,7 @@ describe("renderToStatic", () => {
         await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="x">{AsyncContent() as unknown as VNode}</Template>
+              <Template target="x">{AsyncContent()}</Template>
             </body>
           </html>
         ));
@@ -155,7 +155,7 @@ describe("renderToStatic", () => {
         const page = await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="content">{AsyncContent() as unknown as VNode}</Template>
+              <Template target="content">{AsyncContent()}</Template>
             </body>
           </html>
         ));
@@ -208,7 +208,7 @@ describe("renderToStatic", () => {
                 <html>
                   <body>
                     <p>page-{i}</p>
-                    <Template target={`frag-${i}`}>{AsyncContent() as unknown as VNode}</Template>
+                    <Template target={`frag-${i}`}>{AsyncContent()}</Template>
                   </body>
                 </html>
               ));
@@ -257,7 +257,7 @@ describe("renderToStatic", () => {
                   <html>
                     <body>
                       <p>page-{i}</p>
-                      <Template target={`t-${i}`}>{AsyncContent() as unknown as VNode}</Template>
+                      <Template target={`t-${i}`}>{AsyncContent()}</Template>
                     </body>
                   </html>
                 ));
@@ -293,7 +293,7 @@ describe("renderToStatic", () => {
           <html>
             <head></head>
             <body>
-              <Template target="content">{AsyncContent() as unknown as VNode}</Template>
+              <Template target="content">{AsyncContent()}</Template>
             </body>
           </html>
         )),

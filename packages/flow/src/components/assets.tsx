@@ -1,9 +1,7 @@
-import { useContext, raw, type JSX } from "@vincle/core";
+import { useContext, raw, type JSX, type Awaitable } from "@vincle/core";
 
 import { createMarker, registerAsset, assertNameSafe } from "../assets.js";
 import { Flow } from "../context.js";
-
-type Awaitable<T> = T | Promise<T>;
 
 interface BaseAssetProps {
   name: string;

@@ -1,4 +1,4 @@
-import { raw, type VNode } from "@vincle/core";
+import { raw } from "@vincle/core";
 
 import type { PageHandler, Page, ResolvedDocsConfig } from "../types.js";
 
@@ -17,7 +17,7 @@ export const MarkdownHandler: PageHandler = {
       config,
       this.name,
       rawMeta,
-      () => rendered as unknown as VNode,
+      () => rendered,
     );
   },
 };

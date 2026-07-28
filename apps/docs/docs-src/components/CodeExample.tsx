@@ -1,4 +1,4 @@
-import { type VNode } from "@vincle/core";
+import { type JSX } from "@vincle/core";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -11,8 +11,8 @@ export interface CodeExampleProps {
   meta?: string;
 }
 
-export function CodeExample({ src, language, meta }: CodeExampleProps): VNode {
+export function CodeExample({ src, language, meta }: CodeExampleProps): JSX.Element {
   return readFile(path.resolve(useDocs().config.examples, src), "utf-8").then((code) => (
     <CodeBlock code={code} language={language ?? path.extname(src).slice(1)} meta={meta} />
-  )) as unknown as VNode;
+  ));
 }

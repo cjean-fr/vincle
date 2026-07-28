@@ -1,4 +1,4 @@
-import { raw, type VNode } from "@vincle/core";
+import { raw, type JSX } from "@vincle/core";
 import { toHtml } from "hast-util-to-html";
 import { createRenderer, ExpressiveCodeBlock } from "satteri-expressive-code";
 
@@ -28,15 +28,15 @@ function renderPlain(code: string): string {
   return `<pre class="overflow-x-auto rounded-lg bg-gray-950 dark:bg-gray-900 border border-gray-800 p-4 text-sm font-mono leading-relaxed text-gray-100"><code>${escapeHtml(code)}</code></pre>`;
 }
 
-function makeCodeBlock(body: string): VNode {
+function makeCodeBlock(body: string): JSX.Element {
   return (
     <div class="docs-code-block group relative" translate="no">
       {raw(body)}
     </div>
-  ) as VNode;
+  );
 }
 
-export function CodeBlock({ code, language = "text", meta }: CodeBlockProps): VNode {
+export function CodeBlock({ code, language = "text", meta }: CodeBlockProps): JSX.Element {
   const p = getRenderer().then((renderer) => {
     const { ec, baseStyles, themeStyles, jsModules } = renderer;
 
@@ -47,7 +47,7 @@ export function CodeBlock({ code, language = "text", meta }: CodeBlockProps): VN
 
     const cleaned = code.trim();
 
-    function handleResult(body: string): VNode {
+    function handleResult(body: string): JSX.Element {
       if (isFirstOnPage && jsModules.length) {
         body += `<script type="module">if(!window.__ec){window.__ec=true;${jsModules.join("")}}</script>`;
       }
@@ -74,5 +74,5 @@ export function CodeBlock({ code, language = "text", meta }: CodeBlockProps): VN
       .catch(() => makeCodeBlock(renderPlain(cleaned)));
   });
 
-  return p as unknown as VNode;
+  return p;
 }

@@ -1,4 +1,4 @@
-type Awaitable<T> = T | Promise<T>;
+import type { Awaitable } from "./types.js";
 
 declare const __brand: unique symbol;
 
