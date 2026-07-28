@@ -1,4 +1,4 @@
-import { raw, renderToString, snapshot, useContext, withScope, type VNode } from "@vincle/core";
+import { raw, renderToString, snapshot, useContext, withScope, type JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 import type { FlowContext } from "./context.js";
@@ -16,7 +16,7 @@ const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
  */
 export interface PureStaticContext extends FlowContext {
   /** Render a page node, applying adapter.transformShell if present. */
-  renderPage(node: () => VNode): Promise<string>;
+  renderPage(node: () => JSX.Element): Promise<string>;
 }
 
 /**
@@ -88,7 +88,7 @@ export async function renderToStatic<T>(
             if (ev.type === "fragment") {
               const resolved = await resolveAssets(ev.html, { isolate: true });
               const framed = await renderToString(
-                adapter.Frame({ id: ev.id, children: raw(resolved) as unknown as VNode }),
+                adapter.Frame({ id: ev.id, children: raw(resolved) }),
               );
               await cb(ev.id, generatePath(ev.id), framed);
             }

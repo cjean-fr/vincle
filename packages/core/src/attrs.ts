@@ -99,46 +99,48 @@ export function isValidAttrName(name: string): boolean {
 // Style camelCase → kebab regex (module-level, compiled once)
 const RE_STYLE_CAMEL = /[A-Z]/g;
 
-// ── Build attributes string (single pass: normalize + emit) ────────
+// ── Build attributes string ────────────────────────────────────────
 //
-// Dispatch is ordered by real-world frequency: string values dominate (class,
-// id, href, data-*, aria-*, …), so they take the first, coercion-free branch —
-// `String(value)` is only paid for the rare non-string fallthrough. Keeping the
-// hot branch monomorphic and coercion-free is the measured win over a
-// normalize-then-emit structure (JSC/V8 inline caches).
+// Tout est inline dans le for-loop pour éviter 2 appels de fonction
+// par attribut sur le hotpath (bench: +10% avec les fonctions extraites).
+// Les phases sont documentées par des commentaires inline :
+//   1. normalize — skip réservés, résout React→HTML
+//   2. validate  — rejette les noms dangereux
+//   3. serialize — dispatche par type de valeur
+//
+// Le dispatch est ordonné par fréquence réelle : les strings dominent
+// (class, id, href, data-*, aria-*), donc prennent la première branche
+// sans coercion. `String(value)` n'est payé que pour les rares cas non-string.
+
 export function buildAttrs(attrs: Record<string, unknown>): string {
   let out = "";
 
   for (const key in attrs) {
+    // ── Phase 1 : Normaliser (skip réservés, résout React→HTML) ──
     if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
       continue;
-    const value = attrs[key];
-    if (value === null || value === undefined) continue;
-    const type = typeof value;
-
-    // Resolve React name → HTML name (className→class, htmlFor→for, …).
-    // resolveAttrName lowercases unknown camelCase names on its own, so the
-    // returned string is always the HTML name to emit.
     let attrName = key;
     if (RE_HAS_UPPER.test(key)) {
       attrName = resolveAttrName(key);
-      // When both React name and HTML name appear, HTML wins — skip React alias
       if (attrName in attrs) continue;
     }
 
-    // Attribute name safety — reject names that could break out of the tag
+    const value = attrs[key];
+    if (value === null || value === undefined) continue;
     if (RE_INVALID_ATTR_NAME.test(attrName)) continue;
 
-    // String — dominant case, no coercion.
+    // ── Phase 2 : Sérialiser par type (string = hot path) ──
+    const type = typeof value;
+
+    // String — dominant case, coercion-free
     if (type === "string") {
-      // URL safety — block javascript:/vbscript: in href, src, action, formaction, xlink:href
       let str = value as string;
       if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) str = "#blocked";
       out += ` ${attrName}="${escapeAttr(str)}"`;
       continue;
     }
 
-    // Boolean attribute
+    // Boolean — HTML booléen → nom seul, sinon stringifié
     if (type === "boolean") {
       if (BOOLEAN_ATTRIBUTES.has(attrName)) {
         if (value) out += ` ${attrName}`;
@@ -148,7 +150,13 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
       continue;
     }
 
-    // Functions cannot be serialized to HTML — fail hard
+    // number / bigint — safe, pas de check URL
+    if (type === "number" || type === "bigint") {
+      out += ` ${attrName}="${value}"`;
+      continue;
+    }
+
+    // Function — ne peut pas être sérialisé
     if (type === "function") {
       throw new Error(
         `[vincle/core] Attribute "${key}" received a function as value. ` +
@@ -156,14 +164,14 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
       );
     }
 
-    // Style object → string
+    // Style object → chaîne CSS
     if (attrName === "style" && type === "object" && !Array.isArray(value)) {
       const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
-      out += ` style="${escapeAttr(styleStr)}"`;
+      if (styleStr) out += ` style="${escapeAttr(styleStr)}"`;
       continue;
     }
 
-    // Array class → string (for loop, no filter/join)
+    // Array class → string join
     if (attrName === "class" && Array.isArray(value)) {
       const s = classToString(value as unknown[]);
       if (!s) continue;
@@ -171,19 +179,13 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
       continue;
     }
 
-    // RawString bypass — developer explicitly opts out
+    // RawString — bypass explicite du développeur
     if (value instanceof RawString) {
       out += ` ${attrName}="${value.value}"`;
       continue;
     }
 
-    // number / bigint — safe, no URL check needed
-    if (type === "number" || type === "bigint") {
-      out += ` ${attrName}="${value}"`;
-      continue;
-    }
-
-    // Fallback: any other object with toString
+    // Fallback — tout objet avec toString
     let str = String(value);
     if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) str = "#blocked";
     out += ` ${attrName}="${escapeAttr(str)}"`;
@@ -193,7 +195,7 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
 }
 
 // ── Array class → string ─────────────────────────────────────────────
-function classToString(value: unknown[]): string {
+export function classToString(value: unknown[]): string {
   let s = "";
   for (let i = 0; i < value.length; i++) {
     const item = value[i];
@@ -206,7 +208,7 @@ function classToString(value: unknown[]): string {
 }
 
 // ── Style object → CSS string ───────────────────────────────────────
-function styleToString(obj: Record<string, string | number | null | undefined>): string {
+export function styleToString(obj: Record<string, string | number | null | undefined>): string {
   let out = "";
   for (const key in obj) {
     const value = obj[key];

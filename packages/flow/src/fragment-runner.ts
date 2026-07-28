@@ -1,4 +1,4 @@
-import { renderToString, type VNode } from "@vincle/core";
+import { renderToString, type JSX } from "@vincle/core";
 
 import type { TemplateEntry } from "./template-store.js";
 import type { FlowEvent, FlowOptions, TemplateContent } from "./types.js";
@@ -6,15 +6,16 @@ import type { FlowEvent, FlowOptions, TemplateContent } from "./types.js";
 import { resolveAssets, type AssetState } from "./assets.js";
 import { createTimeoutSignal } from "./timeout.js";
 
-const isAsyncIterable = (v: unknown): v is AsyncIterable<VNode> =>
+const isAsyncIterable = (v: unknown): v is AsyncIterable<JSX.Element> =>
   v != null && typeof (v as any)[Symbol.asyncIterator] === "function";
 
-const isLazyFactory = (c: TemplateContent): c is (() => VNode) | (() => AsyncIterable<VNode>) =>
-  typeof c === "function";
+const isLazyFactory = (
+  c: TemplateContent,
+): c is (() => JSX.Element) | (() => AsyncIterable<JSX.Element>) => typeof c === "function";
 
 type ClassificationResult =
-  | { kind: "value"; value: VNode | string }
-  | { kind: "stream"; iterable: AsyncIterable<VNode> }
+  | { kind: "value"; value: JSX.Element | string }
+  | { kind: "stream"; iterable: AsyncIterable<JSX.Element> }
   | { kind: "sync-error"; error: unknown };
 
 function classifyEntry(entry: TemplateEntry): ClassificationResult {
@@ -63,11 +64,7 @@ export function runFragment(
   assets?: AssetState | null,
 ): FragmentResult {
   const handle = entry.onError ?? opts.onError;
-  const { cleanup } = createTimeoutSignal(
-    entry.timeout ?? opts.defaultTimeout,
-    opts.signal,
-    id,
-  );
+  const { cleanup } = createTimeoutSignal(entry.timeout ?? opts.defaultTimeout, opts.signal, id);
 
   const classification = classifyEntry(entry);
 
@@ -88,17 +85,34 @@ export function runFragment(
     }
     case "value": {
       const done = (async () => {
+        let html: string;
         try {
           const raw = await renderToString(classification.value);
-          const html = assets ? await resolveAssets(raw, assets) : raw;
+          html = assets ? await resolveAssets(raw, assets) : raw;
+        } catch (renderError) {
+          // Erreur de rendu du template → routée vers l'error handler.
+          // Si emitError jette (emit toujours cassé), on propage.
+          try {
+            await emitError(emit, handle, id, "fragment", renderError);
+          } catch {
+            throw renderError;
+          }
+          return;
+        }
+
+        // Émission : si ça jette, c'est fatal (output channel cassé).
+        // On ne tente pas emitError ici — si on peut pas émettre le
+        // contenu, on peut pas émettre le fallback non plus.
+        try {
           await emit({
             type: "fragment",
             id,
             html,
             merge: entry.merge,
           });
-        } catch (error) {
-          await emitError(emit, handle, id, "fragment", error);
+        } catch (emitError_) {
+          console.error(`[vincle/flow] Failed to emit fragment "${id}"`, emitError_);
+          throw emitError_;
         } finally {
           cleanup();
         }
@@ -110,7 +124,7 @@ export function runFragment(
 
 async function runStream(
   id: string,
-  iterable: AsyncIterable<VNode>,
+  iterable: AsyncIterable<JSX.Element>,
   merge: TemplateEntry["merge"],
   emit: (ev: FlowEvent) => Promise<void>,
   onError: FlowOptions["onError"],
@@ -119,29 +133,56 @@ async function runStream(
 ): Promise<void> {
   const it = iterable[Symbol.asyncIterator]();
   const aborted = opts.signal
-    ? new Promise<IteratorResult<VNode>>((resolve) => {
+    ? new Promise<IteratorResult<JSX.Element>>((resolve) => {
         const onAbort = () => resolve({ done: true, value: undefined });
         if (opts.signal!.aborted) onAbort();
         else opts.signal!.addEventListener("abort", onAbort, { once: true });
       })
     : null;
+
+  // fatal indique si l'erreur vient d'un échec d'émission (vrai) ou
+  // d'un problème d'itération/rendu (faux). Seules les premières sont
+  // fatales — les secondes sont routées vers emitError.
+  let fatal = false;
+
   try {
     while (true) {
       const step = Promise.resolve(it.next());
       if (aborted) step.catch(() => {});
       const r = await (aborted ? Promise.race([step, aborted]) : step);
       if (r.done) break;
-      const raw = await renderToString(r.value);
-      const html = assets ? await resolveAssets(raw, assets) : raw;
-      await emit({
-        type: "fragment",
-        id,
-        html,
-        merge,
-      });
+
+      // 1. Rendu — erreur → emitError, on saute le chunk
+      let raw: string;
+      try {
+        raw = await renderToString(r.value);
+        if (assets) raw = await resolveAssets(raw, assets);
+      } catch (renderError) {
+        try {
+          await emitError(emit, onError, id, "stream", renderError);
+        } catch {
+          throw renderError;
+        }
+        continue;
+      }
+
+      // 2. Émission — si ça jette, le canal de sortie est cassé
+      try {
+        await emit({ type: "fragment", id, html: raw, merge });
+      } catch (emitErr) {
+        console.error(`[vincle/flow] Failed to emit stream chunk for "${id}"`, emitErr);
+        fatal = true;
+        throw emitErr;
+      }
     }
   } catch (error) {
-    await emitError(emit, onError, id, "stream", error);
+    if (fatal) throw error; // émission cassée → propager directement
+    // Itération/rendu : tenter emitError, puis arrêt propre
+    try {
+      await emitError(emit, onError, id, "stream", error);
+    } catch {
+      throw error; // emitError a lui-même échoué → propager
+    }
   } finally {
     if (opts.signal?.aborted) await it.return?.(undefined).catch(() => {});
   }

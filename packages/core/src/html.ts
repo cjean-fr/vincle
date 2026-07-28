@@ -8,7 +8,7 @@
  * @module
  */
 
-export { VOID_ELEMENTS } from "./serialize.js";
+export { VOID_ELEMENTS, isValidTag } from "./serialize.js";
 
 export { URL_ATTRIBUTES } from "./url-safety.js";
 

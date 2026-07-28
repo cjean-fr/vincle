@@ -77,7 +77,9 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
       const esbuild = resolvedConfig.esbuild;
       const jsxImportSource =
-        esbuild && typeof esbuild === "object" ? (esbuild as { jsxImportSource?: string }).jsxImportSource : undefined;
+        esbuild && typeof esbuild === "object"
+          ? (esbuild as { jsxImportSource?: string }).jsxImportSource
+          : undefined;
       if (jsxImportSource) {
         candidateFrameworkRuntime = `${jsxImportSource}${FRAMEWORK_RUNTIME_SUFFIX}`;
       }
@@ -116,13 +118,11 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
           >;
         } catch (err) {
           this.error(`failed to probe ${candidateFrameworkRuntime}: ${String(err)}`);
-          return;
         }
         if (typeof mod["jsxTemplate"] !== "function") {
           this.error(
             `jsxImportSource "${candidateFrameworkRuntime.replace(FRAMEWORK_RUNTIME_SUFFIX, "")}" does not support the precompile transform. Use Preact, Hono, or @vincle/core, or set an explicit runtimeSource.`,
           );
-          return;
         }
         resolvedRuntimeSource = candidateFrameworkRuntime;
       }

@@ -19,7 +19,7 @@
  *
  * @module
  */
-import { context, setContext, useContext, jsxs, Fragment, type ContextKey, type VNode } from "@vincle/core";
+import { context, setContext, useContext, jsxs, Fragment, type ContextKey, type JSX } from "@vincle/core";
 import { readFile, access } from "node:fs/promises";
 
 /** A single chunk in a Vite manifest. Mirrors `vite.ManifestChunk`. */
@@ -138,13 +138,13 @@ export function Asset({ entry }: { entry: string }): any {
   return scope.manifest === null ? resolveDev(scope, entry) : resolveProd(scope, entry);
 }
 
-function resolveDev(scope: ViteScope, entry: string): VNode {
+function resolveDev(scope: ViteScope, entry: string): JSX.Element {
   const url = resolveUrl(scope, entry);
   if (entry.endsWith(".css")) return <link rel="stylesheet" href={url} />;
   return <script type="module" src={url}></script>;
 }
 
-function resolveProd(scope: ViteScope, entry: string): VNode {
+function resolveProd(scope: ViteScope, entry: string): JSX.Element {
   const manifest = scope.manifest!;
   const chunk = manifest[entry];
   if (!chunk) {
@@ -153,7 +153,7 @@ function resolveProd(scope: ViteScope, entry: string): VNode {
     );
   }
 
-  const out: VNode[] = [];
+  const out: JSX.Element[] = [];
   const seen = new Set<string>();
 
   // Co-bundled CSS — render-blocking, must appear before scripts.
@@ -179,7 +179,7 @@ function visitImports(
   chunk: ViteManifestChunk,
   base: string,
   seen: Set<string>,
-  out: VNode[],
+  out: JSX.Element[],
 ): void {
   for (const importKey of chunk.imports ?? []) {
     if (seen.has(importKey)) continue;

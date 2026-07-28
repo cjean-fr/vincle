@@ -1,4 +1,4 @@
-import { renderToString, type VNode } from "@vincle/core";
+import { renderToString } from "@vincle/core";
 
 declare const db: {
   posts: {
@@ -21,5 +21,4 @@ const Feed = async () => {
 
 // renderToString awaits the entire tree, including
 // nested async components
-const html = await // @ts-expect-error Async component supported at runtime
-renderToString(<Feed /> as unknown as VNode);
+const html = await renderToString(<Feed />);

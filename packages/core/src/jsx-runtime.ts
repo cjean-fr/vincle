@@ -1,6 +1,6 @@
+import { jsxAttr, jsxEscape, jsxTemplate } from "./jsx-precompile-runtime.js";
 import { raw } from "./raw.js";
 import { tryRenderStatic, NOT_STATIC } from "./static-render.js";
-import { jsxAttr, jsxEscape, jsxTemplate } from "./jsx-precompile-runtime.js";
 
 class VNode {
   readonly tag: string | ((props: any) => any);

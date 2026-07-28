@@ -24,9 +24,7 @@ export function createTimeoutSignal(
     ms,
   );
 
-  const combined = requestSignal
-    ? AbortSignal.any([requestSignal, timer.signal])
-    : timer.signal;
+  const combined = requestSignal ? AbortSignal.any([requestSignal, timer.signal]) : timer.signal;
 
   return {
     signal: combined,

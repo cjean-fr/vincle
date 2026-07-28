@@ -55,8 +55,12 @@ describe("flushTemplates", () => {
     // Use withResolvers: promise starts pending, rejected only when drain runs
     const { promise, reject } = Promise.withResolvers<VNode>();
     const content = promise.then(
-      () => { throw new Error("fail"); },
-      () => { throw new Error("fail"); },
+      () => {
+        throw new Error("fail");
+      },
+      () => {
+        throw new Error("fail");
+      },
     );
     content.catch(() => {}); // suppress unhandled rejection
 
@@ -77,8 +81,12 @@ describe("flushTemplates", () => {
     const store = createTemplateStore(cfg);
     const { promise, reject } = Promise.withResolvers<VNode>();
     const content = promise.then(
-      () => { throw new Error("fail"); },
-      () => { throw new Error("fail"); },
+      () => {
+        throw new Error("fail");
+      },
+      () => {
+        throw new Error("fail");
+      },
     );
     content.catch(() => {});
 
@@ -167,8 +175,12 @@ describe("edge cases — streaming", () => {
         () => {
           const { promise, reject } = Promise.withResolvers<VNode>();
           const content = promise.then(
-            () => { throw new Error("crash"); },
-            () => { throw new Error("crash"); },
+            () => {
+              throw new Error("crash");
+            },
+            () => {
+              throw new Error("crash");
+            },
           );
           content.catch(() => {});
           reject(new Error("trigger"));
@@ -222,5 +234,39 @@ describe("edge cases — streaming", () => {
     );
     expect(errors).toHaveLength(1);
     expect(errors[0]!.kind).toBe("stream");
+  });
+});
+
+describe("flushTemplates — error propagation", () => {
+  it("rejects when emit() itself fails (allSettled must not swallow)", async () => {
+    const store = createTemplateStore(cfg);
+    store.register("t1", { content: <div>Hello</div>, merge: "replace" });
+
+    const brokenEmit = async () => { throw new Error("emit: stream closed"); };
+
+    // Sans le fix, flushTemplates resolve silencieusement → test échoue.
+    // Avec le fix, l'erreur est propagée/reportée.
+    await expect(
+      flushTemplates({ templateStore: store }, brokenEmit, {}),
+    ).rejects.toThrow("emit: stream closed");
+  });
+
+  it("still emits siblings when emit() fails on one fragment", async () => {
+    const store = createTemplateStore(cfg);
+    store.register("good", { content: <span>ok</span>, merge: "replace" });
+    store.register("bad", { content: <span>fail</span>, merge: "replace" });
+
+    let callCount = 0;
+    const emit = async (_ev: FlowEvent) => {
+      callCount++;
+      if (callCount === 2) throw new Error("second emit fails");
+    };
+
+    // Le fix doit laisser le fragment "good" s'émettre avant de rejeter
+    await expect(
+      flushTemplates({ templateStore: store }, emit, {}),
+    ).rejects.toThrow("second emit fails");
+
+    expect(callCount).toBe(2);
   });
 });

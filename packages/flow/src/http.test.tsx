@@ -70,7 +70,9 @@ describe("HTTP negotiation (decoupled from the adapter)", () => {
           <head></head>
           <body>
             <p>hi</p>
-            <Template target="x"><span>x</span></Template>
+            <Template target="x">
+              <span>x</span>
+            </Template>
           </body>
         </html>
       ),

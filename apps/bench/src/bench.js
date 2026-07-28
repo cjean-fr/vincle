@@ -22,11 +22,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { NAME, generatePurchases } from "./realworld/data.js";
-import { render as realworldVincle } from "./realworld/vincle.js";
-import { render as realworldReact } from "./realworld/react.js";
-import { render as realworldPreact } from "./realworld/preact.js";
 import { render as realworldHono } from "./realworld/hono.js";
 import { render as realworldKita } from "./realworld/kitajs.js";
+import { render as realworldPreact } from "./realworld/preact.js";
+import { render as realworldReact } from "./realworld/react.js";
+import { render as realworldVincle } from "./realworld/vincle.js";
 
 // ---------------------------------------------------------------------------
 // Data
@@ -37,13 +37,12 @@ const BAVARIA_1 =
 const BAVARIA_2 =
   "Dei um Godds wujn naa Watschnbaam Obazda Trachtnhuat, Vergeltsgott Schneid Schbozal. Om auf'n Gipfe Ramasuri um Godds wujn eana. Wos sammawiedaguad sei Weißwiaschd da, hog di hi is des liab des umananda Brezn Sauakraud Diandldrahn. Vo de weida pfundig Kirwa de Sonn Hetschapfah Watschnpladdla auf gehds beim Schichtl Meidromml auffi lem und lem lossn! Watschnpladdla wolln measi obandeln griasd eich midnand Oachkatzlschwoaf is ma Wuascht sammawiedaguad aasgem. A so a Schmarn Weibaleid naa, des basd scho. Abfieseln helfgod Sauwedda middn ded schoo. A bissal wos gehd ollaweil Sauwedda is Servas wiavui wo hi o'ha, a liabs Deandl pfiad de nix. Maßkruag etza so spernzaln. Weiznglasl Bradwurschtsemmal da, Schdeckalfisch: Mei Musi bitt des wiad a Mordsgaudi kumm geh Biakriagal Greichats obacht?";
 
-const TEXT_REPEATS = 1000;
+const TEXT_REPEATS = 1_000;
 const STACK_REPEATS = 10;
-const STACK_DEPTH = 1000;
+const STACK_DEPTH = 1_000;
 
 // Purchases pour realworld — 3 tailles
-const PURCHASES_100 = generatePurchases(100);
-const PURCHASES_1000 = generatePurchases(1000);
+const PURCHASES = generatePurchases(1_000);
 
 // ---------------------------------------------------------------------------
 // 1. Text bench — 1000× Bavaria block (preact bench port)
@@ -251,50 +250,27 @@ group("async — 10 concurrent async components (vincle only)", () => {
 // --- Realworld (kitajs port) ---
 
 // Pre-construire les pages hors du bench pour ne mesurer que le rendu
-const rwVincle100 = () => realworldVincle(NAME, PURCHASES_100);
-const rwVincle1000 = () => realworldVincle(NAME, PURCHASES_1000);
-const rwReact100 = () => realworldReact(NAME, PURCHASES_100);
-const rwReact1000 = () => realworldReact(NAME, PURCHASES_1000);
-const rwPreact100 = () => realworldPreact(NAME, PURCHASES_100);
-const rwPreact1000 = () => realworldPreact(NAME, PURCHASES_1000);
-const rwHono100 = () => realworldHono(NAME, PURCHASES_100);
-const rwHono1000 = () => realworldHono(NAME, PURCHASES_1000);
-const rwKita100 = () => realworldKita(NAME, PURCHASES_100);
-const rwKita1000 = () => realworldKita(NAME, PURCHASES_1000);
+const rwVincle = () => realworldVincle(NAME, PURCHASES);
+const rwReact = () => realworldReact(NAME, PURCHASES);
+const rwPreact = () => realworldPreact(NAME, PURCHASES);
+const rwHono = () => realworldHono(NAME, PURCHASES);
+const rwKita = () => realworldKita(NAME, PURCHASES);
 
-group(`realworld — full page, ${PURCHASES_100.length} purchases (kitajs port)`, () => {
+group(`realworld — full page, ${PURCHASES.length} purchases (kitajs port)`, () => {
   bench("@vincle/core", async () => {
-    await rwVincle100();
+    await rwVincle();
   });
   bench("react (renderToStaticMarkup)", () => {
-    rwReact100();
+    rwReact();
   });
   bench("preact (render)", () => {
-    rwPreact100();
+    rwPreact();
   });
   bench("hono/jsx (toString)", () => {
-    rwHono100();
+    rwHono();
   });
   bench("@kitajs/html", () => {
-    rwKita100();
-  });
-});
-
-group(`realworld — full page, ${PURCHASES_1000.length} purchases (kitajs port)`, () => {
-  bench("@vincle/core", async () => {
-    await rwVincle1000();
-  });
-  bench("react (renderToStaticMarkup)", () => {
-    rwReact1000();
-  });
-  bench("preact (render)", () => {
-    rwPreact1000();
-  });
-  bench("hono/jsx (toString)", () => {
-    rwHono1000();
-  });
-  bench("@kitajs/html", () => {
-    rwKita1000();
+    rwKita();
   });
 });
 

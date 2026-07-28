@@ -14,7 +14,7 @@ import { raw } from "./raw.js";
  * error. That's the class of bug an eager (single-path) renderer can't have.
  *
  * This test proves the two paths agree: a seeded generator builds the *same
- * logical tree* twice — once with `jsx` (fold on) and once with `nv` (`jsx`
+ * logical tree* twice — once with `jsx` (fold on) and once with `vnodeOf` (`jsx`
  * with the fold branch removed, so every element stays a VNode) — and asserts
  * byte-identical output. Any divergence is a hole; the failing seed reproduces it.
  */
@@ -22,7 +22,7 @@ import { raw } from "./raw.js";
 type Builder = (tag: any, props: any) => unknown;
 
 /** `jsx` with the static-fold shortcut removed: always a VNode (tree-walk path). */
-function nv(tag: any, attributes: Record<string, unknown> | null): unknown {
+function vnodeOf(tag: any, attributes: Record<string, unknown> | null): unknown {
   const props = attributes ?? {};
   const finalChildren =
     props["dangerouslySetInnerHTML"] !== undefined
@@ -137,7 +137,7 @@ describe("path equivalence: fold ≡ tree-walk", () => {
     const failures: { seed: number; fold: string; treeWalk: string }[] = [];
     for (let seed = 1; seed <= 1000; seed++) {
       const fold = renderToString(gen(jsx, mulberry32(seed), 5));
-      const treeWalk = renderToString(gen(nv, mulberry32(seed), 5));
+      const treeWalk = renderToString(gen(vnodeOf, mulberry32(seed), 5));
       if (fold !== treeWalk) failures.push({ seed, fold, treeWalk });
     }
     if (failures.length > 0) {

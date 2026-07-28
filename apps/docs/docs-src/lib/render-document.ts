@@ -1,4 +1,4 @@
-import { renderToString, withScope, type VNode } from "@vincle/core";
+import { renderToString, withScope, type JSX } from "@vincle/core";
 
 /** A post-render HTML transform: receives the assembled document, returns the next. */
 export type Transform = (html: string) => string;
@@ -36,7 +36,7 @@ export function composeTransforms(
  * );
  */
 export function renderDocument(
-  node: () => VNode,
+  node: () => JSX.Element,
   options: { transforms?: Transform[] } = {},
 ): Promise<string> {
   return withScope(async () => {

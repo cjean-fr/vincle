@@ -1,6 +1,6 @@
-import { renderToString, type VNode } from "@vincle/core";
+import { renderToString, type JSX } from "@vincle/core";
 
-function Layout({ title, children }: { title: string; children: VNode | VNode[] }) {
+function Layout({ title, children }: { title: string; children: JSX.Element | JSX.Element[] }) {
   return (
     <html lang="en">
       <head>

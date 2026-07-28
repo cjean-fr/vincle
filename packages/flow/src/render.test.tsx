@@ -37,7 +37,9 @@ describe("renderToFlowEvents", () => {
         () => (
           <html>
             <body>
-              <Template target="content"><span>content</span></Template>
+              <Template target="content">
+                <span>content</span>
+              </Template>
             </body>
           </html>
         ),
@@ -54,9 +56,7 @@ describe("renderToFlowEvents", () => {
       return (
         <section>
           OUTER
-        <Template target="inner">
-          {InnerContent() as unknown as VNode}
-        </Template>
+          <Template target="inner">{InnerContent() as unknown as VNode}</Template>
         </section>
       );
     };
@@ -65,9 +65,7 @@ describe("renderToFlowEvents", () => {
         () => (
           <html>
             <body>
-            <Template target="outer">
-              {Outer() as unknown as VNode}
-            </Template>
+              <Template target="outer">{Outer() as unknown as VNode}</Template>
             </body>
           </html>
         ),
@@ -238,7 +236,9 @@ describe("renderToStream", () => {
           <html>
             <head></head>
             <body>
-              <Template target="x"><span>x</span></Template>
+              <Template target="x">
+                <span>x</span>
+              </Template>
             </body>
           </html>
         ),
@@ -256,7 +256,9 @@ describe("renderToStream", () => {
           () => (
             <html>
               <body>
-                <Template target="content"><span>content</span></Template>
+                <Template target="content">
+                  <span>content</span>
+                </Template>
               </body>
             </html>
           ),
@@ -277,9 +279,7 @@ describe("renderToStream", () => {
       return (
         <section>
           OUTER
-        <Template target="inner">
-          {InnerContent() as unknown as VNode}
-        </Template>
+          <Template target="inner">{InnerContent() as unknown as VNode}</Template>
         </section>
       );
     };
@@ -288,9 +288,7 @@ describe("renderToStream", () => {
         () => (
           <html>
             <body>
-            <Template target="outer">
-              {Inner() as unknown as VNode}
-            </Template>
+              <Template target="outer">{Inner() as unknown as VNode}</Template>
             </body>
           </html>
         ),
@@ -333,7 +331,9 @@ describe("edge cases — render pipeline", () => {
             <head></head>
             <body>
               <p>hi</p>
-              <Template target="d"><span>d</span></Template>
+              <Template target="d">
+                <span>d</span>
+              </Template>
             </body>
           </html>
         ),
@@ -352,7 +352,9 @@ describe("edge cases — render pipeline", () => {
         () => (
           <html>
             <body>
-              <Template target="d"><span>d</span></Template>
+              <Template target="d">
+                <span>d</span>
+              </Template>
               <Template target="feed" merge="append">
                 {g()}
               </Template>

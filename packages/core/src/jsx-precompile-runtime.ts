@@ -1,46 +1,54 @@
-import { resolveAttrName, BOOLEAN_ATTRIBUTES } from "./attrs.js";
+import { resolveAttrName, BOOLEAN_ATTRIBUTES, classToString, styleToString } from "./attrs.js";
 import { escapeAttr } from "./escape.js";
 import { escapeContent } from "./escape.js";
 import { RawString, raw } from "./raw.js";
 import { isSafeScheme } from "./url-safety.js";
 
-export function jsxEscape(v: unknown): RawString | Promise<RawString> {
+export function jsxEscape(v: unknown): string | RawString | Promise<string | RawString> {
   if (v instanceof RawString) return v;
   if (v instanceof Promise) return v.then((resolved) => jsxEscape(resolved));
   if (Array.isArray(v)) return escapeArray(v);
   if (v != null && typeof v !== "string") {
     const anyV = v as { [Symbol.iterator]?: unknown; [Symbol.asyncIterator]?: unknown };
-    if (typeof anyV[Symbol.iterator] === "function") {
-      return escapeArray(Array.from(v as Iterable<unknown>));
-    }
     if (typeof anyV[Symbol.asyncIterator] === "function") {
       return collectAsyncIterable(v as AsyncIterable<unknown>);
     }
+    if (typeof anyV[Symbol.iterator] === "function") {
+      return escapeArray(Array.from(v as Iterable<unknown>));
+    }
   }
-  return new RawString(coerce(v));
+  // Primitive: coerce to string, NO escaping — jsxTemplate handles that
+  if (v == null || v === true || v === false) return "";
+  if (typeof v === "number" || typeof v === "bigint") return String(v);
+  return String(v);
 }
 
-function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
+function escapeArray(arr: unknown[]): string | RawString | Promise<string | RawString> {
   const parts = arr.map(jsxEscape);
   if (parts.some((p) => p instanceof Promise)) {
     return Promise.all(parts).then((resolved) => {
+      const hasRaw = resolved.some((s) => s instanceof RawString);
       let out = "";
-      for (const s of resolved) out += s.value;
-      return new RawString(out);
+      for (const s of resolved) out += s instanceof RawString ? s.value : s;
+      return hasRaw ? new RawString(out) : out;
     });
   }
+  const hasRaw = parts.some((p) => p instanceof RawString);
   let out = "";
-  for (const s of parts as RawString[]) out += s.value;
-  return new RawString(out);
+  for (const s of parts) out += s instanceof RawString ? (s as RawString).value : (s as string);
+  return hasRaw ? new RawString(out) : out;
 }
 
-async function collectAsyncIterable(iterable: AsyncIterable<unknown>): Promise<RawString> {
+async function collectAsyncIterable(iterable: AsyncIterable<unknown>): Promise<string | RawString> {
   let out = "";
+  let hasRaw = false;
   for await (const item of iterable) {
     const r = jsxEscape(item);
-    out += (r instanceof Promise ? await r : r).value;
+    const resolved = r instanceof Promise ? await r : r;
+    if (resolved instanceof RawString) hasRaw = true;
+    out += resolved instanceof RawString ? resolved.value : resolved;
   }
-  return new RawString(out);
+  return hasRaw ? new RawString(out) : out;
 }
 
 export function jsxAttr(name: string, value: unknown): RawString | Promise<RawString> {
@@ -84,14 +92,7 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
 
   // Class array → string
   if (attrName === "class" && Array.isArray(value)) {
-    let s = "";
-    for (let i = 0; i < value.length; i++) {
-      const item = value[i];
-      if (item && typeof item === "string") {
-        if (s) s += " ";
-        s += item;
-      }
-    }
+    const s = classToString(value);
     if (!s) return raw("");
     return new RawString(`class="${escapeAttr(s)}"`);
   }
@@ -137,18 +138,6 @@ function isEventHandler(name: string): boolean {
     c2 >= 97 &&
     c2 <= 122
   );
-}
-
-function styleToString(obj: Record<string, string | number | null | undefined>): string {
-  let out = "";
-  for (const key in obj) {
-    const value = obj[key];
-    if (value === null || value === undefined) continue;
-    const prop = key.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
-    if (out) out += ";";
-    out += `${prop}:${value}`;
-  }
-  return out;
 }
 
 function coerce(v: unknown): string {

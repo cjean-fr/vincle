@@ -2,37 +2,31 @@ import { buildAttrs } from "./attrs.js";
 import { escapeContent, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
 import { VNode } from "./jsx-runtime.js";
 import { RawString } from "./raw.js";
-import { serializeElement } from "./serialize.js";
+import { serializeElement, isValidTag } from "./serialize.js";
 
-const RE_INVALID_TAG = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
-
-const TAG_VALID_CACHE = new Map<string, boolean>();
-
-function isValidTag(tag: string): boolean {
-  let valid = TAG_VALID_CACHE.get(tag);
-  if (valid === undefined) {
-    valid = tag.length > 0 && !RE_INVALID_TAG.test(tag);
-    TAG_VALID_CACHE.set(tag, valid);
-  }
-  return valid;
+export function renderToString(node: unknown): string {
+  return renderNode(node);
 }
 
-function renderToString(node: unknown): string {
-  return createElement(node);
-}
-
-function createElement(vnode: unknown, rawtextTag?: string): string {
+/**
+ * Parcours récursif du VNode tree.
+ * N'accepte PAS de rawtextTag — l'échappement spécifique à `<script>` / `<style>`
+ * est géré localement dans renderChildren, pas hérité. Les composants contenus
+ * dans un script/style sont suffisamment rares pour ne pas justifier la
+ * propagation du tag à travers toute la récursion.
+ */
+function renderNode(vnode: unknown): string {
   if (vnode === null || vnode === undefined || typeof vnode === "boolean") return "";
   if (typeof vnode === "string") {
-    return rawtextTag ? escapeRawTagContent(vnode, rawtextTag) : escapeContent(vnode);
+    return escapeContent(vnode);
   }
   if (typeof vnode === "number") return String(vnode);
   if (vnode instanceof RawString) return vnode.value;
-  if (Array.isArray(vnode)) return renderChildren(vnode, rawtextTag);
+  if (Array.isArray(vnode)) return renderChildren(vnode);
   if (!(vnode instanceof VNode)) return escapeContent(String(vnode));
 
   if (typeof vnode.tag === "function") {
-    return createElement(vnode.tag(vnode.attrs), rawtextTag);
+    return renderNode(vnode.tag(vnode.attrs));
   }
 
   const { tag, attrs, children } = vnode;
@@ -45,11 +39,11 @@ function createElement(vnode: unknown, rawtextTag?: string): string {
   }
 
   if (tag === "Fragment") {
-    return renderChildren(children, rawtextTag);
+    return children !== undefined ? renderChildren(children) : "";
   }
 
   const attrStr = buildAttrs(attrs);
-  const childTag = RAWTEXT_TAGS.has(tag) ? tag : rawtextTag;
+  const childTag = RAWTEXT_TAGS.has(tag) ? tag : undefined;
   const content = children !== undefined ? renderChildren(children, childTag) : "";
   return serializeElement(tag, attrStr, content, !!children);
 }
@@ -61,13 +55,19 @@ function renderChildren(children: unknown, rawtextTag?: string): string {
     }
     if (typeof children === "number") return String(children);
     if (children == null || children === true || children === false) return "";
-    return createElement(children, rawtextTag);
+    return renderNode(children);
   }
   let out = "";
   for (let i = 0; i < children.length; i++) {
-    out += createElement(children[i]!, rawtextTag);
+    const child = children[i]!;
+    // Strings directes dans le tableau : échappement rawtext local
+    if (typeof child === "string") {
+      out += rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
+    } else {
+      out += renderNode(child);
+    }
   }
   return out;
 }
 
-export { renderToString };
+

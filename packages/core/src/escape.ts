@@ -35,11 +35,11 @@ export const RAWTEXT_TAGS = new Set(["script", "style"]);
 // one used only to iterate matches once at least one close tag is present.
 // Iterating with a global regex avoids allocating a lowercased copy of the
 // whole body just to do a case-insensitive indexOf.
-const RAWTEXT_FIND = new Map<string, RegExp>();
-const RAWTEXT_ITER = new Map<string, RegExp>();
+const RAWTEXT_DETECT = new Map<string, RegExp>();
+const RAWTEXT_SCAN = new Map<string, RegExp>();
 for (const tag of RAWTEXT_TAGS) {
-  RAWTEXT_FIND.set(tag, new RegExp("</" + tag, "i"));
-  RAWTEXT_ITER.set(tag, new RegExp("</" + tag, "gi"));
+  RAWTEXT_DETECT.set(tag, new RegExp("</" + tag, "i"));
+  RAWTEXT_SCAN.set(tag, new RegExp("</" + tag, "gi"));
 }
 
 // ── Attribute value escaping ─────────────────────────────────────────────
@@ -81,23 +81,23 @@ export function escapeAttr(str: string): string {
 }
 
 export function escapeRawTagContent(str: string, tag: string): string {
-  const find = RAWTEXT_FIND.get(tag);
-  if (find === undefined) return escapeContent(str);
+  const detectRe = RAWTEXT_DETECT.get(tag);
+  if (detectRe === undefined) return escapeContent(str);
 
-  const first = find.exec(str); // non-global: no lastIndex bookkeeping, cheap no-match scan
+  const first = detectRe.exec(str); // non-global: no lastIndex bookkeeping, cheap no-match scan
   if (first === null) return str;
 
-  const re = RAWTEXT_ITER.get(tag)!;
+  const scanRe = RAWTEXT_SCAN.get(tag)!;
   const skip = 2 + tag.length; // length of the matched "</tag"
   let out = "",
     last = 0;
-  re.lastIndex = first.index;
+  scanRe.lastIndex = first.index;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(str)) !== null) {
+  while ((m = scanRe.exec(str)) !== null) {
     const idx = m.index;
     out += str.slice(last, idx) + "<\\" + str.slice(idx + 1, idx + skip);
     last = idx + skip;
-    re.lastIndex = last;
+    scanRe.lastIndex = last;
   }
   return out + str.slice(last);
 }

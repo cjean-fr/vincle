@@ -1,4 +1,4 @@
-import { renderToString, type VNode } from "@vincle/core";
+import { renderToString, type JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
@@ -20,7 +20,7 @@ const REGEX_SHELL_CLOSE = /((?:<\/body>)?\s*<\/html>\s*)$/;
  *   tag, so callers can emit them as separate `shell` / `close` events.
  */
 export async function renderShell(
-  node: () => VNode,
+  node: () => JSX.Element,
   adapter: {
     transformShell?: (html: string, ctx: FlowContext) => string;
   },
@@ -44,7 +44,7 @@ export async function renderShell(
 export async function runSequence(
   emit: (ev: FlowEvent) => Promise<void>,
   signal: AbortSignal,
-  node: () => VNode,
+  node: () => JSX.Element,
   adapter: Adapter,
   opts: FlowOptions & { mode?: "full" | "fragment" },
 ): Promise<void> {
@@ -77,7 +77,7 @@ export async function runSequence(
  * Return a `ReadableStream<FlowEvent>` with proper backpressure and cancellation.
  */
 export function renderToFlowEvents(
-  node: () => VNode,
+  node: () => JSX.Element,
   adapter: StreamingAdapter,
   opts: FlowOptions & { mode?: "full" | "fragment" } = {},
 ): ReadableStream<FlowEvent> {
@@ -91,7 +91,7 @@ export function renderToFlowEvents(
  * followed by each fragment as wire-format markup.
  */
 export function renderToStream(
-  node: () => VNode,
+  node: () => JSX.Element,
   adapter: StreamingAdapter,
   opts?: FlowOptions & { mode?: "full" | "fragment" },
 ): ReadableStream<string> {

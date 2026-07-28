@@ -1,4 +1,4 @@
-import type { VNode } from "@vincle/core";
+import type { JSX } from "@vincle/core";
 
 import type { FlowOptions, Negotiate, Negotiation, StreamingAdapter } from "./types.js";
 
@@ -58,7 +58,7 @@ function buildResponse(body: ReadableStream<Uint8Array> | string, init?: Respons
  */
 export async function serve(
   req: Request,
-  page: (n: Negotiation) => VNode,
+  page: (n: Negotiation) => JSX.Element,
   adapter: StreamingAdapter,
   opts?: FlowOptions &
     ResponseInit & {

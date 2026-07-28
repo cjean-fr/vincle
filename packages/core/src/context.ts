@@ -36,32 +36,62 @@ function createFallbackStore(): {
   };
 }
 
-function createContextStore(): ReturnType<typeof createFallbackStore> {
-  if (typeof (globalThis as any).AsyncLocalStorage !== "undefined") {
-    return new (globalThis as any).AsyncLocalStorage();
-  }
-  try {
-    const { AsyncLocalStorage } = require("node:async_hooks") as typeof import("node:async_hooks");
-    return new AsyncLocalStorage<ContextMap>();
-  } catch {
+// ── Context store (lazy init) ───────────────────────────────────────
+// Le store est initialisé au premier appel de `withScope()` pour éviter
+// tout `require()` ou import forcé d'AsyncLocalStorage au module level.
+// - Si le runtime expose ALS globalement (Deno, Node ≥ 22 avec flag) → ALS
+// - Sinon, tentative dynamic import de node:async_hooks (Bun, Node standard)
+// - Sinon → fallback synchrone (store module-level, pas d'isolation async)
+let contextStore: ReturnType<typeof createFallbackStore> | null = null;
+let storeInit: Promise<void> | null = null;
+
+async function ensureStore(): Promise<void> {
+  if (contextStore) return;
+  if (storeInit) return storeInit;
+
+  storeInit = (async () => {
+    if (typeof (globalThis as any).AsyncLocalStorage !== "undefined") {
+      contextStore = new (globalThis as any).AsyncLocalStorage();
+      return;
+    }
+    try {
+      const { AsyncLocalStorage } = await import("node:async_hooks");
+      contextStore = new AsyncLocalStorage<ContextMap>();
+      return;
+    } catch {
+      /* ALS pas disponible — fallback */
+    }
     console.warn(
-      "[vincle/core] AsyncLocalStorage not available — using fallback store. " +
-        "Concurrent requests may leak context between scopes. " +
-        "Ensure your runtime provides AsyncLocalStorage (Node.js >= 22, modern Deno/Bun).",
+      "[vincle/core] AsyncLocalStorage not available — using synchronous fallback. " +
+        "Concurrent withScope() calls may leak context. See https://vincle.cjean.fr/docs/context#async-local-storage",
     );
-  }
-  return createFallbackStore();
+    contextStore = createFallbackStore();
+  })();
+
+  return storeInit;
 }
 
-let contextStore = createContextStore();
+function getStore(): ReturnType<typeof createFallbackStore> {
+  if (!contextStore) throw new Error("[vincle/core] context store not initialized — call withScope first.");
+  return contextStore;
+}
 
-/** @internal Should only be used in tests — resets AsyncLocalStorage state. */
+/**
+ * @internal Should only be used in tests — resets storage to force re-init.
+ * `forceFallback: true` installs the synchronous fallback store immediately,
+ * bypassing auto-detection — used to exercise the fallback path on runtimes
+ * (like Bun) where AsyncLocalStorage is otherwise always available.
+ */
 export function resetContextStorage(forceFallback?: boolean): void {
-  contextStore = forceFallback ? createFallbackStore() : createContextStore();
+  contextStore = forceFallback ? createFallbackStore() : null;
+  storeInit = forceFallback ? Promise.resolve() : null;
 }
 
 function scopeContext(): ContextMap {
-  const ctx = contextStore.getStore();
+  // Store pas encore initialisé → pas de scope actif. Même erreur que si
+  // le scope existe pas, pour que les tests et les appelants aient un
+  // message stable quel que soit l'ordre d'initialisation.
+  const ctx = contextStore?.getStore();
   if (!ctx) {
     throw new Error(
       "[vincle/core] useContext/setContext — no active scope. Wrap your render in withScope(() => renderToString(...)).",
@@ -98,6 +128,7 @@ export function snapshot(): ContextMap {
   return new Map(scopeContext());
 }
 
-export function withScope<T>(fn: () => Awaitable<T>, parentCtx?: ContextMap): Promise<T> {
-  return contextStore.run(new Map(parentCtx), fn);
+export async function withScope<T>(fn: () => Awaitable<T>, parentCtx?: ContextMap): Promise<T> {
+  await ensureStore();
+  return getStore().run(new Map(parentCtx), fn);
 }

@@ -44,7 +44,9 @@ export function isRawtextTag(tag: string): boolean {
 }
 
 export function isLowercaseTag(name: string): boolean {
-  return name[0] !== undefined && name[0] === name[0].toLowerCase() && name[0] !== name[0].toUpperCase();
+  return (
+    name[0] !== undefined && name[0] === name[0].toLowerCase() && name[0] !== name[0].toUpperCase()
+  );
 }
 
 /**

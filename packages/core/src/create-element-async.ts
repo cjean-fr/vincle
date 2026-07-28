@@ -2,47 +2,37 @@ import { buildAttrs } from "./attrs.js";
 import { escapeContent, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
 import { VNode } from "./jsx-runtime.js";
 import { RawString } from "./raw.js";
-import { serializeElement } from "./serialize.js";
-
-const RE_INVALID_TAG = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
-
-const TAG_VALID_CACHE = new Map<string, boolean>();
-
-function isValidTag(tag: string): boolean {
-  let valid = TAG_VALID_CACHE.get(tag);
-  if (valid === undefined) {
-    valid = tag.length > 0 && !RE_INVALID_TAG.test(tag);
-    TAG_VALID_CACHE.set(tag, valid);
-  }
-  return valid;
-}
+import { serializeElement, isValidTag } from "./serialize.js";
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
   return value != null && typeof value === "object" && Symbol.asyncIterator in value;
 }
 
-function renderToString(node: unknown): Promise<string> {
-  return Promise.resolve(createElement(node));
+export function renderToString(node: unknown): Promise<string> {
+  return Promise.resolve(renderNode(node));
 }
 
-function createElement(vnode: unknown, rawtextTag?: string): string | Promise<string> {
-  // ── Sync fast path (same as create-element.ts) ──
+/**
+ * Parcours récursif du VNode tree (version async).
+ * N'accepte PAS de rawtextTag — l'échappement spécifique à `<script>` / `<style>`
+ * est géré localement dans renderChildrenAsync, pas hérité.
+ */
+function renderNode(vnode: unknown): string | Promise<string> {
+  // ── Sync fast path ──
   if (vnode === null || vnode === undefined || typeof vnode === "boolean") return "";
-  if (typeof vnode === "string") {
-    return rawtextTag ? escapeRawTagContent(vnode, rawtextTag) : escapeContent(vnode);
-  }
+  if (typeof vnode === "string") return escapeContent(vnode);
   if (typeof vnode === "number" || typeof vnode === "bigint") return String(vnode);
   if (vnode instanceof RawString) return vnode.value;
 
   // ── Async primitives ──
   if (vnode instanceof Promise) {
-    return vnode.then((resolved) => createElement(resolved, rawtextTag));
+    return vnode.then((resolved) => renderNode(resolved));
   }
   if (isAsyncIterable(vnode)) {
-    return collectAsyncIterable(vnode, rawtextTag);
+    return collectAsyncIterable(vnode);
   }
 
-  if (Array.isArray(vnode)) return renderChildrenAsync(vnode, rawtextTag);
+  if (Array.isArray(vnode)) return renderChildrenAsync(vnode);
   if (!(vnode instanceof VNode)) return escapeContent(String(vnode));
 
   // ── Component ──
@@ -54,12 +44,12 @@ function createElement(vnode: unknown, rawtextTag?: string): string | Promise<st
       return Promise.reject(e);
     }
     if (result instanceof Promise) {
-      return result.then((r) => createElement(r, rawtextTag));
+      return result.then((r) => renderNode(r));
     }
     if (isAsyncIterable(result)) {
-      return collectAsyncIterable(result, rawtextTag);
+      return collectAsyncIterable(result);
     }
-    return createElement(result, rawtextTag);
+    return renderNode(result);
   }
 
   // ── Regular element ──
@@ -73,11 +63,11 @@ function createElement(vnode: unknown, rawtextTag?: string): string | Promise<st
   }
 
   if (tag === "Fragment") {
-    return children !== undefined ? renderChildrenAsync(children, rawtextTag) : "";
+    return children !== undefined ? renderChildrenAsync(children) : "";
   }
 
   const attrStr = buildAttrs(attrs);
-  const childTag = RAWTEXT_TAGS.has(tag) ? tag : rawtextTag;
+  const childTag = RAWTEXT_TAGS.has(tag) ? tag : undefined;
 
   if (children !== undefined) {
     const content = renderChildrenAsync(children, childTag);
@@ -91,7 +81,11 @@ function createElement(vnode: unknown, rawtextTag?: string): string | Promise<st
 
 function renderChildrenAsync(children: unknown, rawtextTag?: string): string | Promise<string> {
   if (!Array.isArray(children)) {
-    return createElement(children, rawtextTag);
+    if (typeof children === "string") {
+      return rawtextTag ? escapeRawTagContent(children, rawtextTag) : escapeContent(children);
+    }
+    // Non-string single child: délégué à renderNode sans rawtextTag
+    return renderNode(children);
   }
   if (children.length === 0) return "";
 
@@ -108,27 +102,33 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
   if (!needsAsync) {
     let out = "";
     for (let i = 0; i < children.length; i++) {
-      out += createElement(children[i]!, rawtextTag);
+      const child = children[i]!;
+      // Les strings directes sont échappées avec rawtextTag local ici
+      if (typeof child === "string") {
+        out += rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
+      } else {
+        out += renderNode(child);
+      }
     }
     return out;
   }
 
   // At least one async child — resolve all in parallel
-  return Promise.all(children.map((child) => createElement(child, rawtextTag))).then((parts) =>
-    parts.join(""),
-  );
+  return Promise.all(children.map((child) => {
+    if (typeof child === "string") {
+      return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
+    }
+    return renderNode(child);
+  })).then((parts) => parts.join(""));
 }
 
 async function collectAsyncIterable(
   iterable: AsyncIterable<unknown>,
-  rawtextTag?: string,
 ): Promise<string> {
   let out = "";
   for await (const chunk of iterable) {
-    const rendered = createElement(chunk, rawtextTag);
+    const rendered = renderNode(chunk);
     out += rendered instanceof Promise ? await rendered : rendered;
   }
   return out;
 }
-
-export { renderToString };

@@ -5,6 +5,20 @@ import type { FlowEvent, FlowOptions } from "./types.js";
 import { runFragment } from "./fragment-runner.js";
 
 /**
+ * Await all promises via `allSettled`, then throw the first rejection found.
+ * Unlike `Promise.all`, this waits for every promise to settle before throwing,
+ * so in-flight work isn't orphaned. Rejection reasons come from emit failures
+ * (output channel broken) — they are fatal for the entire flush.
+ */
+async function settleOrThrow(promises: Promise<void>[]): Promise<void> {
+  if (promises.length === 0) return;
+  const results = await Promise.allSettled(promises);
+  for (const r of results) {
+    if (r.status === "rejected") throw r.reason;
+  }
+}
+
+/**
  * Drain every registered template entry, emitting semantic `FlowEvent`s to
  * `emit`. Each entry's content is classified at drain time:
  *
@@ -37,13 +51,13 @@ export async function flushTemplates(
         const { stream, done } = runFragment(id, entry, emit, opts, assets);
         (stream ? live : oneShots).push(done);
       }
-      await Promise.allSettled(oneShots);
+      await settleOrThrow(oneShots);
       continue;
     }
     if (live.length === 0) break;
-    await Promise.allSettled(live);
+    await settleOrThrow(live);
     live.length = 0;
     if (!ctx.templateStore.hasOutstanding(processed)) break;
   }
-  if (live.length > 0) await Promise.allSettled(live);
+  if (live.length > 0) await settleOrThrow(live);
 }

@@ -46,7 +46,7 @@ import type { VNode } from "./src/jsx-runtime.js";
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
-    type Element = VNode;
+    type Element = VNode | Promise<VNode>;
     type IntrinsicElements = {
       [K in string]: Record<string, unknown> & { children?: unknown };
     };
@@ -55,7 +55,7 @@ declare global {
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace JSX {
-  export type Element = VNode;
+  export type Element = VNode | Promise<VNode>;
   export type IntrinsicElements = {
     [K in string]: Record<string, unknown> & { children?: unknown };
   };

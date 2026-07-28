@@ -41,6 +41,21 @@ export const VOID_ELEMENTS = new Set([
  * @param hasChildren whether the element had any children — a void element
  *                    with no children collapses to a start tag only
  */
+// ── Tag name validation ────────────────────────────────────────────
+// Shared by sync and async renderers — declared ONCE.
+const RE_INVALID_TAG = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
+
+const TAG_VALID_CACHE = new Map<string, boolean>();
+
+export function isValidTag(tag: string): boolean {
+  let valid = TAG_VALID_CACHE.get(tag);
+  if (valid === undefined) {
+    valid = tag.length > 0 && !RE_INVALID_TAG.test(tag);
+    TAG_VALID_CACHE.set(tag, valid);
+  }
+  return valid;
+}
+
 export function serializeElement(
   tag: string,
   attrStr: string,

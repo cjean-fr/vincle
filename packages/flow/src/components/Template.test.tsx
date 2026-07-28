@@ -1,4 +1,4 @@
-import type { ResolvedVNode, VNode } from "@vincle/core";
+import type { ResolvedVNode } from "@vincle/core";
 
 import { renderToString, withScope, useContext } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
@@ -9,8 +9,8 @@ import { Template, Slot } from "../index.js";
 import { renderToStream } from "../render.js";
 import { collect } from "../test-utils.js";
 
-describe("Template — sync content (no placeholder)", () => {
-  it("registers sync content without rendering a placeholder", async () => {
+describe("Template — deferred content (placeholder always)", () => {
+  it("registers sync content and renders a placeholder", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       const html = await renderToString(
@@ -18,24 +18,19 @@ describe("Template — sync content (no placeholder)", () => {
           <li>Notification</li>
         </Template>,
       );
-      expect(html).toBe("");
+      expect(html).toContain('id="toast-list"');
       const entries = useContext(Flow).templateStore.outstanding(new Set());
       expect(entries.find(([id]) => id === "toast-list")?.[1].merge).toBe("append");
     });
   });
-});
 
-describe("Template — async content (placeholder)", () => {
-  it("renders a placeholder and registers promise content (streaming mode)", async () => {
+  it("renders a placeholder for async component content and registers it", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const AsyncContent = async () => <span>content</span> as ResolvedVNode;
+      const AsyncContent = async () => <span>content</span>;
       const html = await renderToString(
         <Template target="content">
-        {
-          // @ts-expect-error Async component supported at runtime
-          <AsyncContent /> as unknown as VNode
-        }
+          <AsyncContent />
         </Template>,
       );
       expect(html).toContain('id="content"');
@@ -47,13 +42,10 @@ describe("Template — async content (placeholder)", () => {
   it("accepts a promise returning a node", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const AsyncContent = async () => <span>inline</span> as ResolvedVNode;
+      const AsyncContent = async () => <span>inline</span>;
       const html = await renderToString(
         <Template target="inline">
-        {
-          // @ts-expect-error Async component supported at runtime
-          <AsyncContent /> as unknown as VNode
-        }
+          <AsyncContent />
         </Template>,
       );
       expect(html).toContain('id="inline"');
@@ -65,13 +57,10 @@ describe("Template — async content (placeholder)", () => {
   it("honours an explicit target", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const AsyncContent = async () => <span>x</span> as ResolvedVNode;
+      const AsyncContent = async () => <span>x</span>;
       await renderToString(
         <Template target="cart">
-        {
-          // @ts-expect-error Async component supported at runtime
-          <AsyncContent /> as unknown as VNode
-        }
+          <AsyncContent />
         </Template>,
       );
       const entries = useContext(Flow).templateStore.outstanding(new Set());
@@ -82,13 +71,10 @@ describe("Template — async content (placeholder)", () => {
   it("stores an explicit merge type", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const AsyncContent = async () => <li>item</li> as ResolvedVNode;
+      const AsyncContent = async () => <li>item</li>;
       await renderToString(
         <Template target="list" merge="append">
-        {
-          // @ts-expect-error Async component supported at runtime
-          <AsyncContent /> as unknown as VNode
-        }
+          <AsyncContent />
         </Template>,
       );
       const entries = useContext(Flow).templateStore.outstanding(new Set());
@@ -96,7 +82,7 @@ describe("Template — async content (placeholder)", () => {
     });
   });
 
-  it("accepts plain JSX children (no placeholder)", async () => {
+  it("registers plain JSX content and renders a placeholder", async () => {
     await withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       const html = await renderToString(
@@ -104,7 +90,7 @@ describe("Template — async content (placeholder)", () => {
           <span>plain</span>
         </Template>,
       );
-      expect(html).toBe("");
+      expect(html).toContain('id="plain"');
       const { templateStore } = useContext(Flow);
       expect(templateStore.size).toBe(1);
     });
@@ -117,13 +103,10 @@ describe("Template — async content (placeholder)", () => {
         mode: "static",
         generatePath: (id) => `/f/${id}.html`,
       });
-      const AsyncContent = async () => <span>content</span> as ResolvedVNode;
+      const AsyncContent = async () => <span>content</span>;
       const html = await renderToString(
         <Template target="content">
-        {
-          // @ts-expect-error Async component supported at runtime
-          <AsyncContent /> as unknown as VNode
-        }
+          <AsyncContent />
         </Template>,
       );
       expect(html).toContain('src="/f/content.html"');

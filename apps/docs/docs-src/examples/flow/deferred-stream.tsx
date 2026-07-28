@@ -1,5 +1,4 @@
 import { Slot, Template, renderToStream } from "@vincle/flow";
-import type { VNode } from "@vincle/core";
 import { NativeAdapter } from "@vincle/flow/adapters";
 
 declare function fetchComments(): Promise<{ text: string }[]>;
@@ -25,8 +24,7 @@ function Page() {
         <Slot name="comments">
           <p>Loading comments…</p>
         </Slot>
-        <Template target="comments">{() => // @ts-expect-error Async component supported at runtime
-<Comments /> as unknown as VNode}</Template>
+        <Template target="comments">{() => <Comments />}</Template>
       </body>
     </html>
   );

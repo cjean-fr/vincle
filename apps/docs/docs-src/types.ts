@@ -128,7 +128,7 @@ export interface DocsConfig {
   sitemap?: boolean;
   handlers?: Record<string, HandlerEntry>;
   /** Override the default page shell (Layout). Receives children already wrapped by the handler's prose wrapper. */
-  layout?: (props: { children: import("@vincle/core").VNode }) => import("@vincle/core").VNode;
+  layout?: (props: { children: import("@vincle/core").JSX.Element }) => import("@vincle/core").JSX.Element;
 }
 
 export interface ResolvedDocsConfig {
@@ -149,7 +149,7 @@ export interface ResolvedDocsConfig {
   image: string | null;
   sitemap: boolean;
   handlers: Record<string, HandlerEntry>;
-  layout: (props: { children: import("@vincle/core").VNode }) => import("@vincle/core").VNode;
+  layout: (props: { children: import("@vincle/core").JSX.Element }) => import("@vincle/core").JSX.Element;
 }
 
 export interface Page {

@@ -1,4 +1,4 @@
-import type { VNode } from "@vincle/core";
+import type { JSX } from "@vincle/core";
 
 import { raw } from "@vincle/core";
 import { Asset } from "@vincle/vite-plugin";
@@ -35,7 +35,7 @@ const STRUCTURED_DATA_TEMPLATE = (siteUrl: string, title: string, description: s
     })}</script>`,
   );
 
-export function Layout({ children }: { children: VNode }) {
+export function Layout({ children }: { children: JSX.Element }) {
   const { config, meta, currentPage } = useDocs();
   const title = meta.title ? `${meta.title} — ${config.title}` : config.title;
   const description = meta.description ?? config.description;

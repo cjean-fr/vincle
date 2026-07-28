@@ -1,4 +1,4 @@
-import type { VNode } from "@vincle/core";
+import type { JSX } from "@vincle/core";
 
 import type { PageMeta } from "../types.js";
 
@@ -114,7 +114,7 @@ function CodeIcon() {
 }
 
 interface FeatureCardProps {
-  icon: VNode;
+  icon: JSX.Element;
   title: string;
   description: string;
 }
@@ -303,7 +303,7 @@ export default function HomePage() {
 }
 
 interface UseCaseCardProps {
-  icon: VNode;
+  icon: JSX.Element;
   title: string;
   before: string;
   after: string;

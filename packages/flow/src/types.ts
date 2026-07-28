@@ -1,4 +1,4 @@
-import type { VNode } from "@vincle/core";
+import type { JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 
@@ -12,17 +12,17 @@ export interface AdapterCapabilities {
 /**
  * Content that can be rendered as a template fragment.
  *
- * - `VNode` — one-shot sync render
+ * - `JSX.Element` — one-shot sync/async render
  * - `string` — raw HTML (stored verbatim, rendered later)
- * - `() => VNode` — lazy factory (synchronous)
- * - `AsyncIterable<VNode>` — streaming (each yielded VNode is flushed)
+ * - `() => JSX.Element` — lazy factory
+ * - `AsyncIterable<JSX.Element>` — streaming (each yielded element is flushed)
  */
 export type TemplateContent =
-  | VNode
+  | JSX.Element
   | string
-  | (() => VNode)
-  | AsyncIterable<VNode>
-  | (() => AsyncIterable<VNode>);
+  | (() => JSX.Element)
+  | AsyncIterable<JSX.Element>
+  | (() => AsyncIterable<JSX.Element>);
 
 export interface Shell {
   type: "shell";
@@ -40,7 +40,7 @@ export type FlowEvent = Shell | Fragment | { type: "close"; html: string };
 
 export type FlowErrorInfo = { id: string; kind: "fragment" | "stream" };
 
-export type OnError = (error: unknown, info: FlowErrorInfo) => VNode | void;
+export type OnError = (error: unknown, info: FlowErrorInfo) => JSX.Element | void;
 
 export interface FlowOptions {
   signal?: AbortSignal;

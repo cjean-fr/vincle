@@ -32,9 +32,9 @@ describe("context.registerTemplate()", () => {
       expect(templateStore.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
         "append",
       );
-      expect(() =>
-        registerTemplate("has space", { content: <span />, merge: "replace" }),
-      ).toThrow(/valid fragment id/);
+      expect(() => registerTemplate("has space", { content: <span />, merge: "replace" })).toThrow(
+        /valid fragment id/,
+      );
     });
   });
 
