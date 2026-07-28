@@ -1,4 +1,4 @@
-import { raw, type VNode } from "@vincle/core";
+import { raw } from "@vincle/core";
 import { escapeAttr } from "@vincle/core/html";
 
 import type { FlowEvent } from "../types.js";
@@ -10,9 +10,9 @@ export const EsiAdapter = createAdapter({
 
   Placeholder: ({ src, children }) => {
     if (src) {
-      return raw(`<esi:include src="${escapeAttr(src)}" />`) as unknown as VNode;
+      return <>{raw(`<esi:include src="${escapeAttr(src)}" />`)}</>;
     }
-    return children as VNode;
+    return <>{children}</>;
   },
 
   Patch: ({ id, children }) => (
@@ -23,7 +23,7 @@ export const EsiAdapter = createAdapter({
     </>
   ),
 
-  Frame: ({ children }) => children as VNode,
+  Frame: ({ children }) => <>{children}</>,
 
   encode(): TransformStream<FlowEvent, string> {
     throw new Error(
