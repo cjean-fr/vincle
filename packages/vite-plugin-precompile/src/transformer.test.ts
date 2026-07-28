@@ -491,7 +491,7 @@ describe("precompileTransform", () => {
       expect(result!.code).toContain("<Comp>{jsxTemplate`<div>x</div>`}</Comp>");
       writeFileSync(outputPath, result!.code);
       const mod = (await import(outputPath)) as { x: unknown };
-      expect(renderToString(mod.x)).toBe("<div>x</div>");
+      expect(await renderToString(mod.x)).toBe("<div>x</div>");
     });
 
     it("wraps precompiled fragments and dangerouslySetInnerHTML fallback children too", () => {

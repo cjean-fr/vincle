@@ -4,7 +4,7 @@ import { escapeContent } from "./escape.js";
 import { RawString, raw } from "./raw.js";
 import { isSafeScheme } from "./url-safety.js";
 
-export function jsxEscape(v: unknown): string | RawString | Promise<string | RawString> {
+export function jsxEscape(v: unknown): RawString | Promise<RawString> {
   if (v instanceof RawString) return v;
   if (v instanceof Promise) return v.then((resolved) => jsxEscape(resolved));
   if (Array.isArray(v)) return escapeArray(v);
@@ -17,38 +17,30 @@ export function jsxEscape(v: unknown): string | RawString | Promise<string | Raw
       return escapeArray(Array.from(v as Iterable<unknown>));
     }
   }
-  // Primitive: coerce to string, NO escaping — jsxTemplate handles that
-  if (v == null || v === true || v === false) return "";
-  if (typeof v === "number" || typeof v === "bigint") return String(v);
-  return String(v);
+  return new RawString(coerce(v));
 }
 
-function escapeArray(arr: unknown[]): string | RawString | Promise<string | RawString> {
+function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
   const parts = arr.map(jsxEscape);
   if (parts.some((p) => p instanceof Promise)) {
     return Promise.all(parts).then((resolved) => {
-      const hasRaw = resolved.some((s) => s instanceof RawString);
       let out = "";
-      for (const s of resolved) out += s instanceof RawString ? s.value : s;
-      return hasRaw ? new RawString(out) : out;
+      for (const s of resolved) out += s.value;
+      return new RawString(out);
     });
   }
-  const hasRaw = parts.some((p) => p instanceof RawString);
   let out = "";
-  for (const s of parts) out += s instanceof RawString ? (s as RawString).value : (s as string);
-  return hasRaw ? new RawString(out) : out;
+  for (const s of parts as RawString[]) out += s.value;
+  return new RawString(out);
 }
 
-async function collectAsyncIterable(iterable: AsyncIterable<unknown>): Promise<string | RawString> {
+async function collectAsyncIterable(iterable: AsyncIterable<unknown>): Promise<RawString> {
   let out = "";
-  let hasRaw = false;
   for await (const item of iterable) {
     const r = jsxEscape(item);
-    const resolved = r instanceof Promise ? await r : r;
-    if (resolved instanceof RawString) hasRaw = true;
-    out += resolved instanceof RawString ? resolved.value : resolved;
+    out += (r instanceof Promise ? await r : r).value;
   }
-  return hasRaw ? new RawString(out) : out;
+  return new RawString(out);
 }
 
 export function jsxAttr(name: string, value: unknown): RawString | Promise<RawString> {
