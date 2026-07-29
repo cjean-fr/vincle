@@ -1,10 +1,13 @@
+import { buildAttrs } from "./attrs.js";
+import { escapeContent, escapeRawTagContent, isRawtextTag } from "./escape.js";
+import { RawString } from "./types.js";
+
 /**
  * Single source of truth for serializing one HTML element to a string.
  *
- * Shared by the eager static fast-path (`static-render.ts`) and the VNode
- * tree walk (`create-element.ts`) so both paths emit byte-identical markup.
- * Any divergence in void-element handling or tag wrapping is a bug — it must
- * be fixed here, once, not in each caller.
+ * Shared by the eager static fast-path and the VNode tree walk so both paths
+ * emit byte-identical markup. Any divergence in void-element handling or tag
+ * wrapping is a bug — it must be fixed here, once, not in each caller.
  */
 
 /**
@@ -31,16 +34,6 @@ export const VOID_ELEMENTS = new Set([
   "wbr",
 ]);
 
-/**
- * Serialize a single element from its tag, pre-built attribute string, and
- * already-rendered inner HTML.
- *
- * @param tag         validated tag name
- * @param attrStr     attribute string, leading-space included (from `buildAttrs`)
- * @param content     already-rendered inner HTML (escaped by the caller)
- * @param hasChildren whether the element had any children — a void element
- *                    with no children collapses to a start tag only
- */
 // ── Tag name validation ────────────────────────────────────────────
 //
 // `\p{C}` under `/u` drags in Unicode tables, so the regex is memoised — but a
@@ -53,26 +46,9 @@ export const VOID_ELEMENTS = new Set([
 const RE_INVALID_TAG = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
 
 const VALID_TAGS = new Set<string>();
-
-// A tag name can be caller-supplied (`<Tag>` driven by data), so the memo must
-// not grow without bound. Past the cap, validation still happens — just uncached.
 const VALID_TAGS_MAX = 1024;
 
 export function isValidTag(tag: string): boolean {
-  // Fast path, and a proof rather than a guess: none of the forbidden
-  // characters is an ASCII lowercase letter — not `!?`, not `\s"'<>/=\`\\`, and
-  // `\p{C}` matches no letter either. A name made only of `a`–`z` is therefore
-  // valid, and saying so takes a few charCode comparisons instead of a hash
-  // lookup. That matters: this runs once per element, and on a deep tree it is
-  // the most repeated work in the renderer. Every HTML element name qualifies.
-  //
-  // Do NOT widen this scan to digits and `-` to keep `<h1>` or `<my-element>` on
-  // the fast path. It was tried and measured (intra-run, n=8): slower on every
-  // vocabulary — noticeably so on the very web-component names it was meant to
-  // rescue. Leaving the scan on the second character and hitting `VALID_TAGS`
-  // costs less than scanning a nine-character name to the end, because a `Set`
-  // lookup on an interned string is cheap and a per-character test is not. The
-  // memo below is the fast path for those names, not a penalty.
   const len = tag.length;
   if (len === 0) return false;
   let i = 0;
@@ -83,22 +59,12 @@ export function isValidTag(tag: string): boolean {
   }
   if (i === len) return true;
 
-  // Anything else — `<h1>`, custom elements, namespaced names (`svg:rect`),
-  // non-ASCII, a capitalised name arriving through a data-driven tag, anything
-  // invalid — goes here. The regex stays the single authority. Positives are
-  // memoised because the regex is expensive (`\p{C}` under `/u` walks Unicode
-  // tables); negatives are not, because they throw.
   if (VALID_TAGS.has(tag)) return true;
   if (RE_INVALID_TAG.test(tag)) return false;
   if (VALID_TAGS.size < VALID_TAGS_MAX) VALID_TAGS.add(tag);
   return true;
 }
 
-/**
- * The one wording for a rejected tag name. Every path that validates a tag —
- * the static fold and both tree walks — reports it identically, so a developer
- * never has to wonder which renderer they hit.
- */
 export function invalidTagMessage(tag: string): string {
   return (
     `[vincle/core] Invalid tag name ${JSON.stringify(tag)}: a tag name must not be empty, ` +
@@ -116,4 +82,80 @@ export function serializeElement(
     return `<${tag}${attrStr}>`;
   }
   return `<${tag}${attrStr}>${content}</${tag}>`;
+}
+
+// ── Static fold — single-pass subtree pre-render ──────────────────────────
+//
+// `tryRenderStatic` renders an element subtree to a RawString in one traversal:
+// it emits HTML as it walks and bails to `NOT_STATIC` the instant it meets
+// a dynamic node (VNode, Promise, function, or an unfoldable prop). This
+// replaces the old detect-then-render design (`isStaticChild` walk +
+// `renderFlatChildren` walk) — children are traversed once, not twice.
+//
+// The bail is signalled through a `FoldState` object passed by reference rather
+// than a `string | symbol` union return, so `foldChild` stays monomorphic (a
+// union return deoptimises the deep-recursion hot path). The object is allocated
+// once per outermost `tryRenderStatic` call — unlike the previous module-level
+// `let hasDynamic` flag, this design is re-entrant safe: two invocations on the
+// same stack don't share state.
+
+/** Sentinel returned by `tryRenderStatic` when the subtree cannot be folded. */
+export const NOT_STATIC = Symbol("not-static");
+
+interface FoldState {
+  dynamic: boolean;
+}
+
+export function tryRenderStatic(
+  tag: string,
+  props: Record<string, unknown>,
+): RawString | typeof NOT_STATIC {
+  // Validity is checked here and never treated as a bail-out: an invalid name is
+  // an error on every path, not a reason to prefer another one.
+  if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
+
+  // Prop safety — cheap, and bails before touching children when a prop
+  // (style object / class array / dSIH / Promise) forces the dynamic path.
+  for (const key in props) {
+    if (!Object.hasOwn(props, key)) continue;
+    if (key === "children" || key === "key" || key === "ref") continue;
+    const v = props[key];
+    if (key === "dangerouslySetInnerHTML") return NOT_STATIC;
+    if (key === "style" && typeof v === "object" && v !== null && !Array.isArray(v))
+      return NOT_STATIC;
+    if (key === "class" && Array.isArray(v)) return NOT_STATIC;
+    if (v instanceof Promise) return NOT_STATIC;
+  }
+
+  const children = props["children"];
+  const childTag = isRawtextTag(tag) ? tag : undefined;
+
+  const state: FoldState = { dynamic: false };
+  const content = foldChildren(children, childTag, state);
+  if (state.dynamic) return NOT_STATIC;
+
+  const attrStr = buildAttrs(props);
+  return new RawString(serializeElement(tag, attrStr, content, !!children));
+}
+
+function foldChildren(children: unknown, rawtextTag: string | undefined, state: FoldState): string {
+  if (!Array.isArray(children)) return foldChild(children, rawtextTag, state);
+  let out = "";
+  for (let i = 0; i < children.length; i++) {
+    out += foldChild(children[i], rawtextTag, state);
+    if (state.dynamic) return "";
+  }
+  return out;
+}
+
+function foldChild(child: unknown, rawtextTag: string | undefined, state: FoldState): string {
+  if (child === null || child === undefined || typeof child === "boolean") return "";
+  if (typeof child === "string") {
+    return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
+  }
+  if (typeof child === "number") return String(child);
+  if (child instanceof RawString) return child.value;
+  if (Array.isArray(child)) return foldChildren(child, rawtextTag, state);
+  state.dynamic = true;
+  return "";
 }

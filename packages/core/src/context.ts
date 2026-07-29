@@ -10,40 +10,30 @@ export type ContextMap = Map<ContextKey<unknown>, unknown>;
 
 const namedContexts = new Map<string, symbol>();
 
-function createFallbackStore(): {
+// ── Context store interface ──────────────────────────────────────────
+// L'interface isolant le code métier de l'implémentation ALS.
+// `globalThis.AsyncLocalStorage` ou `node:async_hooks` sont tentés
+// séquentiellement ; si aucun n'est disponible, une erreur est levée.
+// Tous les runtimes serveur modernes supportent ALS (Node ≥12.17, Bun, Deno ≥1.11).
+
+interface ContextStore {
   run<T>(ctx: ContextMap, fn: () => Awaitable<T>): Promise<T>;
   getStore(): ContextMap | undefined;
-} {
-  let fallback: ContextMap | undefined;
-  return {
-    run<T>(ctx: ContextMap, fn: () => Awaitable<T>): Promise<T> {
-      const prev = fallback;
-      fallback = ctx;
-      const restore = () => {
-        fallback = prev;
-      };
-      try {
-        const result = fn();
-        if (result instanceof Promise) return result.finally(restore);
-        restore();
-        return Promise.resolve(result);
-      } catch (e) {
-        restore();
-        throw e;
-      }
-    },
-    getStore: () => fallback,
-  };
 }
 
-// ── Context store (lazy init) ───────────────────────────────────────
-// Le store est initialisé au premier appel de `withScope()` pour éviter
-// tout `require()` ou import forcé d'AsyncLocalStorage au module level.
-// - Si le runtime expose ALS globalement (Deno, Node ≥ 22 avec flag) → ALS
-// - Sinon, tentative dynamic import de node:async_hooks (Bun, Node standard)
-// - Sinon → fallback synchrone (store module-level, pas d'isolation async)
-let contextStore: ReturnType<typeof createFallbackStore> | null = null;
+let contextStore: ContextStore | null = null;
 let storeInit: Promise<void> | null = null;
+
+/** Wrap a runtime ALS into our `ContextStore` interface. */
+function wrapALS(als: {
+  run<R>(store: ContextMap, callback: () => R): Promise<R>;
+  getStore(): ContextMap | undefined;
+}): ContextStore {
+  return {
+    run: (ctx, fn) => als.run(ctx, fn) as Promise<unknown> as Promise<any>,
+    getStore: () => als.getStore(),
+  };
+}
 
 async function ensureStore(): Promise<void> {
   if (contextStore) return;
@@ -51,27 +41,27 @@ async function ensureStore(): Promise<void> {
 
   storeInit = (async () => {
     if (typeof (globalThis as any).AsyncLocalStorage !== "undefined") {
-      contextStore = new (globalThis as any).AsyncLocalStorage();
+      contextStore = wrapALS(new (globalThis as any).AsyncLocalStorage());
       return;
     }
     try {
       const { AsyncLocalStorage } = await import("node:async_hooks");
-      contextStore = new AsyncLocalStorage<ContextMap>();
+      contextStore = wrapALS(new AsyncLocalStorage<ContextMap>());
       return;
     } catch {
-      /* ALS pas disponible — fallback */
+      /* ALS pas disponible */
     }
-    console.warn(
-      "[vincle/core] AsyncLocalStorage not available — using synchronous fallback. " +
-        "Concurrent withScope() calls may leak context. See https://vincle.cjean.fr/docs/context#async-local-storage",
+    throw new Error(
+      "[vincle/core] AsyncLocalStorage not available. " +
+        "Use Node ≥12.17, Bun, or Deno ≥1.11. " +
+        "See https://vincle.cjean.fr/docs/context#async-local-storage",
     );
-    contextStore = createFallbackStore();
   })();
 
   return storeInit;
 }
 
-function getStore(): ReturnType<typeof createFallbackStore> {
+function getStore(): ContextStore {
   if (!contextStore)
     throw new Error("[vincle/core] context store not initialized — call withScope first.");
   return contextStore;
@@ -79,19 +69,13 @@ function getStore(): ReturnType<typeof createFallbackStore> {
 
 /**
  * @internal Should only be used in tests — resets storage to force re-init.
- * `forceFallback: true` installs the synchronous fallback store immediately,
- * bypassing auto-detection — used to exercise the fallback path on runtimes
- * (like Bun) where AsyncLocalStorage is otherwise always available.
  */
-export function resetContextStorage(forceFallback?: boolean): void {
-  contextStore = forceFallback ? createFallbackStore() : null;
-  storeInit = forceFallback ? Promise.resolve() : null;
+export function resetContextStorage(): void {
+  contextStore = null;
+  storeInit = null;
 }
 
 function scopeContext(): ContextMap {
-  // Store pas encore initialisé → pas de scope actif. Même erreur que si
-  // le scope existe pas, pour que les tests et les appelants aient un
-  // message stable quel que soit l'ordre d'initialisation.
   const ctx = contextStore?.getStore();
   if (!ctx) {
     throw new Error(
@@ -131,5 +115,9 @@ export function snapshot(): ContextMap {
 
 export async function withScope<T>(fn: () => Awaitable<T>, parentCtx?: ContextMap): Promise<T> {
   await ensureStore();
-  return getStore().run(new Map(parentCtx), fn);
+  // ALS.run renvoie Promise<R> où R est le type de retour du callback.
+  // fn retourne `Awaitable<T>` (= T | Promise<T>), donc TypeScript voit
+  // `Promise<T | Promise<T>>`. À l'exécution JS aplatit le Promise imbriqué,
+  // donc le cast est sûr.
+  return getStore().run(new Map(parentCtx), fn) as Promise<T>;
 }

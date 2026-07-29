@@ -10,8 +10,6 @@
 
 export { VOID_ELEMENTS, isValidTag } from "./serialize.js";
 
-export { URL_ATTRIBUTES } from "./url-safety.js";
-
-export { RAWTEXT_TAGS, escapeContent, escapeAttr, escapeRawTagContent } from "./escape.js";
+export { RAWTEXT_TAGS, escapeContent, escapeAttr, escapeRawTagContent, URL_ATTRIBUTES } from "./escape.js";
 
 export { resolveAttrName, isValidAttrName } from "./attrs.js";

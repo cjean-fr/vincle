@@ -205,9 +205,9 @@ function vincleAsyncTree() {
 // intent: a renamed case is usually a changed case.
 
 const CASES = {
+  async: "async — 10 concurrent async components (vincle only)",
   text: `text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`,
   stack: `stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
-  async: "async — 10 concurrent async components (vincle only)",
   realworld: `realworld — full page, ${PURCHASES.length} purchases (kitajs port)`,
 };
 
@@ -330,5 +330,7 @@ if (asJson) {
       console.log(`  ${name.padEnd(35)} ${fmt(opsPerSec)}  ×${(refOps / opsPerSec).toFixed(2)}`);
     }
   }
-  console.log("\n  One run is not a measurement — use `bun run bench:stats` before claiming a delta.");
+  console.log(
+    "\n  One run is not a measurement — use `bun run bench:stats` before claiming a delta.",
+  );
 }

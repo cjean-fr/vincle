@@ -337,6 +337,79 @@ describe("ReDoS behavioral contract", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Behavioral ReDoS — execute every regex against a pathological input
+// and measure that it completes quickly. Catches regexes that are
+// structurally safe per static analysis but exhibit catastrophic
+// backtracking on crafted inputs (e.g. `/(a|aa)+/` on `"a".repeat(30)+"b"`).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TIMEOUT_MS = 200;
+
+/**
+ * Build a pathological input for a regex.
+ *
+ * Returns an input that nearly matches but fails at the last moment,
+ * triggering the most backtracking the regex supports.
+ */
+function pathologicalInput(entry: RegexEntry): string {
+  switch (entry.id) {
+    // 1–4, 9: character classes without quantifiers — no backtracking possible
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 9:
+      return "";
+    // 5: /^[^\s"'<>/=\p{C}]+$/u — anchored, single char class with `+`.
+    //    50K "a" forces a full scan with no match to fall back to.
+    case 5:
+      return "a".repeat(50_000);
+    // 6: /^[!?]|[\s"'<>/=\x60\\]|\p{C}/u — no quantifiers.
+    //    50K "a" forces scan at every position.
+    case 6:
+      return "a".repeat(50_000);
+    // 7: /^(?:java|vb)script:/i — fixed alternatives, no quantifiers.
+    case 7:
+      return "javascript:alert(1)".repeat(50_000);
+    // 8: /^data:image\/(?:png|jpeg|gif|webp|avif)(?:[;+]|$)/i — fixed.
+    case 8:
+      return "data:image/png;base64,".repeat(50_000);
+    // 10: /<\/(?:script|style|xmp|iframe|noembed|noframes)/gi — fixed.
+    case 10:
+      return "a".repeat(50_000) + "</script>";
+    // 11: /^(\S+)(?:\s+(?:\d+w|\d+(?:\.\d+)?x))?\s*$/ — anchored `\S+` then
+    //    alternation with `\d+`. Pathological: long URL + space + many digits
+    //    + non-matching suffix, forcing `\d+` backtracking inside the
+    //    `\d+(?:\.\d+)?x` branch.
+    case 11:
+      return (
+        "https://example.com/" +
+        " ".repeat(100) +
+        "9".repeat(5_000) +
+        ".5" // causes `\d+` backtracking in \d+(?:\.\d+)?x
+      );
+    default:
+      return "";
+  }
+}
+
+describe("ReDoS behavioral — no catastrophic backtracking", () => {
+  for (const re of ALL_REGEXES) {
+    it(`${re.id}: ${re.file} ${re.name} completes in < ${TIMEOUT_MS}ms`, () => {
+      const input = pathologicalInput(re);
+      if (input.length === 0) return; // trivially safe, skip
+
+      const r = new RegExp(re.pattern, re.flags);
+      const start = performance.now();
+      r.test(input);
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(TIMEOUT_MS);
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Consistency: all 13 regexes are declared and the source files compile
 // ─────────────────────────────────────────────────────────────────────────────
 

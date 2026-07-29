@@ -1,122 +1,34 @@
 ---
-title: ErrorBoundary
+title: Error handling
 sidebar:
-  label: ErrorBoundary
+  label: Error handling
   group: API
   order: 5
 ---
 
-# ErrorBoundary
+# Error handling
 
-Catch rendering errors from child components and display a fallback instead.
-React-style: errors bubble up to the nearest boundary.
+Vincle has no `ErrorBoundary` component. Errors throw or reject bare.
 
-## When to use
+## Rationale
 
-Error boundaries let one part of your page fail without crashing the whole
-render:
+`ErrorBoundary` was removed because server-side rendering is fundamentally
+different from client-side React:
 
-- A side panel that fetches from an unreliable API
-- A user profile whose data might be missing
-- A dashboard with independent widgets
+- **No recovery after output** — once HTML is sent, a boundary can't
+  retroactively replace it. The server's only choice is what to send next.
+- **SSR errors are exceptional** — a server error usually means a 500, not
+  a graceful partial fallback.
+- **Streaming recovery exists** — `@vincle/flow` provides per-fragment
+  `onError` for the streaming case, which is more granular than boundaries.
 
-Without a boundary, any error anywhere in the tree rejects the entire
-`renderToString` promise — you get no HTML at all.
+## Top-level errors
 
-## Import
-
-```tsx
-import { ErrorBoundary } from "@vincle/core";
-```
-
-## Signature
+Wrap `renderToString` in try/catch for a global fallback:
 
 ```tsx
-<ErrorBoundary fallback={(error: unknown) => VNode}>{children}</ErrorBoundary>
-```
+import { renderToString } from "@vincle/core";
 
-`fallback` can be a renderable value (shown directly) or a function that
-receives the caught error and returns any renderable value. When omitted,
-errors propagate to the nearest parent boundary or reject `renderToString`.
-The children that the boundary wraps can be a single element, a component,
-or a fragment.
-
-## Basic usage
-
-```tsx
-const Profile = async ({ id }: { id: string }) => {
-  const user = await db.users.find(id);
-  return <h1>{user.name}</h1>;
-};
-
-const Page = ({ id }: { id: string }) => (
-  <html>
-    <body>
-      <ErrorBoundary fallback={(e) => <p>Failed: {(e as Error).message}</p>}>
-        <Profile id={id} />
-      </ErrorBoundary>
-    </body>
-  </html>
-);
-
-const html = await renderToString(<Page id="42" />);
-// On success:  <html><body><h1>Alice</h1></body></html>
-// On error:    <html><body><p>Failed: not found</p></body></html>
-```
-
-`fallback` replaces the entire boundary content — the children that failed
-are not rendered at all.
-
-## Nested boundaries
-
-Boundaries can be nested. The innermost boundary that catches the error
-renders its fallback. If the fallback itself throws, the error propagates
-to the enclosing boundary.
-
-```tsx
-<ErrorBoundary fallback={() => <p>Widget section unavailable</p>}>
-  <aside>
-    <ErrorBoundary fallback={() => <p>Profile card failed</p>}>
-      <ProfileCard id={id} />
-    </ErrorBoundary>
-    <ErrorBoundary fallback={() => <p>Activity feed failed</p>}>
-      <ActivityFeed id={id} />
-    </ErrorBoundary>
-  </aside>
-</ErrorBoundary>
-```
-
-Each boundary operates independently. A failure in `ProfileCard` renders
-"Profile card failed" but does not affect `ActivityFeed` or the outer
-"Widget section unavailable" fallback.
-
-## Error annotation
-
-When a component throws, Vincle annotates the error message with the
-component's display name:
-
-```tsx
-const Profile = () => {
-  throw new Error("not found");
-};
-await renderToString(
-  <ErrorBoundary fallback={(e) => <p>{(e as Error).message}</p>}>
-    <Profile />
-  </ErrorBoundary>,
-);
-// fallback receives: Error("[Profile] not found")
-```
-
-For function declarations (`function Profile() {}`) the name is inferred
-automatically. For arrow functions assigned to a `const`, use
-`Profile.displayName = "Profile"` to ensure correct annotation.
-
-## Without a boundary
-
-Errors not caught by any `ErrorBoundary` reject the `renderToString`
-promise. Wrap `renderToString` in a try/catch for a global fallback:
-
-```tsx
 try {
   const html = await renderToString(<Page />);
   // send html to client
@@ -126,22 +38,32 @@ try {
 }
 ```
 
-## How it works
+Errors propagate as bare `Error` objects with the component name annotated:
 
-Rendering is **eager** — `jsx()` renders inline to a `RawString` at call
-time. `ErrorBoundary` intercepts errors via an internal error propagation
-mechanism: sync errors thrown during `jsx()` are caught by a symbol-based
-boundary check, and async rejections bubble through the promise chain.
-No descriptor tree is built or walked.
+```tsx
+function Profile() {
+  throw new Error("not found");
+}
 
-`ErrorBoundary` produces no HTML of its own — not even a comment. It is
-identified by an internal symbol, not by the exported name.
-
-## Type signature
-
-```ts
-interface ErrorBoundaryProps {
-  children?: VNode;
-  fallback?: VNode | ((error: unknown) => VNode);
+try {
+  await renderToString(<Profile />);
+} catch (e) {
+  // e.message === "[Profile] not found"
 }
 ```
+
+## Per-fragment errors (streaming)
+
+For streaming renders, `@vincle/flow` provides `onError` on the
+`serve()` options and individual `<Template>`s:
+
+```tsx
+serve(req, () => <Page />, NativeAdapter, {
+  onError: (error, { id, kind }) => {
+    console.error(`Fragment ${id} failed:`, error);
+    return <p>This section failed to load.</p>;
+  },
+});
+```
+
+See the [Flow streaming API](/api/flow/renderToStream) for details.

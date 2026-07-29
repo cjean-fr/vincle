@@ -86,7 +86,7 @@ raw(`<script type="application/ld+json">${JSON.stringify({
         "name": "Can I catch rendering errors without crashing the whole page?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. Vincle provides an ErrorBoundary component that catches errors from child components and renders a fallback instead. Nested boundaries are supported — the innermost one that catches the error handles it. Errors not caught by any boundary reject the renderToString promise. ErrorBoundary is available in @vincle/core."
+          "text": "Vincle removed ErrorBoundary — errors throw or reject bare. Wrap renderToString in try/catch for a global fallback. For streaming, @vincle/flow provides per-fragment onError handlers that let individual sections fail without affecting the rest of the page."
         }
       },
       {
@@ -94,7 +94,7 @@ raw(`<script type="application/ld+json">${JSON.stringify({
         "name": "How do I debug rendering issues?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Vincle logs warnings for common mistakes: invalid tag names, dropped event handler functions, and missing context values. TypeScript catches type errors at build time. When a component throws, the error message is annotated with the component name. For runtime issues, wrap components in try/catch or use ErrorBoundary — onError handlers are available in @vincle/flow for per-fragment error recovery."
+          "text": "Vincle logs warnings for common mistakes: invalid tag names, dropped event handler functions, and missing context values. TypeScript catches type errors at build time. When a component throws, the error message is annotated with the component name. For runtime issues, wrap components in try/catch or use @vincle/flow's onError handlers for per-fragment error recovery."
         }
       }
     ]
@@ -214,21 +214,34 @@ All adapters work in both streaming and static generation modes.
 
 ## Can I catch rendering errors without crashing the whole page?
 
-Yes. Vincle provides an `ErrorBoundary` component that catches errors from
-child components and renders a fallback instead. Nested boundaries are
-supported — the innermost one that catches the error handles it. If the
-fallback itself throws, the error propagates to the enclosing boundary.
+`ErrorBoundary` was removed from `@vincle/core`. Vincle's error model is
+simpler: errors throw or reject bare.
+
+**Top-level**: wrap `renderToString` in try/catch:
 
 ```tsx
-import { ErrorBoundary } from "@vincle/core";
-
-<ErrorBoundary fallback={(e) => <p>Failed: {(e as Error).message}</p>}>
-  <Profile id={id} />
-</ErrorBoundary>;
+try {
+  const html = await renderToString(<Page />);
+  // send html
+} catch (error) {
+  console.error("Render failed:", error);
+  // send a 500
+}
 ```
 
-Errors not caught by any boundary reject the `renderToString` promise.
-See the [ErrorBoundary API](/api/core/error-boundary) page for details.
+**Per-fragment (streaming)**: `@vincle/flow` provides `onError` for
+individual fragments — one section can fail without crashing the page:
+
+```tsx
+serve(req, () => <Page />, NativeAdapter, {
+  onError: (error, { id }) => {
+    console.error(`Fragment ${id} failed:`, error);
+    return <p>This section failed to load.</p>;
+  },
+});
+```
+
+See the [Error handling API](/api/core/error-boundary) page for details.
 
 ## What is the bundle size?
 

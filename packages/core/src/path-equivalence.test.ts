@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { renderToString } from "./create-element.js";
+import { renderToString } from "./render.js";
 import { jsx, Fragment, VNode } from "./jsx-runtime.js";
-import { raw } from "./raw.js";
+import { raw } from "./types.js";
 
 /**
  * Path-equivalence fuzzer — the structural guard for the hybrid model.
@@ -133,11 +133,13 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
 }
 
 describe("path equivalence: fold ≡ tree-walk", () => {
-  test("byte-identical output across 1000 random trees", () => {
+  test("byte-identical output across 1000 random trees", async () => {
     const failures: { seed: number; fold: string; treeWalk: string }[] = [];
     for (let seed = 1; seed <= 1000; seed++) {
-      const fold = renderToString(gen(jsx, mulberry32(seed), 5));
-      const treeWalk = renderToString(gen(vnodeOf, mulberry32(seed), 5));
+      const [fold, treeWalk] = await Promise.all([
+        renderToString(gen(jsx, mulberry32(seed), 5)),
+        renderToString(gen(vnodeOf, mulberry32(seed), 5)),
+      ]);
       if (fold !== treeWalk) failures.push({ seed, fold, treeWalk });
     }
     if (failures.length > 0) {

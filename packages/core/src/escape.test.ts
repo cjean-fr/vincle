@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { escapeContent, escapeAttr, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
+import { escapeContent, escapeAttr, escapeRawTagContent, RAWTEXT_TAGS, isSafeScheme, URL_ATTRIBUTES } from "./escape.js";
 
 // ── escapeContent ────────────────────────────────────────────────────────────
 
@@ -138,5 +138,86 @@ describe("RAWTEXT_TAGS", () => {
 
   test("has exactly 2 entries", () => {
     expect(RAWTEXT_TAGS.size).toBe(2);
+  });
+});
+
+// ── isSafeScheme ───────────────────────────────────────────────────────────
+
+describe("isSafeScheme", () => {
+  test("relative paths: / # ?", () => {
+    expect(isSafeScheme("/page")).toBe(true);
+    expect(isSafeScheme("#section")).toBe(true);
+    expect(isSafeScheme("?query=1")).toBe(true);
+  });
+
+  test("mailto:", () => {
+    expect(isSafeScheme("mailto:user@example.com")).toBe(true);
+  });
+
+  test("http / https", () => {
+    expect(isSafeScheme("http://example.com")).toBe(true);
+    expect(isSafeScheme("https://example.com")).toBe(true);
+    expect(isSafeScheme("HTTP://example.com")).toBe(true);
+  });
+
+  test("blocks javascript:", () => {
+    expect(isSafeScheme("javascript:alert(1)")).toBe(false);
+    expect(isSafeScheme("JAVASCRIPT:alert(1)")).toBe(false);
+    expect(isSafeScheme(" javascript:alert(1)")).toBe(false);
+    expect(isSafeScheme("javascript:")).toBe(false);
+  });
+
+  test("blocks vbscript:", () => {
+    expect(isSafeScheme("vbscript:msgbox(1)")).toBe(false);
+    expect(isSafeScheme("VBSCRIPT:msgbox(1)")).toBe(false);
+  });
+
+  test("data:image allowed", () => {
+    expect(isSafeScheme("data:image/png;base64,abc")).toBe(true);
+    expect(isSafeScheme("data:image/jpeg;base64,xyz")).toBe(true);
+    expect(isSafeScheme("data:image/gif;base64,xyz")).toBe(true);
+    expect(isSafeScheme("data:image/webp;base64,xyz")).toBe(true);
+    expect(isSafeScheme("data:image/avif;base64,xyz")).toBe(true);
+  });
+
+  test("non-image data: blocked", () => {
+    expect(isSafeScheme("data:text/html,<script>alert(1)</script>")).toBe(false);
+  });
+
+  test("no scheme — safe", () => {
+    expect(isSafeScheme("example.com")).toBe(true);
+    expect(isSafeScheme("local")).toBe(true);
+  });
+
+  test("empty or whitespace", () => {
+    expect(isSafeScheme("")).toBe(true);
+    expect(isSafeScheme("  ")).toBe(true);
+  });
+
+  test("non-ASCII scheme characters blocked", () => {
+    expect(isSafeScheme("écho:test")).toBe(false);
+  });
+});
+
+// ── URL_ATTRIBUTES ─────────────────────────────────────────────────────────
+
+describe("URL_ATTRIBUTES", () => {
+  test("contains href, src, action, formaction, xlink:href", () => {
+    expect(URL_ATTRIBUTES.has("href")).toBe(true);
+    expect(URL_ATTRIBUTES.has("src")).toBe(true);
+    expect(URL_ATTRIBUTES.has("action")).toBe(true);
+    expect(URL_ATTRIBUTES.has("formaction")).toBe(true);
+    expect(URL_ATTRIBUTES.has("xlink:href")).toBe(true);
+  });
+
+  test("does not contain non-URL attributes", () => {
+    expect(URL_ATTRIBUTES.has("id")).toBe(false);
+    expect(URL_ATTRIBUTES.has("class")).toBe(false);
+    expect(URL_ATTRIBUTES.has("style")).toBe(false);
+    expect(URL_ATTRIBUTES.has("srcset")).toBe(false);
+  });
+
+  test("has exactly 5 entries", () => {
+    expect(URL_ATTRIBUTES.size).toBe(5);
   });
 });

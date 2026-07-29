@@ -1,9 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { renderToString } from "./create-element-async.js";
+import { renderToString, renderToChunks } from "./render.js";
 import { Fragment, jsx, VNode } from "./jsx-runtime.js";
-import { raw } from "./raw.js";
-import { renderToChunks } from "./render-chunks.js";
+import { raw } from "./types.js";
 
 async function collect(node: unknown): Promise<string[]> {
   const chunks: string[] = [];

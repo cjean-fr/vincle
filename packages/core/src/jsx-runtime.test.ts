@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { renderToString } from "./create-element.js";
+import { renderToString } from "./render.js";
 import { jsx, jsxAttr, Fragment, VNode } from "./jsx-runtime.js";
-import { RawString } from "./raw.js";
+import { RawString } from "./types.js";
 
 // The hybrid model folds fully-static subtrees to a RawString at jsx() time;
 // anything dynamic (component, style object, class array, dSIH, promise or
@@ -10,37 +10,37 @@ import { RawString } from "./raw.js";
 // fold contract via the return type of jsx() plus the rendered markup.
 
 describe("static subtree fold", () => {
-  test("simple static div with text child folds to RawString", () => {
+  test("simple static div with text child folds to RawString", async () => {
     const node = jsx("div", { class: "foo", children: "hello" });
     expect(node).toBeInstanceOf(RawString);
-    expect(renderToString(node)).toBe('<div class="foo">hello</div>');
+    expect(await renderToString(node)).toBe('<div class="foo">hello</div>');
   });
 
-  test("static div with number child folds", () => {
+  test("static div with number child folds", async () => {
     const node = jsx("span", { children: 42 });
     expect(node).toBeInstanceOf(RawString);
-    expect(renderToString(node)).toBe("<span>42</span>");
+    expect(await renderToString(node)).toBe("<span>42</span>");
   });
 
-  test("void element folds", () => {
+  test("void element folds", async () => {
     const br = jsx("br", {});
     expect(br).toBeInstanceOf(RawString);
-    expect(renderToString(br)).toBe("<br>");
+    expect(await renderToString(br)).toBe("<br>");
   });
 
-  test("nested static elements fold", () => {
+  test("nested static elements fold", async () => {
     const inner = jsx("span", { class: "inner", children: "text" });
     const outer = jsx("div", { class: "outer", children: inner });
     expect(inner).toBeInstanceOf(RawString);
     expect(outer).toBeInstanceOf(RawString);
-    expect(renderToString(outer)).toBe('<div class="outer"><span class="inner">text</span></div>');
+    expect(await renderToString(outer)).toBe('<div class="outer"><span class="inner">text</span></div>');
   });
 
-  test("static element with array children folds", () => {
+  test("static element with array children folds", async () => {
     const items = [jsx("li", { key: "1", children: "a" }), jsx("li", { key: "2", children: "b" })];
     const ul = jsx("ul", { children: items });
     expect(ul).toBeInstanceOf(RawString);
-    expect(renderToString(ul)).toBe("<ul><li>a</li><li>b</li></ul>");
+    expect(await renderToString(ul)).toBe("<ul><li>a</li><li>b</li></ul>");
   });
 
   test("component is NOT folded (stays a VNode)", () => {
@@ -64,10 +64,10 @@ describe("static subtree fold", () => {
     expect(node).toBeInstanceOf(VNode);
   });
 
-  test("rawtext tag still folds", () => {
+  test("rawtext tag still folds", async () => {
     const node = jsx("script", { children: "const x = 1;" });
     expect(node).toBeInstanceOf(RawString);
-    expect(renderToString(node)).toBe("<script>const x = 1;</script>");
+    expect(await renderToString(node)).toBe("<script>const x = 1;</script>");
   });
 
   test("promise child is NOT folded", () => {
@@ -80,22 +80,22 @@ describe("static subtree fold", () => {
     expect(node).toBeInstanceOf(VNode);
   });
 
-  test("fragment with array children renders correctly", () => {
+  test("fragment with array children renders correctly", async () => {
     const frag = jsx(Fragment, {
       children: [jsx("div", { children: "a" }), jsx("span", { children: "b" })],
     });
     const wrapper = jsx("div", { children: frag });
-    expect(renderToString(wrapper)).toBe("<div><div>a</div><span>b</span></div>");
+    expect(await renderToString(wrapper)).toBe("<div><div>a</div><span>b</span></div>");
   });
 
-  test("escaping still works", () => {
+  test("escaping still works", async () => {
     const node = jsx("div", { children: "<script>alert(1)</script>" });
-    expect(renderToString(node)).toBe("<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>");
+    expect(await renderToString(node)).toBe("<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>");
   });
 
-  test("attribute escaping", () => {
+  test("attribute escaping", async () => {
     const node = jsx("div", { title: 'hello "world" & friends' });
-    expect(renderToString(node)).toBe('<div title="hello &quot;world&quot; &amp; friends"></div>');
+    expect(await renderToString(node)).toBe('<div title="hello &quot;world&quot; &amp; friends"></div>');
   });
 
   test("fragment (function tag) is NOT folded", () => {

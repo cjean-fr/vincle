@@ -1,16 +1,7 @@
-import type { RawString } from "./raw.js";
-
-import { jsx, Fragment, VNode } from "./jsx-runtime.js";
-
-function jsxDEV(
-  tag: string | ((props: any) => any),
-  attributes: Record<string, unknown> | null,
-  _key?: string | null,
-  _isStaticChildren?: boolean,
-  _source?: { fileName: string; lineNumber: number },
-  _self?: unknown,
-): VNode | RawString {
-  return jsx(tag, attributes);
-}
-
-export { jsxDEV, jsxDEV as jsx, jsxDEV as jsxs, Fragment, VNode };
+/**
+ * JSX dev runtime — porte vers `jsx-runtime`.
+ * Le transform `react-jsxdev` importe ce module en mode développement.
+ * Tous les paramètres dev (`_key`, `_isStaticChildren`, `_source`, `_self`)
+ * sont ignorés : le comportement est identique à `jsx`.
+ */
+export { jsx as jsxDEV, Fragment, VNode } from "./jsx-runtime.js";

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildAttrs } from "./attrs.js";
-import { raw } from "./raw.js";
+import { raw } from "./types.js";
 
 describe("buildAttrs URL safety", () => {
   test("blocks javascript: href", () => {

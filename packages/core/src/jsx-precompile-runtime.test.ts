@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { jsxTemplate, jsxAttr, jsxEscape } from "./jsx-precompile-runtime.js";
-import { raw, RawString } from "./raw.js";
+import { raw, RawString } from "./types.js";
 
 describe("jsxTemplate", () => {
   test("static template", () => {

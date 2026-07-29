@@ -45,9 +45,8 @@ without it.
 | Export                            | Purpose                                   |
 | --------------------------------- | ----------------------------------------- |
 | `renderToString(node)`            | Renders a JSX tree to an HTML string      |
-| `render(node)`                    | Low-level render, returns `VNode`         |
+| `renderToChunks(node)`            | Renders to string chunks (streaming)      |
 | `raw(str)`                        | Marks a trusted HTML string (no escaping) |
-| `ErrorBoundary`                   | Catch rendering errors with a fallback    |
 | `Fragment`                        | Standard JSX fragment (`<>…</>`)          |
 | `context`, `setContext`           | Scoped context for per-request isolation  |
 | `useContext`, `withScope`         | ...                                       |

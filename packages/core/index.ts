@@ -9,8 +9,7 @@
 
 // ── Renderers ─────────────────────────────────────────────────────────────
 
-export { renderToString } from "./src/create-element-async.js";
-export { renderToChunks } from "./src/render-chunks.js";
+export { renderToString, renderToChunks } from "./src/render.js";
 
 // ── JSX runtime ────────────────────────────────────────────────────────────
 
@@ -30,8 +29,8 @@ export type { ContextKey, ContextMap } from "./src/context.js";
 
 // ── Trusted HTML ───────────────────────────────────────────────────────────
 
-export { raw, RawString } from "./src/raw.js";
-export type { RawString as RawStringType } from "./src/raw.js";
+export { raw } from "./src/types.js";
+export type { RawString } from "./src/types.js";
 
 // ── JSX namespace for react-jsx transform ──────────────────────────────────
 //
@@ -43,7 +42,7 @@ export type { RawString as RawStringType } from "./src/raw.js";
 // `import { type JSX } from "@vincle/core"` (used by @vincle/flow).
 
 import type { VNode } from "./src/jsx-runtime.js";
-import type { RawString } from "./src/raw.js";
+import type { RawString } from "./src/types.js";
 import type { Awaitable, Renderable } from "./src/types.js";
 
 // `RawString` is a first-class renderable leaf (see `renderNode` in
@@ -84,7 +83,7 @@ export namespace JSX {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type { CSSProperties } from "./src/types-jsx.js";
+export type { CSSProperties } from "./src/types.js";
 export type { Awaitable, Renderable } from "./src/types.js";
 
 /** @internal Resolved VNode — same as VNode, used by @vincle/flow types. */

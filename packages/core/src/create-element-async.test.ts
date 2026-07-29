@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { renderToString } from "./create-element-async.js";
+import { renderToString } from "./render.js";
 import { jsx, Fragment } from "./jsx-runtime.js";
 
 describe("renderToString (async)", () => {

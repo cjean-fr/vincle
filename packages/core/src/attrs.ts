@@ -1,13 +1,18 @@
-import { escapeAttr } from "./escape.js";
-import { RawString } from "./raw.js";
-import { URL_ATTRIBUTES, isSafeScheme } from "./url-safety.js";
+import { escapeAttr, URL_ATTRIBUTES, isSafeScheme } from "./escape.js";
+import { RawString } from "./types.js";
 
 // ── React → HTML attribute name resolution ──────────────────────────
 // Switch over Map.get: JSC compiles string switches to a jump table / trie,
 // ~25% faster than Map.get (0.095 vs 0.128 µs per lookup, measured on JSC FTL).
+//
+// The default lowercases — HTML attrs are case-insensitive, and URL attrs
+// (href, src, etc.) must be normalized for safety checks.
+// SVG/MathML attrs are case-sensitive; the ones that differ from their
+// lowercased form are listed explicitly so they survive unchanged.
 
 export function resolveAttrName(key: string): string {
   switch (key) {
+    // ── React → HTML aliases ──
     case "className":
       return "class";
     case "htmlFor":
@@ -48,6 +53,40 @@ export function resolveAttrName(key: string): string {
       return "datetime";
     case "srcSet":
       return "srcset";
+    // ── SVG case-sensitive attributes ──
+    // Foreign content parsing preserves case. Listed explicitly so `default`
+    // can safely lowercase everything else for HTML.
+    case "viewBox":
+    case "clipPathUnits":
+    case "gradientUnits":
+    case "baseFrequency":
+    case "numOctaves":
+    case "stdDeviation":
+    case "calcMode":
+    case "repeatCount":
+    case "repeatDur":
+    case "pathLength":
+    case "tableValues":
+    case "maskUnits":
+    case "markerWidth":
+    case "markerHeight":
+    case "markerUnits":
+    case "patternUnits":
+    case "patternContentUnits":
+    case "primitiveUnits":
+    case "filterUnits":
+    case "spreadMethod":
+    case "edgeMode":
+    case "kernelMatrix":
+    case "surfaceScale":
+    case "diffuseConstant":
+    case "specularConstant":
+    case "specularExponent":
+    case "limitingConeAngle":
+    case "stitchTiles":
+    case "preserveAlpha":
+    case "preserveAspectRatio":
+      return key;
     default:
       return key.toLowerCase();
   }
@@ -113,8 +152,6 @@ export function isValidAttrName(name: string): boolean {
 interface AttrMeta {
   /** Resolved HTML name (`className` → `class`). */
   readonly name: string;
-  /** Whether resolution renamed the key — gates the "alias also present" check. */
-  readonly renamed: boolean;
   readonly valid: boolean;
   readonly isUrl: boolean;
 }
@@ -128,9 +165,8 @@ const ATTR_META_MAX = 1024;
 function attrMeta(key: string): AttrMeta {
   let meta = ATTR_META.get(key);
   if (meta === undefined) {
-    const renamed = RE_HAS_UPPER.test(key);
-    const name = renamed ? resolveAttrName(key) : key;
-    meta = { name, renamed, valid: isValidAttrName(name), isUrl: URL_ATTRIBUTES.has(name) };
+    const name = RE_HAS_UPPER.test(key) ? resolveAttrName(key) : key;
+    meta = { name, valid: isValidAttrName(name), isUrl: URL_ATTRIBUTES.has(name) };
     if (ATTR_META.size < ATTR_META_MAX) ATTR_META.set(key, meta);
   }
   return meta;
@@ -162,7 +198,9 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
     // Nom résolu + validité + nature URL : un seul lookup mémoïsé (cf. attrMeta).
     const meta = attrMeta(key);
     const attrName = meta.name;
-    if (meta.renamed && attrName in attrs) continue;
+    // Si la clé est un alias React (className → class) et que la version
+    // native est déjà dans les props, on garde la native.
+    if (attrName !== key && attrName in attrs) continue;
 
     const value = attrs[key];
     if (value === null || value === undefined) continue;
