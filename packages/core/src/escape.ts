@@ -30,6 +30,19 @@ export function escapeContent(str: string): string {
 
 export const RAWTEXT_TAGS = new Set(["script", "style"]);
 
+/**
+ * Does this tag hold rawtext (`<script>` / `<style>`)?
+ *
+ * Two literal comparisons rather than `RAWTEXT_TAGS.has(tag)`. The set has two
+ * members, tag names arrive interned from the JSX transform, and this runs once
+ * per element — on the `stack` benchmark a single per-element `Set.has` is worth
+ * ~15%, which is what pays for tag-name validation on the same path.
+ * `RAWTEXT_TAGS` remains the source of truth for everything else.
+ */
+export function isRawtextTag(tag: string): boolean {
+  return tag === "script" || tag === "style";
+}
+
 // Two regexes per rawtext tag: a non-global matcher for the common
 // "no close tag present" fast path (one scan, no allocation), and a global
 // one used only to iterate matches once at least one close tag is present.

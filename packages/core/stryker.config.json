@@ -15,7 +15,7 @@
     "src/serialize.ts",
     "src/static-render.ts",
     "src/url-safety.ts",
-    "src/index.ts",
+    "src/render-chunks.ts",
     "src/jsx-runtime.ts",
     "src/jsx-dev-runtime.ts",
     "src/jsx-precompile-runtime.ts"

@@ -6,6 +6,7 @@ import type { FlowContext } from "./context.js";
 import type { FlowEvent } from "./types.js";
 
 import { NativeAdapter, TurboAdapter } from "./adapters/index.js";
+import { Style } from "./components/assets.js";
 import { renderToStream, Template } from "./index.js";
 import { renderToFlowEvents, renderShell, runSequence } from "./render.js";
 import { collectEvents, collect, type FragmentEvent } from "./test-utils.js";
@@ -375,5 +376,193 @@ describe("edge cases — render pipeline", () => {
         expect(i).toBeLessThan(closeIdx);
       }
     });
+  });
+});
+
+/**
+ * The shell is a page, not a payload.
+ *
+ * Everything below asserts on *timing*, not just on final bytes: a buffered
+ * implementation passes any test that only checks the concatenated output. The
+ * question these ask is whether the `<head>` reaches the client while a slow
+ * component in the `<body>` is still pending.
+ */
+describe("shell streaming", () => {
+  const gate = () => {
+    let open!: () => void;
+    const promise = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    return { promise, open };
+  };
+
+  it("emits the head before a slow body component settles", async () => {
+    const g = gate();
+    const Slow = async () => {
+      await g.promise;
+      return <p>late</p>;
+    };
+
+    const reader = renderToFlowEvents(
+      () => (
+        <html>
+          <head>
+            <title>T</title>
+          </head>
+          <body>
+            <Slow />
+          </body>
+        </html>
+      ),
+      TurboAdapter,
+    ).getReader();
+
+    const first = await reader.read();
+    expect(first.value).toEqual({
+      type: "shell",
+      html: "<html><head><title>T</title></head><body>",
+    });
+
+    g.open();
+    const rest: FlowEvent[] = [];
+    for (;;) {
+      const next = await reader.read();
+      if (next.done) break;
+      rest.push(next.value);
+    }
+    expect(rest.map((e) => e.html).join("")).toBe("<p>late</p></body></html>");
+  });
+
+  it("splits the shell into one event per suspension, and no more", async () => {
+    const Slow = async (props: { n: number }) => <i>{props.n}</i>;
+    const events = await collectEvents(
+      renderToFlowEvents(
+        () => (
+          <html>
+            <body>
+              <p>a</p>
+              <Slow n={1} />
+              <p>b</p>
+              <Slow n={2} />
+            </body>
+          </html>
+        ),
+        TurboAdapter,
+      ),
+    );
+    expect(events.filter((e) => e.type === "shell").map((e) => e.html)).toEqual([
+      "<html><body><p>a</p>",
+      "<i>1</i><p>b</p>",
+      "<i>2</i>",
+    ]);
+  });
+
+  it("a fully synchronous shell is still a single event", async () => {
+    const events = await collectEvents(
+      renderToFlowEvents(
+        () => (
+          <html>
+            <body>
+              <p>sync</p>
+            </body>
+          </html>
+        ),
+        TurboAdapter,
+      ),
+    );
+    expect(events.filter((e) => e.type === "shell")).toHaveLength(1);
+  });
+
+  it("the closing tag is still split off, whichever chunk it lands in", async () => {
+    const Slow = async () => <p>x</p>;
+    const events = await collectEvents(
+      renderToFlowEvents(
+        () => (
+          <html>
+            <body>
+              <Slow />
+            </body>
+          </html>
+        ),
+        TurboAdapter,
+      ),
+    );
+    expect(events.at(-1)).toEqual({ type: "close", html: "</body></html>" });
+    expect(events.map((e) => e.html).join("")).toBe("<html><body><p>x</p></body></html>");
+  });
+
+  it("streamed bytes are identical to the buffered ones", async () => {
+    const Slow = async (props: { n: number }) => <li>{props.n}</li>;
+    const page = () => (
+      <html>
+        <head>
+          <title>Same</title>
+        </head>
+        <body>
+          <ul>
+            <Slow n={1} />
+            <Slow n={2} />
+          </ul>
+        </body>
+      </html>
+    );
+    const streamed = await collect(renderToStream(page, TurboAdapter));
+    const buffered = await renderShell(page, {}, FAKE_CTX);
+    expect(streamed).toBe(buffered.shellBody + "\n" + buffered.closingTag + "\n");
+  });
+
+  /**
+   * `withPolyfill` decides from `ctx.templateStore.size`, which is only final
+   * once the body has rendered — it cannot be applied to a prefix. Declaring a
+   * `transformShell` is therefore an opt-out, and it has to stay an opt-out:
+   * streaming such an adapter would silently drop its transform.
+   */
+  it("an adapter with transformShell buffers instead, and keeps its transform", async () => {
+    const Slow = async () => <p>late</p>;
+    const events = await collectEvents(
+      renderToFlowEvents(
+        () => (
+          <html>
+            <head></head>
+            <body>
+              <Slow />
+              <Template target="d">
+                <span>d</span>
+              </Template>
+            </body>
+          </html>
+        ),
+        NativeAdapter,
+      ),
+    );
+    const shells = events.filter((e) => e.type === "shell");
+    expect(shells).toHaveLength(1);
+    expect(shells[0]!.html).toContain("MutationObserver");
+  });
+
+  /**
+   * Asset markers are emitted by a single `raw()` node, so they land in the
+   * pending buffer whole and a chunk boundary can never fall inside one. This
+   * pins that invariant: break it and the marker leaks into the HTML verbatim.
+   */
+  it("resolves asset markers that sit between two suspension points", async () => {
+    const Slow = async () => <p>late</p>;
+    const html = await collect(
+      renderToStream(
+        () => (
+          <html>
+            <head>
+              <Style name="t">{"body{color:red}"}</Style>
+            </head>
+            <body>
+              <Slow />
+            </body>
+          </html>
+        ),
+        TurboAdapter,
+      ),
+    );
+    expect(html).toContain('<style data-name="t">body{color:red}</style>');
+    expect(html).not.toContain("vincle:style");
   });
 });

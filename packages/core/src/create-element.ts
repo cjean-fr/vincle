@@ -1,8 +1,8 @@
 import { buildAttrs } from "./attrs.js";
-import { escapeContent, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
+import { escapeContent, escapeRawTagContent, isRawtextTag } from "./escape.js";
 import { VNode } from "./jsx-runtime.js";
 import { RawString } from "./raw.js";
-import { serializeElement, isValidTag } from "./serialize.js";
+import { invalidTagMessage, isValidTag, serializeElement } from "./serialize.js";
 
 export function renderToString(node: unknown): string {
   return renderNode(node);
@@ -31,19 +31,10 @@ function renderNode(vnode: unknown): string {
 
   const { tag, attrs, children } = vnode;
 
-  if (!isValidTag(tag)) {
-    throw new TypeError(
-      `[core-next] Invalid tag name ${JSON.stringify(tag)}: a tag name must not be empty, ` +
-        'start with "!" or "?", or contain whitespace, control characters, or any of " \' < > / = ` \\.',
-    );
-  }
-
-  if (tag === "Fragment") {
-    return children !== undefined ? renderChildren(children) : "";
-  }
+  if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
 
   const attrStr = buildAttrs(attrs);
-  const childTag = RAWTEXT_TAGS.has(tag) ? tag : undefined;
+  const childTag = isRawtextTag(tag) ? tag : undefined;
   const content = children !== undefined ? renderChildren(children, childTag) : "";
   return serializeElement(tag, attrStr, content, !!children);
 }
@@ -69,5 +60,3 @@ function renderChildren(children: unknown, rawtextTag?: string): string {
   }
   return out;
 }
-
-

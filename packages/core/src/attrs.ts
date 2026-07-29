@@ -96,6 +96,46 @@ export function isValidAttrName(name: string): boolean {
   return !RE_INVALID_ATTR_NAME.test(name);
 }
 
+// ── Attribute name resolution cache ─────────────────────────────────
+//
+// Resolving one attribute name means four independent lookups — the React
+// alias gate, the alias table, the validity regex, and the URL-attribute set —
+// and all four depend only on the *key*, never on the value. Since a codebase
+// draws its attribute names from a small closed vocabulary (`class`, `id`,
+// `href`, `data-*`, `aria-*`), the same four answers get recomputed on every
+// single element.
+//
+// Caching them collapses the four into one Map hit. The regex is what makes
+// this worth doing: `\p{C}` under `/u` forces Unicode table lookups, and it
+// alone accounts for a third of buildAttrs (measured: 176 µs → 116 µs when
+// removed, over 2000 calls). The cache recovers most of that — 176 µs → 125 µs
+// — while keeping the regex as the single authority on validity.
+interface AttrMeta {
+  /** Resolved HTML name (`className` → `class`). */
+  readonly name: string;
+  /** Whether resolution renamed the key — gates the "alias also present" check. */
+  readonly renamed: boolean;
+  readonly valid: boolean;
+  readonly isUrl: boolean;
+}
+
+const ATTR_META = new Map<string, AttrMeta>();
+
+// Keys can come from a caller-controlled `{...spread}`, so the cache must not
+// grow without bound. Past the cap, resolution still happens — just uncached.
+const ATTR_META_MAX = 1024;
+
+function attrMeta(key: string): AttrMeta {
+  let meta = ATTR_META.get(key);
+  if (meta === undefined) {
+    const renamed = RE_HAS_UPPER.test(key);
+    const name = renamed ? resolveAttrName(key) : key;
+    meta = { name, renamed, valid: isValidAttrName(name), isUrl: URL_ATTRIBUTES.has(name) };
+    if (ATTR_META.size < ATTR_META_MAX) ATTR_META.set(key, meta);
+  }
+  return meta;
+}
+
 // Style camelCase → kebab regex (module-level, compiled once)
 const RE_STYLE_CAMEL = /[A-Z]/g;
 
@@ -119,15 +159,14 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
     // ── Phase 1 : Normaliser (skip réservés, résout React→HTML) ──
     if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
       continue;
-    let attrName = key;
-    if (RE_HAS_UPPER.test(key)) {
-      attrName = resolveAttrName(key);
-      if (attrName in attrs) continue;
-    }
+    // Nom résolu + validité + nature URL : un seul lookup mémoïsé (cf. attrMeta).
+    const meta = attrMeta(key);
+    const attrName = meta.name;
+    if (meta.renamed && attrName in attrs) continue;
 
     const value = attrs[key];
     if (value === null || value === undefined) continue;
-    if (RE_INVALID_ATTR_NAME.test(attrName)) continue;
+    if (!meta.valid) continue;
 
     // ── Phase 2 : Sérialiser par type (string = hot path) ──
     const type = typeof value;
@@ -135,7 +174,7 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
     // String — dominant case, coercion-free
     if (type === "string") {
       let str = value as string;
-      if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) str = "#blocked";
+      if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
       out += ` ${attrName}="${escapeAttr(str)}"`;
       continue;
     }
@@ -187,7 +226,7 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
 
     // Fallback — tout objet avec toString
     let str = String(value);
-    if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) str = "#blocked";
+    if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
     out += ` ${attrName}="${escapeAttr(str)}"`;
   }
 

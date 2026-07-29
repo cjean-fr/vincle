@@ -81,7 +81,7 @@ describe("static subtree fold", () => {
   });
 
   test("fragment with array children renders correctly", () => {
-    const frag = jsx(Fragment as any, {
+    const frag = jsx(Fragment, {
       children: [jsx("div", { children: "a" }), jsx("span", { children: "b" })],
     });
     const wrapper = jsx("div", { children: frag });
@@ -99,7 +99,7 @@ describe("static subtree fold", () => {
   });
 
   test("fragment (function tag) is NOT folded", () => {
-    const node = jsx(Fragment as any, { children: [jsx("div", {})] });
+    const node = jsx(Fragment, { children: [jsx("div", {})] });
     expect(node).toBeInstanceOf(VNode);
   });
 });

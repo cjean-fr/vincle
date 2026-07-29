@@ -1,5 +1,7 @@
+import type { Renderable } from "./types.js";
+
 import { jsxAttr, jsxEscape, jsxTemplate } from "./jsx-precompile-runtime.js";
-import { raw } from "./raw.js";
+import { raw, RawString } from "./raw.js";
 import { tryRenderStatic, NOT_STATIC } from "./static-render.js";
 
 class VNode {
@@ -25,15 +27,19 @@ class VNode {
 // (component, VNode child, Promise, function, or an unfoldable prop), and we
 // fall through to a VNode for the tree-walk renderer.
 
+// The return type says `VNode | RawString` because that is what happens: a
+// folded element *is* a RawString, and claiming otherwise only bought a cast.
+// `RawString` is a first-class renderable leaf, so it belongs in the signature
+// (same reasoning as `JSX.Element` in index.ts).
 function jsx(
   tag: string | ((props: any) => any),
   attributes: Record<string, unknown> | null,
-): VNode {
+): VNode | RawString {
   const props = attributes ?? {};
 
   if (typeof tag === "string") {
     const folded = tryRenderStatic(tag, props);
-    if (folded !== NOT_STATIC) return folded as unknown as VNode;
+    if (folded !== NOT_STATIC) return folded;
   }
 
   // Dynamic path: create VNode for tree-walk rendering
@@ -46,8 +52,11 @@ function jsx(
 
 const jsxs = jsx;
 
-function Fragment({ children }: { children?: unknown }): VNode {
-  return children as unknown as VNode;
+// A fragment renders its children and disappears. Saying so needs no cast: what
+// comes in is renderable, what goes out is the same thing. `JSX.ElementType`
+// (index.ts) is what lets TypeScript accept a component typed this way.
+function Fragment({ children }: { children?: Renderable }): Renderable {
+  return children;
 }
 
 export { jsx, jsxs, jsxAttr, jsxEscape, jsxTemplate, Fragment, VNode };

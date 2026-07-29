@@ -70,6 +70,48 @@ describe("FoldState re-entrancy", () => {
   });
 });
 
+/**
+ * Tag validation is not the tree walk's private business.
+ *
+ * The fold used to call `serializeElement(tag, …)` without ever checking the
+ * name, so a static subtree under a caller-supplied tag went out as raw HTML
+ * while the exact same tree on the VNode path threw. That gap was a way around
+ * the check, not a mere inconsistency: a name carrying a space or a quote closes
+ * the start tag, and everything after it becomes markup.
+ */
+describe("tag validation — the fold is held to the same rule as the tree walk", () => {
+  const INVALID = [
+    "div onload=alert(1)",
+    'div"',
+    "div>",
+    "div<script",
+    "div/",
+    "div=",
+    "",
+    "!doctype",
+    "?xml",
+    "div ",
+  ];
+
+  for (const tag of INVALID) {
+    test(`rejects ${JSON.stringify(tag)} instead of folding it`, () => {
+      expect(() => tryRenderStatic(tag, { children: "hello" })).toThrow(
+        /\[vincle\/core\] Invalid tag name/,
+      );
+    });
+  }
+
+  test("the rejection quotes the offending tag verbatim", () => {
+    expect(() => tryRenderStatic("div onload=x", {})).toThrow('Invalid tag name "div onload=x"');
+  });
+
+  test("legitimate names still fold", () => {
+    for (const tag of ["div", "my-element", "svg:rect", "h1", "data-x"]) {
+      expect(tryRenderStatic(tag, { children: "ok" })).toBeInstanceOf(RawString);
+    }
+  });
+});
+
 describe("sequential calls isolation", () => {
   test("dynamic puis static", () => {
     expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBe(NOT_STATIC);

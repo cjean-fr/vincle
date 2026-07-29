@@ -4,11 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "bench": "NODE_ENV=production bun run src/bench.js",
-    "bench:ci": "mkdir -p results && NODE_ENV=production bun run src/bench.js | tee results/benchmark.txt",
-    "bench:js": "NODE_ENV=production bun run src/bench.js",
-    "bench:js:ci": "mkdir -p results && NODE_ENV=production bun run src/bench.js | tee results/benchmark-js.txt",
-    "format": "oxfmt"
+    "bench": "NODE_ENV=production bun --conditions=dist run src/bench.js",
+    "bench:ci": "mkdir -p results && NODE_ENV=production bun --conditions=dist run src/bench.js | tee results/benchmark.txt",
+    "format": "oxfmt",
+    "bench:stats": "bun --conditions=dist run src/stats.js"
   },
   "dependencies": {
     "@kitajs/html": "^5.0.0-next.1",

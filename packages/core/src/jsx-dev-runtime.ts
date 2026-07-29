@@ -1,3 +1,5 @@
+import type { RawString } from "./raw.js";
+
 import { jsx, Fragment, VNode } from "./jsx-runtime.js";
 
 function jsxDEV(
@@ -7,7 +9,7 @@ function jsxDEV(
   _isStaticChildren?: boolean,
   _source?: { fileName: string; lineNumber: number },
   _self?: unknown,
-): VNode {
+): VNode | RawString {
   return jsx(tag, attributes);
 }
 

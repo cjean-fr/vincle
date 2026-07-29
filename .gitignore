@@ -46,3 +46,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 
 playground
+
+# Benchmark baselines — machine- and moment-specific by nature. Comparing a
+# baseline recorded elsewhere is the measurement error ADR-003 exists to stop.
+apps/bench/results/*.json

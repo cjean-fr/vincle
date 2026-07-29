@@ -198,10 +198,22 @@ function vincleAsyncTree() {
 // ---------------------------------------------------------------------------
 // Benchmark groups
 // ---------------------------------------------------------------------------
+//
+// Each case is named once, here. The short key is what `stats.js` aggregates
+// across runs and what a saved baseline is keyed on, so renaming a case
+// deliberately invalidates comparisons against older baselines — which is the
+// intent: a renamed case is usually a changed case.
+
+const CASES = {
+  text: `text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`,
+  stack: `stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
+  async: "async — 10 concurrent async components (vincle only)",
+  realworld: `realworld — full page, ${PURCHASES.length} purchases (kitajs port)`,
+};
 
 // --- Text ---
 
-group(`text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`, () => {
+group(CASES.text, () => {
   bench("@vincle/core", async () => {
     await renderToString(textAppVincle());
   });
@@ -221,7 +233,7 @@ group(`text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`, () => {
 
 // --- Stack ---
 
-group(`stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`, () => {
+group(CASES.stack, () => {
   bench("@vincle/core", async () => {
     await renderToString(stackAppVincle());
   });
@@ -241,7 +253,7 @@ group(`stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)
 
 // --- Async ---
 
-group("async — 10 concurrent async components (vincle only)", () => {
+group(CASES.async, () => {
   bench("@vincle/core", async () => {
     await renderToString(vincleAsyncTree());
   });
@@ -256,7 +268,7 @@ const rwPreact = () => realworldPreact(NAME, PURCHASES);
 const rwHono = () => realworldHono(NAME, PURCHASES);
 const rwKita = () => realworldKita(NAME, PURCHASES);
 
-group(`realworld — full page, ${PURCHASES.length} purchases (kitajs port)`, () => {
+group(CASES.realworld, () => {
   bench("@vincle/core", async () => {
     await rwVincle();
   });
@@ -278,22 +290,45 @@ group(`realworld — full page, ${PURCHASES.length} purchases (kitajs port)`, ()
 // Run & ratio vs @vincle/core
 // ---------------------------------------------------------------------------
 
-const { benchmarks } = await run();
+// `--json` emits one machine-readable line and nothing else: a single run of
+// this benchmark is not a measurement (between-run spread is 2–4%), so the
+// aggregation belongs to `stats.js`, which runs this many times. See
+// adr/003-rendu-et-mesure.md.
+const asJson = process.argv.includes("--json");
 
-const REF = "@vincle/core";
-const fmt = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 0 }).padStart(14);
+const { benchmarks } = await run({ silent: asJson });
 
-let refOps = 0;
+// `trial.group` is a mitata-internal numeric id and NOT an index — the ids are
+// sparse. What is reliable is that trials come back in declaration order, so we
+// map each new id to the next key of CASES as it appears.
+const keys = Object.keys(CASES);
+const caseOf = new Map();
+const results = [];
 for (const trial of benchmarks) {
+  if (!caseOf.has(trial.group)) caseOf.set(trial.group, keys[caseOf.size] ?? `group${trial.group}`);
   for (const r of trial.runs) {
-    const ops = 1e9 / r.stats.avg;
-    if (r.name === REF) {
+    results.push({
+      case: caseOf.get(trial.group),
+      name: r.name,
+      opsPerSec: 1e9 / r.stats.avg,
+    });
+  }
+}
+
+if (asJson) {
+  console.log(JSON.stringify(results));
+} else {
+  const REF = "@vincle/core";
+  const fmt = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 0 }).padStart(14);
+  let refOps = 0;
+  for (const { name, opsPerSec } of results) {
+    if (name === REF) {
       if (refOps > 0) console.log();
-      refOps = ops;
-      console.log(`  ${r.name.padEnd(35)} ${fmt(ops)}  ref`);
+      refOps = opsPerSec;
+      console.log(`  ${name.padEnd(35)} ${fmt(opsPerSec)}  ref`);
     } else {
-      const ratio = (refOps / ops).toFixed(2);
-      console.log(`  ${r.name.padEnd(35)} ${fmt(ops)}  ×${ratio}`);
+      console.log(`  ${name.padEnd(35)} ${fmt(opsPerSec)}  ×${(refOps / opsPerSec).toFixed(2)}`);
     }
   }
+  console.log("\n  One run is not a measurement — use `bun run bench:stats` before claiming a delta.");
 }

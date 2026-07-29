@@ -29,7 +29,7 @@ export function Style(props: StyleProps): JSX.Element | null {
   if (media != null) attrs["media"] = media;
 
   registerAsset(assets, name, { type: "style", content, attrs });
-  return raw(createMarker("style", name)) as unknown as JSX.Element | null;
+  return raw(createMarker("style", name));
 }
 
 export function Script(props: ScriptProps): JSX.Element | null {
@@ -49,5 +49,5 @@ export function Script(props: ScriptProps): JSX.Element | null {
     content: resolvedContent,
     attrs,
   });
-  return raw(createMarker("script", name)) as unknown as JSX.Element | null;
+  return raw(createMarker("script", name));
 }

@@ -11,6 +11,14 @@ choix hésite entre deux options, c'est ce document qui tranche.
   du streaming et de l'async que kitajs n'a pas. Ce prix doit rester
   négligeable, jamais un compromis qu'on subit.
 
+  Corollaire non négociable : **un chiffre de perf n'existe que s'il est
+  mesuré selon [ADR-003](packages/core/adr/003-rendu-et-mesure.md)**.
+  Le bruit inter-exécutions de ce benchmark est de 2 à 6 %, soit l'ordre de
+  grandeur de la plupart des optimisations candidates ; une exécution unique
+  ne mesure rien. On a déjà cru trois conclusions fausses faute de cette
+  discipline — et le seuil de signification protège autant du gain imaginaire
+  que du coût imaginaire qui ferait rejeter un correctif nécessaire.
+
 - **`<Template>` / `<Slot>` propres, "à la Island/Suspense"** — un modèle
   mental que quiconque connaît React Suspense ou les Islands doit reconnaître
   immédiatement, sans réapprendre un vocabulaire maison. La primitive vient

@@ -1,11 +1,24 @@
 import { buildAttrs } from "./attrs.js";
-import { escapeContent, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
+import { escapeContent, escapeRawTagContent, isRawtextTag } from "./escape.js";
 import { VNode } from "./jsx-runtime.js";
 import { RawString } from "./raw.js";
-import { serializeElement, isValidTag } from "./serialize.js";
+import { invalidTagMessage, isValidTag, serializeElement } from "./serialize.js";
 
+// `Symbol.asyncIterator in value` force une recherche sur la chaîne de
+// prototypes, et ce test tombe une fois par nœud de l'arbre. Un accès de
+// propriété passe par un inline cache et coûte moins : ~2 % sur `realworld` en
+// comparaison intra-run — sous le seuil de `bench:stats --against` à n=8, donc
+// pas un chiffre publiable au sens d'ADR-003. Le `typeof === "function"` est
+// plus strict que `in` — un objet portant un `Symbol.asyncIterator` non
+// appelable n'est plus pris pour un async iterable, alors qu'il échouait de
+// toute façon à l'itération — et aligne ce test sur celui que
+// `jsx-precompile-runtime.ts` fait déjà pour le même protocole.
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
-  return value != null && typeof value === "object" && Symbol.asyncIterator in value;
+  return (
+    value != null &&
+    typeof value === "object" &&
+    typeof (value as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] === "function"
+  );
 }
 
 export function renderToString(node: unknown): Promise<string> {
@@ -28,12 +41,14 @@ function renderNode(vnode: unknown): string | Promise<string> {
   if (vnode instanceof Promise) {
     return vnode.then((resolved) => renderNode(resolved));
   }
-  if (isAsyncIterable(vnode)) {
-    return collectAsyncIterable(vnode);
-  }
-
   if (Array.isArray(vnode)) return renderChildrenAsync(vnode);
-  if (!(vnode instanceof VNode)) return escapeContent(String(vnode));
+  // Ni un tableau ni un VNode ne sont jamais un async iterable, et le VNode est
+  // le cas dominant : on ne paie le test de protocole que sur ce qui reste.
+  // Ordre miroir de `streamNode` — les deux doivent rester interchangeables.
+  if (!(vnode instanceof VNode)) {
+    if (isAsyncIterable(vnode)) return collectAsyncIterable(vnode);
+    return escapeContent(String(vnode));
+  }
 
   // ── Component ──
   if (typeof vnode.tag === "function") {
@@ -55,19 +70,10 @@ function renderNode(vnode: unknown): string | Promise<string> {
   // ── Regular element ──
   const { tag, attrs, children } = vnode;
 
-  if (!isValidTag(tag)) {
-    throw new TypeError(
-      `[core-next] Invalid tag name ${JSON.stringify(tag)}: a tag name must not be empty, ` +
-        'start with "!" or "?", or contain whitespace, control characters, or any of " \' < > / = ` \\.',
-    );
-  }
-
-  if (tag === "Fragment") {
-    return children !== undefined ? renderChildrenAsync(children) : "";
-  }
+  if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
 
   const attrStr = buildAttrs(attrs);
-  const childTag = RAWTEXT_TAGS.has(tag) ? tag : undefined;
+  const childTag = isRawtextTag(tag) ? tag : undefined;
 
   if (children !== undefined) {
     const content = renderChildrenAsync(children, childTag);
@@ -94,24 +100,49 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
   // soit lui-même une Promise ou un AsyncIterable — un pré-scan des children
   // bruts (avant appel des composants) le raterait. On rend donc chaque
   // enfant une seule fois et on décide sync/async sur le résultat obtenu.
-  let needsAsync = false;
-  const parts = new Array<string | Promise<string>>(children.length);
-  for (let i = 0; i < children.length; i++) {
-    const child = children[i]!;
-    const part = typeof child === "string"
-      ? rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child)
-      : renderNode(child);
-    if (part instanceof Promise) needsAsync = true;
-    parts[i] = part;
-  }
+  //
+  // On concatène directement au lieu de remplir un tableau puis de le `join`.
+  // La plupart des listes d'enfants sont entièrement synchrones, et le tableau
+  // intermédiaire y était le premier poste de coût du renderer — 35 % du temps
+  // sur le bench `realworld` (profil V8), GC compris. Le tableau n'apparaît
+  // qu'au premier enfant réellement async, et il ne porte alors que la queue :
+  // le préfixe déjà rendu reste une simple chaîne.
+  let out = "";
+  let deferred: Promise<string> | undefined;
+  let i = 0;
 
-  if (!needsAsync) return (parts as string[]).join("");
+  for (; i < children.length; i++) {
+    const part = renderChild(children[i], rawtextTag);
+    // `renderChild` ne rend qu'une string ou une Promise : `typeof` suffit et
+    // évite un `instanceof` (parcours de prototype) par enfant.
+    if (typeof part !== "string") {
+      // On garde le résultat : re-rendre cet enfant plus bas le rendrait deux
+      // fois, ce qui perd des éléments sur un AsyncIterable déjà entamé.
+      deferred = part;
+      break;
+    }
+    out += part;
+  }
+  if (deferred === undefined) return out;
+
+  const parts: (string | Promise<string>)[] = [out, deferred];
+  for (i++; i < children.length; i++) parts.push(renderChild(children[i], rawtextTag));
   return Promise.all(parts).then((resolved) => resolved.join(""));
 }
 
-async function collectAsyncIterable(
-  iterable: AsyncIterable<unknown>,
-): Promise<string> {
+/**
+ * Rend un enfant. Les strings directes portent l'échappement rawtext local
+ * (`<script>` / `<style>`) ; tout le reste passe par `renderNode`, sans hériter
+ * du rawtextTag.
+ */
+function renderChild(child: unknown, rawtextTag: string | undefined): string | Promise<string> {
+  if (typeof child === "string") {
+    return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
+  }
+  return renderNode(child);
+}
+
+async function collectAsyncIterable(iterable: AsyncIterable<unknown>): Promise<string> {
   let out = "";
   for await (const chunk of iterable) {
     const rendered = renderNode(chunk);

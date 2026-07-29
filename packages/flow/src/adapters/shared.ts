@@ -21,20 +21,42 @@ export type Adapter = {
 };
 
 function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent, string> {
+  // The shell arrives as a run of chunks, not one event. They are consecutive
+  // slices of the same document, so nothing may be inserted between them — the
+  // separator that used to follow "the shell event" is written once, when the
+  // first non-shell event proves the run is over.
+  let inShell = false;
+
   return new TransformStream<FlowEvent, string>({
     async transform(ev, c) {
+      if (ev.type === "shell") {
+        inShell = true;
+        c.enqueue(ev.html);
+        return;
+      }
+      // Ride the separator on the next write rather than enqueuing it alone, so
+      // a single-chunk shell produces exactly the writes it always did.
+      let prefix = "";
+      if (inShell) {
+        inShell = false;
+        prefix = "\n";
+      }
       if (ev.type === "fragment") {
         const wire = await renderToString(
           adapter.Patch({
             id: ev.id,
-            children: raw(ev.html) as unknown as JSX.Element,
+            children: raw(ev.html),
             merge: ev.merge,
           }),
         );
-        c.enqueue(wire + "\n");
+        c.enqueue(prefix + wire + "\n");
       } else {
-        c.enqueue(ev.html + "\n");
+        c.enqueue(prefix + ev.html + "\n");
       }
+    },
+    flush(c) {
+      // Shell-only stream (no fragments, no closing tag): the separator still owes.
+      if (inShell) c.enqueue("\n");
     },
   });
 }

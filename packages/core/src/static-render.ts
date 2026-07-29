@@ -1,5 +1,5 @@
 import { buildAttrs } from "./attrs.js";
-import { escapeContent, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
+import { escapeContent, escapeRawTagContent, isRawtextTag } from "./escape.js";
 /**
  * Single-pass static fold.
  *
@@ -20,7 +20,7 @@ import { escapeContent, escapeRawTagContent, RAWTEXT_TAGS } from "./escape.js";
  * two renderers stay byte-equivalent (locked by path-equivalence.test.ts).
  */
 import { RawString } from "./raw.js";
-import { serializeElement } from "./serialize.js";
+import { invalidTagMessage, isValidTag, serializeElement } from "./serialize.js";
 
 /** Sentinel returned by `tryRenderStatic` when the subtree cannot be folded. */
 export const NOT_STATIC = Symbol("not-static");
@@ -43,7 +43,14 @@ export function tryRenderStatic(
   tag: string,
   props: Record<string, unknown>,
 ): RawString | typeof NOT_STATIC {
-  // Prop safety first — cheap, and bails before touching children when a prop
+  // Validity is checked here and never treated as a bail-out: an invalid name is
+  // an error on every path, not a reason to prefer another one. A tag can be
+  // caller-supplied (`<Tag>` driven by data), and a name like `div onload=x`
+  // escapes the start tag — the tree walk has always thrown on it, so folding it
+  // into raw HTML would have made the fold a way around that check.
+  if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
+
+  // Prop safety — cheap, and bails before touching children when a prop
   // (style object / class array / dSIH / Promise) forces the dynamic path.
   for (const key in props) {
     if (key === "children" || key === "key" || key === "ref") continue;
@@ -56,7 +63,7 @@ export function tryRenderStatic(
   }
 
   const children = props["children"];
-  const childTag = RAWTEXT_TAGS.has(tag) ? tag : undefined;
+  const childTag = isRawtextTag(tag) ? tag : undefined;
 
   const state: FoldState = { dynamic: false };
   const content = foldChildren(children, childTag, state);

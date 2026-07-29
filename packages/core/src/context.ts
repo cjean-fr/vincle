@@ -72,7 +72,8 @@ async function ensureStore(): Promise<void> {
 }
 
 function getStore(): ReturnType<typeof createFallbackStore> {
-  if (!contextStore) throw new Error("[vincle/core] context store not initialized — call withScope first.");
+  if (!contextStore)
+    throw new Error("[vincle/core] context store not initialized — call withScope first.");
   return contextStore;
 }
 

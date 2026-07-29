@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 
-import { renderToString } from "./src/index.js";
+import { renderToString } from "./index.js";
 import { jsx } from "./src/jsx-runtime.js";
 
 // The JSX transform has no semantic spec — every toolchain reimplemented it,
