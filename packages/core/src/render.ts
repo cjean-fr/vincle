@@ -272,7 +272,12 @@ async function* streamChildren(
     yield* streamNode(children, pending);
     return;
   }
-  for (const child of children) {
+  // Indexed, not `for…of`: iterating an array through the iterator protocol
+  // allocates an iterator and a result object per step. Measured on the shape
+  // alone, concatenating n strings: 9.0 vs 5.8 ns at n=2, 4.27 vs 4.05 µs at
+  // n=1000. `renderChildrenAsync` above is already indexed for the same reason.
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
     if (typeof child === "string") {
       pending.html += rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
     } else {

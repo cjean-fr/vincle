@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { jsxTemplate, jsxAttr, jsxEscape } from "./jsx-precompile-runtime.js";
+import { buildAttrs } from "./attrs.js";
 import { raw, RawString } from "./types.js";
 
 describe("jsxTemplate", () => {
@@ -157,5 +158,59 @@ describe("jsxTemplate", () => {
     expect((jsxAttr("srcSet", "/img.png 1x, /img2.png 2x") as RawString).value).toContain(
       "/img.png",
     );
+  });
+});
+
+// ── Path equivalence: jsxAttr ≡ buildAttrs ─────────────────────────────────
+//
+// The precompile transform and the VNode runtime are two independent attribute
+// serializers over the same JSX. Any value kind they disagree on is a hole: the
+// same source renders differently — or crashes — depending on whether the Vite
+// precompile plugin happens to be enabled.
+//
+// Two such holes existed. `jsxAttr` special-cased `on…` names, dropping
+// `onClick={fn}` with a warning where `buildAttrs` threw; and it carried its own
+// hardcoded list of URL attributes, which had already drifted from
+// `URL_ATTRIBUTES` — `<object data="javascript:…">` went unchecked here only.
+
+describe("jsxAttr ≡ buildAttrs", () => {
+  /** `buildAttrs` emits ` name="v"`; `jsxAttr` emits `name="v"`. */
+  const viaBuildAttrs = (key: string, value: unknown): string =>
+    buildAttrs({ [key]: value }).trimStart();
+  const viaJsxAttr = (key: string, value: unknown): string =>
+    (jsxAttr(key, value) as RawString).value;
+
+  const CASES: [string, unknown][] = [
+    // Handlers are plain attributes on both paths — emitted, not dropped.
+    ["onClick", 'alert("x") & 1'],
+    ["onClick", 42],
+    ["class", "foo"],
+    ["className", "foo"],
+    ["href", "javascript:alert(1)"],
+    ["href", "java\tscript:alert(1)"],
+    ["href", "/page"],
+    ["data", "javascript:alert(1)"],
+    ["style", { backgroundColor: "red" }],
+    ["style", { "color:red;position": "fixed" }],
+    ["disabled", true],
+    ["disabled", false],
+    ["title", "a & b < c"],
+    ["title", raw("<b>trusted</b>")],
+    ["tabIndex", 3],
+  ];
+
+  for (const [key, value] of CASES) {
+    test(`${key}=${JSON.stringify(value) ?? String(value)}`, () => {
+      expect(viaJsxAttr(key, value)).toBe(viaBuildAttrs(key, value));
+    });
+  }
+
+  // The regression guard for the divergence above: an `on…` function must throw
+  // on *both* paths, exactly like any other unserializable value.
+  test("a function throws on both paths, handler or not", () => {
+    expect(() => jsxAttr("onClick", () => {})).toThrow(/not serializable/);
+    expect(() => buildAttrs({ onClick: () => {} })).toThrow(/not serializable/);
+    expect(() => jsxAttr("title", () => {})).toThrow(/not serializable/);
+    expect(() => buildAttrs({ title: () => {} })).toThrow(/not serializable/);
   });
 });

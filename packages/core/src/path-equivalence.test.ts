@@ -114,8 +114,22 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   }
 
   if (roll < 0.68) {
-    // void element (no children)
-    return h(pick(VOID, r), randProps(r));
+    // Void element — with children as often as without.
+    //
+    // Generating them childless only was how the fold and the tree-walk drifted
+    // unnoticed: `serializeElement` decides void handling from a `hasChildren`
+    // flag, and the two callers computed it differently (`!!children` vs
+    // `children !== undefined`), so every *falsy* child diverged —
+    // `<img>{0}</img>` folded to `<img>` and walked to `<img>0</img>`.
+    // The falsy leaves below are the ones that caught it.
+    const props = randProps(r);
+    const roll2 = r();
+    if (roll2 < 0.25) {
+      props["children"] = pick([0, "", false, null, undefined, 0n], r);
+    } else if (roll2 < 0.5) {
+      props["children"] = genLeaf(r);
+    }
+    return h(pick(VOID, r), props);
   }
 
   if (roll < 0.78) {

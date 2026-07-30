@@ -197,6 +197,75 @@ describe("isSafeScheme", () => {
   test("non-ASCII scheme characters blocked", () => {
     expect(isSafeScheme("écho:test")).toBe(false);
   });
+
+  // ── Scheme obfuscation ──
+  //
+  // A URL parser rewrites its input before it looks at the scheme: it removes
+  // every ASCII tab and newline, and strips leading C0 controls and space. So a
+  // regex applied to the raw string tests a string the browser never parses.
+  // Each case below reached the document verbatim before the fix.
+
+  test("blocks javascript: with interior tab / LF / CR", () => {
+    expect(isSafeScheme("java\tscript:alert(1)")).toBe(false);
+    expect(isSafeScheme("java\nscript:alert(1)")).toBe(false);
+    expect(isSafeScheme("java\rscript:alert(1)")).toBe(false);
+    expect(isSafeScheme("j\ta\nv\ra\tscript:alert(1)")).toBe(false);
+    expect(isSafeScheme("vb\tscript:msgbox(1)")).toBe(false);
+  });
+
+  test("blocks javascript: behind leading C0 controls", () => {
+    expect(isSafeScheme("\0javascript:alert(1)")).toBe(false);
+    expect(isSafeScheme("\x01javascript:alert(1)")).toBe(false);
+    expect(isSafeScheme("\x1fjavascript:alert(1)")).toBe(false);
+    expect(isSafeScheme("\t\njavascript:alert(1)")).toBe(false);
+  });
+
+  test("blocks non-image data: behind the same obfuscation", () => {
+    expect(isSafeScheme("da\tta:text/html,<script>alert(1)</script>")).toBe(false);
+    expect(isSafeScheme("\0data:text/html,x")).toBe(false);
+  });
+
+  /**
+   * Differential test against the platform's own WHATWG URL parser — the same
+   * algorithm the browser applies. It is the only oracle that cannot drift from
+   * what a browser will actually execute, and it decides these cases rather
+   * than a hand-written list.
+   *
+   * The contract is one-directional on purpose: whenever the parser resolves an
+   * input to an executable scheme, `isSafeScheme` must reject it. The converse
+   * does not hold — rejecting more than the parser executes is allowed.
+   */
+  test("agrees with WHATWG URL on every executable scheme", () => {
+    const EXECUTABLE = new Set(["javascript:", "vbscript:"]);
+    const bases = ["javascript:alert(1)", "vbscript:msgbox(1)", "data:text/html,<b>x</b>"];
+    // Every mutation a URL parser undoes, applied at every position.
+    const noise = ["\t", "\n", "\r", "\0", "\x01", " "];
+
+    const inputs: string[] = [];
+    for (const base of bases) {
+      inputs.push(base);
+      for (const n of noise) {
+        inputs.push(n + base);
+        inputs.push(base.slice(0, 3) + n + base.slice(3));
+        inputs.push(base.slice(0, 1) + n + base.slice(1));
+      }
+    }
+
+    const missed: string[] = [];
+    for (const input of inputs) {
+      let protocol: string;
+      try {
+        protocol = new URL(input, "https://example.test/").protocol;
+      } catch {
+        continue; // not a URL at all — nothing to execute
+      }
+      const executable =
+        EXECUTABLE.has(protocol) || (protocol === "data:" && !/^data:image\//i.test(input.trim()));
+      if (executable && isSafeScheme(input)) missed.push(JSON.stringify(input));
+    }
+
+    expect(missed).toEqual([]);
+  });
 });
 
 // ── URL_ATTRIBUTES ─────────────────────────────────────────────────────────
@@ -210,6 +279,12 @@ describe("URL_ATTRIBUTES", () => {
     expect(URL_ATTRIBUTES.has("xlink:href")).toBe(true);
   });
 
+  // `<object data>` navigates the same way `<iframe src>` does; `src` was
+  // already covered, `data` was the gap.
+  test("contains data (<object data>)", () => {
+    expect(URL_ATTRIBUTES.has("data")).toBe(true);
+  });
+
   test("does not contain non-URL attributes", () => {
     expect(URL_ATTRIBUTES.has("id")).toBe(false);
     expect(URL_ATTRIBUTES.has("class")).toBe(false);
@@ -217,7 +292,91 @@ describe("URL_ATTRIBUTES", () => {
     expect(URL_ATTRIBUTES.has("srcset")).toBe(false);
   });
 
-  test("has exactly 5 entries", () => {
-    expect(URL_ATTRIBUTES.size).toBe(5);
+  test("has exactly 6 entries", () => {
+    expect(URL_ATTRIBUTES.size).toBe(6);
+  });
+});
+
+// ── escapeRawTagContent — <script> tokenizer states ────────────────────────
+//
+// `<script>` is SCRIPT_DATA, not RAWTEXT: `<!--` opens *script data escaped* and
+// a following `<script` opens *script data double escaped*, a state in which
+// `</script>` no longer closes the element. Neutralizing `</script` alone left
+// the renderer's own closing tag inert. Asserted here against a real HTML5
+// parser, because the failure is invisible in the output string.
+
+describe("escapeRawTagContent — script data double escape", () => {
+  const tagsOf = async (html: string): Promise<string[]> => {
+    const seen: string[] = [];
+    await new HTMLRewriter()
+      .on("*", {
+        element(el) {
+          seen.push(el.tagName);
+        },
+      })
+      .transform(new Response(html))
+      .text();
+    return seen;
+  };
+
+  const page = (body: string) => `<div><script>${escapeRawTagContent(body, "script")}</script>` +
+    `<p>after</p></div>`;
+
+  test("baseline: benign script content keeps the document intact", async () => {
+    expect(await tagsOf(page("var x = 1;"))).toEqual(["div", "script", "p"]);
+  });
+
+  test("</script> injection cannot close the element", async () => {
+    expect(await tagsOf(page("</script><img src=x onerror=alert(1)>"))).toEqual([
+      "div",
+      "script",
+      "p",
+    ]);
+  });
+
+  test("<!--<script> no longer swallows the rest of the document", async () => {
+    expect(await tagsOf(page("<!--<script>"))).toEqual(["div", "script", "p"]);
+    expect(await tagsOf(page("<!--<script>*/</script><img src=x onerror=alert(1)>"))).toEqual([
+      "div",
+      "script",
+      "p",
+    ]);
+  });
+
+  test("both <script and </script are neutralized, in any case", () => {
+    expect(escapeRawTagContent("</script", "script")).toBe("<\\/script");
+    expect(escapeRawTagContent("<script", "script")).toBe("<\\script");
+    expect(escapeRawTagContent("<!--<script></SCRIPT>", "script")).toBe("<!--<\\script><\\/SCRIPT>");
+  });
+
+  // Breaking `<script` already disarms the pair, and `<!--` on its own line is
+  // valid JavaScript under Annex B — escaping it would turn working source into
+  // a syntax error.
+  test("<!-- is left intact", () => {
+    expect(escapeRawTagContent("<!--", "script")).toBe("<!--");
+    expect(escapeRawTagContent("<!-- x -->", "script")).toBe("<!-- x -->");
+  });
+
+  // `document.write("<script src=…>")` is a real pattern: `"\s"` reads back as
+  // `"s"`, so the string the script sees is unchanged.
+  test("neutralization is transparent inside a JS string literal", () => {
+    const escaped = escapeRawTagContent('document.write("<script src=x></script>")', "script");
+    expect(escaped).toBe('document.write("<\\script src=x><\\/script>")');
+    // eslint-disable-next-line no-eval
+    expect(eval(escaped.replace("document.write", "String"))).toBe(
+      '<script src=x></script>',
+    );
+  });
+
+  test("style is RAWTEXT — only </style matters", () => {
+    expect(escapeRawTagContent("<!--", "style")).toBe("<!--");
+    expect(escapeRawTagContent("<style", "style")).toBe("<style");
+    expect(escapeRawTagContent("</style>", "style")).toBe("<\\/style>");
+  });
+
+  test("content with nothing to neutralize is returned unchanged", () => {
+    const s = "body { color: red } /* <3 */";
+    expect(escapeRawTagContent(s, "script")).toBe(s);
+    expect(escapeRawTagContent(s, "style")).toBe(s);
   });
 });

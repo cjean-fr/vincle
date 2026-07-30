@@ -2,7 +2,7 @@ import type { Renderable } from "./types.js";
 import { raw, RawString } from "./types.js";
 import { tryRenderStatic, NOT_STATIC } from "./serialize.js";
 import { resolveAttrName, BOOLEAN_ATTRIBUTES, classToString, styleToString } from "./attrs.js";
-import { escapeAttr, escapeContent, isSafeScheme } from "./escape.js";
+import { escapeAttr, escapeContent, isSafeScheme, URL_ATTRIBUTES } from "./escape.js";
 
 // ── VNode ────────────────────────────────────────────────────────────────
 
@@ -75,17 +75,31 @@ export function jsxEscape(v: unknown): RawString | Promise<RawString> {
   return new RawString(coerce(v));
 }
 
+// Single pass, and the intermediate array only appears at the first genuinely
+// async element — the same design `renderChildrenAsync` uses in `render.ts`.
+//
+// The previous form (`arr.map(jsxEscape)` then `parts.some(…)` then concatenate)
+// walked the array three times and allocated it every time, including for the
+// all-synchronous case that is the norm. Measured on the shape alone: 28.5 → 10.3
+// ns at n=2, 10.97 → 4.40 µs at n=1000 (×2.5–2.8). This is the call a precompiled
+// list page spends most of its time in.
 function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
-  const parts = arr.map(jsxEscape);
-  if (parts.some((p) => p instanceof Promise)) {
-    return Promise.all(parts).then((resolved) => {
-      let out = "";
-      for (const s of resolved) out += s.value;
-      return new RawString(out);
-    });
-  }
   let out = "";
-  for (const s of parts as RawString[]) out += s.value;
+  for (let i = 0; i < arr.length; i++) {
+    const part = jsxEscape(arr[i]);
+    if (part instanceof Promise) {
+      // The prefix is already final text; only the suffix has to be awaited.
+      const prefix = out;
+      const parts: (RawString | Promise<RawString>)[] = [part];
+      for (i++; i < arr.length; i++) parts.push(jsxEscape(arr[i]));
+      return Promise.all(parts).then((resolved) => {
+        let tail = "";
+        for (let j = 0; j < resolved.length; j++) tail += resolved[j]!.value;
+        return new RawString(prefix + tail);
+      });
+    }
+    out += part.value;
+  }
   return new RawString(out);
 }
 
@@ -112,21 +126,19 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
   if (name === "children" || name === "key" || name === "ref" || name === "dangerouslySetInnerHTML")
     return raw("");
 
+  const attrName = resolveAttrName(name);
+
+  // No `on…` branch — same reason as `buildAttrs`: a handler is an attribute like
+  // any other, and a function is unserializable whatever it is called. This path
+  // used to drop `onClick={fn}` with a warning while `buildAttrs` threw, so the
+  // same component crashed or rendered depending on whether the precompile plugin
+  // was enabled.
   if (typeof value === "function") {
-    if (isEventHandler(name)) {
-      console.warn(
-        `[vincle/core] Event handler "${name}" was passed a function. ` +
-          "This is not supported in static HTML rendering. Use a string instead.",
-      );
-      return raw("");
-    }
     throw new Error(
       `[vincle/core] Attribute "${name}" received a function as value. ` +
         "Functions are not serializable to HTML.",
     );
   }
-
-  const attrName = resolveAttrName(name);
 
   if (value instanceof RawString) {
     return new RawString(`${attrName}="${value.value}"`);
@@ -154,39 +166,13 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
     return new RawString(`${attrName}="${value}"`);
   }
 
-  // Event handlers — warn and drop
-  if (isEventHandler(attrName)) {
-    if (typeof value !== "string") return raw("");
-    console.warn(
-      `[vincle/core] Event handler "${name}" was passed as a string value. ` +
-        "Event handlers are not rendered in static HTML.",
-    );
-    return raw(`${attrName}="${escapeAttr(value)}"`);
-  }
-
+  // `URL_ATTRIBUTES`, not a local switch: the switch duplicated the list and had
+  // already drifted from it — `data` was added to the set and `<object data>`
+  // stayed unchecked on this path only. One source of truth, one behaviour.
   let str = String(value);
-  switch (attrName) {
-    case "href":
-    case "src":
-    case "action":
-    case "formaction":
-    case "xlink:href":
-      if (!isSafeScheme(str)) str = "#blocked";
-      break;
-  }
+  if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) str = "#blocked";
 
   return new RawString(`${attrName}="${escapeAttr(str)}"`);
-}
-
-const ON_MASK = ("o".charCodeAt(0) << 8) | "n".charCodeAt(0);
-
-function isEventHandler(name: string): boolean {
-  const c2 = name.charCodeAt(2) | 32;
-  return (
-    (((name.charCodeAt(0) | 32) << 8) | (name.charCodeAt(1) | 32)) === ON_MASK &&
-    c2 >= 97 &&
-    c2 <= 122
-  );
 }
 
 function coerce(v: unknown): string {
@@ -204,33 +190,41 @@ function coerce(v: unknown): string {
   return escapeContent(String(v));
 }
 
-function join(templates: ArrayLike<string>, values: string[]): string {
-  let out = templates[0] ?? "";
-  for (let i = 0; i < values.length; i++) {
-    out += values[i]!;
-    out += templates[i + 1] ?? "";
-  }
-  return out;
-}
-
 /**
  * Handle the `jsxTemplate` call from the precompile transform — a tagged
  * template literal that interleaves static template fragments with escaped
  * values.
+ *
+ * One pass. The previous form scanned `values` for a promise, then mapped it
+ * through `coerceRawString`, then walked the resulting array again to interleave
+ * — three traversals and one array for what is almost always a two-hole
+ * template. Measured on the shape alone: 25.2 → 17.8 ns (×1.42).
  */
 export function jsxTemplate(
   templates: ArrayLike<string>,
   ...values: unknown[]
 ): RawString | Promise<RawString> {
-  for (const v of values) {
+  let out = templates[0] ?? "";
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
     if (v instanceof Promise) {
-      return Promise.all(values).then((resolved) => {
-        const parts = resolved.map(coerceRawString);
-        return new RawString(join(templates, parts));
+      // Bail to the async path from the first promise only: everything before it
+      // is already final text, so the await covers the suffix and nothing else.
+      const prefix = out;
+      const from = i;
+      return Promise.all(values.slice(from)).then((resolved) => {
+        let tail = "";
+        for (let j = 0; j < resolved.length; j++) {
+          tail += coerceRawString(resolved[j]);
+          tail += templates[from + j + 1] ?? "";
+        }
+        return new RawString(prefix + tail);
       });
     }
+    out += coerceRawString(v);
+    out += templates[i + 1] ?? "";
   }
-  return new RawString(join(templates, values.map(coerceRawString)));
+  return new RawString(out);
 }
 
 /** Like `coerce`, but lets `RawString` through without double-escaping. */

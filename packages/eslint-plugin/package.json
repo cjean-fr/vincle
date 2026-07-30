@@ -40,7 +40,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "test": "bun test",
     "check": "tsc --noEmit",
     "format": "oxfmt"

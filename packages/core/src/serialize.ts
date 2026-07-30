@@ -135,7 +135,15 @@ export function tryRenderStatic(
   if (state.dynamic) return NOT_STATIC;
 
   const attrStr = buildAttrs(props);
-  return new RawString(serializeElement(tag, attrStr, content, !!children));
+  // `children !== undefined`, not `!!children` — the tree-walk in `render.ts`
+  // uses the former, and any other predicate here reopens a hole the fold is
+  // supposed to be indistinguishable from it. `!!children` diverged on every
+  // falsy child of a void element:
+  //   <img>{0}</img>  →  fold "<img>"  vs  tree-walk "<img>0</img>"
+  //   <img>{""}</img> →  fold "<img>"  vs  tree-walk "<img></img>"
+  // `path-equivalence.test.ts` missed it because it only ever generated void
+  // elements without children; it now generates them with children too.
+  return new RawString(serializeElement(tag, attrStr, content, children !== undefined));
 }
 
 function foldChildren(children: unknown, rawtextTag: string | undefined, state: FoldState): string {

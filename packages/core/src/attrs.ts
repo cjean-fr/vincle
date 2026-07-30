@@ -172,6 +172,23 @@ function attrMeta(key: string): AttrMeta {
   return meta;
 }
 
+// ── Event handlers ───────────────────────────────────────────────────────
+//
+// There is no branch for them, on purpose. `onclick="submit()"` is valid HTML and
+// a developer is allowed to write it; the type dispatch below already says
+// everything there is to say — a string serializes escaped, a function throws
+// because a function cannot be serialized to HTML at all, whatever it is called.
+//
+// Discouraging the practice belongs to `@vincle/eslint-plugin`'s
+// `no-unsafe-event-handlers`, which says it once at the source. A renderer that
+// emits the same tree thousands of times a second is the wrong place for advice:
+// a per-render `console.warn` is a log flood, and it costs on the hot path.
+//
+// `jsx-runtime.ts` used to special-case them on the precompile path — dropping
+// `onClick={fn}` with a `console.warn` where this path threw — so the same
+// component crashed or rendered depending on whether the Vite precompile plugin
+// was enabled. That branch is gone; both paths now run the dispatch below.
+
 // Style camelCase → kebab regex (module-level, compiled once)
 const RE_STYLE_CAMEL = /[A-Z]/g;
 
@@ -200,7 +217,10 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
     const attrName = meta.name;
     // Si la clé est un alias React (className → class) et que la version
     // native est déjà dans les props, on garde la native.
-    if (attrName !== key && attrName in attrs) continue;
+    // `Object.hasOwn`, pas `in` : `in` traverse le prototype, donc un attribut
+    // dont le nom résolu tombe sur une clé d'`Object.prototype` était supprimé
+    // en silence (`<div Constructor="x" />` → aucun attribut émis).
+    if (attrName !== key && Object.hasOwn(attrs, attrName)) continue;
 
     const value = attrs[key];
     if (value === null || value === undefined) continue;
@@ -285,12 +305,23 @@ export function classToString(value: unknown[]): string {
 }
 
 // ── Style object → CSS string ───────────────────────────────────────
+//
+// A property *name* carrying `:` or `;` smuggles extra declarations into the
+// attribute: `{ "color:red;position": "fixed" }` used to serialize as
+// `style="color:red;position:fixed"`. `escapeAttr` prevents breaking out of the
+// attribute, so this cannot become script — but it can become arbitrary CSS on
+// the element (overlay, `position:fixed`, clickjacking) whenever the keys come
+// from data rather than from source. Names are a closed vocabulary; values are
+// not, and are left alone.
+const RE_INVALID_STYLE_PROP = /[;:{}<>"'\s]|\p{C}/u;
+
 export function styleToString(obj: Record<string, string | number | null | undefined>): string {
   let out = "";
   for (const key in obj) {
     const value = obj[key];
     if (value === null || value === undefined) continue;
     const prop = key.replace(RE_STYLE_CAMEL, (m) => "-" + m.toLowerCase());
+    if (RE_INVALID_STYLE_PROP.test(prop)) continue;
     if (out) out += ";";
     out += `${prop}:${value}`;
   }

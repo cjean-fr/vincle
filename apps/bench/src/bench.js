@@ -12,8 +12,9 @@
  */
 
 import { createElement as kita } from "@kitajs/html";
-import { renderToString } from "@vincle/core";
+import { renderToChunks, renderToString } from "@vincle/core";
 import { jsx } from "@vincle/core/jsx-runtime";
+import { jsxAttr, jsxEscape, jsxTemplate } from "@vincle/core/jsx-precompile-runtime";
 import { jsx as honoJsx } from "hono/jsx";
 import { bench, group, run } from "mitata";
 import { h } from "preact";
@@ -26,6 +27,7 @@ import { render as realworldHono } from "./realworld/hono.js";
 import { render as realworldKita } from "./realworld/kitajs.js";
 import { render as realworldPreact } from "./realworld/preact.js";
 import { render as realworldReact } from "./realworld/react.js";
+import { createRealWorldPage } from "./realworld/shared.js";
 import { render as realworldVincle } from "./realworld/vincle.js";
 
 // ---------------------------------------------------------------------------
@@ -196,6 +198,55 @@ function vincleAsyncTree() {
 }
 
 // ---------------------------------------------------------------------------
+// 4. Precompile runtime — @vincle/core only
+// ---------------------------------------------------------------------------
+//
+// The precompile transform (`jsxImportSource: "precompile"`) never builds a
+// VNode: it emits `jsxTemplate` calls whose holes are filled by `jsxAttr` and
+// `jsxEscape`. That is a second renderer with its own hot loops, and nothing
+// above exercises it — `text`/`stack`/`realworld` all go through `jsx`.
+//
+// Shape below is what the transform actually emits for
+// `<li class={cls}>{text}</li>` inside a `<ul>{items}</ul>`: one `jsxTemplate`
+// per element, and one `jsxEscape` over the array of already-rendered rows
+// (the call that dominates a list page).
+
+const PRECOMPILE_ROWS = 100;
+const PRECOMPILE_LI = ["<li ", ">", "</li>"];
+const PRECOMPILE_UL = ['<ul class="list">', "</ul>"];
+const precompileData = Array.from({ length: PRECOMPILE_ROWS }, (_, i) => ({
+  cls: i % 2 === 0 ? "row even" : "row odd",
+  text: `Item ${i} — a & b < c`,
+}));
+
+function precompileList() {
+  const rows = new Array(PRECOMPILE_ROWS);
+  for (let i = 0; i < PRECOMPILE_ROWS; i++) {
+    const { cls, text } = precompileData[i];
+    rows[i] = jsxTemplate(PRECOMPILE_LI, jsxAttr("class", cls), jsxEscape(text));
+  }
+  return jsxTemplate(PRECOMPILE_UL, jsxEscape(rows));
+}
+
+// ---------------------------------------------------------------------------
+// 5. Chunked rendering — @vincle/core only
+// ---------------------------------------------------------------------------
+//
+// `renderToChunks` is a separate tree walk from `renderToString` (generator
+// delegation instead of recursion) and was previously unmeasured. Same input as
+// the `realworld` group, so the two numbers are directly comparable: the delta
+// is the price of streaming.
+
+const buildRealworldVincle = createRealWorldPage(jsx);
+const realworldTree = () => buildRealworldVincle(NAME, PURCHASES);
+
+async function chunkRealworld() {
+  let out = "";
+  for await (const chunk of renderToChunks(realworldTree())) out += chunk;
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Benchmark groups
 // ---------------------------------------------------------------------------
 //
@@ -209,6 +260,8 @@ const CASES = {
   text: `text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`,
   stack: `stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
   realworld: `realworld — full page, ${PURCHASES.length} purchases (kitajs port)`,
+  precompile: `precompile — ${PRECOMPILE_ROWS}-row list via jsxTemplate/jsxAttr/jsxEscape (vincle only)`,
+  chunks: `chunks — realworld page through renderToChunks (vincle only)`,
 };
 
 // --- Text ---
@@ -286,6 +339,22 @@ group(CASES.realworld, () => {
   });
 });
 
+// --- Precompile runtime (vincle only) ---
+
+group(CASES.precompile, () => {
+  bench("@vincle/core", async () => {
+    await precompileList();
+  });
+});
+
+// --- Chunked rendering (vincle only) ---
+
+group(CASES.chunks, () => {
+  bench("@vincle/core", async () => {
+    await chunkRealworld();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Run & ratio vs @vincle/core
 // ---------------------------------------------------------------------------
@@ -296,19 +365,27 @@ group(CASES.realworld, () => {
 // adr/003-rendu-et-mesure.md.
 const asJson = process.argv.includes("--json");
 
-const { benchmarks } = await run({ silent: asJson });
+const { layout, benchmarks } = await run({ silent: asJson });
 
-// `trial.group` is a mitata-internal numeric id and NOT an index — the ids are
-// sparse. What is reliable is that trials come back in declaration order, so we
-// map each new id to the next key of CASES as it appears.
-const keys = Object.keys(CASES);
-const caseOf = new Map();
+// `trial.group` indexes into `layout`, and `layout[i].name` is the string passed
+// to `group()`. Mapping through the name is the only order-independent link
+// between a trial and a `CASES` key.
+//
+// The previous version assumed trials arrive in `CASES` *declaration* order and
+// consumed `Object.keys(CASES)` positionally. That silently mislabelled every
+// case as soon as the object literal was reordered without reordering the
+// `group()` calls — which had happened: `text` was reported as `async`, `stack`
+// as `text`, `async` as `stack`. A mislabelled case is worse than a missing one,
+// because `--against` then compares two unrelated suites and reports the
+// difference as a regression.
+const keyOfLabel = new Map(Object.entries(CASES).map(([key, label]) => [label, key]));
 const results = [];
 for (const trial of benchmarks) {
-  if (!caseOf.has(trial.group)) caseOf.set(trial.group, keys[caseOf.size] ?? `group${trial.group}`);
+  const label = layout[trial.group]?.name;
+  const kase = keyOfLabel.get(label) ?? `group${trial.group}`;
   for (const r of trial.runs) {
     results.push({
-      case: caseOf.get(trial.group),
+      case: kase,
       name: r.name,
       opsPerSec: 1e9 / r.stats.avg,
     });
