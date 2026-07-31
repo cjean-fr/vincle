@@ -1,14 +1,16 @@
-import type { RawString } from "@vincle/core";
+import type { RawString, VNode } from "@vincle/core";
 
-export type VNode =
+// `Renderable` — everything a component may return, and everything the
+// renderers know how to render.
+export type Renderable =
+  | VNode
+  | RawString
   | string
   | number
   | bigint
   | boolean
   | null
   | undefined
-  | RawString
-  | Promise<VNode>
-  | VNode[]
-  | Iterable<VNode>
-  | AsyncIterable<VNode>;
+  | Iterable<Renderable>
+  | AsyncIterable<Renderable>
+  | Promise<Renderable>;

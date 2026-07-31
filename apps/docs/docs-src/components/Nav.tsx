@@ -10,7 +10,7 @@ export function Nav() {
       id="docs-nav"
       class="docs-nav pointer-events-none fixed inset-y-0 left-0 z-40 w-full max-w-xs overflow-y-auto border-r border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] md:pointer-events-auto md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:w-56 md:max-w-none md:shrink-0 md:overflow-y-auto md:border-0 md:bg-transparent md:pt-6 md:pr-6"
       aria-label="Primary navigation"
-      tabindex={-1}
+      tabIndex={-1}
     >
       {/* Search for mobile */}
       <div class="border-b border-[var(--docs-color-border)] px-6 pt-6 pb-4 md:hidden">

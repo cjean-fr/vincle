@@ -1,4 +1,4 @@
-import type { ResolvedVNode, VNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 
 import { describe, it, expect } from "bun:test";
 
@@ -40,8 +40,8 @@ describe("flushTemplates", () => {
 
   it("streams each item of an async-iterable entry", async () => {
     async function* rows() {
-      yield (<li>a</li>) as ResolvedVNode;
-      yield (<li>b</li>) as ResolvedVNode;
+      yield (<li>a</li>) as VNode;
+      yield (<li>b</li>) as VNode;
     }
     const store = createTemplateStore(cfg);
     store.register("feed", { content: rows(), merge: "append" });
@@ -111,7 +111,7 @@ describe("edge cases — streaming", () => {
       let i = 0;
       while (true) {
         i++;
-        yield (<li>{i}</li>) as ResolvedVNode;
+        yield (<li>{i}</li>) as VNode;
         await Promise.resolve();
       }
     }
@@ -143,7 +143,7 @@ describe("edge cases — streaming", () => {
     async function* many() {
       for (let i = 0; i < 100; i++) {
         produced++;
-        yield (<span>{i}</span>) as ResolvedVNode;
+        yield (<span>{i}</span>) as VNode;
       }
     }
     const stream = renderToStream(
@@ -208,7 +208,7 @@ describe("edge cases — streaming", () => {
   it("stream throw mid-iteration → onError kind=stream", async () => {
     const errors: Array<{ kind: string }> = [];
     async function* g() {
-      yield (<span>first</span>) as ResolvedVNode;
+      yield (<span>first</span>) as VNode;
       throw new Error("mid-crash");
     }
     await collect(
@@ -227,7 +227,7 @@ describe("edge cases — streaming", () => {
         {
           onError(_err, info) {
             errors.push(info);
-            return (<span>recovered</span>) as ResolvedVNode;
+            return (<span>recovered</span>) as VNode;
           },
         },
       ),
@@ -242,13 +242,15 @@ describe("flushTemplates — error propagation", () => {
     const store = createTemplateStore(cfg);
     store.register("t1", { content: <div>Hello</div>, merge: "replace" });
 
-    const brokenEmit = async () => { throw new Error("emit: stream closed"); };
+    const brokenEmit = async () => {
+      throw new Error("emit: stream closed");
+    };
 
     // Sans le fix, flushTemplates resolve silencieusement → test échoue.
     // Avec le fix, l'erreur est propagée/reportée.
-    await expect(
-      flushTemplates({ templateStore: store }, brokenEmit, {}),
-    ).rejects.toThrow("emit: stream closed");
+    await expect(flushTemplates({ templateStore: store }, brokenEmit, {})).rejects.toThrow(
+      "emit: stream closed",
+    );
   });
 
   it("still emits siblings when emit() fails on one fragment", async () => {
@@ -263,9 +265,9 @@ describe("flushTemplates — error propagation", () => {
     };
 
     // Le fix doit laisser le fragment "good" s'émettre avant de rejeter
-    await expect(
-      flushTemplates({ templateStore: store }, emit, {}),
-    ).rejects.toThrow("second emit fails");
+    await expect(flushTemplates({ templateStore: store }, emit, {})).rejects.toThrow(
+      "second emit fails",
+    );
 
     expect(callCount).toBe(2);
   });

@@ -12,19 +12,18 @@
 export { renderToString, renderToChunks } from "./src/render.js";
 
 // ── JSX runtime ────────────────────────────────────────────────────────────
+//
+// `VNode` is a *type* here, never a value. It is the engine's internal
+// representation: nothing outside this package constructs one or tests for one,
+// and exporting the class invited both — while making the tag-name check inside
+// the tree walk look reachable when `jsx()` is in fact the only way in.
 
-export { VNode, Fragment, jsx, jsxs } from "./src/jsx-runtime.js";
+export { Fragment, jsx, jsxs } from "./src/jsx-runtime.js";
+export type { VNode } from "./src/jsx-runtime.js";
 
 // ── Context API ────────────────────────────────────────────────────────────
 
-export {
-  context,
-  setContext,
-  useContext,
-  withScope,
-  snapshot,
-  resetContextStorage,
-} from "./src/context.js";
+export { context, setContext, useContext, withScope, snapshot } from "./src/context.js";
 export type { ContextKey, ContextMap } from "./src/context.js";
 
 // ── Trusted HTML ───────────────────────────────────────────────────────────
@@ -32,59 +31,16 @@ export type { ContextKey, ContextMap } from "./src/context.js";
 export { raw } from "./src/types.js";
 export type { RawString } from "./src/types.js";
 
-// ── JSX namespace for react-jsx transform ──────────────────────────────────
+// ── JSX namespace ──────────────────────────────────────────────────────────
 //
-// TypeScript looks for `JSX.IntrinsicElements` globally when processing JSX.
-// The `declare global` block below makes it available to any package that
-// imports `@vincle/core`.
-//
-// The `export` of the same namespace satisfies explicit imports like
-// `import { type JSX } from "@vincle/core"` (used by @vincle/flow).
+// Declared once in `src/jsx-namespace.ts` and re-exported by every entry point a
+// `jsxImportSource` can name, because that is where the compiler looks it up. The
+// export here also satisfies an explicit `import { type JSX } from "@vincle/core"`
+// (used by `@vincle/flow`).
 
-import type { VNode } from "./src/jsx-runtime.js";
-import type { RawString } from "./src/types.js";
-import type { Awaitable, Renderable } from "./src/types.js";
-
-// `RawString` is a first-class renderable leaf (see `renderNode` in
-// create-element(-async).ts, which special-cases `instanceof RawString`
-// before ever touching `VNode`) — it belongs in `Element`, not behind a cast.
-//
-// `Element` and `ElementType` answer two different questions, and conflating
-// them is what used to force casts in the runtime:
-//
-//   Element     — what `jsx()` produces. A `VNode`, or a `RawString` when the
-//                 static fold succeeded. Stays narrow.
-//   ElementType — what may be used as a component. Its return type is
-//                 `Renderable`, because the renderers handle far more than
-//                 nodes: `() => "text"`, `() => 42`, `() => [<a/>, <b/>]` and
-//                 `async () => <div/>` all render correctly, and were all
-//                 rejected by tsc while `Element` served as the component
-//                 contract. Widening stops there — an object or a symbol return
-//                 is still an error.
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace JSX {
-    type Element = Awaitable<VNode | RawString>;
-    type ElementType = string | ((props: any) => Renderable);
-    type IntrinsicElements = {
-      [K in string]: Record<string, unknown> & { children?: unknown };
-    };
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace JSX {
-  export type Element = Awaitable<VNode | RawString>;
-  export type ElementType = string | ((props: any) => Renderable);
-  export type IntrinsicElements = {
-    [K in string]: Record<string, unknown> & { children?: unknown };
-  };
-}
+export type { JSX } from "./src/jsx-namespace.js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type { CSSProperties } from "./src/types.js";
+export type { CSSProperties, ClassValue, FromReact } from "./src/types.js";
 export type { Awaitable, Renderable } from "./src/types.js";
-
-/** @internal Resolved VNode — same as VNode, used by @vincle/flow types. */
-export type ResolvedVNode = VNode;

@@ -1,7 +1,7 @@
 // Register the Turbo (Hotwire) custom elements used by `TurboAdapter` so they
 // type-check against vincle's JSX. Vincle derives its intrinsic elements from
 // `React.JSX.IntrinsicElements`, so augmenting it here flows through
-// automatically (see @vincle/core's `types-jsx.ts`).
+// automatically (see @vincle/core's `src/types.ts` and `src/jsx-namespace.ts`).
 //
 // We augment via `declare global` (not `declare module "react"`) because the
 // latter breaks TypeScript 6's module resolution for `export =` modules.

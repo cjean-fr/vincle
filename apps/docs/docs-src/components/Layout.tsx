@@ -48,7 +48,7 @@ export function Layout({ children }: { children: JSX.Element }) {
   return (
     <html lang="en" class="docs-html">
       <head>
-        <meta charset="UTF-8" />
+        <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="color-scheme" content="light dark" />
         <meta name="theme-color" content="#6366f1" media="(prefers-color-scheme: light)" />
@@ -60,9 +60,9 @@ export function Layout({ children }: { children: JSX.Element }) {
           http-equiv="Permissions-Policy"
           content="camera=(), microphone=(), geolocation=(), interest-cohort=()"
         />
-        <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
           href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap"
@@ -126,7 +126,7 @@ export function Layout({ children }: { children: JSX.Element }) {
           <div
             class={`flex min-w-0 flex-1 flex-col ${isHome ? "mx-auto max-w-5xl" : "px-6 md:px-8 lg:px-12"}`}
           >
-            <main id="docs-main" class="docs-main flex-1 scroll-mt-12 py-8" tabindex={-1}>
+            <main id="docs-main" class="docs-main flex-1 scroll-mt-12 py-8" tabIndex={-1}>
               {children}
               <PageFooter />
             </main>

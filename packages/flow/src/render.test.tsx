@@ -1,4 +1,4 @@
-import type { VNode, ResolvedVNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 
 import { describe, it, expect } from "bun:test";
 
@@ -101,9 +101,9 @@ describe("renderToFlowEvents", () => {
   it("cancels a stream mid-flight between fragments", async () => {
     const ac = new AbortController();
     async function* items(): AsyncGenerator<VNode, void, undefined> {
-      yield (<li>a</li>) as ResolvedVNode;
+      yield (<li>a</li>) as VNode;
       await Bun.sleep(50);
-      yield (<li>b</li>) as ResolvedVNode;
+      yield (<li>b</li>) as VNode;
     }
     const stream = renderToFlowEvents(
       () => (
@@ -346,7 +346,7 @@ describe("edge cases — render pipeline", () => {
 
   it("mixed one-shot + stream: shell first, fragments between, close last", async () => {
     async function* g() {
-      yield (<li>g</li>) as ResolvedVNode;
+      yield (<li>g</li>) as VNode;
     }
     const events = await collectEvents(
       renderToFlowEvents(

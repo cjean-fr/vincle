@@ -73,8 +73,9 @@ sanitization](/integration/precompile#build-time-sanitization-secure-mode).
 
 Installing `@types/react` (without React itself) gives you per-element attribute
 types: `src` on `<img>`, `href` on `<a>`, `colSpan` on `<td>`, and so on. It is
-optional — Vincle's own `HTMLAttributes` is a permissive type that accepts any
-key, so the library works without it.
+optional in the sense that the library compiles and renders without it — but
+without it, attributes are unchecked, so `<div clas="card">` passes silently.
+Install it. Nothing is imported from React at runtime.
 
 ```json
 // tsconfig.json

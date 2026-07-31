@@ -29,39 +29,102 @@ mesure décrivant le code actuel.** Les anecdotes datées sur le passé y resten
 
 ## 1. Décisions de rendu
 
-### Une seule porte d'entrée
+### Aucun rendu synchrone
 
-`@vincle/core` n'exporte qu'un `renderToString`, celui de
-`create-element-async.ts`, qui rend `Promise<string>`.
+`@vincle/core` expose `renderToString` et `renderToChunks`, tous deux dans
+`render.ts`, tous deux asynchrones.
 
 Exporter en plus un renderer synchrone serait tentant — il est plus rapide — mais
 c'est deux surfaces publiques, deux comportements à documenter, et un piège : le
 dev choisit le renderer sync, écrit un composant async six mois plus tard, et
 récolte du HTML corrompu **sans erreur**. Le renderer sync ne lève rien sur une
 Promise, il émet `[object Promise]` dans la sortie. Ce silence est la raison de
-n'avoir qu'une porte, et elle doit toujours marcher (cf. `GOAL.md`, « être le
-partenaire du dev »).
+n'avoir aucune porte synchrone, et elle doit toujours marcher (cf. `GOAL.md`,
+« être le partenaire du dev »).
 
 Corollaire : toute proposition de rendre l'API publique synchrone, ou d'ajouter un
-second export de rendu, doit d'abord dire ce qu'elle fait de ce silence.
+troisième export de rendu, doit d'abord dire ce qu'elle fait de ce silence.
 
-### `create-element.ts` : non exporté, non supprimable
+Corollaire moins évident, et découvert de la mauvaise manière : **ce silence n'a
+pas le droit d'exister ailleurs non plus.** `[object Promise]` est sorti de trois
+autres endroits où le type promettait l'attente et où le moteur coerçait —
+`dangerouslySetInnerHTML.__html`, les valeurs d'attribut (`class`, `style`,
+`href`…), et l'inverse pour les itérables synchrones, que `Renderable` déclare
+depuis toujours et que le tree-walk rendait en `[object Set]`. Chacun était une
+déclaration de type non tenue. La règle qui en sort : **si le type l'autorise, le
+moteur le fait** — et le contrôle, c'est `type-contract.tsx` d'un côté, la liste
+de cas `jsxAttr ≡ buildAttrs` de l'autre.
 
-Le renderer sync reste dans l'arbre. Il n'est pas exporté et sert de référence au
-fuzz différentiel de `path-equivalence.test.ts`, qui compare le fold statique et
-le tree-walk sur des arbres générés. À ce titre il doit rester byte-équivalent aux
-autres renderers — **ni supprimé, ni exporté.**
+### L'ordre d'exécution est l'ordre du document
 
-### Trois renderers, une seule sérialisation
+Les deux renderers exécutent les composants dans l'ordre du document. Un frère
+n'est démarré que lorsque celui de gauche est terminé.
 
-`create-element.ts`, `create-element-async.ts` et `render-chunks.ts` parcourent le
-même arbre et doivent produire les mêmes octets. Toute divergence de
-sérialisation est un bug, pas une variante — `serialize.ts` est l'autorité unique
-sur l'enveloppe d'un élément, et le fuzz différentiel verrouille le reste.
+Ce n'était pas le cas de `renderToString`, et c'était un choix délibéré :
+`renderChildrenAsync` démarrait tous les frères restants avant d'en attendre un
+seul (`Promise.all`), ce qui recouvrait leurs I/O. Le recouvrement était gratuit
+— jusqu'à ce qu'un composant écrive dans le contexte. Alors le document dépendait
+de la latence :
+
+```
+<div><Writer/><Reader/></div>     // Writer await, puis setContext(K, "b")
+Reader rapide  →  <div>…a…</div>
+Reader lent    →  <div>…b…</div>
+```
+
+Même arbre, même code, deux documents — et `renderToChunks`, ordonné par
+nécessité puisque les octets partent dans l'ordre, en produisait un troisième.
+Le contexte est une pile d'exécution mutable (cf. `GOAL.md`) ; des frères qui se
+recouvrent sont en course dessus, et rien dans l'arbre ne disait quelle réponse
+était la bonne.
+
+Ordonner le parcours supprime la course au lieu de la documenter, et fait
+coïncider les deux renderers **par construction** plutôt que par un test qui le
+revérifie à chaque commit.
+
+Ce qu'on abandonne est réel : deux composants qui font chacun un fetch ne les
+recouvrent plus. Ce n'est pas un oubli, c'est un arbitrage — et le projet a déjà
+l'outil qui rachète le recouvrement là où il est _visible dans le balisage_ :
+`<Template>` / `<Slot>` de `@vincle/flow`. Une concurrence qu'on voit vaut mieux
+qu'une concurrence qui réécrit le HTML dans le dos du dev.
+
+Corollaire : toute proposition de rendre `renderChildrenAsync` concurrent doit
+d'abord dire ce qu'elle fait du non-déterminisme. Le test qui verrouille la règle
+est `src/execution-order.test.ts`.
+
+### Deux renderers, une seule sérialisation
+
+`renderNode` et `streamNode` parcourent le même arbre et doivent produire les
+mêmes octets. Toute divergence de sérialisation est un bug, pas une variante —
+`serialize.ts` est l'autorité unique sur l'enveloppe d'un élément, et le fuzz
+différentiel de `render-chunks.test.ts` verrouille le reste sur 500 arbres
+générés.
 
 En pratique cela veut dire que les branches de `renderNode` et de `streamNode` se
 suivent dans le même ordre. Réordonner l'une sans l'autre est une régression même
 si les tests passent.
+
+Le troisième parcours est le fold statique de `serialize.ts`, qui pré-rend un
+sous-arbre à la construction. Il est soumis à la même règle, et son garde-fou est
+`path-equivalence.test.ts` : le générateur construit le même arbre logique deux
+fois — une fois avec `jsx` (fold actif), une fois avec un `vnodeOf` qui ne diffère
+de `jsx` que par l'absence du fold — et compare les octets sur 1000 arbres. Le
+contrôle ne doit différer de `jsx` que par ce seul point ; s'il en diffère par
+deux, la comparaison ne mesure plus rien.
+
+### Une seule autorité par question
+
+Le fold et les tree-walks validaient chacun le nom de balise : trois vérifications
+pour une réponse, dont deux inatteignables par l'API publique — une balise string
+n'entre dans le moteur que par `jsx()`. Le fold jugeait en plus les props pour
+décider s'il pouvait folder, alors que `buildAttrs`, qu'il appelle dix lignes plus
+bas, savait toutes les sérialiser.
+
+La règle : **une question, un endroit.** Le nom de balise se valide dans `jsx()`,
+au plus tôt, là où la pile pointe encore l'élément écrit par le dev. Les props se
+sérialisent dans `buildAttrs`, seule autorité. `dangerouslySetInnerHTML` reste la
+seule prop que le fold ne peut pas voir — elle remplace les enfants qu'il lit dans
+`props` — donc `jsx()` la garde pour lui.
 
 ### `renderToChunks` n'est pas un substitut de `renderToString`
 

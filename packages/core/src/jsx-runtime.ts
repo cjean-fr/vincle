@@ -1,8 +1,15 @@
 import type { Renderable } from "./types.js";
+
+import {
+  attrMeta,
+  BOOLEAN_ATTRIBUTES,
+  classToString,
+  isPlainObject,
+  styleToString,
+} from "./attrs.js";
+import { escapeAttr, escapeContent, isSafeScheme } from "./escape.js";
+import { tryRenderStatic, NOT_STATIC, isValidTag, invalidTagMessage } from "./serialize.js";
 import { raw, RawString } from "./types.js";
-import { tryRenderStatic, NOT_STATIC } from "./serialize.js";
-import { resolveAttrName, BOOLEAN_ATTRIBUTES, classToString, styleToString } from "./attrs.js";
-import { escapeAttr, escapeContent, isSafeScheme, URL_ATTRIBUTES } from "./escape.js";
 
 // ── VNode ────────────────────────────────────────────────────────────────
 
@@ -27,19 +34,46 @@ class VNode {
 function jsx(
   tag: string | ((props: any) => any),
   attributes: Record<string, unknown> | null,
-): VNode | RawString {
+): VNode | RawString | Promise<RawString> {
   const props = attributes ?? {};
+  const dsih = props["dangerouslySetInnerHTML"] as { __html: unknown } | undefined;
 
   if (typeof tag === "string") {
-    const folded = tryRenderStatic(tag, props);
-    if (folded !== NOT_STATIC) return folded;
+    // The single gate for tag names. `jsx()` is the only way a string tag enters
+    // the engine — the fold and the tree walks all sit behind it — so validating
+    // here validates every path exactly once, and does it at construction, where
+    // the stack still points at the element the developer wrote.
+    if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
+
+    // `dangerouslySetInnerHTML` is the only prop the fold cannot see, because it
+    // replaces the children the fold reads from `props`. Every other shape it
+    // handles, so this is the whole of the prop check that used to live there.
+    if (dsih === undefined) {
+      const folded = tryRenderStatic(tag, props);
+      if (folded !== NOT_STATIC) return folded;
+    }
   }
 
-  const finalChildren =
-    props["dangerouslySetInnerHTML"] !== undefined
-      ? raw(String((props["dangerouslySetInnerHTML"] as { __html: unknown }).__html ?? ""))
-      : props["children"];
-  return new VNode(tag, props, finalChildren);
+  return new VNode(
+    tag,
+    props,
+    dsih !== undefined ? trustedInnerHTML(dsih.__html) : props["children"],
+  );
+}
+
+/**
+ * `dangerouslySetInnerHTML.__html` as a renderable child.
+ *
+ * The coercion used to be eager, so a promise — which the prop's type has always
+ * allowed — reached the document as `[object Promise]`. That is the exact silent
+ * corruption ADR-003 names as the reason this package has a single render entry
+ * point; it has no more right to exist here. Awaiting keeps both contracts: the
+ * HTML stays trusted (unescaped), and async stays something the developer never
+ * has to think about.
+ */
+function trustedInnerHTML(html: unknown): RawString | Promise<RawString> {
+  if (html instanceof Promise) return html.then(trustedInnerHTML);
+  return raw(String(html ?? ""));
 }
 
 const jsxs = jsx;
@@ -126,7 +160,22 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
   if (name === "children" || name === "key" || name === "ref" || name === "dangerouslySetInnerHTML")
     return raw("");
 
-  const attrName = resolveAttrName(name);
+  // One memoized lookup for the resolved name, its validity and whether it is a
+  // URL attribute — the same `attrMeta` `buildAttrs` uses. Asking the three
+  // questions separately here, uncached, cost 11% of the precompiled-list
+  // benchmark; sharing the cache also makes it impossible for the two paths to
+  // resolve a name differently.
+  //
+  // The validity gate matters on this path as much as the other: a name reaching a
+  // runtime helper is not necessarily author-written — a spread, a computed key, or
+  // a transform that does not bail on spreads the way `@vincle/precompile-core`
+  // does, all put caller-controlled text here. `x"><script>` used to be emitted
+  // verbatim, closing the start tag, while `buildAttrs` dropped it: the very
+  // injection `compiler-contract.test.ts` pins was open whenever the precompile
+  // transform was enabled.
+  const meta = attrMeta(name);
+  if (!meta.valid) return raw("");
+  const attrName = meta.name;
 
   // No `on…` branch — same reason as `buildAttrs`: a handler is an attribute like
   // any other, and a function is unserializable whatever it is called. This path
@@ -144,8 +193,9 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
     return new RawString(`${attrName}="${value.value}"`);
   }
 
-  // Style object → string
-  if (attrName === "style" && typeof value === "object" && !Array.isArray(value)) {
+  // Style object → string. `isPlainObject`, like `buildAttrs`: only an object
+  // literal is a bag of declarations.
+  if (attrName === "style" && isPlainObject(value)) {
     const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
     if (!styleStr) return raw("");
     return new RawString(`style="${escapeAttr(styleStr)}"`);
@@ -166,11 +216,12 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
     return new RawString(`${attrName}="${value}"`);
   }
 
-  // `URL_ATTRIBUTES`, not a local switch: the switch duplicated the list and had
-  // already drifted from it — `data` was added to the set and `<object data>`
-  // stayed unchecked on this path only. One source of truth, one behaviour.
+  // `meta.isUrl`, not a local switch: the switch this path used to carry
+  // duplicated `URL_ATTRIBUTES` and had already drifted from it — `data` was added
+  // to the set and `<object data="javascript:…">` stayed unchecked here only. One
+  // source of truth, one behaviour.
   let str = String(value);
-  if (URL_ATTRIBUTES.has(attrName) && !isSafeScheme(str)) str = "#blocked";
+  if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
 
   return new RawString(`${attrName}="${escapeAttr(str)}"`);
 }
@@ -234,3 +285,7 @@ function coerceRawString(v: unknown): string {
 }
 
 export { jsx, jsxs, Fragment, VNode };
+
+// TypeScript resolves `JSX.*` from the module named in `jsxImportSource`, which
+// for `jsx: react-jsx` is this one. Declared once in `./jsx-namespace.ts`.
+export type { JSX } from "./jsx-namespace.js";

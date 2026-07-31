@@ -1,16 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
-import { renderToString } from "./render.js";
 import { jsx, Fragment, VNode } from "./jsx-runtime.js";
+import { renderToString } from "./render.js";
 import { raw } from "./types.js";
 
 /**
  * Path-equivalence fuzzer — the structural guard for the hybrid model.
  *
- * core-next has two renderers over the same value taxonomy: the eager fold
- * (`jsx` pre-renders static subtrees to RawString) and the VNode tree-walk
- * (`createElement`). A "hole" is any value kind one path handles and the other
- * mishandles — silently, since the fallback is `escapeHtml(String(v))`, not an
+ * The engine builds HTML two ways over the same value taxonomy: the eager fold
+ * (`jsx` pre-renders static subtrees to a `RawString`) and the VNode tree walk
+ * (`renderNode`). A "hole" is any value kind one path handles and the other
+ * mishandles — silently, since the fallback is `escapeContent(String(v))`, not an
  * error. That's the class of bug an eager (single-path) renderer can't have.
  *
  * This test proves the two paths agree: a seeded generator builds the *same
@@ -21,14 +21,26 @@ import { raw } from "./types.js";
 
 type Builder = (tag: any, props: any) => unknown;
 
-/** `jsx` with the static-fold shortcut removed: always a VNode (tree-walk path). */
+/**
+ * `jsx` with the static-fold shortcut removed: always a VNode (tree-walk path).
+ *
+ * Mirrors `jsx`'s handling of `dangerouslySetInnerHTML`, including the promised
+ * form — the control has to differ from `jsx` in exactly one way, the fold, or the
+ * comparison stops meaning anything.
+ */
 function vnodeOf(tag: any, attributes: Record<string, unknown> | null): unknown {
   const props = attributes ?? {};
-  const finalChildren =
-    props["dangerouslySetInnerHTML"] !== undefined
-      ? raw(String((props["dangerouslySetInnerHTML"] as { __html: unknown }).__html ?? ""))
-      : props["children"];
-  return new VNode(tag, props, finalChildren);
+  const dsih = props["dangerouslySetInnerHTML"] as { __html: unknown } | undefined;
+  return new VNode(
+    tag,
+    props,
+    dsih !== undefined ? trustedInnerHTML(dsih.__html) : props["children"],
+  );
+}
+
+function trustedInnerHTML(html: unknown): unknown {
+  if (html instanceof Promise) return html.then(trustedInnerHTML);
+  return raw(String(html ?? ""));
 }
 
 // Seeded PRNG (mulberry32) — same seed ⇒ same sequence ⇒ same logical tree.
@@ -66,7 +78,17 @@ function randProps(r: () => number): Record<string, unknown> {
   if (r() < 0.2) p["disabled"] = r() < 0.5;
   if (r() < 0.15) p["style"] = { color: "red", fontSize: 12 };
   if (r() < 0.1) p["data-x"] = Math.floor(r() * 10);
-  if (r() < 0.08) p["dangerouslySetInnerHTML"] = { __html: "<b>raw</b> & stuff" };
+  // A `RawString` in an attribute is an object, and used to be read as a style bag
+  // on this path only.
+  if (r() < 0.08) p["style"] = raw("color:blue");
+  // A promised attribute value: the fold now returns a `Promise<RawString>` for
+  // these instead of declining, so this is the one prop shape where the two paths
+  // do not even have the same *return type* — only the same bytes.
+  if (r() < 0.12) p["href"] = Promise.resolve(r() < 0.5 ? "/p" : "javascript:alert(1)");
+  if (r() < 0.08)
+    p["dangerouslySetInnerHTML"] = {
+      __html: r() < 0.5 ? "<b>raw</b> & stuff" : Promise.resolve("<i>late</i> & raw"),
+    };
   return p;
 }
 
@@ -107,10 +129,21 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
     return h(Fragment, { children: kids });
   }
 
-  if (roll < 0.6) {
+  if (roll < 0.56) {
     // a raw (possibly nested) array passed directly as a child
     const n = 1 + Math.floor(r() * 3);
     return Array.from({ length: n }, () => gen(h, r, depth - 1));
+  }
+
+  if (roll < 0.6) {
+    // A synchronous iterable that is not an array. `Renderable` has always
+    // declared `Iterable<Renderable>`; the tree walk only started honouring it
+    // once a `Set` was found rendering as "[object Set]".
+    const items = Array.from({ length: 1 + Math.floor(r() * 3) }, () => gen(h, r, depth - 1));
+    if (r() < 0.5) return new Set(items);
+    return (function* () {
+      for (const item of items) yield item;
+    })();
   }
 
   if (roll < 0.68) {

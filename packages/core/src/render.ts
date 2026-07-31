@@ -1,8 +1,8 @@
 import { buildAttrs } from "./attrs.js";
 import { escapeContent, escapeRawTagContent, isRawtextTag } from "./escape.js";
 import { VNode } from "./jsx-runtime.js";
+import { serializeElement } from "./serialize.js";
 import { RawString } from "./types.js";
-import { invalidTagMessage, isValidTag, serializeElement } from "./serialize.js";
 
 // ── Shared helper ─────────────────────────────────────────────────────────
 //
@@ -20,12 +20,36 @@ function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
   );
 }
 
+/**
+ * A synchronous iterable that is not an array — a `Set`, a `Map`, a generator.
+ *
+ * `Renderable` has always declared `Iterable<Renderable>`, and `jsxEscape` has
+ * always drained one, but the tree walks did not: `<ul>{new Set(items)}</ul>`
+ * rendered `[object Set]` here and the items themselves under the precompile
+ * transform. Strings and arrays never reach this test — they are handled above.
+ */
+function isIterable(value: unknown): value is Iterable<unknown> {
+  return (
+    value != null &&
+    typeof value === "object" &&
+    typeof (value as { [Symbol.iterator]?: unknown })[Symbol.iterator] === "function"
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // renderToString
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function renderToString(node: unknown): Promise<string> {
-  return Promise.resolve(renderNode(node));
+  try {
+    return Promise.resolve(renderNode(node));
+  } catch (error) {
+    // The signature promises a `Promise<string>`, so every failure has to arrive
+    // as a rejection. The component branch below was already written to convert a
+    // synchronous throw; `buildAttrs` (a function as an attribute value) was not
+    // covered by it and escaped past `.catch()` handlers.
+    return Promise.reject(error);
+  }
 }
 
 /**
@@ -51,6 +75,7 @@ function renderNode(vnode: unknown): string | Promise<string> {
   // Order mirrors `streamNode` — they must stay interchangeable.
   if (!(vnode instanceof VNode)) {
     if (isAsyncIterable(vnode)) return collectAsyncIterable(vnode);
+    if (isIterable(vnode)) return renderChildrenAsync(Array.from(vnode));
     return escapeContent(String(vnode));
   }
 
@@ -72,12 +97,27 @@ function renderNode(vnode: unknown): string | Promise<string> {
   }
 
   // ── Regular element ──
+  // The tag name was validated by `jsx()`, the only gate a string tag can come
+  // through; re-checking here charged every element for the same answer twice.
   const { tag, attrs, children } = vnode;
-
-  if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
 
   const attrStr = buildAttrs(attrs);
   const childTag = isRawtextTag(tag) ? tag : undefined;
+
+  // A promised attribute value (`<a href={resolveUrl()}>`) — the only reason
+  // `buildAttrs` asks to be awaited. Once we are async anyway, the element
+  // reduces to its two parts, so there is nothing here to keep in step with the
+  // synchronous form below.
+  if (typeof attrStr !== "string") {
+    return attrStr.then(async (resolved) =>
+      serializeElement(
+        tag,
+        resolved,
+        children === undefined ? "" : await renderChildrenAsync(children, childTag),
+        children !== undefined,
+      ),
+    );
+  }
 
   if (children !== undefined) {
     const content = renderChildrenAsync(children, childTag);
@@ -100,26 +140,57 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
 
   // Concatenate directly instead of filling an array then joining; the
   // intermediate array was the first cost centre of the renderer — 35% of time
-  // on `realworld` (V8 profile), GC included. The array only appears at the
-  // first truly async child, and it carries only the suffix: the prefix already
-  // rendered stays a plain string.
+  // on `realworld` (V8 profile), GC included.
   let out = "";
-  let deferred: Promise<string> | undefined;
-  let i = 0;
-
-  for (; i < children.length; i++) {
+  for (let i = 0; i < children.length; i++) {
     const part = renderChild(children[i], rawtextTag);
-    if (typeof part !== "string") {
-      deferred = part;
-      break;
-    }
+    // First child that suspends: the rest is finished by the sequential tail.
+    // What is already rendered stays a plain string, never an array element.
+    if (typeof part !== "string") return renderChildrenFrom(out, part, children, i + 1, rawtextTag);
     out += part;
   }
-  if (deferred === undefined) return out;
+  return out;
+}
 
-  const parts: (string | Promise<string>)[] = [out, deferred];
-  for (i++; i < children.length; i++) parts.push(renderChild(children[i], rawtextTag));
-  return Promise.all(parts).then((resolved) => resolved.join(""));
+/**
+ * Finish a child list whose `from - 1`-th element suspended — one child at a
+ * time, each started only once its left sibling is done.
+ *
+ * This is the sequencing rule of the whole engine, and it is not an
+ * implementation detail: **components execute in document order.** The previous
+ * form started every remaining sibling before awaiting any of them
+ * (`Promise.all`), which overlapped their I/O — and made the rendered document
+ * depend on how long that I/O took:
+ *
+ *   <div><Writer/><Reader/></div>   // Writer awaits, then setContext(K, "b")
+ *   Reader fast  →  <div>…a…</div>
+ *   Reader slow  →  <div>…b…</div>
+ *
+ * Same tree, same code, two documents. Context is a mutable execution stack (see
+ * `context.ts`), so overlapping siblings race on it: nothing in the tree said
+ * which of the two results was the right one, and `renderToChunks` — ordered by
+ * necessity, since bytes leave in order — silently produced the other. Ordering
+ * the walk removes the race instead of documenting it, and makes the two
+ * renderers agree by construction rather than by test.
+ *
+ * The overlap is a real thing to give up, and the project already has the tool
+ * that buys it back deliberately, with a boundary in the markup to show where it
+ * happens: `<Template>` / `<Slot>` in `@vincle/flow`. Concurrency you can see is
+ * worth more than concurrency that rewrites your HTML behind you.
+ */
+async function renderChildrenFrom(
+  prefix: string,
+  pending: Promise<string>,
+  children: unknown[],
+  from: number,
+  rawtextTag: string | undefined,
+): Promise<string> {
+  let out = prefix + (await pending);
+  for (let i = from; i < children.length; i++) {
+    const part = renderChild(children[i], rawtextTag);
+    out += typeof part === "string" ? part : await part;
+  }
+  return out;
 }
 
 /**
@@ -159,13 +230,14 @@ async function collectAsyncIterable(iterable: AsyncIterable<unknown>): Promise<s
 // yields four. Callers get the strongest guarantee a streaming renderer can
 // offer: if a byte is knowable, it has already been sent.
 //
-// Chunks are emitted in document order, so async siblings resolve one after the
-// other rather than concurrently as they do under `renderToString`. This is
-// deliberate: an HTML byte stream *is* ordered, and buying concurrency back here
-// would mean buffering later siblings while an earlier one blocks — trading away
-// the memory ceiling that makes streaming worth doing. Out-of-order concurrency
-// is a separate concern with a separate tool: `<Template>` / `<Slot>` in
-// `@vincle/flow`.
+// Chunks are emitted in document order, and async siblings resolve one after the
+// other. So does `renderToString` (see `renderChildrenFrom`): the two renderers
+// share one execution order, which is what makes "same output" a property of the
+// design rather than a claim the fuzzer has to keep re-proving. An HTML byte
+// stream *is* ordered, and buying concurrency back here would mean buffering
+// later siblings while an earlier one blocks — trading away the memory ceiling
+// that makes streaming worth doing. Out-of-order concurrency is a separate
+// concern with a separate tool: `<Template>` / `<Slot>` in `@vincle/flow`.
 
 export async function* renderToChunks(node: unknown): AsyncGenerator<string, void, undefined> {
   const pending: Pending = { html: "" };
@@ -230,6 +302,10 @@ async function* streamNode(
       yield* streamAsyncIterable(node, pending);
       return;
     }
+    if (isIterable(node)) {
+      yield* streamChildren(Array.from(node), pending, undefined);
+      return;
+    }
     pending.html += escapeContent(String(node));
     return;
   }
@@ -243,9 +319,13 @@ async function* streamNode(
   // ── Element ──
   const { tag, attrs, children } = node;
 
-  if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
-
-  const attrStr = buildAttrs(attrs);
+  let attrStr = buildAttrs(attrs);
+  // A promised attribute value is a suspension point like any other, so it obeys
+  // the same rule as the rest of this module: flush, then wait.
+  if (typeof attrStr !== "string") {
+    yield* flush(pending);
+    attrStr = await attrStr;
+  }
 
   if (children === undefined) {
     pending.html += serializeElement(tag, attrStr, "", false);

@@ -54,7 +54,7 @@ async function ensureStore(): Promise<void> {
     throw new Error(
       "[vincle/core] AsyncLocalStorage not available. " +
         "Use Node ≥12.17, Bun, or Deno ≥1.11. " +
-        "See https://vincle.cjean.fr/docs/context#async-local-storage",
+        "See https://vincle.cjean.fr/api/core/context",
     );
   })();
 

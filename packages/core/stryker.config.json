@@ -5,21 +5,17 @@
   "commandRunner": {
     "command": "bun test"
   },
-  "mutate": [
-    "src/create-element.ts",
-    "src/create-element-async.ts",
-    "src/attrs.ts",
-    "src/escape.ts",
-    "src/context.ts",
-    "src/raw.ts",
-    "src/serialize.ts",
-    "src/static-render.ts",
-    "src/url-safety.ts",
-    "src/render-chunks.ts",
-    "src/jsx-runtime.ts",
-    "src/jsx-dev-runtime.ts",
-    "src/jsx-precompile-runtime.ts"
+  "_comment_mutate": [
+    "A glob, not a list of files. The list version named six modules that had been",
+    "merged away (create-element.ts, create-element-async.ts, raw.ts,",
+    "static-render.ts, url-safety.ts, render-chunks.ts) and never named render.ts,",
+    "the module that replaced them — so the tree walk and the streamer, the whole",
+    "renderer, went unmutated for as long as the rename was old. Stryker does not",
+    "complain about a path matching nothing.",
+    "Excluding tests instead of enumerating sources means a new module is covered",
+    "by default rather than by someone remembering to add it here."
   ],
+  "mutate": ["index.ts", "src/**/*.ts", "!src/**/*.test.ts", "!src/jsx-namespace.ts"],
   "mutator": {
     "excludedMutations": ["BlockStatement"]
   },

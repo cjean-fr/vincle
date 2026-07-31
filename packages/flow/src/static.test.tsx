@@ -1,4 +1,4 @@
-import type { ResolvedVNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 
 import { describe, it, expect } from "bun:test";
 
@@ -24,7 +24,7 @@ describe("renderToStatic", () => {
   });
 
   it("collects fragments without flushing them", async () => {
-    const AsyncContent = async () => (<span>real</span>) as ResolvedVNode;
+    const AsyncContent = async () => (<span>real</span>) as VNode;
     const result = await renderToStatic(
       async (ctx) => {
         const html = await ctx.renderPage(() => (
@@ -47,7 +47,7 @@ describe("renderToStatic", () => {
   });
 
   it("applies adapter.transformShell — polyfill injected when fragments exist", async () => {
-    const AsyncContent = async () => (<span>x</span>) as ResolvedVNode;
+    const AsyncContent = async () => (<span>x</span>) as VNode;
     const result = await renderToStatic(
       async (ctx) =>
         ctx.renderPage(() => (
@@ -109,7 +109,7 @@ describe("renderToStatic", () => {
     });
 
     it("throws a clear error when <Template> is used without an adapter", async () => {
-      const AsyncContent = async () => (<span>x</span>) as ResolvedVNode;
+      const AsyncContent = async () => (<span>x</span>) as VNode;
       const result = renderToStatic(async (ctx: any) => {
         await ctx.renderPage(() => (
           <html>
@@ -149,7 +149,7 @@ describe("renderToStatic", () => {
 
   it("ESI: placeholders become esi:include, fragments materialize as-is", async () => {
     const files: Record<string, string> = {};
-    const AsyncContent = async () => (<span>real</span>) as ResolvedVNode;
+    const AsyncContent = async () => (<span>real</span>) as VNode;
     await renderToStatic(
       async (ctx) => {
         const page = await ctx.renderPage(() => (
@@ -203,7 +203,7 @@ describe("renderToStatic", () => {
         Array.from({ length: PAGE_COUNT }, (_, i) =>
           renderToStatic(
             async (ctx) => {
-              const AsyncContent = async () => (<span>frag-{i}</span>) as ResolvedVNode;
+              const AsyncContent = async () => (<span>frag-{i}</span>) as VNode;
               const html = await ctx.renderPage(() => (
                 <html>
                   <body>
@@ -252,7 +252,7 @@ describe("renderToStatic", () => {
             const i = k * 2 + 1;
             return renderToStatic(
               async (ctx) => {
-                const AsyncContent = async () => (<span>odd-{i}</span>) as ResolvedVNode;
+                const AsyncContent = async () => (<span>odd-{i}</span>) as VNode;
                 const html = await ctx.renderPage(() => (
                   <html>
                     <body>
@@ -286,7 +286,7 @@ describe("renderToStatic", () => {
   });
 
   it("<Template> with async content uses NativeAdapter when explicitly passed", async () => {
-    const AsyncContent = async () => (<span>real</span>) as ResolvedVNode;
+    const AsyncContent = async () => (<span>real</span>) as VNode;
     const html = await renderToStatic(
       async (ctx) =>
         ctx.renderPage(() => (

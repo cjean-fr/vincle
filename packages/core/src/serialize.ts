@@ -87,10 +87,10 @@ export function serializeElement(
 // ── Static fold — single-pass subtree pre-render ──────────────────────────
 //
 // `tryRenderStatic` renders an element subtree to a RawString in one traversal:
-// it emits HTML as it walks and bails to `NOT_STATIC` the instant it meets
-// a dynamic node (VNode, Promise, function, or an unfoldable prop). This
-// replaces the old detect-then-render design (`isStaticChild` walk +
-// `renderFlatChildren` walk) — children are traversed once, not twice.
+// it emits HTML as it walks and bails to `NOT_STATIC` the instant it meets a
+// dynamic child (a VNode, a promise, a function, an iterable). This replaces the
+// old detect-then-render design (`isStaticChild` walk + `renderFlatChildren`
+// walk) — children are traversed once, not twice.
 //
 // The bail is signalled through a `FoldState` object passed by reference rather
 // than a `string | symbol` union return, so `foldChild` stays monomorphic (a
@@ -106,35 +106,38 @@ interface FoldState {
   dynamic: boolean;
 }
 
+/**
+ * Fold `<tag …props>` to final HTML, or `NOT_STATIC` when a child is dynamic.
+ *
+ * Two things this deliberately does *not* do, because a second opinion on either
+ * one is how the fold and the tree walk drift apart:
+ *
+ * - **Validate the tag name.** `jsx()` does it, once, and `jsx()` is the only
+ *   caller this function has.
+ * - **Judge the props.** There used to be a `for…in` over every prop looking for
+ *   shapes the fold supposedly could not handle. `buildAttrs`, called below, is
+ *   the authority on serializing props, and it handled all of them: a style
+ *   object, a class array, a promised value. The scan cost a pass over every
+ *   attribute of every element, called every getter in the props twice, and sent
+ *   `<div style={{…}}>` and `class={[…]}` down the slow path for nothing.
+ *   `dangerouslySetInnerHTML` is the one prop shape that really is invisible here
+ *   — it replaces the children this walk reads from `props` — and `jsx()` keeps
+ *   that one to itself.
+ */
 export function tryRenderStatic(
   tag: string,
   props: Record<string, unknown>,
-): RawString | typeof NOT_STATIC {
-  // Validity is checked here and never treated as a bail-out: an invalid name is
-  // an error on every path, not a reason to prefer another one.
-  if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
-
-  // Prop safety — cheap, and bails before touching children when a prop
-  // (style object / class array / dSIH / Promise) forces the dynamic path.
-  for (const key in props) {
-    if (!Object.hasOwn(props, key)) continue;
-    if (key === "children" || key === "key" || key === "ref") continue;
-    const v = props[key];
-    if (key === "dangerouslySetInnerHTML") return NOT_STATIC;
-    if (key === "style" && typeof v === "object" && v !== null && !Array.isArray(v))
-      return NOT_STATIC;
-    if (key === "class" && Array.isArray(v)) return NOT_STATIC;
-    if (v instanceof Promise) return NOT_STATIC;
-  }
-
+): RawString | Promise<RawString> | typeof NOT_STATIC {
   const children = props["children"];
   const childTag = isRawtextTag(tag) ? tag : undefined;
 
+  // Children first: a dynamic child is the only reason to decline, and declining
+  // before `buildAttrs` runs is what keeps a promised attribute from being
+  // started and then dropped on the floor.
   const state: FoldState = { dynamic: false };
   const content = foldChildren(children, childTag, state);
   if (state.dynamic) return NOT_STATIC;
 
-  const attrStr = buildAttrs(props);
   // `children !== undefined`, not `!!children` — the tree-walk in `render.ts`
   // uses the former, and any other predicate here reopens a hole the fold is
   // supposed to be indistinguishable from it. `!!children` diverged on every
@@ -143,7 +146,19 @@ export function tryRenderStatic(
   //   <img>{""}</img> →  fold "<img>"  vs  tree-walk "<img></img>"
   // `path-equivalence.test.ts` missed it because it only ever generated void
   // elements without children; it now generates them with children too.
-  return new RawString(serializeElement(tag, attrStr, content, children !== undefined));
+  const hasChildren = children !== undefined;
+
+  const attrStr = buildAttrs(props);
+  // A promised attribute value does not make a subtree dynamic — it makes the
+  // *folded result* awaitable, which `JSX.Element` has always allowed. Folding
+  // it here rather than falling back to a VNode keeps one serializer for one
+  // element, whatever its attributes turn out to be.
+  if (typeof attrStr !== "string") {
+    return attrStr.then(
+      (resolved) => new RawString(serializeElement(tag, resolved, content, hasChildren)),
+    );
+  }
+  return new RawString(serializeElement(tag, attrStr, content, hasChildren));
 }
 
 function foldChildren(children: unknown, rawtextTag: string | undefined, state: FoldState): string {

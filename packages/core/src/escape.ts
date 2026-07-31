@@ -28,8 +28,6 @@ export function escapeContent(str: string): string {
 
 // ── Rawtext tag content escaping (script/style) ─────────────────────────
 
-export const RAWTEXT_TAGS = new Set(["script", "style"]);
-
 /**
  * Does this tag hold rawtext (`<script>` / `<style>`)?
  *
@@ -37,7 +35,7 @@ export const RAWTEXT_TAGS = new Set(["script", "style"]);
  * members, tag names arrive interned from the JSX transform, and this runs once
  * per element — on the `stack` benchmark a single per-element `Set.has` is worth
  * ~15%, which is what pays for tag-name validation on the same path.
- * `RAWTEXT_TAGS` remains the source of truth for everything else.
+ * `RAWTEXT_PATTERN` remains the source of truth for everything else.
  */
 export function isRawtextTag(tag: string): boolean {
   return tag === "script" || tag === "style";
@@ -72,15 +70,25 @@ export function isRawtextTag(tag: string): boolean {
 // Annex B, and escaping it there would be a syntax error.
 //
 // @see https://html.spec.whatwg.org/multipage/scripting.html#restrictions-for-contents-of-script-elements
-const RAWTEXT_PATTERN: Record<string, string> = {
+const RAWTEXT_PATTERN = {
   script: "</?script",
   style: "</style",
-};
+} as const;
+
+/**
+ * The rawtext tags, derived from the patterns instead of listed again.
+ *
+ * The two used to be separate lists, and the loop below reconciled them with a
+ * `?? "</" + tag` fallback for a tag that had no pattern — a branch nothing could
+ * reach, since both members of the set had one. Mutation testing is what found it:
+ * the fallback could be mutated to anything at all and no test noticed. Deriving
+ * the set makes the mismatch it guarded against impossible instead of handled.
+ */
+export const RAWTEXT_TAGS: ReadonlySet<string> = new Set(Object.keys(RAWTEXT_PATTERN));
 
 const RAWTEXT_DETECT = new Map<string, RegExp>();
 const RAWTEXT_SCAN = new Map<string, RegExp>();
-for (const tag of RAWTEXT_TAGS) {
-  const pattern = RAWTEXT_PATTERN[tag] ?? "</" + tag;
+for (const [tag, pattern] of Object.entries(RAWTEXT_PATTERN)) {
   RAWTEXT_DETECT.set(tag, new RegExp(pattern, "i"));
   RAWTEXT_SCAN.set(tag, new RegExp(pattern, "gi"));
 }
@@ -149,7 +157,6 @@ export function escapeRawTagContent(str: string, tag: string): string {
 
 // ── URL scheme validation ────────────────────────────────────────────────
 
-const REGEX_UNSAFE_PROTOCOLS = /^(?:java|vb)script:/i;
 const REGEX_IMAGE_DATA_URI = /^data:image\/(?:png|jpeg|gif|webp|avif)(?:[;+]|$)/i;
 
 export const URL_ATTRIBUTES = new Set([
@@ -163,96 +170,86 @@ export const URL_ATTRIBUTES = new Set([
   "data",
 ]);
 
+// Tab / LF / CR, removed from anywhere in a URL before it is parsed.
+const RE_URL_TAB_NEWLINE = /[\t\n\r]/g;
+
 /**
- * Strip what a URL parser strips before it looks at the scheme.
+ * The scheme a WHATWG URL parser would read, or `undefined` when the input
+ * carries none — in which case it is a relative reference and there is no
+ * scheme to judge.
  *
- * Per WHATWG URL, parsing *removes all ASCII tab and newline* from the input and
- * *removes leading and trailing C0 controls and space*. Testing the raw string
- * against `^(?:java|vb)script:` therefore tests a string no browser ever parses:
+ * Deriving the scheme instead of pattern-matching the raw string is what makes
+ * the answer match the browser's:
  *
- *   "java\tscript:alert(1)"  →  new URL(…).protocol === "javascript:"
- *   "\0javascript:alert(1)"  →  new URL(…).protocol === "javascript:"
+ *   "java\tscript:alert(1)"  →  "javascript"   tab removed mid-scheme
+ *   "\0javascript:alert(1)"  →  "javascript"   leading C0 control removed
+ *   "recherche?q=café:x"     →  undefined      '?' ends any scheme candidate
+ *   "jаvascript:alert(1)"    →  undefined      'а' is Cyrillic, not a scheme char
  *
- * Both bypassed the check and reached the document verbatim. `String.trim()` is
- * not enough on either count: it does not touch interior characters, and `\0` is
- * not whitespace.
+ * The first two used to reach the document verbatim; the last two used to be
+ * rewritten to `#blocked` although no browser sees a scheme in them at all — a
+ * scan for the first `:` alone cannot tell those four cases apart.
  *
- * Only the scheme matters here, so the scan stops at the first `:` — a long
- * query string is never copied. Returns the input unchanged (no allocation) when
- * there is nothing to strip, which is every real URL.
+ * A scheme is `ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) ":"`. The scan stops
+ * at the first character that cannot belong to one, so a long path or query is
+ * never copied.
  *
- * @see https://url.spec.whatwg.org/#concept-basic-url-parser
+ * @see https://url.spec.whatwg.org/#url-scheme-string
  */
-function normalizeForSchemeCheck(url: string): string {
+function schemeOf(url: string): string | undefined {
   const len = url.length;
   let i = 0;
-  // Leading C0 controls and space are dropped outright.
+  // Leading C0 controls and space are dropped before parsing.
   while (i < len && url.charCodeAt(i) <= 0x20) i++;
 
-  let out = "";
-  let start = i;
+  const start = i;
+  let seen = false;
+  let hasTabOrNewline = false;
+
   for (; i < len; i++) {
     const c = url.charCodeAt(i);
-    // A ':' ends the scheme: past it, nothing can change which scheme this is.
-    if (c === 58) {
-      i++;
-      break;
-    }
-    // Tab (0x09), LF (0x0A), CR (0x0D) are removed anywhere in the input.
     if (c === 0x09 || c === 0x0a || c === 0x0d) {
-      out += url.slice(start, i);
-      start = i + 1;
+      hasTabOrNewline = true;
+      continue;
     }
+    if (c === 58) {
+      if (!seen) return undefined; // ":" with no scheme before it
+      const scheme = url.slice(start, i);
+      return (hasTabOrNewline ? scheme.replace(RE_URL_TAB_NEWLINE, "") : scheme).toLowerCase();
+    }
+    const alpha = (c | 32) >= 97 && (c | 32) <= 122;
+    if (!seen) {
+      if (!alpha) return undefined; // a scheme must start with an ASCII alpha
+      seen = true;
+      continue;
+    }
+    if (!alpha && !(c >= 48 && c <= 57) && c !== 43 && c !== 45 && c !== 46) return undefined;
   }
-  return start === 0 ? url : out + url.slice(start);
+  return undefined; // no ":" at all
 }
 
 export function isSafeScheme(url: string): boolean {
+  // Fast paths for the shapes that cannot carry a scheme, plus the dominant one
+  // that can: they skip the scan and the lowercased copy it ends with.
   const c0 = url.charCodeAt(0);
-  if (c0 === 47) return true;  // '/'
-  if (c0 === 35) return true;  // '#'
-  if (c0 === 63) return true;  // '?'
-  if (c0 === 109) {
-    // "mailto:"
-    if (
-      url.charCodeAt(1) === 97 &&
-      url.charCodeAt(2) === 105 &&
-      url.charCodeAt(3) === 108 &&
-      url.charCodeAt(4) === 116 &&
-      url.charCodeAt(5) === 111 &&
-      url.charCodeAt(6) === 58
-    )
-      return true;
-  }
-  // "http" (case-insensitive). Safe as a fast path even though it also admits
-  // "httpx:" — an unknown scheme does not execute; only the script schemes and
-  // non-image data: URIs below do.
-  if ((c0 | 32) === 104) {
-    if (
-      (url.charCodeAt(1) | 32) === 116 &&
-      (url.charCodeAt(2) | 32) === 116 &&
-      (url.charCodeAt(3) | 32) === 112
-    )
-      return true;
-  }
-  const trimmed = normalizeForSchemeCheck(url).trim();
-  if (!trimmed) return true;
-  const colon = trimmed.indexOf(":");
-  if (colon !== -1) {
-    for (let i = 0; i < colon; i++) {
-      if (trimmed.charCodeAt(i) > 127) return false;
-    }
-  }
-  if (REGEX_UNSAFE_PROTOCOLS.test(trimmed)) return false;
+  if (c0 === 47 || c0 === 35 || c0 === 63) return true; // '/', '#', '?'
+  // "http" (case-insensitive). Safe even though it also admits "httpx:" — an
+  // unknown scheme does not execute; only the schemes named below do.
   if (
-    trimmed.length > 5 &&
-    (trimmed.charCodeAt(0) | 32) === 100 && // 'd' — "data:"
-    (trimmed.charCodeAt(1) | 32) === 97 &&  // 'a'
-    (trimmed.charCodeAt(2) | 32) === 116 && // 't'
-    (trimmed.charCodeAt(3) | 32) === 97 &&  // 'a'
-    trimmed.charCodeAt(4) === 58 &&          // ':'
-    !REGEX_IMAGE_DATA_URI.test(trimmed)
+    (c0 | 32) === 104 &&
+    (url.charCodeAt(1) | 32) === 116 &&
+    (url.charCodeAt(2) | 32) === 116 &&
+    (url.charCodeAt(3) | 32) === 112
   )
-    return false;
+    return true;
+
+  const scheme = schemeOf(url);
+  if (scheme === undefined) return true; // relative reference — nothing to judge
+  if (scheme === "javascript" || scheme === "vbscript") return false;
+  // Only image payloads: `data:text/html` is a document, and a document that the
+  // page links to runs script. The parser's own normalization is applied first,
+  // so `data:image/png\t;base64,…` is judged as the browser will read it.
+  if (scheme === "data")
+    return REGEX_IMAGE_DATA_URI.test(url.replace(RE_URL_TAB_NEWLINE, "").trim());
   return true;
 }

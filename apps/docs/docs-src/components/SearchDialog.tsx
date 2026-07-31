@@ -49,10 +49,10 @@ export function SearchDialog() {
             type="search"
             placeholder="Loading index…"
             class="docs-search-input flex-1 bg-transparent px-1 text-[var(--docs-color-text)] outline-none placeholder:text-[var(--docs-color-text-secondary)] disabled:opacity-50"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             disabled
             aria-label="Search query"
             aria-controls="search-results"

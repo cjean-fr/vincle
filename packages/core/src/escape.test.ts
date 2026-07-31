@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
-import { escapeContent, escapeAttr, escapeRawTagContent, RAWTEXT_TAGS, isSafeScheme, URL_ATTRIBUTES } from "./escape.js";
+import {
+  escapeContent,
+  escapeAttr,
+  escapeRawTagContent,
+  RAWTEXT_TAGS,
+  isSafeScheme,
+  URL_ATTRIBUTES,
+} from "./escape.js";
 
 // ── escapeContent ────────────────────────────────────────────────────────────
 
@@ -194,8 +201,38 @@ describe("isSafeScheme", () => {
     expect(isSafeScheme("  ")).toBe(true);
   });
 
-  test("non-ASCII scheme characters blocked", () => {
-    expect(isSafeScheme("écho:test")).toBe(false);
+  // A scheme is `ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) ":"`. A prefix that
+  // cannot be one is not a scheme the check should judge — it is a relative
+  // reference, and the browser resolves it against the document.
+  //
+  //   new URL("écho:test", base).protocol         === "https:"   (relative)
+  //   new URL("recherche?q=café:x", base).protocol === "https:"   (relative)
+  //
+  // Both used to be rewritten to `#blocked`: the scan looked for the first ":"
+  // and rejected anything non-ASCII before it, without asking whether a scheme
+  // could start there at all. A French path with a colon later in the query is an
+  // ordinary URL, and it stopped resolving.
+  test("a prefix that cannot be a scheme is a relative reference, not a threat", () => {
+    expect(isSafeScheme("écho:test")).toBe(true);
+    expect(isSafeScheme("recherche?q=café:test")).toBe(true);
+    expect(isSafeScheme("поиск?q=a:b")).toBe(true);
+    expect(isSafeScheme("/agenda/10:30")).toBe(true);
+    expect(isSafeScheme("a/b:c")).toBe(true);
+    expect(isSafeScheme(":no-scheme")).toBe(true);
+  });
+
+  // Homograph attempt: Cyrillic "а" in "jаvascript". Not a scheme character, so
+  // no parser reads a scheme here either — and nothing executes.
+  test("a homograph scheme is not a scheme", () => {
+    expect(new URL("jаvascript:alert(1)", "https://example.test/").protocol).toBe("https:");
+    expect(isSafeScheme("jаvascript:alert(1)")).toBe(true);
+  });
+
+  test("a real scheme is still judged, whatever follows it", () => {
+    expect(isSafeScheme("javascript:alert('café')")).toBe(false);
+    expect(isSafeScheme("JavaScript:alert(1)")).toBe(false);
+    expect(isSafeScheme("view-source:https://x")).toBe(true);
+    expect(isSafeScheme("web+app:x")).toBe(true);
   });
 
   // ── Scheme obfuscation ──
@@ -319,8 +356,8 @@ describe("escapeRawTagContent — script data double escape", () => {
     return seen;
   };
 
-  const page = (body: string) => `<div><script>${escapeRawTagContent(body, "script")}</script>` +
-    `<p>after</p></div>`;
+  const page = (body: string) =>
+    `<div><script>${escapeRawTagContent(body, "script")}</script><p>after</p></div>`;
 
   test("baseline: benign script content keeps the document intact", async () => {
     expect(await tagsOf(page("var x = 1;"))).toEqual(["div", "script", "p"]);
@@ -346,7 +383,9 @@ describe("escapeRawTagContent — script data double escape", () => {
   test("both <script and </script are neutralized, in any case", () => {
     expect(escapeRawTagContent("</script", "script")).toBe("<\\/script");
     expect(escapeRawTagContent("<script", "script")).toBe("<\\script");
-    expect(escapeRawTagContent("<!--<script></SCRIPT>", "script")).toBe("<!--<\\script><\\/SCRIPT>");
+    expect(escapeRawTagContent("<!--<script></SCRIPT>", "script")).toBe(
+      "<!--<\\script><\\/SCRIPT>",
+    );
   });
 
   // Breaking `<script` already disarms the pair, and `<!--` on its own line is
@@ -363,9 +402,7 @@ describe("escapeRawTagContent — script data double escape", () => {
     const escaped = escapeRawTagContent('document.write("<script src=x></script>")', "script");
     expect(escaped).toBe('document.write("<\\script src=x><\\/script>")');
     // eslint-disable-next-line no-eval
-    expect(eval(escaped.replace("document.write", "String"))).toBe(
-      '<script src=x></script>',
-    );
+    expect(eval(escaped.replace("document.write", "String"))).toBe("<script src=x></script>");
   });
 
   test("style is RAWTEXT — only </style matters", () => {

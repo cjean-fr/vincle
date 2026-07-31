@@ -1,18 +1,199 @@
 import { escapeAttr, URL_ATTRIBUTES, isSafeScheme } from "./escape.js";
 import { RawString } from "./types.js";
 
+// ── camelCase → kebab-case ──────────────────────────────────────────
+// Shared by SVG attribute names and style property names — the same boundary
+// rule, applied to two vocabularies. Declared here because the SVG table below
+// is built from it at module load.
+
+const RE_UPPERCASE = /[A-Z]/g;
+
+const camelToKebab = (name: string): string =>
+  name.replace(RE_UPPERCASE, (m) => "-" + m.toLowerCase());
+
 // ── React → HTML attribute name resolution ──────────────────────────
-// Switch over Map.get: JSC compiles string switches to a jump table / trie,
-// ~25% faster than Map.get (0.095 vs 0.128 µs per lookup, measured on JSC FTL).
 //
-// The default lowercases — HTML attrs are case-insensitive, and URL attrs
-// (href, src, etc.) must be normalized for safety checks.
-// SVG/MathML attrs are case-sensitive; the ones that differ from their
-// lowercased form are listed explicitly so they survive unchanged.
+// Three kinds of name, and only the last one is a rule:
+//
+//   1. **Aliases** — the HTML name shares no shape with the React one
+//      (`className` → `class`, `httpEquiv` → `http-equiv`, `xlinkHref` →
+//      `xlink:href`). A switch: JSC compiles string switches to a jump table.
+//
+//   2. **SVG names** — hyphenated in the spec (`strokeWidth` → `stroke-width`)
+//      or camelCase in the spec (`viewBox`). This is data, not a rule: nothing
+//      about `strokeWidth` distinguishes it from `tabIndex` except which
+//      namespace it belongs to, and this function is not told the element. The
+//      hyphenated set was missing entirely, so every SVG presentation attribute
+//      written the way `@types/react` declares it — `strokeWidth`, `fillOpacity`,
+//      `textAnchor`, seventy of them — was emitted as `strokewidth`, a name no
+//      SVG parser knows. Silently: the attribute was simply ignored.
+//
+//   3. **Everything else lowercases.** HTML attribute names are case-insensitive,
+//      and URL attributes (`href`, `src`, …) must be normalized before the scheme
+//      check can look at them. This is why `tabIndex`, `readOnly`, `maxLength`,
+//      `dateTime` and friends need no entry — their HTML name *is* the lowercased
+//      form, and listing them was 11 cases restating the default.
+//
+// `attrMeta` memoizes the result per key, so this runs once per distinct
+// attribute name in the process: the lookups below are cold, and readability wins
+// over the jump table everywhere except the aliases that were already written.
+
+/**
+ * SVG attributes that are hyphenated in the spec, listed under the camelCase name
+ * `@types/react` declares. The values are derived, not typed out, so the table
+ * cannot contain a mistyped target — `attrs.test.ts` checks a sample against the
+ * spec by hand, which is the part a derivation cannot verify about itself.
+ */
+const SVG_HYPHENATED: ReadonlyMap<string, string> = new Map(
+  [
+    "accentHeight",
+    "alignmentBaseline",
+    "arabicForm",
+    "baselineShift",
+    "capHeight",
+    "clipPath",
+    "clipRule",
+    "colorInterpolation",
+    "colorInterpolationFilters",
+    "colorProfile",
+    "colorRendering",
+    "dominantBaseline",
+    "enableBackground",
+    "fillOpacity",
+    "fillRule",
+    "floodColor",
+    "floodOpacity",
+    "fontFamily",
+    "fontSize",
+    "fontSizeAdjust",
+    "fontStretch",
+    "fontStyle",
+    "fontVariant",
+    "fontWeight",
+    "glyphName",
+    "glyphOrientationHorizontal",
+    "glyphOrientationVertical",
+    "horizAdvX",
+    "horizOriginX",
+    "imageRendering",
+    "letterSpacing",
+    "lightingColor",
+    "markerEnd",
+    "markerMid",
+    "markerStart",
+    "overlinePosition",
+    "overlineThickness",
+    "paintOrder",
+    "pointerEvents",
+    "renderingIntent",
+    "shapeRendering",
+    "stopColor",
+    "stopOpacity",
+    "strikethroughPosition",
+    "strikethroughThickness",
+    "strokeDasharray",
+    "strokeDashoffset",
+    "strokeLinecap",
+    "strokeLinejoin",
+    "strokeMiterlimit",
+    "strokeOpacity",
+    "strokeWidth",
+    "textAnchor",
+    "textDecoration",
+    "textRendering",
+    "underlinePosition",
+    "underlineThickness",
+    "unicodeBidi",
+    "unicodeRange",
+    "unitsPerEm",
+    "vAlphabetic",
+    "vHanging",
+    "vIdeographic",
+    "vMathematical",
+    "vectorEffect",
+    "vertAdvY",
+    "vertOriginX",
+    "vertOriginY",
+    "wordSpacing",
+    "writingMode",
+    "xHeight",
+  ].map((key) => [key, camelToKebab(key)]),
+);
+
+/**
+ * SVG attributes that are camelCase *in the spec*. Foreign-content parsing
+ * preserves case, so lowercasing `viewBox` to `viewbox` breaks it exactly the way
+ * lowercasing `strokeWidth` does.
+ */
+const SVG_CASE_SENSITIVE: ReadonlySet<string> = new Set([
+  "allowReorder",
+  "attributeName",
+  "attributeType",
+  "autoReverse",
+  "baseFrequency",
+  "baseProfile",
+  "calcMode",
+  "clipPathUnits",
+  "contentScriptType",
+  "contentStyleType",
+  "diffuseConstant",
+  "edgeMode",
+  "externalResourcesRequired",
+  "filterRes",
+  "filterUnits",
+  "glyphRef",
+  "gradientTransform",
+  "gradientUnits",
+  "kernelMatrix",
+  "kernelUnitLength",
+  "keyPoints",
+  "keySplines",
+  "keyTimes",
+  "lengthAdjust",
+  "limitingConeAngle",
+  "markerHeight",
+  "markerUnits",
+  "markerWidth",
+  "maskContentUnits",
+  "maskUnits",
+  "numOctaves",
+  "pathLength",
+  "patternContentUnits",
+  "patternTransform",
+  "patternUnits",
+  "pointsAtX",
+  "pointsAtY",
+  "pointsAtZ",
+  "preserveAlpha",
+  "preserveAspectRatio",
+  "primitiveUnits",
+  "refX",
+  "refY",
+  "repeatCount",
+  "repeatDur",
+  "requiredExtensions",
+  "requiredFeatures",
+  "specularConstant",
+  "specularExponent",
+  "spreadMethod",
+  "startOffset",
+  "stdDeviation",
+  "stitchTiles",
+  "surfaceScale",
+  "systemLanguage",
+  "tableValues",
+  "targetX",
+  "targetY",
+  "textLength",
+  "viewBox",
+  "viewTarget",
+  "xChannelSelector",
+  "yChannelSelector",
+  "zoomAndPan",
+]);
 
 export function resolveAttrName(key: string): string {
   switch (key) {
-    // ── React → HTML aliases ──
     case "className":
       return "class";
     case "htmlFor":
@@ -21,8 +202,6 @@ export function resolveAttrName(key: string): string {
       return "accept-charset";
     case "httpEquiv":
       return "http-equiv";
-    case "xlinkHref":
-      return "xlink:href";
     case "xmlnsXlink":
       return "xmlns:xlink";
     case "xmlLang":
@@ -31,66 +210,31 @@ export function resolveAttrName(key: string): string {
       return "xml:base";
     case "xmlSpace":
       return "xml:space";
-    case "tabIndex":
-      return "tabindex";
-    case "readOnly":
-      return "readonly";
-    case "maxLength":
-      return "maxlength";
-    case "minLength":
-      return "minlength";
-    case "autoFocus":
-      return "autofocus";
-    case "autoPlay":
-      return "autoplay";
-    case "autoComplete":
-      return "autocomplete";
-    case "encType":
-      return "enctype";
-    case "noValidate":
-      return "novalidate";
-    case "dateTime":
-      return "datetime";
-    case "srcSet":
-      return "srcset";
-    // ── SVG case-sensitive attributes ──
-    // Foreign content parsing preserves case. Listed explicitly so `default`
-    // can safely lowercase everything else for HTML.
-    case "viewBox":
-    case "clipPathUnits":
-    case "gradientUnits":
-    case "baseFrequency":
-    case "numOctaves":
-    case "stdDeviation":
-    case "calcMode":
-    case "repeatCount":
-    case "repeatDur":
-    case "pathLength":
-    case "tableValues":
-    case "maskUnits":
-    case "markerWidth":
-    case "markerHeight":
-    case "markerUnits":
-    case "patternUnits":
-    case "patternContentUnits":
-    case "primitiveUnits":
-    case "filterUnits":
-    case "spreadMethod":
-    case "edgeMode":
-    case "kernelMatrix":
-    case "surfaceScale":
-    case "diffuseConstant":
-    case "specularConstant":
-    case "specularExponent":
-    case "limitingConeAngle":
-    case "stitchTiles":
-    case "preserveAlpha":
-    case "preserveAspectRatio":
-      return key;
-    default:
-      return key.toLowerCase();
+    // The `xlink:` family. Only `xlinkHref` was mapped; the other six became
+    // `xlinkactuate`, `xlinktitle`, … — attributes with no meaning at all.
+    case "xlinkActuate":
+      return "xlink:actuate";
+    case "xlinkArcrole":
+      return "xlink:arcrole";
+    case "xlinkHref":
+      return "xlink:href";
+    case "xlinkRole":
+      return "xlink:role";
+    case "xlinkShow":
+      return "xlink:show";
+    case "xlinkTitle":
+      return "xlink:title";
+    case "xlinkType":
+      return "xlink:type";
   }
+  const hyphenated = SVG_HYPHENATED.get(key);
+  if (hyphenated !== undefined) return hyphenated;
+  if (SVG_CASE_SENSITIVE.has(key)) return key;
+  return key.toLowerCase();
 }
+
+/** @internal Exposed for the consistency checks in `attrs.test.ts`. */
+export const ATTR_NAME_TABLES = { SVG_HYPHENATED, SVG_CASE_SENSITIVE };
 
 // ── HTML boolean attributes ─────────────────────────────────────────
 export const BOOLEAN_ATTRIBUTES = new Set([
@@ -149,7 +293,7 @@ export function isValidAttrName(name: string): boolean {
 // alone accounts for a third of buildAttrs (measured: 176 µs → 116 µs when
 // removed, over 2000 calls). The cache recovers most of that — 176 µs → 125 µs
 // — while keeping the regex as the single authority on validity.
-interface AttrMeta {
+export interface AttrMeta {
   /** Resolved HTML name (`className` → `class`). */
   readonly name: string;
   readonly valid: boolean;
@@ -162,7 +306,15 @@ const ATTR_META = new Map<string, AttrMeta>();
 // grow without bound. Past the cap, resolution still happens — just uncached.
 const ATTR_META_MAX = 1024;
 
-function attrMeta(key: string): AttrMeta {
+/**
+ * Everything about an attribute *name*, memoized.
+ *
+ * Shared with `jsxAttr`, which used to call `resolveAttrName`, `isValidAttrName`
+ * and `URL_ATTRIBUTES.has` itself, uncached, on every attribute of every element.
+ * That cost 11% of the precompiled-list benchmark (measured, 8 runs, 6σ) — the
+ * `\p{C}` regex again. One question, one place, one cache.
+ */
+export function attrMeta(key: string): AttrMeta {
   let meta = ATTR_META.get(key);
   if (meta === undefined) {
     const name = RE_HAS_UPPER.test(key) ? resolveAttrName(key) : key;
@@ -189,9 +341,6 @@ function attrMeta(key: string): AttrMeta {
 // component crashed or rendered depending on whether the Vite precompile plugin
 // was enabled. That branch is gone; both paths now run the dispatch below.
 
-// Style camelCase → kebab regex (module-level, compiled once)
-const RE_STYLE_CAMEL = /[A-Z]/g;
-
 // ── Build attributes string ────────────────────────────────────────
 //
 // Tout est inline dans le for-loop pour éviter 2 appels de fonction
@@ -205,7 +354,7 @@ const RE_STYLE_CAMEL = /[A-Z]/g;
 // (class, id, href, data-*, aria-*), donc prennent la première branche
 // sans coercion. `String(value)` n'est payé que pour les rares cas non-string.
 
-export function buildAttrs(attrs: Record<string, unknown>): string {
+export function buildAttrs(attrs: Record<string, unknown>): string | Promise<string> {
   let out = "";
 
   for (const key in attrs) {
@@ -261,8 +410,30 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
       );
     }
 
-    // Style object → chaîne CSS
-    if (attrName === "style" && type === "object" && !Array.isArray(value)) {
+    // Promise — une valeur d'attribut peut être awaitable, comme le déclarent
+    // `class`, `style` et `htmlFor` dans `types.ts`. Le `String(value)` du
+    // fallback en faisait `[object Promise]` : le type promettait ce que le
+    // moteur ne faisait pas, et `jsxAttr` — qui l'awaitait déjà — divergeait.
+    // On repart à zéro en asynchrone : deux passes sur un cas rare, contre une
+    // branche de plus dans une boucle qui tourne sur chaque élément.
+    if (value instanceof Promise) return buildAttrsAsync(attrs);
+
+    // RawString — bypass explicite du développeur.
+    // Avant `style`/`class` : un RawString *est* un objet, donc le tester après
+    // faisait itérer ses propres clés comme si c'était un sac de styles —
+    // `style={raw("color:red")}` sortait `style="value:color:red"`. `jsxAttr` a
+    // toujours testé dans cet ordre ; les deux chemins concordent désormais.
+    if (value instanceof RawString) {
+      out += ` ${attrName}="${value.value}"`;
+      continue;
+    }
+
+    // Style objet → chaîne CSS. Seul un objet *simple* est un sac de styles :
+    // `styleToString` énumère les clés propres, ce qui ne veut rien dire pour une
+    // instance de classe (`style={new Date()}` produisait un attribut vide,
+    // supprimé en silence). Tout le reste retombe sur `String(value)`, comme
+    // n'importe quel autre attribut.
+    if (attrName === "style" && isPlainObject(value)) {
       const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
       if (styleStr) out += ` style="${escapeAttr(styleStr)}"`;
       continue;
@@ -276,12 +447,6 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
       continue;
     }
 
-    // RawString — bypass explicite du développeur
-    if (value instanceof RawString) {
-      out += ` ${attrName}="${value.value}"`;
-      continue;
-    }
-
     // Fallback — tout objet avec toString
     let str = String(value);
     if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
@@ -289,6 +454,26 @@ export function buildAttrs(attrs: Record<string, unknown>): string {
   }
 
   return out;
+}
+
+/**
+ * Await every promised attribute value, then serialize normally.
+ *
+ * Resolving into a copy and re-entering `buildAttrs` — rather than resuming the
+ * loop — is what guarantees the bytes are the same whether or not an attribute
+ * happened to be a promise: there is one serializer, and it is the one above.
+ * Sequential awaits, like the child walk in `render.ts`: attribute order is
+ * document order.
+ */
+async function buildAttrsAsync(attrs: Record<string, unknown>): Promise<string> {
+  const resolved: Record<string, unknown> = {};
+  for (const key in attrs) {
+    const value = attrs[key];
+    resolved[key] = value instanceof Promise ? await value : value;
+  }
+  // `resolved` holds no promise, so this cannot ask to be awaited again — and
+  // `await` says so without a cast having to be believed.
+  return await buildAttrs(resolved);
 }
 
 // ── Array class → string ─────────────────────────────────────────────
@@ -306,6 +491,16 @@ export function classToString(value: unknown[]): string {
 
 // ── Style object → CSS string ───────────────────────────────────────
 //
+// `styleToString` enumerates own keys, which only means something for an object
+// literal. `isPlainObject` is the gate: an array, a `RawString`, a `Date` or any
+// class instance is not a bag of declarations and must not be read as one.
+export function isPlainObject(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const proto = Object.getPrototypeOf(value) as unknown;
+  return proto === Object.prototype || proto === null;
+}
+
+//
 // A property *name* carrying `:` or `;` smuggles extra declarations into the
 // attribute: `{ "color:red;position": "fixed" }` used to serialize as
 // `style="color:red;position:fixed"`. `escapeAttr` prevents breaking out of the
@@ -320,7 +515,7 @@ export function styleToString(obj: Record<string, string | number | null | undef
   for (const key in obj) {
     const value = obj[key];
     if (value === null || value === undefined) continue;
-    const prop = key.replace(RE_STYLE_CAMEL, (m) => "-" + m.toLowerCase());
+    const prop = camelToKebab(key);
     if (RE_INVALID_STYLE_PROP.test(prop)) continue;
     if (out) out += ";";
     out += `${prop}:${value}`;

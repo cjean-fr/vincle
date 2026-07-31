@@ -15,7 +15,15 @@ Async-first JSX-to-HTML renderer with built-in XSS protection and concurrent-saf
 npm install @vincle/core
 ```
 
-`@types/react` is optional — install it for enhanced HTML attribute autocomplete.
+`@types/react` is an optional, type-only peer dependency: install it and every HTML
+and SVG attribute is typed per element, so `<dvi clas="x">` is a compile error.
+Without it, JSX still compiles and renders, with attributes unchecked. Nothing is
+imported from React at runtime.
+
+Attribute names use React's camelCase spelling (`className`, `tabIndex`,
+`strokeWidth`); the engine maps each one to its HTML name (`class`, `tabindex`,
+`stroke-width`). Hyphenated and namespaced names (`data-*`, `aria-*`,
+`http-equiv`, `xlink:href`) can be written directly.
 
 ## Quick Setup
 
@@ -73,7 +81,15 @@ const html = await renderToString(
 
 ## Async Patterns
 
-Every component can be `async`. Promise children are supported natively. The renderer resolves all async work concurrently.
+Every component can be `async`. A promise is awaited wherever one can appear: a
+child, a component's return value, an array element, an attribute _value_,
+`dangerouslySetInnerHTML.__html`, or an async iterable.
+
+**Components execute in document order.** A sibling starts once the one to its left
+is done, so what renders before you in the markup ran before you — and the rendered
+document never depends on how long any component took. To overlap independent I/O,
+either `await Promise.all` inside one component (below), or use `<Template>` /
+`<Slot>` from `@vincle/flow`, which puts the boundary in the markup.
 
 ```tsx
 // ✅ Async component — await inside, return JSX

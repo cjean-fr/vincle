@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
 import { jsx, VNode } from "./jsx-runtime.js";
-import { RawString } from "./types.js";
 import { renderToString } from "./render.js";
 import { tryRenderStatic, NOT_STATIC, VOID_ELEMENTS, isValidTag } from "./serialize.js";
+import { RawString } from "./types.js";
 
 /**
  * hasDynamic était un flag module-level. tryRenderStatic le mettait à false,
@@ -72,15 +72,22 @@ describe("FoldState re-entrancy", () => {
 });
 
 /**
- * Tag validation is not the tree walk's private business.
+ * Tag validation — one gate, and it is `jsx()`.
  *
- * The fold used to call `serializeElement(tag, …)` without ever checking the
- * name, so a static subtree under a caller-supplied tag went out as raw HTML
- * while the exact same tree on the VNode path threw. That gap was a way around
- * the check, not a mere inconsistency: a name carrying a space or a quote closes
- * the start tag, and everything after it becomes markup.
+ * The rule being pinned has not changed: a name carrying a space or a quote closes
+ * the start tag, and everything after it becomes markup. What changed is where it
+ * is enforced. The fold checked the name, and so did each tree walk — three checks
+ * for one answer, two of them unreachable through the public API, since a string
+ * tag only ever enters the engine through `jsx()`. Per ADR-003 an unreachable
+ * branch does not stay neutral, it drifts; and the price was paid on every element
+ * of every render.
+ *
+ * So the check sits at the gate, and fires at construction: the earliest moment
+ * at which the stack still points at the element the developer wrote. Both shapes
+ * are exercised below — the one that would fold, and the one that would reach the
+ * tree walk — because the guarantee is that *neither* gets through.
  */
-describe("tag validation — the fold is held to the same rule as the tree walk", () => {
+describe("tag validation — jsx() is the single gate", () => {
   const INVALID = [
     "div onload=alert(1)",
     'div"',
@@ -95,20 +102,23 @@ describe("tag validation — the fold is held to the same rule as the tree walk"
   ];
 
   for (const tag of INVALID) {
-    test(`rejects ${JSON.stringify(tag)} instead of folding it`, () => {
-      expect(() => tryRenderStatic(tag, { children: "hello" })).toThrow(
+    test(`rejects ${JSON.stringify(tag)}`, () => {
+      // Static children — the shape that would have been folded to raw HTML.
+      expect(() => jsx(tag, { children: "hello" })).toThrow(/\[vincle\/core\] Invalid tag name/);
+      // Dynamic children — the shape that would have reached the tree walk.
+      expect(() => jsx(tag, { children: Promise.resolve("hello") })).toThrow(
         /\[vincle\/core\] Invalid tag name/,
       );
     });
   }
 
   test("the rejection quotes the offending tag verbatim", () => {
-    expect(() => tryRenderStatic("div onload=x", {})).toThrow('Invalid tag name "div onload=x"');
+    expect(() => jsx("div onload=x", {})).toThrow('Invalid tag name "div onload=x"');
   });
 
   test("legitimate names still fold", () => {
     for (const tag of ["div", "my-element", "svg:rect", "h1", "data-x"]) {
-      expect(tryRenderStatic(tag, { children: "ok" })).toBeInstanceOf(RawString);
+      expect(jsx(tag, { children: "ok" })).toBeInstanceOf(RawString);
     }
   });
 });
@@ -134,10 +144,17 @@ describe("SVG foreign elements render with closing tags (not void)", () => {
   });
 
   test("<circle> with children renders wrapping them", async () => {
-    const node = jsx("circle", { cx: "50", cy: "50", r: "40", children: jsx("desc", { children: "A circle" }) });
+    const node = jsx("circle", {
+      cx: "50",
+      cy: "50",
+      r: "40",
+      children: jsx("desc", { children: "A circle" }),
+    });
     // children → dynamic (nested child tree that is itself static)
     // jsx returns RawString because the subtree is fully static
-    expect(await renderToString(node)).toBe('<circle cx="50" cy="50" r="40"><desc>A circle</desc></circle>');
+    expect(await renderToString(node)).toBe(
+      '<circle cx="50" cy="50" r="40"><desc>A circle</desc></circle>',
+    );
   });
 
   test("<svg> wrapper with mixed SVG children", async () => {
@@ -153,7 +170,7 @@ describe("SVG foreign elements render with closing tags (not void)", () => {
     expect(html).toContain('<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">');
     expect(html).toContain('<circle cx="50" cy="50" r="40" fill="red"></circle>');
     expect(html).toContain('<path d="M0 0h10v10z" fill="blue"></path>');
-    expect(html).toContain('</svg>');
+    expect(html).toContain("</svg>");
   });
 
   test("SVG elements are NOT in VOID_ELEMENTS", () => {

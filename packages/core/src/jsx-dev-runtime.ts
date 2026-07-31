@@ -5,3 +5,7 @@
  * sont ignorés : le comportement est identique à `jsx`.
  */
 export { jsx as jsxDEV, Fragment, VNode } from "./jsx-runtime.js";
+
+// TypeScript resolves `JSX.*` from the module named in `jsxImportSource`, which
+// under the dev transform is this one.
+export type { JSX } from "./jsx-namespace.js";

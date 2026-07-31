@@ -1,13 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-import { renderToString } from "./render.js";
 import { jsx, jsxAttr, Fragment, VNode } from "./jsx-runtime.js";
+import { renderToString } from "./render.js";
 import { RawString } from "./types.js";
 
 // The hybrid model folds fully-static subtrees to a RawString at jsx() time;
-// anything dynamic (component, style object, class array, dSIH, promise or
-// function child) stays a VNode for the tree-walk render. These tests pin that
-// fold contract via the return type of jsx() plus the rendered markup.
+// anything dynamic (component, dSIH, promise or function child) stays a VNode for
+// the tree-walk render. These tests pin that fold contract via the return type of
+// jsx() plus the rendered markup.
+//
+// A style object and a class array are *not* dynamic, though they used to leave
+// the fold as if they were: `buildAttrs` serializes both, and the fold calls
+// `buildAttrs`. See `serialize.ts`.
 
 describe("static subtree fold", () => {
   test("simple static div with text child folds to RawString", async () => {
@@ -33,7 +37,9 @@ describe("static subtree fold", () => {
     const outer = jsx("div", { class: "outer", children: inner });
     expect(inner).toBeInstanceOf(RawString);
     expect(outer).toBeInstanceOf(RawString);
-    expect(await renderToString(outer)).toBe('<div class="outer"><span class="inner">text</span></div>');
+    expect(await renderToString(outer)).toBe(
+      '<div class="outer"><span class="inner">text</span></div>',
+    );
   });
 
   test("static element with array children folds", async () => {
@@ -49,14 +55,25 @@ describe("static subtree fold", () => {
     expect(node).toBeInstanceOf(VNode);
   });
 
-  test("object style is NOT folded", () => {
-    const node = jsx("div", { style: { color: "red" } });
-    expect(node).toBeInstanceOf(VNode);
+  test("object style folds — buildAttrs handles it on both paths", async () => {
+    const node = jsx("div", { style: { color: "red" }, children: "x" });
+    expect(node).toBeInstanceOf(RawString);
+    expect(await renderToString(node)).toBe('<div style="color:red">x</div>');
   });
 
-  test("class array is NOT folded", () => {
-    const node = jsx("div", { class: ["foo", "bar"] });
-    expect(node).toBeInstanceOf(VNode);
+  test("class array folds — buildAttrs handles it on both paths", async () => {
+    const node = jsx("div", { class: ["foo", "bar"], children: "x" });
+    expect(node).toBeInstanceOf(RawString);
+    expect(await renderToString(node)).toBe('<div class="foo bar">x</div>');
+  });
+
+  // The fold and the tree walk must not merely both work — they must agree.
+  test("folded attributes are byte-identical to the tree-walk's", async () => {
+    const props = { style: { backgroundColor: "red", "--x": 1 }, class: ["a", "", "b"], id: "i" };
+    const folded = jsx("p", { ...props, children: "t" });
+    const walked = new VNode("p", { ...props }, "t");
+    expect(folded).toBeInstanceOf(RawString);
+    expect(await renderToString(folded)).toBe(await renderToString(walked));
   });
 
   test("dangerouslySetInnerHTML is NOT folded", () => {
@@ -95,7 +112,9 @@ describe("static subtree fold", () => {
 
   test("attribute escaping", async () => {
     const node = jsx("div", { title: 'hello "world" & friends' });
-    expect(await renderToString(node)).toBe('<div title="hello &quot;world&quot; &amp; friends"></div>');
+    expect(await renderToString(node)).toBe(
+      '<div title="hello &quot;world&quot; &amp; friends"></div>',
+    );
   });
 
   test("fragment (function tag) is NOT folded", () => {

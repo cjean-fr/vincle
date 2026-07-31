@@ -10,6 +10,9 @@ dist
 coverage
 *.lcov
 
+# mutation testing — Stryker's instrumented sandbox
+.stryker-tmp
+
 # logs
 logs
 _.log

@@ -52,10 +52,17 @@
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@types/bun": "catalog:",
     "@types/react": "catalog:",
+    "oxc-parser": "^0.139.0",
     "stryker-mutator-bun-runner": "^0.4.0",
     "tsdown": "catalog:"
   },
   "peerDependencies": {
+    "@types/react": "catalog:",
     "typescript": "^7.0.2"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    }
   }
 }

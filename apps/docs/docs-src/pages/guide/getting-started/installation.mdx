@@ -55,18 +55,21 @@ without it.
 
 ### Types
 
-| Export                | Purpose                                    |
-| --------------------- | ------------------------------------------ |
-| `VNode`               | Union of everything renderable             |
-| `Component<P>`        | Type for component functions               |
-| `RawString`           | Branded type for pre-escaped HTML          |
-| `HTMLAttributes`      | Base HTML attribute type                   |
-| `SVGAttributes`       | SVG element attribute type                 |
-| `CSSProperties`       | Type for inline `style` objects            |
-| `StaticAttributes<T>` | Generic to strip runtime props from a type |
-| `StringEventHandlers` | String-typed event handler map             |
-| `ContextKey<T>`       | Branded context key type                   |
-| `ContextMap`          | Raw context map type                       |
+| Export          | Purpose                                                   |
+| --------------- | --------------------------------------------------------- |
+| `Renderable`    | Everything the renderers can render                       |
+| `VNode`         | The engine's element representation — a type, not a value |
+| `RawString`     | Branded type for pre-escaped HTML                         |
+| `Awaitable<T>`  | `T` or a promise of `T`                                   |
+| `CSSProperties` | Type for inline `style` objects                           |
+| `ClassValue`    | What a `class` attribute accepts                          |
+| `FromReact<T>`  | React props → Vincle attribute props                      |
+| `JSX`           | The JSX namespace                                         |
+| `ContextKey<T>` | Branded context key type                                  |
+| `ContextMap`    | Raw context map type                                      |
+
+Element attributes are typed per element, from `@types/react` — see
+[JSX types](/api/core/jsx-types).
 
 Everything else is internal. There is no plugin registry, no provider tree, no
 config object to maintain.

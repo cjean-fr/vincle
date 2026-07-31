@@ -1,4 +1,4 @@
-import type { ResolvedVNode } from "@vincle/core";
+import type { VNode } from "@vincle/core";
 
 import { renderToString, withScope, useContext } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
@@ -117,8 +117,8 @@ describe("Template — deferred content (placeholder always)", () => {
 describe("Template — streaming sequences (async-iterable child)", () => {
   it("streams each yield as an append fragment", async () => {
     async function* rows() {
-      yield (<li>a</li>) as ResolvedVNode;
-      yield (<li>b</li>) as ResolvedVNode;
+      yield (<li>a</li>) as VNode;
+      yield (<li>b</li>) as VNode;
     }
     const html = await collect(
       renderToStream(
@@ -143,7 +143,7 @@ describe("Template — streaming sequences (async-iterable child)", () => {
 
   it("streams even with no other template content present", async () => {
     async function* rows() {
-      yield (<li>only</li>) as ResolvedVNode;
+      yield (<li>only</li>) as VNode;
     }
     const html = await collect(
       renderToStream(
@@ -166,7 +166,7 @@ describe("Template — streaming sequences (async-iterable child)", () => {
 
   it("a streaming Template registered inside a one-shot async Template is picked up", async () => {
     async function* inner() {
-      yield (<li>streamed</li>) as ResolvedVNode;
+      yield (<li>streamed</li>) as VNode;
     }
     const Outer = () => (
       <div>

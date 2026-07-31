@@ -70,7 +70,7 @@ export function PageFooter() {
             <span />
           )}
           {lastUpdated && (
-            <time class="docs-page-footer-updated" datetime={lastUpdated}>
+            <time class="docs-page-footer-updated" dateTime={lastUpdated}>
               Last updated: {formatDate(lastUpdated)}
             </time>
           )}

@@ -81,9 +81,10 @@
       }
     },
     {
-      "files": ["packages/core/src/react-augment.d.ts"],
+      "files": ["packages/core/type-contract.tsx"],
       "rules": {
-        "no-empty-file": "off"
+        "vincle/no-unsafe-event-handlers": "off",
+        "vincle/no-refs": "off"
       }
     },
     {
