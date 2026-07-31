@@ -1,11 +1,4 @@
-import {
-  type JSX,
-  context,
-  setContext,
-  useContext,
-  withScope,
-  renderToString,
-} from "@vincle/core";
+import { type JSX, context, setContext, useContext, withScope, renderToString } from "@vincle/core";
 
 // 1. Define a typed context key (module-level singleton)
 const themeCtx = context<"light" | "dark">("my-app:theme");

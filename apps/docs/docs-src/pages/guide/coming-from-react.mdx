@@ -136,22 +136,22 @@ function Timer({ time }: { time: number }) {
 
 ## Migration checklist
 
-| React pattern             | Vincle equivalent                                          |
-| ------------------------- | ---------------------------------------------------------- |
-| `useState`                | Props or context — state lives outside the render          |
-| `useEffect`               | Not needed — no client lifecycle                           |
-| `useRef`                  | Not needed — no DOM access                                 |
-| `useMemo` / `useCallback` | Not needed — no re-renders                                 |
-| `useContext`              | `useContext` (same name, scoped instead of provider-based) |
-| `createContext`           | `context(key)` — typed, scoped, no provider component      |
-| `React.memo`              | Not needed — every render is a fresh call                  |
-| `Suspense`                | Async component + `<Template>` from `@vincle/flow`         |
+| React pattern             | Vincle equivalent                                                               |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| `useState`                | Props or context — state lives outside the render                               |
+| `useEffect`               | Not needed — no client lifecycle                                                |
+| `useRef`                  | Not needed — no DOM access                                                      |
+| `useMemo` / `useCallback` | Not needed — no re-renders                                                      |
+| `useContext`              | `useContext` (same name, scoped instead of provider-based)                      |
+| `createContext`           | `context(key)` — typed, scoped, no provider component                           |
+| `React.memo`              | Not needed — every render is a fresh call                                       |
+| `Suspense`                | Async component + `<Template>` from `@vincle/flow`                              |
 | `ErrorBoundary`           | Removed — use try/catch at top level, `onError` in `@vincle/flow` for streaming |
-| `dangerouslySetInnerHTML` | Same API — also `raw(html)` as child                       |
-| `onClick={() => fn()}`    | `onclick="fn()"` as string                                 |
-| `className` / `class`     | Both work — HTML name wins if both present, no merge       |
-| `htmlFor` → `for`         | `htmlFor` remapped to `for`; `for` wins if both present    |
-| `@types/react`            | Optional — install it for attribute autocomplete           |
+| `dangerouslySetInnerHTML` | Same API — also `raw(html)` as child                                            |
+| `onClick={() => fn()}`    | `onclick="fn()"` as string                                                      |
+| `className` / `class`     | Both work — HTML name wins if both present, no merge                            |
+| `htmlFor` → `for`         | `htmlFor` remapped to `for`; `for` wins if both present                         |
+| `@types/react`            | Optional — install it for attribute autocomplete                                |
 
 ## What you lose
 

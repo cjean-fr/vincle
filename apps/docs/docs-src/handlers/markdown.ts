@@ -11,13 +11,6 @@ export const MarkdownHandler: PageHandler = {
   async load(file: string, pagesDir: string, config: ResolvedDocsConfig): Promise<Page> {
     const { html, meta: rawMeta } = await processMarkdown(file);
     const rendered = raw(html);
-    return createPage(
-      file,
-      pagesDir,
-      config,
-      this.name,
-      rawMeta,
-      () => rendered,
-    );
+    return createPage(file, pagesDir, config, this.name, rawMeta, () => rendered);
   },
 };

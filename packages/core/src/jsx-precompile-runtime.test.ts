@@ -443,7 +443,7 @@ describe("jsxTemplate — VNode holes", () => {
   });
 
   test("an async component hole is awaited", async () => {
-    const later = <T,>(v: T, ms = 1): Promise<T> =>
+    const later = <T>(v: T, ms = 1): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(v), ms));
     const AsyncFoo = async () => {
       await later(null, 1);
@@ -456,9 +456,9 @@ describe("jsxTemplate — VNode holes", () => {
 
   test("a component hole inside an array renders", async () => {
     const Li = () => jsx("li", { children: "item" });
-    expect(
-      await value(jsxTemplate`<ul>${jsxEscape([jsx(Li, {}), jsx(Li, {})])}</ul>`),
-    ).toBe("<ul><li>item</li><li>item</li></ul>");
+    expect(await value(jsxTemplate`<ul>${jsxEscape([jsx(Li, {}), jsx(Li, {})])}</ul>`)).toBe(
+      "<ul><li>item</li><li>item</li></ul>",
+    );
   });
 
   test("a raw JSX element expression — not wrapped in jsxEscape — renders", async () => {
@@ -472,8 +472,7 @@ describe("jsxTemplate — VNode holes", () => {
 
   test("a conditional expression yielding a component renders", async () => {
     const Foo = () => jsx("span", { children: "foo" });
-    const tpl = (cond: boolean) =>
-      jsxTemplate`<div>${jsxEscape(cond ? jsx(Foo, {}) : null)}</div>`;
+    const tpl = (cond: boolean) => jsxTemplate`<div>${jsxEscape(cond ? jsx(Foo, {}) : null)}</div>`;
     expect(await value(tpl(true))).toBe("<div><span>foo</span></div>");
     expect(await value(tpl(false))).toBe("<div></div>");
   });
@@ -484,7 +483,7 @@ describe("jsxTemplate — VNode holes", () => {
   // on the precompiled path too.
   test("component holes run in document order — a later hole reads an earlier write", async () => {
     const KEY = context<string>("precompile-order");
-    const later = <T,>(v: T, ms: number): Promise<T> =>
+    const later = <T>(v: T, ms: number): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(v), ms));
     const Writer = async () => {
       await later(null, 5);
@@ -496,8 +495,7 @@ describe("jsxTemplate — VNode holes", () => {
       return useContext(KEY);
     };
 
-    const build = () =>
-      jsxTemplate`<div>${jsx(Writer, {})}${jsx(Reader, {})}</div>`;
+    const build = () => jsxTemplate`<div>${jsx(Writer, {})}${jsx(Reader, {})}</div>`;
 
     const results = new Set<string>();
     for (let i = 0; i < 5; i++) {
@@ -514,7 +512,7 @@ describe("jsxTemplate — VNode holes", () => {
 
   test("the same tree renders identically through precompile and tree walk", async () => {
     const KEY = context<string>("precompile-equivalence");
-    const later = <T,>(v: T, ms: number): Promise<T> =>
+    const later = <T>(v: T, ms: number): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(v), ms));
     const Writer = async () => {
       await later(null, 2);
@@ -526,10 +524,8 @@ describe("jsxTemplate — VNode holes", () => {
       return useContext(KEY);
     };
 
-    const viaPrecompile = () =>
-      jsxTemplate`<p>${jsx(Writer, {})}|${jsx(Reader, {})}</p>`;
-    const viaTreeWalk = () =>
-      jsx("p", { children: [jsx(Writer, {}), "|", jsx(Reader, {})] });
+    const viaPrecompile = () => jsxTemplate`<p>${jsx(Writer, {})}|${jsx(Reader, {})}</p>`;
+    const viaTreeWalk = () => jsx("p", { children: [jsx(Writer, {}), "|", jsx(Reader, {})] });
 
     const a = await withScope(async () => {
       setContext(KEY, "i");
