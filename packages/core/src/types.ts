@@ -1,6 +1,28 @@
 import type React from "react";
 
-import type { VNode } from "./jsx-runtime.js";
+// ── VNode ──────────────────────────────────────────────────────────────────
+//
+// Defined here, not in `jsx-runtime.ts`, because `render.ts` (which owns the
+// tree walk) and `jsx-runtime.ts` (which owns the precompile helpers) both
+// test `instanceof VNode`, and `jsxTemplate` renders VNodes through the tree
+// walk. Living in `types.ts` — the module both already import — keeps that
+// dependency acyclic: `jsx-runtime` → `render` would otherwise be a cycle.
+
+export class VNode {
+  readonly tag: string | ((props: any) => any);
+  readonly attrs: Record<string, unknown>;
+  readonly children: unknown;
+
+  constructor(
+    tag: string | ((props: any) => any),
+    attrs: Record<string, unknown>,
+    children: unknown,
+  ) {
+    this.tag = tag;
+    this.attrs = attrs;
+    this.children = children;
+  }
+}
 
 // ── Trusted HTML ──────────────────────────────────────────────────────────
 

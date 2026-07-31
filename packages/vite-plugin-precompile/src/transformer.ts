@@ -471,9 +471,14 @@ function emitChildren(
           appendStatic(parts, `</${tag}>`);
         }
       } else {
+        // Component / spread / dangerouslySetInnerHTML element: left as JSX for
+        // the compiler, and passed to `jsxTemplate` WITHOUT `jsxEscape` — the
+        // Deno/Preact precompile contract. `jsx()` returns a VNode, which is not
+        // a value to escape: it is markup to render, and `jsxTemplate` renders
+        // it through the tree walk. Wrapping it here would double-handle it
+        // (jsxEscape lets VNodes through, but the call is pure overhead).
         const replaced = processExpressionForJsx(child as unknown as Expression, ctx);
-        ctx.used.add("jsxEscape");
-        addDynamic(parts, exprs, `jsxEscape(${replaced})`);
+        addDynamic(parts, exprs, replaced);
       }
     } else if (child.type === "JSXFragment") {
       emitChildren(child.children, parts, exprs, ctx, rawtextTag);

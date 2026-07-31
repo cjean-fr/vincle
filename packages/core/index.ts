@@ -13,13 +13,14 @@ export { renderToString, renderToChunks } from "./src/render.js";
 
 // ── JSX runtime ────────────────────────────────────────────────────────────
 //
-// `VNode` is a *type* here, never a value. It is the engine's internal
-// representation: nothing outside this package constructs one or tests for one,
-// and exporting the class invited both — while making the tag-name check inside
-// the tree walk look reachable when `jsx()` is in fact the only way in.
+// `VNode` is exported as a value: the precompile contract (Deno/Preact)
+// requires the runtime to *test* for it (`instanceof`) — `jsxEscape` lets a
+// VNode pass through untouched, `jsxTemplate` renders it through the tree
+// walk. Constructing one by hand stays out of contract: `jsx()` is the only
+// way in.
 
 export { Fragment, jsx, jsxs } from "./src/jsx-runtime.js";
-export type { VNode } from "./src/jsx-runtime.js";
+export { VNode } from "./src/jsx-runtime.js";
 
 // ── Context API ────────────────────────────────────────────────────────────
 

@@ -1,8 +1,7 @@
 import { buildAttrs } from "./attrs.js";
 import { escapeContent, escapeRawTagContent, isRawtextTag } from "./escape.js";
-import { VNode } from "./jsx-runtime.js";
 import { serializeElement } from "./serialize.js";
-import { RawString } from "./types.js";
+import { RawString, VNode } from "./types.js";
 
 // ── Shared helper ─────────────────────────────────────────────────────────
 //
@@ -57,8 +56,14 @@ export function renderToString(node: unknown): Promise<string> {
  *
  * Does NOT accept a `rawtextTag` — `<script>` / `<style>` escaping is managed
  * locally in `renderChildrenAsync`, not inherited.
+ *
+ * Exported for the precompile helpers (`jsxTemplate` renders the VNodes the
+ * transform leaves in template holes — the Deno/Preact contract — through the
+ * same walk, so every path emits the same bytes).
+ *
+ * @internal
  */
-function renderNode(vnode: unknown): string | Promise<string> {
+export function renderNode(vnode: unknown): string | Promise<string> {
   // ── Sync fast path ──
   if (vnode === null || vnode === undefined || typeof vnode === "boolean") return "";
   if (typeof vnode === "string") return escapeContent(vnode);

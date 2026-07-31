@@ -12,7 +12,7 @@ choix hésite entre deux options, c'est ce document qui tranche.
   négligeable, jamais un compromis qu'on subit.
 
   Corollaire non négociable : **un chiffre de perf n'existe que s'il est
-  mesuré selon [ADR-003](packages/core/adr/003-rendu-et-mesure.md)**.
+  mesuré selon le protocole de mesure du projet**.
   Le bruit inter-exécutions de ce benchmark est de 2 à 6 %, soit l'ordre de
   grandeur de la plupart des optimisations candidates ; une exécution unique
   ne mesure rien. On a déjà cru trois conclusions fausses faute de cette

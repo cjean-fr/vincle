@@ -8,26 +8,9 @@ import {
   styleToString,
 } from "./attrs.js";
 import { escapeAttr, escapeContent, isSafeScheme } from "./escape.js";
+import { renderNode } from "./render.js";
 import { tryRenderStatic, NOT_STATIC, isValidTag, invalidTagMessage } from "./serialize.js";
-import { raw, RawString } from "./types.js";
-
-// ── VNode ────────────────────────────────────────────────────────────────
-
-class VNode {
-  readonly tag: string | ((props: any) => any);
-  readonly attrs: Record<string, unknown>;
-  readonly children: unknown;
-
-  constructor(
-    tag: string | ((props: any) => any),
-    attrs: Record<string, unknown>,
-    children: unknown,
-  ) {
-    this.tag = tag;
-    this.attrs = attrs;
-    this.children = children;
-  }
-}
+import { VNode, raw, RawString } from "./types.js";
 
 // ── jsx — hybrid: single-pass fold of static trees, VNode for dynamic ─────
 
@@ -66,8 +49,8 @@ function jsx(
  *
  * The coercion used to be eager, so a promise — which the prop's type has always
  * allowed — reached the document as `[object Promise]`. That is the exact silent
- * corruption ADR-003 names as the reason this package has a single render entry
- * point; it has no more right to exist here. Awaiting keeps both contracts: the
+ * corruption this package's single render entry point exists to prevent; it has
+ * no more right to exist here. Awaiting keeps both contracts: the
  * HTML stays trusted (unescaped), and async stays something the developer never
  * has to think about.
  */
@@ -90,15 +73,22 @@ function Fragment({ children }: { children?: Renderable }): Renderable {
 
 /**
  * Escape a value for insertion into a JSX template literal.
- * Returns either a `RawString` (synchronous case) or a `Promise<RawString>`
- * (when the value contains promises or async iterables).
+ *
+ * Follows the Deno/Preact precompile contract: a `VNode` passes through
+ * untouched — the renderer (`jsxTemplate`, or the tree walk for a fragment
+ * result) is the rendez-vous that turns it into HTML. Stringifying it here
+ * would emit `[object Object]` instead of the component's markup.
+ *
+ * Returns either a `RawString` (synchronous case), a `Promise<RawString>`
+ * (when the value contains promises or async iterables), or a `VNode`.
  */
-export function jsxEscape(v: unknown): RawString | Promise<RawString> {
+export function jsxEscape(v: unknown): RawString | VNode | Promise<RawString | VNode> {
   if (v instanceof RawString) return v;
   if (v instanceof Promise) return v.then((resolved) => jsxEscape(resolved));
   if (Array.isArray(v)) return escapeArray(v);
   if (v != null && typeof v !== "string") {
     const anyV = v as { [Symbol.iterator]?: unknown; [Symbol.asyncIterator]?: unknown };
+    if (v instanceof VNode) return v;
     if (typeof anyV[Symbol.asyncIterator] === "function") {
       return collectAsyncIterable(v as AsyncIterable<unknown>);
     }
@@ -122,17 +112,44 @@ function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
   for (let i = 0; i < arr.length; i++) {
     const part = jsxEscape(arr[i]);
     if (part instanceof Promise) {
-      // The prefix is already final text; only the suffix has to be awaited.
-      const prefix = out;
-      const parts: (RawString | Promise<RawString>)[] = [part];
-      for (i++; i < arr.length; i++) parts.push(jsxEscape(arr[i]));
-      return Promise.all(parts).then((resolved) => {
-        let tail = "";
-        for (let j = 0; j < resolved.length; j++) tail += resolved[j]!.value;
-        return new RawString(prefix + tail);
-      });
+      // The prefix is already final text; only the suffix has to be awaited —
+      // one hole at a time, in document order, never `Promise.all`:
+      // a VNode hole renders through the tree walk, whose siblings mutate the
+      // context, and overlapping them would reintroduce the race the walk
+      // removed. Rendering in order makes the precompiled path agree with the
+      // VNode path by construction.
+      return escapeArrayFrom(out, part, arr, i + 1);
+    }
+    if (part instanceof VNode) {
+      const rendered = renderNode(part);
+      if (rendered instanceof Promise) {
+        return escapeArrayFrom(out, rendered, arr, i + 1);
+      }
+      out += rendered;
+      continue;
     }
     out += part.value;
+  }
+  return new RawString(out);
+}
+
+async function escapeArrayFrom(
+  prefix: string,
+  pending: Promise<string | RawString | VNode>,
+  arr: unknown[],
+  from: number,
+): Promise<RawString> {
+  let out = prefix + (await holeText(await pending));
+  for (let i = from; i < arr.length; i++) {
+    const part = jsxEscape(arr[i]);
+    if (part instanceof Promise) {
+      out += await part.then((r) => (r instanceof VNode ? renderNode(r) : r.value));
+    } else if (part instanceof VNode) {
+      const rendered = renderNode(part);
+      out += rendered instanceof Promise ? await rendered : rendered;
+    } else {
+      out += part.value;
+    }
   }
   return new RawString(out);
 }
@@ -140,8 +157,7 @@ function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
 async function collectAsyncIterable(iterable: AsyncIterable<unknown>): Promise<RawString> {
   let out = "";
   for await (const item of iterable) {
-    const r = jsxEscape(item);
-    out += (r instanceof Promise ? await r : r).value;
+    out += await holeText(jsxEscape(item));
   }
   return new RawString(out);
 }
@@ -244,7 +260,12 @@ function coerce(v: unknown): string {
 /**
  * Handle the `jsxTemplate` call from the precompile transform — a tagged
  * template literal that interleaves static template fragments with escaped
- * values.
+ * values and VNodes (components the transform left in place, Deno-style).
+ *
+ * A VNode hole renders through the tree walk (`renderNode`), one hole at a
+ * time, in document order — the same sequencing rule as `renderChildrenFrom`
+ * in `render.ts`. `Promise.all` over the holes would overlap siblings that
+ * mutate the context, reintroducing the race the sequential walk removed.
  *
  * One pass. The previous form scanned `values` for a promise, then mapped it
  * through `coerceRawString`, then walked the resulting array again to interleave
@@ -258,28 +279,41 @@ export function jsxTemplate(
   let out = templates[0] ?? "";
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
-    if (v instanceof Promise) {
-      // Bail to the async path from the first promise only: everything before it
-      // is already final text, so the await covers the suffix and nothing else.
+    if (v instanceof Promise || v instanceof VNode) {
+      // Bail to the async path from the first asynchronous hole only:
+      // everything before it is already final text, so the await covers the
+      // suffix and nothing else.
       const prefix = out;
-      const from = i;
-      return Promise.all(values.slice(from)).then((resolved) => {
-        let tail = "";
-        for (let j = 0; j < resolved.length; j++) {
-          tail += coerceRawString(resolved[j]);
-          tail += templates[from + j + 1] ?? "";
-        }
-        return new RawString(prefix + tail);
-      });
+      return renderTemplateFrom(prefix, v, values, i + 1, templates);
     }
-    out += coerceRawString(v);
+    out += holeText(v);
     out += templates[i + 1] ?? "";
   }
   return new RawString(out);
 }
 
-/** Like `coerce`, but lets `RawString` through without double-escaping. */
-function coerceRawString(v: unknown): string {
+async function renderTemplateFrom(
+  prefix: string,
+  first: Promise<unknown> | VNode,
+  values: unknown[],
+  from: number,
+  templates: ArrayLike<string>,
+): Promise<RawString> {
+  let out = prefix + (await holeText(first)) + (templates[from] ?? "");
+  for (let i = from; i < values.length; i++) {
+    out += await holeText(values[i]);
+    out += templates[i + 1] ?? "";
+  }
+  return new RawString(out);
+}
+
+/**
+ * One template hole to final text: `RawString` verbatim, a `VNode` through the
+ * tree walk, a promise awaited recursively, anything else coerced and escaped.
+ */
+function holeText(v: unknown): string | Promise<string> {
+  if (v instanceof Promise) return v.then(holeText);
+  if (v instanceof VNode) return renderNode(v);
   if (v instanceof RawString) return v.value;
   return coerce(v);
 }

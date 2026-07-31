@@ -78,7 +78,7 @@ describe("FoldState re-entrancy", () => {
  * the start tag, and everything after it becomes markup. What changed is where it
  * is enforced. The fold checked the name, and so did each tree walk — three checks
  * for one answer, two of them unreachable through the public API, since a string
- * tag only ever enters the engine through `jsx()`. Per ADR-003 an unreachable
+ * tag only ever enters the engine through `jsx()`. An unreachable
  * branch does not stay neutral, it drifts; and the price was paid on every element
  * of every render.
  *

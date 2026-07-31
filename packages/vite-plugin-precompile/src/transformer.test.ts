@@ -55,9 +55,15 @@ describe("precompileTransform", () => {
     expect(out).toContain("jsxTemplate`<li>one</li><li>two</li>`");
   });
 
-  it("wraps component children in jsxEscape", () => {
+  it("passes component children through to jsxTemplate unwrapped (Deno contract)", () => {
     const out = transform(`const a = <div><Foo x={1} /></div>;`);
-    expect(out).toContain("${jsxEscape(<Foo x={1} />)}");
+    expect(out).toContain("${<Foo x={1} />}");
+    expect(out).not.toContain("jsxEscape(<Foo x={1} />)");
+  });
+
+  it("keeps jsxEscape on plain expressions inside the template", () => {
+    const out = transform(`const a = <div>{name}</div>;`);
+    expect(out).toContain("${jsxEscape(name)}");
   });
 
   it("does not emit a closing tag for void elements", () => {
@@ -505,6 +511,67 @@ describe("precompileTransform", () => {
       const out3 = transform(`const z = <Comp icon={<b>i</b>}>t</Comp>;`);
       expect(out3).toContain("icon={jsxTemplate`<b>i</b>`}");
       expect(out3).not.toContain("icon={{");
+    });
+
+    it("component children render real HTML end-to-end (regression: [object Object])", async () => {
+      // The bug: the precompiled path escaped the component VNode through
+      // jsxEscape → RawString("[object Object]"). The transform now leaves the
+      // component element in place (Deno contract); the runtime's jsxTemplate
+      // renders the VNode through the tree walk. Bun's transpiler plays the
+      // role esbuild/Vite plays in the real pipeline (jsxImportSource →
+      // @vincle/core/jsx-runtime).
+      const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
+      const code = [
+        `/** @jsxImportSource @vincle/core */`,
+        `const Foo = (props: { x: number }) => <b>x={props.x}</b>;`,
+        `export const Page = () => <div><Foo x={1} /><span>static</span>{"dynamic"}</div>;`,
+      ].join("\n");
+      const result = precompileTransform(code, "/src/app.tsx", {
+        runtimeSource: RT,
+      });
+      // The transform must NOT escape the component element.
+      expect(result!.code).not.toContain("jsxEscape(<Foo");
+      writeFileSync(outputPath, result!.code);
+      const mod = (await import(outputPath)) as { Page: () => unknown };
+      expect(await renderToString(mod.Page())).toBe(
+        "<div><b>x=1</b><span>static</span>dynamic</div>",
+      );
+    });
+
+    it("component holes keep document order under async rendering", async () => {
+      // Sibling component holes must render sequentially: a setContext in the
+      // left sibling must be visible to the right one. Rendering them with
+      // Promise.all would race — the regression the ordering rule forbids.
+      // `context(id)` is deterministic across module boundaries, so the test
+      // can reset the same key the module writes.
+      const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
+      const code = [
+        `/** @jsxImportSource @vincle/core */`,
+        `import { context, setContext, useContext } from "@vincle/core";`,
+        `const KEY = context<string>("e2e:order");`,
+        `const later = <T,>(v: T, ms: number): Promise<T> => new Promise((r) => setTimeout(() => r(v), ms));`,
+        `const Writer = async () => { await later(null, 5); setContext(KEY, "written"); return "w"; };`,
+        `const Reader = async () => { await later(null, 1); return useContext(KEY); };`,
+        `export const build = () => <div><Writer /><Reader /></div>;`,
+      ].join("\n");
+      const result = precompileTransform(code, "/src/app.tsx", {
+        runtimeSource: RT,
+      });
+      writeFileSync(outputPath, result!.code);
+      const mod = (await import(outputPath)) as { build: () => unknown };
+      const { context, setContext, withScope } = await import("@vincle/core");
+      const KEY = context<string>("e2e:order");
+      const results = new Set<string>();
+      for (let i = 0; i < 5; i++) {
+        results.add(
+          await withScope(async () => {
+            setContext(KEY, "initial");
+            return String(await renderToString(mod.build()));
+          }),
+        );
+      }
+      expect(results.size).toBe(1);
+      expect([...results][0]).toBe("<div>wwritten</div>");
     });
 
     it("re-export adapter produces byte-identical transform to direct @vincle/core import", () => {
