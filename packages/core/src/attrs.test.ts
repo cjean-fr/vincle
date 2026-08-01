@@ -1,7 +1,91 @@
 import { describe, expect, test } from "bun:test";
 
-import { ATTR_NAME_TABLES, buildAttrs, isValidAttrName, resolveAttrName } from "./attrs.js";
+import {
+  ATTR_NAME_TABLES,
+  buildAttrs,
+  isValidAttrName,
+  resolveAttrName,
+  serializeAttr,
+} from "./attrs.js";
 import { raw } from "./types.js";
+
+// ── serializeAttr: the value taxonomy, pinned once ─────────────────────────
+//
+// The single dispatch every attribute path shares: `buildAttrs` keeps its own
+// inline copy (delegation costs the fold 13–16%), and
+// `jsxAttr` delegates directly. The values below are the contract — written by
+// hand, not derived from another serializer, or the test would only prove a
+// serializer equals itself.
+
+describe("serializeAttr — the value taxonomy", () => {
+  const CASES: [string, unknown, string | null][] = [
+    // Handlers are plain attributes — emitted, not dropped.
+    ["onClick", 'alert("x") & 1', 'onclick="alert(&quot;x&quot;) &amp; 1"'],
+    ["onClick", 42, 'onclick="42"'],
+    // Strings — the hot path, coercion-free.
+    ["class", "foo", 'class="foo"'],
+    ["className", "foo", 'class="foo"'],
+    // URL attributes: unsafe scheme → #blocked.
+    ["href", "javascript:alert(1)", 'href="#blocked"'],
+    ["href", "java\tscript:alert(1)", 'href="#blocked"'],
+    ["href", "/page", 'href="/page"'],
+    // The `?` breaks the scheme — the value is not a URL at all.
+    ["href", "recherche?q=café:test", 'href="recherche?q=café:test"'],
+    ["data", "javascript:alert(1)", 'data="#blocked"'],
+    // Style objects — camelCase to kebab, syntax-carrying names dropped.
+    ["style", { backgroundColor: "red" }, 'style="background-color:red"'],
+    ["style", { "color:red;position": "fixed" }, ""],
+    // Booleans: name alone on a boolean attribute, stringified otherwise.
+    ["disabled", true, "disabled"],
+    ["disabled", false, ""],
+    ["data-active", true, 'data-active="true"'],
+    ["data-active", false, 'data-active="false"'],
+    // Text escaping.
+    ["title", "a & b < c", 'title="a &amp; b &lt; c"'],
+    // RawString: the developer's escape hatch, verbatim.
+    ["title", raw("<b>trusted</b>"), 'title="<b>trusted</b>"'],
+    // Numbers.
+    ["tabIndex", 3, 'tabindex="3"'],
+    // A RawString is an object: read as a style bag it would serialize as
+    // `style="value:color:red"`. Tested before the style/class branches.
+    ["style", raw("color:red"), 'style="color:red"'],
+    // A class instance is neither a bag of declarations — it falls back to
+    // its string form (shape only: the exact bytes depend on the runtime).
+    ["style", new Date(0), null],
+    // …and so is an array, except on `class` where it joins.
+    ["class", ["a", "", "b"], 'class="a b"'],
+    // Reserved keys and hostile names must produce nothing at all.
+    ["children", "x", ""],
+    ["key", "x", ""],
+    ["ref", "x", ""],
+    ["dangerouslySetInnerHTML", "x", ""],
+    ["x\"><script>alert(1)</script>", "y", ""],
+    ["a b", "y", ""],
+    ["a=b", "y", ""],
+    ["null", null, ""],
+    ["undefined", undefined, ""],
+  ];
+
+  for (const [key, value, expected] of CASES) {
+    if (expected === null) {
+      test(`${key}=${JSON.stringify(value) ?? String(value)} — string form`, () => {
+        expect(serializeAttr(key, value).value).toMatch(/^style=".+"$/);
+      });
+      continue;
+    }
+    test(`${key}=${JSON.stringify(value) ?? String(value)}`, () => {
+      expect(serializeAttr(key, value).value).toBe(expected);
+    });
+  }
+
+  // The one error mode: a function cannot be serialized to HTML, whatever it
+  // is called. The eslint-plugin's `no-unsafe-event-handlers` discourages the
+  // practice at the source; the engine's only job is to fail loudly.
+  test("a function throws, handler or not", () => {
+    expect(() => serializeAttr("onClick", () => {})).toThrow(/not serializable/);
+    expect(() => serializeAttr("title", () => {})).toThrow(/not serializable/);
+  });
+});
 
 describe("buildAttrs URL safety", () => {
   test("blocks javascript: href", () => {

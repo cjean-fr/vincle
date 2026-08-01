@@ -1,4 +1,4 @@
-import { renderToChunks, renderToString, type JSX } from "@vincle/core";
+import { renderToString, type JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
@@ -38,81 +38,6 @@ export async function renderShell(
 }
 
 /**
- * Stream the shell, yielding each chunk as `renderToChunks` releases it and
- * returning the closing tag for the caller to emit last.
- *
- * The shell is a page, not a payload: its `<head>` is knowable long before a
- * slow component in its `<body>` settles, and holding it back costs a round trip
- * of stylesheet and font discovery on every request. `renderToChunks` flushes at
- * every suspension point, so the browser starts parsing as soon as there is
- * anything to parse.
- *
- * **When it falls back to buffering.** An adapter's `transformShell` takes the
- * whole shell — `injectIntoHead` is the canonical case, and it may need to know
- * something only the *end* of the render establishes (`withPolyfill` reads
- * `ctx.templateStore.size`, which fills as the body renders). A transform of the
- * whole document cannot be applied to a prefix of it, so declaring one opts the
- * adapter out of shell streaming. Adapters that want the shell streamed should
- * express themselves as components instead.
- *
- * @returns The closing `</body></html>`, empty if the shell had none.
- */
-async function* streamShell(
-  node: () => JSX.Element,
-  adapter: { transformShell?: (html: string, ctx: FlowContext) => string },
-  ctx: FlowContext,
-): AsyncGenerator<string, string, undefined> {
-  if (adapter.transformShell) {
-    const { shellBody, closingTag } = await renderShell(node, adapter, ctx);
-    if (shellBody !== "") yield shellBody;
-    return closingTag;
-  }
-
-  let carry = "";
-  for await (const chunk of renderToChunks(node())) {
-    // Resolve before cutting, never after. A marker is written by one `raw()`
-    // node, so it lands in a chunk whole — resolving here leaves the buffer
-    // marker-free, and the cut below cannot fall inside one.
-    carry = await resolveAssets(carry + chunk, ctx.assets);
-    const keep = closingRunLength(carry);
-    if (keep < carry.length) {
-      yield carry.slice(0, carry.length - keep);
-      carry = carry.slice(carry.length - keep);
-    }
-  }
-
-  const closingTag = carry.match(REGEX_SHELL_CLOSE)?.[1] ?? "";
-  const body = closingTag ? carry.slice(0, -closingTag.length) : carry;
-  if (body !== "") yield body;
-  return closingTag;
-}
-
-/**
- * Length of the trailing run that `REGEX_SHELL_CLOSE` could still claim.
- *
- * The closing tags are only recognisable once the shell ends, so that much has
- * to be withheld — but only that much. Withholding a whole chunk instead would
- * pin the `<head>` behind the first slow component and undo the streaming.
- *
- * A partial tag can never end a chunk: closing tags are appended with no
- * suspension between them, so they arrive whole, in the last chunk.
- */
-function closingRunLength(html: string): number {
-  let end = html.length;
-  const skipSpace = () => {
-    while (end > 0 && /\s/.test(html[end - 1]!)) end--;
-  };
-  const skipTag = (tag: string) => {
-    if (html.endsWith(tag, end)) end -= tag.length;
-  };
-  skipSpace();
-  skipTag("</html>");
-  skipSpace();
-  skipTag("</body>");
-  return html.length - end;
-}
-
-/**
  * Run the full streaming sequence: emit shell → drain templates → emit close.
  * Skips shell/close when `opts.mode === "fragment"`.
  */
@@ -131,13 +56,10 @@ export async function runSequence(
 
         // Fragment mode still renders the shell — that render is what registers
         // the templates we are about to drain — but none of it reaches the wire.
-        const shell = streamShell(node, adapter, ctx);
-        let step = await shell.next();
-        while (step.done !== true) {
-          if (opts.mode !== "fragment") await emit({ type: "shell", html: step.value });
-          step = await shell.next();
+        const { shellBody, closingTag } = await renderShell(node, adapter, ctx);
+        if (opts.mode !== "fragment" && shellBody !== "") {
+          await emit({ type: "shell", html: shellBody });
         }
-        const closingTag = step.value;
 
         const emitResolved = async (ev: FlowEvent) =>
           emit(

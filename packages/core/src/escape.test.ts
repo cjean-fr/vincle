@@ -7,7 +7,11 @@ import {
   RAWTEXT_TAGS,
   isSafeScheme,
   URL_ATTRIBUTES,
+  valueToText,
 } from "./escape.js";
+import { jsxEscape } from "./jsx-runtime.js";
+import { renderNode } from "./render.js";
+import { raw, RawString, VNode } from "./types.js";
 
 // ── escapeContent ────────────────────────────────────────────────────────────
 
@@ -415,5 +419,65 @@ describe("escapeRawTagContent — script data double escape", () => {
     const s = "body { color: red } /* <3 */";
     expect(escapeRawTagContent(s, "script")).toBe(s);
     expect(escapeRawTagContent(s, "style")).toBe(s);
+  });
+});
+
+// ── valueToText ≡ the walks' inline leaf taxonomy ─────────────────────────
+//
+// The walks keep an inline copy of the leaf taxonomy (delegation is measurably
+// slower); this test proves the copies agree.
+
+describe("valueToText ≡ the walks' inline leaf taxonomy", () => {
+  const LEAVES: unknown[] = [
+    null,
+    undefined,
+    true,
+    false,
+    "",
+    "hello world",
+    "a & b < c > d",
+    "<script>alert(1)</script>",
+    "café ☕ résumé",
+    "&<>",
+    0,
+    -0,
+    42,
+    3.14,
+    NaN,
+    Infinity,
+    -Infinity,
+    1e21,
+    1e-7,
+    0n,
+    123456789012345678901234567890n,
+    -42n,
+    raw("<b>trusted</b>"),
+    raw(""),
+    { toString: () => "custom object" },
+    new Date(0),
+    () => "fn",
+    Symbol("s"),
+  ];
+
+  test("valueToText, renderNode and jsxEscape agree", async () => {
+    const failures: string[] = [];
+    for (const v of LEAVES) {
+      const norm = valueToText(v);
+
+      const walk = renderNode(v);
+      if (typeof walk !== "string" || walk !== norm) {
+        failures.push(`renderNode(${String(v)}) → ${JSON.stringify(walk)} ≠ ${JSON.stringify(norm)}`);
+      }
+
+      const pre = jsxEscape(v);
+      if (!(pre instanceof RawString) || pre.value !== norm) {
+        failures.push(`jsxEscape(${String(v)}) → ${JSON.stringify(pre)} ≠ ${JSON.stringify(norm)}`);
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  test("a VNode is not a text value — valueToText throws", () => {
+    expect(() => valueToText(new VNode("div", {}, null))).toThrow(/tree walk/);
   });
 });

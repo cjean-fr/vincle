@@ -380,14 +380,14 @@ describe("edge cases — render pipeline", () => {
 });
 
 /**
- * The shell is a page, not a payload.
+ * The shell is buffered until the document has rendered.
  *
- * Everything below asserts on *timing*, not just on final bytes: a buffered
- * implementation passes any test that only checks the concatenated output. The
- * question these ask is whether the `<head>` reaches the client while a slow
- * component in the `<body>` is still pending.
+ * A per-chunk streamed shell (flush at every suspension) was dropped
+ * 2026-07-31: it cost ~38% on the tree walk for a TTFB gain that only pays when
+ * the body has slow components. The shell is now a single event, emitted only
+ * once the whole document is knowable — the `<head>` waits for the `<body>`.
  */
-describe("shell streaming", () => {
+describe("shell buffering", () => {
   const gate = () => {
     let open!: () => void;
     const promise = new Promise<void>((resolve) => {
@@ -396,7 +396,7 @@ describe("shell streaming", () => {
     return { promise, open };
   };
 
-  it("emits the head before a slow body component settles", async () => {
+  it("waits for the whole document before emitting the shell", async () => {
     const g = gate();
     const Slow = async () => {
       await g.promise;
@@ -417,23 +417,31 @@ describe("shell streaming", () => {
       TurboAdapter,
     ).getReader();
 
-    const first = await reader.read();
-    expect(first.value).toEqual({
-      type: "shell",
-      html: "<html><head><title>T</title></head><body>",
-    });
+    // Nothing reaches the wire while the body is pending — the shell is not
+    // split at suspension points anymore.
+    const pending = reader.read();
+    const race = await Promise.race([
+      pending.then(() => "event"),
+      new Promise((resolve) => setTimeout(() => resolve("tick"), 50)),
+    ]);
+    expect(race).toBe("tick");
 
     g.open();
-    const rest: FlowEvent[] = [];
+    // The in-flight read resolves first — it is the one that raced the tick.
+    const events: FlowEvent[] = [];
+    const first = await pending;
+    if (!first.done) events.push(first.value);
     for (;;) {
       const next = await reader.read();
       if (next.done) break;
-      rest.push(next.value);
+      events.push(next.value);
     }
-    expect(rest.map((e) => e.html).join("")).toBe("<p>late</p></body></html>");
+    const shell = events.filter((e) => e.type === "shell").map((e) => e.html).join("");
+    expect(shell).toBe("<html><head><title>T</title></head><body><p>late</p>");
+    expect(events.filter((e) => e.type === "close").map((e) => e.html)).toEqual(["</body></html>"]);
   });
 
-  it("splits the shell into one event per suspension, and no more", async () => {
+  it("the shell is a single event, whatever the body awaited", async () => {
     const Slow = async (props: { n: number }) => <i>{props.n}</i>;
     const events = await collectEvents(
       renderToFlowEvents(
@@ -450,27 +458,9 @@ describe("shell streaming", () => {
         TurboAdapter,
       ),
     );
-    expect(events.filter((e) => e.type === "shell").map((e) => e.html)).toEqual([
-      "<html><body><p>a</p>",
-      "<i>1</i><p>b</p>",
-      "<i>2</i>",
-    ]);
-  });
-
-  it("a fully synchronous shell is still a single event", async () => {
-    const events = await collectEvents(
-      renderToFlowEvents(
-        () => (
-          <html>
-            <body>
-              <p>sync</p>
-            </body>
-          </html>
-        ),
-        TurboAdapter,
-      ),
-    );
-    expect(events.filter((e) => e.type === "shell")).toHaveLength(1);
+    const shells = events.filter((e) => e.type === "shell");
+    expect(shells).toHaveLength(1);
+    expect(shells[0]!.html).toBe("<html><body><p>a</p><i>1</i><p>b</p><i>2</i>");
   });
 
   it("the closing tag is still split off, whichever chunk it lands in", async () => {

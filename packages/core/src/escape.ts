@@ -1,5 +1,7 @@
 // ── HTML text escaping ──────────────────────────────────────────────────
 
+import { RawString, VNode } from "./types.js";
+
 const RE_ESCAPE_HTML = /[&<>]/;
 
 export function escapeContent(str: string): string {
@@ -33,8 +35,8 @@ export function escapeContent(str: string): string {
  *
  * Two literal comparisons rather than `RAWTEXT_TAGS.has(tag)`. The set has two
  * members, tag names arrive interned from the JSX transform, and this runs once
- * per element — on the `stack` benchmark a single per-element `Set.has` is worth
- * ~15%, which is what pays for tag-name validation on the same path.
+ * per element — a per-element `Set.has` is worth the same order of magnitude as
+ * the tag-name validation on the same path, which is what pays for keeping both.
  * `RAWTEXT_PATTERN` remains the source of truth for everything else.
  */
 export function isRawtextTag(tag: string): boolean {
@@ -252,4 +254,47 @@ export function isSafeScheme(url: string): boolean {
   if (scheme === "data")
     return REGEX_IMAGE_DATA_URI.test(url.replace(RE_URL_TAB_NEWLINE, "").trim());
   return true;
+}
+
+// ── Value → text coercion ────────────────────────────────────────────────
+//
+// The taxonomy of "a value rendered as text", in test order — see CONTEXT.md
+// for the history of the divergent copies.
+
+export function valueToText(v: unknown): string {
+  if (v === null || v === undefined || typeof v === "boolean") return "";
+  if (typeof v === "string") return escapeContent(v);
+  if (typeof v === "number" || typeof v === "bigint") return String(v);
+  if (v instanceof RawString) return v.value;
+  // A VNode is not a text value: stringifying one would emit `[object Object]`
+  // silently. The message says what to do instead.
+  if (v instanceof VNode) {
+    throw new Error(
+      "[vincle/core] valueToText received a VNode — a component must render " +
+        "through a tree walk (renderNode / renderToString), not as a text value.",
+    );
+  }
+  return escapeContent(String(v));
+}
+
+// ── Iterable protocol tests ──────────────────────────────────────────────
+//
+// Property tests, not `instanceof`, so any iterable (Set, generators,
+// cross-realm) renders. The `typeof === "object"` guard matters: strings are
+// iterable, and without it a text leaf would recurse through its own characters.
+
+export function isIterable(v: unknown): v is Iterable<unknown> {
+  return (
+    v != null &&
+    typeof v === "object" &&
+    typeof (v as { [Symbol.iterator]?: unknown })[Symbol.iterator] === "function"
+  );
+}
+
+export function isAsyncIterable(v: unknown): v is AsyncIterable<unknown> {
+  return (
+    v != null &&
+    typeof v === "object" &&
+    typeof (v as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] === "function"
+  );
 }

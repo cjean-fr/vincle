@@ -24,13 +24,15 @@ type Builder = (tag: any, props: any) => unknown;
 /**
  * `jsx` with the static-fold shortcut removed: always a VNode (tree-walk path).
  *
- * Mirrors `jsx`'s handling of `dangerouslySetInnerHTML`, including the promised
- * form — the control has to differ from `jsx` in exactly one way, the fold, or the
- * comparison stops meaning anything.
+ * Mirrors `jsx`'s handling of `dangerouslySetInnerHTML` — the control has to
+ * differ from `jsx` in exactly one way, the fold, or the comparison stops
+ * meaning anything.
  */
 function vnodeOf(tag: any, attributes: Record<string, unknown> | null): unknown {
   const props = attributes ?? {};
-  const dsih = props["dangerouslySetInnerHTML"] as { __html: unknown } | undefined;
+  const dsih = props["dangerouslySetInnerHTML"] as
+    | { __html: string | null | undefined }
+    | undefined;
   return new VNode(
     tag,
     props,
@@ -39,8 +41,11 @@ function vnodeOf(tag: any, attributes: Record<string, unknown> | null): unknown 
 }
 
 function trustedInnerHTML(html: unknown): unknown {
-  if (html instanceof Promise) return html.then(trustedInnerHTML);
-  return raw(String(html ?? ""));
+  if (typeof html === "string") return raw(html);
+  if (html === null || html === undefined) return raw("");
+  throw new TypeError(
+    "[vincle/core] dangerouslySetInnerHTML.__html must be a string, got " + typeof html,
+  );
 }
 
 // Seeded PRNG (mulberry32) — same seed ⇒ same sequence ⇒ same logical tree.
@@ -87,7 +92,7 @@ function randProps(r: () => number): Record<string, unknown> {
   if (r() < 0.12) p["href"] = Promise.resolve(r() < 0.5 ? "/p" : "javascript:alert(1)");
   if (r() < 0.08)
     p["dangerouslySetInnerHTML"] = {
-      __html: r() < 0.5 ? "<b>raw</b> & stuff" : Promise.resolve("<i>late</i> & raw"),
+      __html: r() < 0.5 ? "<b>raw</b> & stuff" : "<i>late</i> & raw",
     };
   return p;
 }

@@ -191,20 +191,18 @@ describe("dangerouslySetInnerHTML", () => {
     expect(await renderToString(v)).toBe("<div><b>raw</b> & more</div>");
   });
 
-  test("a promised __html is awaited, not stringified", async () => {
-    const v = jsx("div", { dangerouslySetInnerHTML: { __html: Promise.resolve("<b>raw</b>") } });
-    expect(await renderToString(v)).toBe("<div><b>raw</b></div>");
-  });
-
   test("nullish __html renders an empty element", async () => {
     expect(await renderToString(jsx("div", { dangerouslySetInnerHTML: { __html: null } }))).toBe(
       "<div></div>",
     );
-    expect(
-      await renderToString(
-        jsx("div", { dangerouslySetInnerHTML: { __html: Promise.resolve(null) } }),
-      ),
-    ).toBe("<div></div>");
+  });
+
+  test("a non-string __html is a bug, and it fails at jsx()", () => {
+    for (const bad of [42, { x: 1 }, true, Promise.resolve("<b>")]) {
+      expect(() => jsx("div", { dangerouslySetInnerHTML: { __html: bad } })).toThrow(
+        "__html must be a string",
+      );
+    }
   });
 
   test("it replaces children and is never emitted as an attribute", async () => {

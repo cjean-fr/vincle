@@ -1,6 +1,13 @@
 import { buildAttrs } from "./attrs.js";
-import { escapeContent, escapeRawTagContent, isRawtextTag } from "./escape.js";
-import { RawString } from "./types.js";
+import {
+  escapeContent,
+  escapeRawTagContent,
+  isAsyncIterable,
+  isIterable,
+  isRawtextTag,
+  valueToText,
+} from "./escape.js";
+import { RawString, VNode } from "./types.js";
 
 /**
  * Single source of truth for serializing one HTML element to a string.
@@ -40,7 +47,7 @@ export const VOID_ELEMENTS = new Set([
 // `Map` is the wrong shape here. This runs once per element on the fold's hot
 // path, where a deep tree makes it the most-repeated lookup in the renderer,
 // and a `Set.has` hit is measurably cheaper than a `Map.get` that returns an
-// object to dereference (bench `stack`: 2.36k vs 2.00k ops/s for the Map form).
+// object to dereference.
 // Only positives are memoised: an invalid name throws, so paying the regex
 // again on the way out costs nothing anyone waits for.
 const RE_INVALID_TAG = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
@@ -172,13 +179,17 @@ function foldChildren(children: unknown, rawtextTag: string | undefined, state: 
 }
 
 function foldChild(child: unknown, rawtextTag: string | undefined, state: FoldState): string {
-  if (child === null || child === undefined || typeof child === "boolean") return "";
+  // Frequency order; the leaf taxonomy delegates to `valueToText` (escape.ts),
+  // keeping inline only what rawtext escaping or frequency pays for.
   if (typeof child === "string") {
     return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
   }
-  if (typeof child === "number") return String(child);
   if (child instanceof RawString) return child.value;
   if (Array.isArray(child)) return foldChildren(child, rawtextTag, state);
-  state.dynamic = true;
-  return "";
+  if (child === null || child === undefined || typeof child === "boolean") return "";
+  if (child instanceof VNode || child instanceof Promise || typeof child === "function" || isIterable(child) || isAsyncIterable(child)) {
+    state.dynamic = true;
+    return "";
+  }
+  return valueToText(child);
 }

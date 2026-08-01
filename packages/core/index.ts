@@ -9,7 +9,7 @@
 
 // ── Renderers ─────────────────────────────────────────────────────────────
 
-export { renderToString, renderToChunks } from "./src/render.js";
+export { renderToString } from "./src/render.js";
 
 // ── JSX runtime ────────────────────────────────────────────────────────────
 //

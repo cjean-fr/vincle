@@ -10,8 +10,8 @@ binaire sur le même code est de 2 à 6 % selon le cas — l'ordre de grandeur d
 plupart des optimisations qu'on envisage ici. Un delta lu sur une exécution, ou
 même sur trois, ne distingue pas un changement de code de l'humeur de la machine.
 
-La procédure est décrite et rendue contraignante par
-[ADR-003](../../packages/core/adr/003-rendu-et-mesure.md). Lisez-la avant
+La procédure est décrite et rendue contraignante ci-dessous — baseline AVANT
+modification, `--against` après, un delta sous 3σ est un verdict. Lisez-la avant
 de citer un chiffre.
 
 ## Commandes

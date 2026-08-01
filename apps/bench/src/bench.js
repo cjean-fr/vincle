@@ -12,7 +12,7 @@
  */
 
 import { createElement as kita } from "@kitajs/html";
-import { renderToChunks, renderToString } from "@vincle/core";
+import { renderToString } from "@vincle/core";
 import { jsx } from "@vincle/core/jsx-runtime";
 import { jsxAttr, jsxEscape, jsxTemplate } from "@vincle/core/jsx-precompile-runtime";
 import { jsx as honoJsx } from "hono/jsx";
@@ -229,24 +229,6 @@ function precompileList() {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Chunked rendering — @vincle/core only
-// ---------------------------------------------------------------------------
-//
-// `renderToChunks` is a separate tree walk from `renderToString` (generator
-// delegation instead of recursion) and was previously unmeasured. Same input as
-// the `realworld` group, so the two numbers are directly comparable: the delta
-// is the price of streaming.
-
-const buildRealworldVincle = createRealWorldPage(jsx);
-const realworldTree = () => buildRealworldVincle(NAME, PURCHASES);
-
-async function chunkRealworld() {
-  let out = "";
-  for await (const chunk of renderToChunks(realworldTree())) out += chunk;
-  return out;
-}
-
-// ---------------------------------------------------------------------------
 // Benchmark groups
 // ---------------------------------------------------------------------------
 //
@@ -261,7 +243,6 @@ const CASES = {
   stack: `stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
   realworld: `realworld — full page, ${PURCHASES.length} purchases (kitajs port)`,
   precompile: `precompile — ${PRECOMPILE_ROWS}-row list via jsxTemplate/jsxAttr/jsxEscape (vincle only)`,
-  chunks: `chunks — realworld page through renderToChunks (vincle only)`,
 };
 
 // --- Text ---
@@ -347,14 +328,6 @@ group(CASES.precompile, () => {
   });
 });
 
-// --- Chunked rendering (vincle only) ---
-
-group(CASES.chunks, () => {
-  bench("@vincle/core", async () => {
-    await chunkRealworld();
-  });
-});
-
 // ---------------------------------------------------------------------------
 // Run & ratio vs @vincle/core
 // ---------------------------------------------------------------------------
@@ -362,7 +335,7 @@ group(CASES.chunks, () => {
 // `--json` emits one machine-readable line and nothing else: a single run of
 // this benchmark is not a measurement (between-run spread is 2–4%), so the
 // aggregation belongs to `stats.js`, which runs this many times. See
-// adr/003-rendu-et-mesure.md.
+// apps/bench/README.md — the measurement protocol lives there.
 const asJson = process.argv.includes("--json");
 
 const { layout, benchmarks } = await run({ silent: asJson });

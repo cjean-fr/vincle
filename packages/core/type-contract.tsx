@@ -92,7 +92,7 @@ export const attrsAccepted = [
     <path d="M0 0h10v10z" strokeWidth={2} />
   </svg>,
   <label htmlFor="champ">étiquette</label>,
-  <div dangerouslySetInnerHTML={{ __html: Promise.resolve("<b>x</b>") }} />,
+   <div dangerouslySetInnerHTML={{ __html: "<b>x</b>" }} />,
   // Les éléments custom restent ouverts : un tiret et personne ne connaît leurs
   // attributs. Les `data-*` / `aria-*` passent partout (TypeScript ne vérifie
   // pas les noms d'attribut non identifiants).

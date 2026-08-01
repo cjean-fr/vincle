@@ -3,9 +3,9 @@
 The JSX → HTML engine. No runtime dependencies, ~10 KB gzip for the whole entry
 point (`dist/index.mjs` plus its shared chunk).
 
-Two renderers over one tree walk: `renderToString` for a document,
-`renderToChunks` for a stream. Static subtrees are folded to final HTML at
-`jsx()` time; anything dynamic stays a `VNode` for the walk.
+One renderer, one tree walk: `renderToString` for a document. Static subtrees
+are folded to final HTML at `jsx()` time; anything dynamic stays a `VNode` for
+the walk.
 
 ## Status
 
@@ -16,7 +16,6 @@ Two renderers over one tree walk: `renderToString` for a document,
 | Export                                                             | Purpose                                        |
 | ------------------------------------------------------------------ | ---------------------------------------------- |
 | `renderToString`                                                   | Render a JSX tree to an HTML string            |
-| `renderToChunks`                                                   | Render to string chunks, flushed as they exist |
 | `jsx` / `jsxs`                                                     | JSX runtime (auto-wired via tsconfig)          |
 | `Fragment`                                                         | `<>…</>` support                               |
 | `raw`                                                              | Mark trusted HTML — no escaping                |
@@ -48,16 +47,11 @@ Each JSX runtime re-exports the `JSX` namespace, because TypeScript resolves
 These are the properties the tests exist to hold. They are worth stating because
 each one was, at some point, quietly untrue.
 
-- **Components execute in document order — in both renderers.** What renders
-  before you in the markup ran before you. `renderToString` used to overlap
-  sibling I/O, which made a document that read mutated context depend on how long
-  each sibling took. Overlapping I/O is available where the markup shows it:
-  `<Template>` / `<Slot>` in `@vincle/flow`. See `src/execution-order.test.ts`.
-
-- **The two renderers emit the same bytes.** Joining every chunk of
-  `renderToChunks` gives exactly `await renderToString(node)`. Pinned by a
-  differential fuzzer over 500 generated async trees, and by construction now that
-  both walks share an execution order.
+- **Components execute in document order.** What renders before you in the
+  markup ran before you. `renderToString` used to overlap sibling I/O, which made
+  a document that read mutated context depend on how long each sibling took.
+  Overlapping I/O is available where the markup shows it: `<Template>` /
+  `<Slot>` in `@vincle/flow`. See `src/execution-order.test.ts`.
 
 - **The fold and the walk emit the same bytes.** A static subtree pre-rendered at
   `jsx()` time is byte-identical to the same subtree walked as a `VNode` — 1000
@@ -96,13 +90,8 @@ compiles and renders, with attributes unchecked.
 - **No ErrorBoundary.** Errors reject; there is no component-level recovery here.
 - `renderToString` never throws synchronously — every failure arrives as a
   rejection, so one `try`/`catch` around the await is enough.
-- A failing sibling stops the ones after it, in both renderers.
+- A failing sibling stops the ones after it.
 - **Per-fragment recovery** is `@vincle/flow`'s `onError`, for streaming.
-
-## Design records
-
-[`adr/003-rendu-et-mesure.md`](adr/003-rendu-et-mesure.md) — the rendering
-decisions, and the measurement discipline any performance claim has to meet.
 
 ## Test
 

@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 
 import { context, setContext, useContext, withScope } from "./context.js";
 import { jsx } from "./jsx-runtime.js";
-import { renderToChunks, renderToString } from "./render.js";
+import { renderToString } from "./render.js";
 
 /**
- * Components execute in document order — the same order, in both renderers.
+ * Components execute in document order.
  *
  * This is the engine's sequencing rule, and it is observable, so it is pinned
  * here rather than left to be inferred from the implementation.
@@ -14,9 +14,7 @@ import { renderToChunks, renderToString } from "./render.js";
  * them, overlapping their I/O. The overlap was deliberate and it was free — right
  * up until a component mutated the context. Then the document depended on how long
  * each sibling took: a reader that awaited 1 ms saw the old value, the same reader
- * awaiting 20 ms saw the new one, and `renderToChunks` — ordered by necessity,
- * because bytes leave in order — produced a third answer. Same tree, same code,
- * three documents.
+ * awaiting 20 ms saw the new one. Same tree, same code, two documents.
  *
  * The rule replaces all of that with something a developer can hold in their head:
  * **what runs before you in the document ran before you.** Overlapping I/O is
@@ -27,32 +25,6 @@ import { renderToChunks, renderToString } from "./render.js";
 const KEY = context<string>("execution-order");
 const later = <T>(value: T, ms: number): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
-
-const drain = async (node: unknown): Promise<string> => {
-  let out = "";
-  for await (const chunk of renderToChunks(node)) out += chunk;
-  return out;
-};
-
-/**
- * Render the same tree through both renderers and fail unless they agree.
- *
- * Each render gets its own scope, seeded the same way. Sharing one would leak the
- * first render's `setContext` into the second — which is not a quirk of the test
- * harness but the semantics of a mutable scope, pinned below in its own test.
- */
-async function bothRenderers(build: () => unknown, seed: () => void): Promise<string> {
-  const viaString = await withScope(async () => {
-    seed();
-    return renderToString(build());
-  });
-  const viaChunks = await withScope(async () => {
-    seed();
-    return drain(build());
-  });
-  expect(viaChunks).toBe(viaString);
-  return viaString;
-}
 
 const seedInitial = () => setContext(KEY, "initial");
 
@@ -74,16 +46,11 @@ describe("execution order is document order", () => {
       });
     };
 
-    calls.length = 0;
     expect(await renderToString(jsx("p", { children: [jsx(Slow, {}), jsx(Fast, {})] }))).toBe(
       "<p>slowfast</p>",
     );
     // The point: `fast:start` comes after `slow:end`. Under the previous overlap
     // it came first, and `fast` had finished before `slow` was even awaited.
-    expect(calls).toEqual(["slow:start", "slow:end", "fast:start", "fast:end"]);
-
-    calls.length = 0;
-    await drain(jsx("p", { children: [jsx(Slow, {}), jsx(Fast, {})] }));
     expect(calls).toEqual(["slow:start", "slow:end", "fast:start", "fast:end"]);
   });
 
@@ -115,11 +82,12 @@ describe("setContext is visible to whatever renders after it", () => {
   };
 
   test("a later sibling reads what an earlier one wrote", async () => {
-    const html = await bothRenderers(
-      () => jsx("div", { children: [jsx(Writer("written", 5), {}), jsx(Reader(0), {})] }),
-      seedInitial,
-    );
-    expect(html).toBe("<div>w(written)written</div>");
+    expect(
+      await withScope(async () => {
+        seedInitial();
+        return renderToString(jsx("div", { children: [jsx(Writer("written", 5), {}), jsx(Reader(0), {})] }));
+      }),
+    ).toBe("<div>w(written)written</div>");
   });
 
   // The regression that motivated the rule. Only the reader's latency changes.
@@ -127,13 +95,14 @@ describe("setContext is visible to whatever renders after it", () => {
     const results: string[] = [];
     for (const readerDelay of [0, 1, 5, 20]) {
       results.push(
-        await bothRenderers(
-          () =>
+        await withScope(async () => {
+          seedInitial();
+          return renderToString(
             jsx("div", {
               children: [jsx(Writer("written", 5), {}), jsx(Reader(readerDelay), {})],
             }),
-          seedInitial,
-        ),
+          );
+        }),
       );
     }
     expect(new Set(results).size).toBe(1);
@@ -141,11 +110,12 @@ describe("setContext is visible to whatever renders after it", () => {
   });
 
   test("an earlier sibling cannot see a later one's write", async () => {
-    const html = await bothRenderers(
-      () => jsx("div", { children: [jsx(Reader(0), {}), jsx(Writer("written", 1), {})] }),
-      seedInitial,
-    );
-    expect(html).toBe("<div>initialw(written)</div>");
+    expect(
+      await withScope(async () => {
+        seedInitial();
+        return renderToString(jsx("div", { children: [jsx(Reader(0), {}), jsx(Writer("written", 1), {})] }));
+      }),
+    ).toBe("<div>initialw(written)</div>");
   });
 
   test("a parent's write reaches its own children", async () => {
@@ -155,8 +125,12 @@ describe("setContext is visible to whatever renders after it", () => {
       setContext(KEY, "from-parent");
       return jsx("span", { children: jsx(Child, {}) });
     };
-    const html = await bothRenderers(() => jsx("div", { children: jsx(Parent, {}) }), seedInitial);
-    expect(html).toBe("<div><span>from-parent</span></div>");
+    expect(
+      await withScope(async () => {
+        seedInitial();
+        return renderToString(jsx("div", { children: jsx(Parent, {}) }));
+      }),
+    ).toBe("<div><span>from-parent</span></div>");
   });
 
   // A scope is one execution stack, not one render: a write is still there for

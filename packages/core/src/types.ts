@@ -174,7 +174,7 @@ type VincleOverrides = {
   /** Anything the renderers can render — not just an element. */
   children?: Renderable;
   style?: Awaitable<string | CSSProperties | RawString | null | undefined>;
-  dangerouslySetInnerHTML?: { __html: Awaitable<string | null | undefined> };
+  dangerouslySetInnerHTML?: { __html: string | null | undefined };
   htmlFor?: Awaitable<string | null | undefined>;
 };
 

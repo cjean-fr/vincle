@@ -1,5 +1,5 @@
 import { escapeAttr, URL_ATTRIBUTES, isSafeScheme } from "./escape.js";
-import { RawString } from "./types.js";
+import { raw, RawString } from "./types.js";
 
 // ── camelCase → kebab-case ──────────────────────────────────────────
 // Shared by SVG attribute names and style property names — the same boundary
@@ -290,9 +290,9 @@ export function isValidAttrName(name: string): boolean {
 //
 // Caching them collapses the four into one Map hit. The regex is what makes
 // this worth doing: `\p{C}` under `/u` forces Unicode table lookups, and it
-// alone accounts for a third of buildAttrs (measured: 176 µs → 116 µs when
-// removed, over 2000 calls). The cache recovers most of that — 176 µs → 125 µs
-// — while keeping the regex as the single authority on validity.
+// alone accounts for a third of buildAttrs — removing it roughly halves the
+// time over 2000 calls, and the cache recovers most of that while keeping the
+// regex as the single authority on validity.
 export interface AttrMeta {
   /** Resolved HTML name (`className` → `class`). */
   readonly name: string;
@@ -310,9 +310,8 @@ const ATTR_META_MAX = 1024;
  * Everything about an attribute *name*, memoized.
  *
  * Shared with `jsxAttr`, which used to call `resolveAttrName`, `isValidAttrName`
- * and `URL_ATTRIBUTES.has` itself, uncached, on every attribute of every element.
- * That cost 11% of the precompiled-list benchmark (measured, 8 runs, 6σ) — the
- * `\p{C}` regex again. One question, one place, one cache.
+ * and `URL_ATTRIBUTES.has` itself, uncached, on every attribute of every element
+ * — the `\p{C}` regex again. One question, one place, one cache.
  */
 export function attrMeta(key: string): AttrMeta {
   let meta = ATTR_META.get(key);
@@ -341,18 +340,119 @@ export function attrMeta(key: string): AttrMeta {
 // component crashed or rendered depending on whether the Vite precompile plugin
 // was enabled. That branch is gone; both paths now run the dispatch below.
 
+// ── Serialize one attribute value ───────────────────────────────────
+//
+// The value taxonomy for an HTML attribute, in test order — see CONTEXT.md
+// for the history of the divergent copies.
+//
+// Returns `raw("")` when the attribute must not be emitted (reserved key, null
+// value, invalid name) so a caller without a loop — the precompile transform —
+// has nothing to filter. Batch callers keep their own `continue` policy on top:
+// skipping the call is cheaper than filtering the result.
+//
+// Deliberately synchronous: a promised value is an async *policy* of the
+// caller, not part of the value taxonomy.
+
+/**
+ * Serialize one attribute value to a `name="value"` fragment, with no leading
+ * space. Throws on a function value — a function cannot be serialized to HTML,
+ * whatever it is called.
+ */
+export function serializeAttr(key: string, value: unknown): RawString {
+  if (value === null || value === undefined) return raw("");
+  if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
+    return raw("");
+
+  // One memoized lookup for the resolved name, its validity and whether it is a
+  // URL attribute — asking the three questions separately was measurably
+  // slower, and sharing the cache also makes it impossible for two paths to
+  // resolve a name differently.
+  //
+  // The validity gate matters on this path as much as on the batch one: a name
+  // reaching a runtime helper is not necessarily author-written — a spread, a
+  // computed key, or a transform that does not bail on spreads the way
+  // `@vincle/precompile-core` does, all put caller-controlled text here.
+  const meta = attrMeta(key);
+  if (!meta.valid) return raw("");
+  const attrName = meta.name;
+
+  const type = typeof value;
+
+  // String — dominant case, coercion-free
+  if (type === "string") {
+    let str = value as string;
+    if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
+    return new RawString(`${attrName}="${escapeAttr(str)}"`);
+  }
+
+  // Boolean — HTML booléen → nom seul, sinon stringifié
+  if (type === "boolean") {
+    if (BOOLEAN_ATTRIBUTES.has(attrName)) return value ? raw(attrName) : raw("");
+    return new RawString(`${attrName}="${value}"`);
+  }
+
+  // number / bigint — safe, pas de check URL
+  if (type === "number" || type === "bigint") {
+    return new RawString(`${attrName}="${value}"`);
+  }
+
+  // Function — ne peut pas être sérialisé. Pas de branche `on…` : un handler
+  // est un attribut comme un autre, et une fonction est unserialisable quoi
+  // qu'elle s'appelle. La dissuasion appartient à `@vincle/eslint-plugin`'s
+  // `no-unsafe-event-handlers`, pas au moteur (un `console.warn` par rendu
+  // serait un flood de logs sur le hot path).
+  if (type === "function") {
+    throw new Error(
+      `[vincle/core] Attribute "${key}" received a function as value. ` +
+        "Functions are not serializable to HTML. Did you forget to call a component or pass a string?",
+    );
+  }
+
+  // RawString — bypass explicite du développeur. Testé avant `style`/`class` :
+  // un RawString *est* un objet, donc le tester après ferait itérer ses propres
+  // clés comme si c'était un sac de styles —
+  // `style={raw("color:red")}` sortait `style="value:color:red"`.
+  if (value instanceof RawString) {
+    return new RawString(`${attrName}="${value.value}"`);
+  }
+
+  // Style objet → chaîne CSS. Seul un objet *simple* est un sac de styles :
+  // `styleToString` énumère les clés propres, ce qui ne veut rien dire pour une
+  // instance de classe (`style={new Date()}` produisait un attribut vide,
+  // supprimé en silence). Tout le reste retombe sur `String(value)`, comme
+  // n'importe quel autre attribut.
+  if (attrName === "style" && isPlainObject(value)) {
+    const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
+    if (!styleStr) return raw("");
+    return new RawString(`style="${escapeAttr(styleStr)}"`);
+  }
+
+  // Array class → string join
+  if (attrName === "class" && Array.isArray(value)) {
+    const s = classToString(value as unknown[]);
+    if (!s) return raw("");
+    return new RawString(`class="${escapeAttr(s)}"`);
+  }
+
+  // Fallback — tout objet avec toString
+  let str = String(value);
+  if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
+  return new RawString(`${attrName}="${escapeAttr(str)}"`);
+}
+
 // ── Build attributes string ────────────────────────────────────────
 //
-// Tout est inline dans le for-loop pour éviter 2 appels de fonction
-// par attribut sur le hotpath (bench: +10% avec les fonctions extraites).
-// Les phases sont documentées par des commentaires inline :
-//   1. normalize — skip réservés, résout React→HTML
-//   2. validate  — rejette les noms dangereux
-//   3. serialize — dispatche par type de valeur
+// Inline à dessein : `serializeAttr` délègue ici à un appel de fonction par
+// attribut, et le fold paie 13–16 % (8 runs). C'est
+// l'allocation `RawString` par attribut qui coûte, pas la branche : le fold
+// concatène, `serializeAttr` construit. Ne pas ré-extraire sans re-mesurer.
 //
-// Le dispatch est ordonné par fréquence réelle : les strings dominent
-// (class, id, href, data-*, aria-*), donc prennent la première branche
-// sans coercion. `String(value)` n'est payé que pour les rares cas non-string.
+// La taxonomie des valeurs vit donc en deux exemplaires — ici, inline, et dans
+// `serializeAttr`, que `jsxAttr` (precompile) délègue. Le reste (attrMeta,
+// styleToString, classToString, isPlainObject, BOOLEAN_ATTRIBUTES, escapeAttr,
+// isSafeScheme) est partagé : les deux chemins ne peuvent pas dériver sur les
+// tables, seulement sur l'ordre des branches — et l'équivalence est pinnée par
+// les tests d'attributs de `attrs.test.ts` et `jsx-precompile-runtime.test.ts`.
 
 export function buildAttrs(attrs: Record<string, unknown>): string | Promise<string> {
   let out = "";

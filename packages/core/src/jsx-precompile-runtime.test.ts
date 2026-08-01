@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildAttrs } from "./attrs.js";
+import { buildAttrs, serializeAttr } from "./attrs.js";
 import { context, setContext, useContext, withScope } from "./context.js";
 import { jsxTemplate, jsxAttr, jsxEscape } from "./jsx-precompile-runtime.js";
 import { jsx } from "./jsx-runtime.js";
@@ -164,33 +164,58 @@ describe("jsxTemplate", () => {
   });
 });
 
-// ── Path equivalence: jsxAttr ≡ buildAttrs ─────────────────────────────────
+// ── jsxAttr: the async wrapper ─────────────────────────────────────────────
 //
-// The precompile transform and the VNode runtime are two independent attribute
-// serializers over the same JSX. Any value kind they disagree on is a hole: the
-// same source renders differently — or crashes — depending on whether the Vite
-// precompile plugin happens to be enabled.
+// The value taxonomy lives in `serializeAttr` (`attrs.ts`) — pinned there, once,
+// in `attrs.test.ts`. What remains here is the wrapper's own contract: a
+// promised value recurses per attribute (where `buildAttrsAsync` resolves the
+// batch), and everything else is delegated.
 //
-// Four such holes existed. `jsxAttr` special-cased `on…` names, dropping
-// `onClick={fn}` with a warning where `buildAttrs` threw; it carried its own
-// hardcoded list of URL attributes, which had already drifted from
-// `URL_ATTRIBUTES` — `<object data="javascript:…">` went unchecked here only; it
-// awaited a promised value where `buildAttrs` wrote `[object Promise]`; and it
-// emitted a hostile attribute name verbatim where `buildAttrs` dropped it.
-//
-// The last one was the sharp one: `jsxAttr('x"><script>', v)` closed the start tag.
-// A case list is the only guard that finds this class of bug, because each hole
-// lived in a value kind nobody thought to write down twice.
+// This used to be a second attribute serializer tested for equivalence against
+// `buildAttrs`. The two drifted four times; one drift — `jsxAttr('x"><script>',
+// v)` closing the start tag — was an injection. The equivalence suite died with
+// the duplication; the taxonomy is tested once, the fold's inline copy is kept
+// aligned by the residual equivalence below.
 
-describe("jsxAttr ≡ buildAttrs", () => {
-  /** `buildAttrs` emits ` name="v"`; `jsxAttr` emits `name="v"`. */
+describe("jsxAttr — the async wrapper", () => {
+  test("a promised value is awaited, not stringified", async () => {
+    expect((await jsxAttr("href", Promise.resolve("/late"))).value).toBe('href="/late"');
+  });
+
+  test("a promised value is still checked for an unsafe scheme", async () => {
+    expect((await jsxAttr("href", Promise.resolve("javascript:alert(1)"))).value).toBe(
+      'href="#blocked"',
+    );
+  });
+
+  test("a function throws — the taxonomy throws, the wrapper propagates", () => {
+    expect(() => jsxAttr("onClick", () => {})).toThrow(/not serializable/);
+  });
+
+  test("a RawString passes through untouched", () => {
+    expect((jsxAttr("title", raw("<b>trusted</b>")) as RawString).value).toBe(
+      'title="<b>trusted</b>"',
+    );
+  });
+});
+
+// ── Residual equivalence: buildAttrs ≡ serializeAttr ────────────────────────
+//
+// `buildAttrs` stays inline on purpose — delegation costs the fold 13–16% (the
+// RawString allocation per attribute is the price, not the branch). That leaves
+// two copies of the value taxonomy in the engine: the inline one and
+// `serializeAttr`. The tables (`attrMeta`, style/class helpers, escape) are
+// shared, so only the branch order can drift. This case list keeps the inline
+// copy honest.
+
+describe("buildAttrs ≡ serializeAttr", () => {
+  /** `buildAttrs` emits ` name="v"`; `serializeAttr` emits `name="v"`. */
   const viaBuildAttrs = async (key: string, value: unknown): Promise<string> =>
     (await buildAttrs({ [key]: value })).trimStart();
-  const viaJsxAttr = async (key: string, value: unknown): Promise<string> =>
-    (await jsxAttr(key, value)).value;
+  const viaSerializeAttr = (key: string, value: unknown): string =>
+    serializeAttr(key, value).value;
 
   const CASES: [string, unknown][] = [
-    // Handlers are plain attributes on both paths — emitted, not dropped.
     ["onClick", 'alert("x") & 1'],
     ["onClick", 42],
     ["class", "foo"],
@@ -205,22 +230,13 @@ describe("jsxAttr ≡ buildAttrs", () => {
     ["style", { "color:red;position": "fixed" }],
     ["disabled", true],
     ["disabled", false],
-    // A boolean on an attribute that is *not* a boolean attribute: the name alone
-    // would mean something else entirely.
     ["data-active", true],
     ["data-active", false],
     ["title", "a & b < c"],
     ["title", raw("<b>trusted</b>")],
     ["tabIndex", 3],
-    // A `RawString` is an object: read as a style bag it serialized as
-    // `style="value:color:red"` on the VNode path only.
     ["style", raw("color:red")],
-    // …and so is any class instance. Neither is a bag of declarations.
     ["style", new Date(0)],
-    // Promised values: the type has always allowed them.
-    ["href", Promise.resolve("/late")],
-    ["title", Promise.resolve("a & b")],
-    // A name that closes the start tag must be dropped, on both paths.
     ['x"><script>alert(1)</script>', "y"],
     ["a b", "y"],
     ["a=b", "y"],
@@ -228,38 +244,15 @@ describe("jsxAttr ≡ buildAttrs", () => {
 
   for (const [key, value] of CASES) {
     test(`${key}=${JSON.stringify(value) ?? String(value)}`, async () => {
-      expect(await viaJsxAttr(key, value)).toBe(await viaBuildAttrs(key, value));
+      expect(viaSerializeAttr(key, value)).toBe(await viaBuildAttrs(key, value));
     });
   }
 
-  // Equivalence alone would be satisfied by both paths being wrong, so the two
-  // shapes that used to break out of the tag are pinned to their value too.
+  // Equivalence alone would be satisfied by both paths being wrong, so the
+  // shape that used to break out of the tag is pinned to its value too.
   test("a hostile name produces nothing at all", async () => {
-    expect(await viaJsxAttr('x"><script>', "y")).toBe("");
+    expect(viaSerializeAttr('x"><script>', "y")).toBe("");
     expect(await viaBuildAttrs('x"><script>', "y")).toBe("");
-  });
-
-  test("a promised value is awaited, not stringified", async () => {
-    expect(await viaJsxAttr("href", Promise.resolve("/late"))).toBe('href="/late"');
-    expect(await viaBuildAttrs("href", Promise.resolve("/late"))).toBe('href="/late"');
-  });
-
-  test("a promised value is still checked for an unsafe scheme", async () => {
-    expect(await viaJsxAttr("href", Promise.resolve("javascript:alert(1)"))).toBe(
-      'href="#blocked"',
-    );
-    expect(await viaBuildAttrs("href", Promise.resolve("javascript:alert(1)"))).toBe(
-      'href="#blocked"',
-    );
-  });
-
-  // The regression guard for the divergence above: an `on…` function must throw
-  // on *both* paths, exactly like any other unserializable value.
-  test("a function throws on both paths, handler or not", () => {
-    expect(() => jsxAttr("onClick", () => {})).toThrow(/not serializable/);
-    expect(() => buildAttrs({ onClick: () => {} })).toThrow(/not serializable/);
-    expect(() => jsxAttr("title", () => {})).toThrow(/not serializable/);
-    expect(() => buildAttrs({ title: () => {} })).toThrow(/not serializable/);
   });
 });
 
@@ -268,9 +261,8 @@ describe("jsxAttr ≡ buildAttrs", () => {
 // `jsxEscape` handles arrays, iterables, async iterables and promises; that is
 // the "async is native, the developer asks for nothing" promise on the
 // precompiled path. None of it was covered: `escapeArray`, `collectAsyncIterable`
-// and `jsxTemplate`'s promise branch were three untested functions carrying
-// benchmark numbers in their comments — including the one the comment calls "the
-// call a precompiled list page spends most of its time in".
+// and `jsxTemplate`'s promise branch were three untested functions — including
+// the call a precompiled list page spends most of its time in.
 //
 // Every case below is checked against the same value rendered through the VNode
 // engine, because "it produces something" is not the contract — "it produces the
