@@ -1,0 +1,65 @@
+name: Manuel Release (Bun)
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Select the package to publish"
+        required: true
+        type: choice
+        options:
+          - core
+          - flow
+          - eslint-plugin
+          - vite-plugin
+          - vite-plugin-precompile
+          - precompile-core
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      # `id-token` seul : la provenance npm en a besoin. Rien n'écrit dans le
+      # dépôt — ni tag, ni release.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      # Republier une version existante n'a pas besoin d'être gardé ici : npm
+      # refuse le doublon et le job échoue là.
+      - name: Locate Package
+        id: meta
+        env:
+          PACKAGE: ${{ github.event.inputs.package }}
+        run: |
+          PACKAGE_DIR="packages/$PACKAGE"
+          echo "package_dir=$PACKAGE_DIR" >> "$GITHUB_OUTPUT"
+          echo "package_name=$(jq -r '.name' "$PACKAGE_DIR/package.json")" >> "$GITHUB_OUTPUT"
+
+      - name: Build Package
+        run: bun run build --filter="${{ steps.meta.outputs.package_name }}"
+
+      - name: Setup Node (for OIDC support)
+        uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          registry-url: "https://registry.npmjs.org"
+
+      # `bun pm pack`, pas `npm pack` : seul bun résout le protocole `workspace:`
+      # en version réelle. Passer par npm publierait `workspace:^` tel quel.
+      #
+      # `--quiet` n'imprime que le nom du tarball, que l'on publie nommément — un
+      # `*.tgz` publierait le premier venu si le dossier en contenait un autre.
+      - name: Publish to NPM
+        run: |
+          cd "${{ steps.meta.outputs.package_dir }}"
+          TARBALL="$(bun pm pack --quiet | tail -n1)"
+          npm publish "$TARBALL" --provenance
