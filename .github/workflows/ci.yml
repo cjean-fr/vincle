@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Pas de cache turbo restauré : `turbo run test` ne construit alors que les
+  # dépendances *déclarées*, et un test qui en attend d'autres échoue ici. Le job
+  # principal restaure le cache, donc il ne le verrait pas.
+  #
+  # Le lint passe en second : il construit `@vincle/eslint-plugin` et `core`, ce
+  # qui masquerait leurs deux cas (mesuré : 6 détections dans cet ordre, 4 dans
+  # l'autre).
+  cold-tree:
+    name: Tests without prebuilt artefacts
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Test — nothing built, nothing cached
+        run: bun run test
+
+      - name: Lint — builds the oxlint plugin it needs
+        run: bun run lint
+
+  # `bun test` ne prouve rien sur Node, Deno ou workerd, et `@vincle/core` les
+  # revendique tous les quatre — jusque dans le message d'erreur de
+  # `SyncContextStore`. Ce job exécute la conformité contre `dist`, donc contre
+  # l'artefact publié et non contre les sources.
+  conformance:
+    name: Conformance — ${{ matrix.runtime }}
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+    strategy:
+      # Sans ça, le premier runtime en échec masque les trois autres — or savoir
+      # si un seul lâche ou si tous lâchent est justement l'information qu'une
+      # matrice de conformité doit donner.
+      fail-fast: false
+      matrix:
+        # Chaque entrée déclare ce dont elle a besoin plutôt que de le déduire de
+        # son nom. `workerd` demande Node parce que `npx wrangler` le démarre :
+        # ce n'est pas évident, donc c'est écrit.
+        include:
+          - runtime: bun
+          - runtime: node
+            needs_node: true
+          - runtime: deno
+            needs_deno: true
+          - runtime: workerd
+            needs_node: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Bun est requis partout : il construit le `dist` que les quatre chargent.
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Setup Node
+        if: matrix.needs_node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Setup Deno
+        if: matrix.needs_deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build @vincle/core
+        run: bun x turbo run build --filter=@vincle/core
+
+      - name: Conformance — ${{ matrix.runtime }}
+        run: bun run --filter=@vincle/core conformance:${{ matrix.runtime }}
+
+  pipeline:
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Turbo Cache
+        uses: actions/cache@v5
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/turbo.json', 'bun.lock') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      # Le hook pre-commit ne suffit pas : `--no-verify` passe à côté.
+      - name: Lint
+        run: bun run lint
+
+      - name: Check
+        run: bun run check
+
+      - name: Test
+        run: bun run test
+
+      # La couverture reste ici : c'est la même suite avec `--coverage`, quelques
+      # secondes. La mutation, elle, est partie dans `mutation.yml` — dix minutes
+      # sur chaque PR ne se justifiaient pas.
+      - name: Coverage
+        run: bun run test:coverage
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage
+          path: |
+            packages/*/coverage/
+            packages/*/badges/
+          if-no-files-found: ignore
+
+      - name: Benchmark & performance gate
+        run: bun run --filter=@vincle/bench bench:gate
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: benchmark-results
+          path: apps/bench/results/
+          if-no-files-found: ignore
