@@ -246,7 +246,92 @@ describe("renderToString never throws synchronously", () => {
     expect(threw).toBe(false);
     await expect(promise).rejects.toThrow("boom");
   });
+})
+describe("Error annotation", () => {
+  test("prefixes the message with the throwing component's name", async () => {
+    function Boom() {
+      throw new Error("not found");
+    }
+    await expect(renderToString(jsx(Boom, {}))).rejects.toThrow("[Boom] not found");
+  });
+
+  test("annotates a rejection the same as a synchronous throw", async () => {
+    async function Boom() {
+      throw new Error("not found");
+    }
+    await expect(renderToString(jsx(Boom, {}))).rejects.toThrow("[Boom] not found");
+  });
+
+  test("only the innermost component is named — an ancestor does not re-annotate", async () => {
+    function Boom() {
+      throw new Error("not found");
+    }
+    function Parent() {
+      return jsx(Boom, {});
+    }
+    const error = await renderToString(jsx(Parent, {})).catch((e: unknown) => e);
+    expect((error as Error).message).toBe("[Boom] not found");
+  });
+
+  test("prefers displayName over the function name", async () => {
+    function Boom() {
+      throw new Error("not found");
+    }
+    Boom.displayName = "RenamedBoom";
+    await expect(renderToString(jsx(Boom, {}))).rejects.toThrow("[RenamedBoom] not found");
+  });
+
+  test("an anonymous component falls back to <anonymous>", async () => {
+    const boom = () => {
+      throw new Error("not found");
+    };
+    Object.defineProperty(boom, "name", { value: "" });
+    await expect(renderToString(jsx(boom, {}))).rejects.toThrow("[<anonymous>] not found");
+  });
+
+  test("a thrown non-Error value passes through unannotated", async () => {
+    function Boom() {
+      throw "not an Error";
+    }
+    let threw: unknown;
+    try {
+      await renderToString(jsx(Boom, {}));
+    } catch (e) {
+      threw = e;
+    }
+    expect(threw).toBe("not an Error");
+  });
+
+  test("a nested component's error inside a rawtext element isn't double-annotated", async () => {
+    function Boom() {
+      throw new Error("not found");
+    }
+    function Wrapper() {
+      return jsx(Boom, {});
+    }
+    await expect(
+      renderToString(jsx("script", { children: jsx(Wrapper, {}) })),
+    ).rejects.toThrow("[Boom] not found");
+  });
+
+  test("a rejecting async generator component is annotated too", async () => {
+    async function* Boom() {
+      yield "partial";
+      throw new Error("not found");
+    }
+    await expect(renderToString(jsx(Boom, {}))).rejects.toThrow("[Boom] not found");
+  });
+
+  test("annotates inside a rawtext element (<script>/<style>)", async () => {
+    function Boom() {
+      throw new Error("not found");
+    }
+    await expect(
+      renderToString(jsx("script", { children: jsx(Boom, {}) })),
+    ).rejects.toThrow("[Boom] not found");
+  });
 });
+
 
 // ── The walk's element contract ────────────────────────────────────────────
 //

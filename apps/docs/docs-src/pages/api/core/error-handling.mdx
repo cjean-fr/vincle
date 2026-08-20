@@ -39,6 +39,24 @@ try {
 }
 ```
 
+An `Error` thrown by a component is annotated with that component's name,
+once — the innermost one, not the whole chain:
+
+```tsx
+function Profile() {
+  throw new Error("not found");
+}
+
+try {
+  await renderToString(<Profile />);
+} catch (e) {
+  // e.message === "[Profile] not found"
+}
+```
+
+A thrown value that isn't an `Error` (a string, a plain object) is never
+wrapped — `catch` sees exactly what was thrown.
+
 ## Per-fragment errors (streaming)
 
 For streaming renders, `@vincle/flow` provides `onError` on the
