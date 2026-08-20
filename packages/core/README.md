@@ -9,7 +9,7 @@ the walk.
 
 ## Status
 
-`1.0.0-beta.1` — private, not published.
+`0.9.0` — private, not published.
 
 ## API
 
@@ -111,6 +111,10 @@ complete and maintainable one becomes available.
   component the distinction disappears — `jsx()` then runs during the walk, which
   converts the throw.
 - A failing sibling stops the ones after it.
+- **`Error` messages are annotated with the throwing component's name**, once:
+  `[Profile] not found`. Only the innermost component — an ancestor that
+  re-throws the same error doesn't add itself. A thrown value that isn't an
+  `Error` passes through unchanged.
 - **Per-fragment recovery** is `@vincle/flow`'s `onError`, for streaming.
 
 ## Test
