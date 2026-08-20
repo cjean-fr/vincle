@@ -68,17 +68,26 @@ export function renderNode(vnode: unknown): string | Promise<string> {
   if (vnode instanceof VNode) {
     // ── Component ──
     if (typeof vnode.tag === "function") {
+      const comp = vnode.tag;
       let result: unknown;
       try {
-        result = vnode.tag(vnode.attrs);
-      } catch (e) {
-        return Promise.reject(e);
+        result = comp(vnode.attrs);
+      } catch (error) {
+        return Promise.reject(annotate(error, comp));
       }
+      // Reuses the `then` that was already there — no extra promise link.
       if (result instanceof Promise) {
-        return result.then((r) => renderNode(r));
+        return result.then(
+          (r) => renderNode(r),
+          (error: unknown) => {
+            throw annotate(error, comp);
+          },
+        );
       }
       if (isAsyncIterable(result)) {
-        return collectAsyncIterable(result, renderNode);
+        return collectAsyncIterable(result, renderNode).catch((error: unknown) => {
+          throw annotate(error, comp);
+        });
       }
       return renderNode(result);
     }
@@ -232,15 +241,24 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
   // A component: invoked here rather than in `renderNode`, so that whatever it
   // returns comes back through this function and keeps the rule. The promise and
   // async-iterable shapes it may return are already handled above and below —
-  // only the call and its synchronous throw are mirrored.
+  // only the call, its synchronous throw and its annotation are mirrored.
   if (child instanceof VNode) {
+    const comp = child.tag as (props: Record<string, unknown>) => unknown;
     let result: unknown;
     try {
-      result = (child.tag as (props: Record<string, unknown>) => unknown)(child.attrs);
+      result = comp(child.attrs);
     } catch (error) {
-      return Promise.reject(error);
+      return Promise.reject(annotate(error, comp));
     }
-    return renderRawtextChild(result, rawtextTag);
+    // `<script>` is cold; one `catch` for both async shapes is fine here,
+    // where `renderNode` above splits them for the hot path's sake.
+    const rendered = renderRawtextChild(result, rawtextTag);
+    if (typeof rendered !== "string") {
+      return rendered.catch((error: unknown) => {
+        throw annotate(error, comp);
+      });
+    }
+    return rendered;
   }
   if (Array.isArray(child)) return renderChildrenAsync(child, rawtextTag);
   if (isAsyncIterable(child)) {
@@ -268,4 +286,41 @@ export async function collectAsyncIterable(
     out += rendered instanceof Promise ? await rendered : rendered;
   }
   return out;
+}
+
+// ── Error annotation ──────────────────────────────────────────────────────
+// `[Profile] not found` says where; `not found` alone doesn't. Innermost
+// component only (no re-annotation up the chain), `Error` instances only
+// (a thrown string keeps its identity), `message` only (`instanceof`/`cause`
+// survive).
+
+const ANNOTATED = new WeakSet<Error>();
+
+type ComponentTag = (props: Record<string, unknown>) => unknown;
+
+/**
+ * `displayName` first: the function a HOC returns is named after the HOC, and
+ * a minifier renames the rest. It is the one hook a component has to say what
+ * it should be called.
+ */
+function componentName(comp: ComponentTag): string {
+  const display = (comp as { displayName?: unknown }).displayName;
+  if (typeof display === "string" && display !== "") return display;
+  return comp.name || "<anonymous>";
+}
+
+/**
+ * Prefix a thrown error's message with the name of the component that threw,
+ * once. Returns the very same value it was given in every other case.
+ */
+function annotate(error: unknown, comp: ComponentTag): unknown {
+  if (!(error instanceof Error) || ANNOTATED.has(error)) return error;
+  ANNOTATED.add(error);
+  try {
+    error.message = `[${componentName(comp)}] ${error.message}`;
+  } catch {
+    // A frozen error, or a getter-only `message`. Nothing to write, and nothing
+    // worth failing an otherwise-fine render for.
+  }
+  return error;
 }
