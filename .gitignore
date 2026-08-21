@@ -14,7 +14,6 @@ dist
 # code coverage / mutation
 coverage
 *.lcov
-mutation.*
 coverage.*
 reports/
 .stryker-tmp/
