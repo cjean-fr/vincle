@@ -126,6 +126,33 @@ describe("SSG build", () => {
 
 /** What a page declares must exist. */
 describe("everything a page declares exists", () => {
+  /**
+   * A real parser, not a regex: a code example showing `href="/app.css"` as
+   * plain text (or inside a `data-code` copy-button attribute) is not a link.
+   */
+  async function declaredLocalPaths(html: string): Promise<Set<string>> {
+    const urls = new Set<string>();
+    const record = (raw: string | null): void => {
+      if (!raw || !raw.startsWith("/")) return;
+      const url = raw.split(/[#?]/)[0]!;
+      if (url !== "/") urls.add(url);
+    };
+    await new HTMLRewriter()
+      .on("[href]", {
+        element(el) {
+          record(el.getAttribute("href"));
+        },
+      })
+      .on("[src]", {
+        element(el) {
+          record(el.getAttribute("src"));
+        },
+      })
+      .transform(new Response(html))
+      .text();
+    return urls;
+  }
+
   it("no local path leads nowhere", async () => {
     const resolves = async (url: string): Promise<boolean> =>
       (await Bun.file(path.join(DIST_DIR, url)).exists()) ||
@@ -135,12 +162,7 @@ describe("everything a page declares exists", () => {
     const broken: string[] = [];
     for (const file of [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)].toSorted()) {
       const html = await readFile(path.join(DIST_DIR, file), "utf-8");
-      const declared = new Set(
-        [...html.matchAll(/(?:href|src)="(\/[^"#?]*)"/g)]
-          .map((m) => m[1]!)
-          .filter((u) => u !== "/"),
-      );
-      for (const url of declared) {
+      for (const url of await declaredLocalPaths(html)) {
         if (!(await resolves(url))) broken.push(`${file} → ${url}`);
       }
     }
