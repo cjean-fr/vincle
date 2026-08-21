@@ -87,6 +87,10 @@ is the only mode.
   </tbody>
 </table>
 
+The functions named in the table are internal implementation details, not
+public API. `isSafeScheme`, for example, is not exported from `@vincle/core` —
+the public export is `schemeOf`.
+
 <CodeExample src="guide/getting-started/escaping.tsx" output />
 
 ### Escaping inside `<script>` and `<style>`
@@ -166,13 +170,6 @@ distinguish a call the compiler emitted from a hand-written
 `jsx(userInput, …)`. Any "the compiler already checked this" assumption would
 be unverifiable — which is why vincle validates tag/attribute names and escapes
 every value regardless of origin.
-
-> **Classic-runtime fallback.** For the (deprecated) `<div {...p} key={k} />`
-> pattern, TypeScript emits `createElement` imported from the
-> `jsxImportSource` root. `@vincle/core` exports a `createElement` compatible
-> with that shape so the pattern renders instead of failing on a missing
-> import; it folds trailing children into `props.children` and strips
-> `key`/`ref`, exactly like the automatic runtime.
 
 ## The `raw()` Escape Hatch
 
