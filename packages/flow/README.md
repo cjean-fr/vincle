@@ -17,7 +17,7 @@ Use `@vincle/core` alone for SSG, emails, and pure SSR. Add `@vincle/flow` when 
 
 A standard `renderToString` call is a serial pipeline: the server computes the full page before sending the first byte. With streaming, the shell (layout, navigation, above-the-fold content) goes to the browser immediately while heavy components are still rendering.
 
-Each deferred region renders **concurrently** and independently — the slowest component does not block the others. The browser receives the shell, paints it, then receives patches as they arrive and applies them in-place.
+Deferred regions of the same **wave** render **in parallel** and independently — the slowest one does not block its wave-mates. Waves flush one after another, and streams run on their own separate schedule. The browser receives the shell, paints it, then receives patches as they arrive and applies them in-place.
 
 - **TTFB / FCP** — users see content in one round-trip, not after all async work settles
 - **No virtual DOM, no hydration** — patches are applied as plain HTML by the adapter's client mechanism (Turbo, HTMX) or a minimal polyfill
@@ -81,12 +81,12 @@ Pushes content into a target slot by name. **Unified** — one component for bot
 
 | `children` type     | `fallback` | Behaviour                                             |
 | ------------------- | ---------- | ----------------------------------------------------- |
-| `VNode` (plain JSX) | —          | Registers content, no placeholder                     |
-| `VNode` (plain JSX) | provided   | **Warning dev** — `fallback` ignored for sync content |
-| `(signal) => …`     | —          | Lazy content, no placeholder                          |
-| `(signal) => …`     | provided   | Lazy content with placeholder + fallback              |
+| `VNode` (plain JSX) | —          | Registers content; renders a placeholder              |
+| `VNode` (plain JSX) | provided   | Registers content; placeholder renders `fallback`     |
+| `(signal) => …`     | —          | Lazy content; renders a placeholder                   |
+| `(signal) => …`     | provided   | Lazy content; placeholder renders `fallback`          |
 
-**Sync** — plain JSX, no placeholder:
+**Sync** — plain JSX:
 
 ```tsx
 import { Template } from "@vincle/flow";
@@ -125,7 +125,7 @@ import { Template } from "@vincle/flow";
 
 The factory is invoked lazily — only when the fragment is about to render. It receives an `AbortSignal` for cancellation and must return a renderable JSX node (or a `Promise` / `AsyncIterable` thereof — the runtime unwraps these automatically).
 
-`Template` without `fallback` renders nothing itself (returns `null`), like the old `Fill`. With `fallback`, it renders a placeholder in the shell and replaces it when content resolves, like the old `Defer`.
+`Template` always renders a placeholder at its position in the shell — `fallback` is that placeholder's content (empty if none given) — and the deferred content replaces it when it resolves. Rendering a `Template` without any adapter throws at registration: there is no placeholder to emit and nothing to patch into.
 
 ### `<Include>` — client-side fetch only
 
@@ -196,7 +196,7 @@ Each adapter implements `Placeholder`/`Patch`/`Frame` (JSX), optional `transform
 
 - **`Patch`** — fragment delivered inline in the same HTTP response as the shell.
 - **`Frame`** — fragment served as a standalone file fetched by the client (SSG).
-- `NativeAdapter` is the **default** — it injects a ~550 B polyfill for DOM patching. Pass `WebPlatformAdapter` for zero-JS output, or `EsiAdapter` for CDN-level composition without client JS. No adapter = no JS at all.
+- `NativeAdapter` injects a ~550 B polyfill for DOM patching. Pass `WebPlatformAdapter` for zero-JS output, or `EsiAdapter` for CDN-level composition without client JS. An adapter is **required**: `renderToStream` takes it as its second argument, and a `Template` without one throws at registration.
 
 ### Capabilities
 
@@ -211,7 +211,7 @@ type AdapterCapabilities = {
 
 This is surfaced in the type system. `renderToStream` / `serve` require a streaming adapter, so **`EsiAdapter` is rejected at compile time** there — ESI composition happens at the CDN, via `renderToStatic` + `emitFragments`. An unsupported `merge` fails fast at registration.
 
-#### `NativeAdapter` (default — ~550 B polyfill)
+#### `NativeAdapter` (~550 B polyfill)
 
 Uses the [Declarative Partial Updates](https://developer.chrome.com/blog/declarative-partial-updates) API plus a minimal polyfill injected via `transformShell`. All merge types, no external client library, works in modern browsers.
 
@@ -261,19 +261,23 @@ For **SSG with a CDN ESI processor** (Varnish, Fastly, nginx ESI module). The sh
 
 ```tsx
 import { renderToStream, Template } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
 
-const stream = renderToStream(() => (
-  <html>
-    <body>
-      <header>Fast</header>
-      <Template target="dashboard" fallback={<p>Loading…</p>}>
-        <HeavyDashboard />
-      </Template>
-    </body>
-  </html>
-));
-// → ReadableStream<string> (NativeAdapter by default). Pipe it to the HTTP response.
-// Pass a second arg (TurboAdapter, HtmxAdapter, …) to switch wire format.
+const stream = renderToStream(
+  () => (
+    <html>
+      <body>
+        <header>Fast</header>
+        <Template target="dashboard" fallback={<p>Loading…</p>}>
+          <HeavyDashboard />
+        </Template>
+      </body>
+    </html>
+  ),
+  NativeAdapter,
+);
+// → ReadableStream<string>. Pipe it to the HTTP response.
+// Swap the adapter (TurboAdapter, HtmxAdapter, …) to change wire format.
 ```
 
 ### Static generation, pure-static (no deferred content)
@@ -289,7 +293,7 @@ await renderToStatic(async (ctx) => {
 });
 ```
 
-No adapter required — @vincle/flow stays invisible for pure-static rendering.
+No adapter required — @vincle/flow stays invisible for pure-static rendering, as long as no `<Template>` is rendered. A `Template` without an adapter throws at registration.
 
 ### Static generation with deferred fragments
 
@@ -384,7 +388,7 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 | Export               | Import path             | Description                                                        |
 | -------------------- | ----------------------- | ------------------------------------------------------------------ |
-| `NativeAdapter`      | `@vincle/flow/adapters` | Declarative Partial Updates + polyfill — all merge types (default) |
+| `NativeAdapter`      | `@vincle/flow/adapters` | Declarative Partial Updates + polyfill — all merge types |
 | `TurboAdapter`       | `@vincle/flow/adapters` | Hotwire Turbo Streams — all merge types                            |
 | `HtmxAdapter`        | `@vincle/flow/adapters` | HTMX OOB swaps — all merge types                                   |
 | `WebPlatformAdapter` | `@vincle/flow/adapters` | Pure WICG spec, zero JS — `replace` only                           |
@@ -406,7 +410,7 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `MergeType`           | `@vincle/flow`          | `"replace" \| "append" \| "prepend" \| "before" \| "after"`    |
 | `FlowEvent`           | `@vincle/flow`          | `{ type: "shell" \| "fragment" \| "close", … }`                |
 | `Negotiation`         | `@vincle/flow`          | `{ headers?, mode?, target? }`                                 |
-| `TemplateContent`     | `@vincle/flow`          | `VNode \| ((signal: AbortSignal) => VNode)`                    |
+| `TemplateContent`     | `@vincle/flow`          | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` |
 
 ### Utilities
 

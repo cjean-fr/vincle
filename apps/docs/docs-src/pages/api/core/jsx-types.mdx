@@ -48,8 +48,9 @@ string form. A function or a symbol is a type error.
 ## VNode
 
 The engine's internal representation of an element: a tag, its props, its
-children. It is exported **as a type only** — `jsx()` is the only way to make
-one, and nothing outside the engine needs to.
+children. It is exported **as a value** — a class — even though `jsx()` is the
+only way to construct one; the value export is required by the precompile
+contract. Nothing outside the engine needs to build one by hand.
 
 Use it to annotate a value that holds an element built by JSX. To annotate
 something that merely _renders_, `Renderable` is the type you want; it is much
