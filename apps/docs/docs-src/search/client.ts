@@ -60,15 +60,15 @@ document.addEventListener("DOMContentLoaded", () => {
       searchInput.disabled = true;
       try {
         await loadIndex();
-        searchStatus.textContent = "Ready";
         searchInput.disabled = false;
-        searchInput.focus();
+        searchInput.placeholder = "Search docs…";
       } catch {
         searchStatus.textContent = "Failed to load search";
+        return;
       }
-    } else {
-      searchInput.focus();
     }
+    searchInput.focus();
+    render(searchInput.value);
   }
 
   function close() {

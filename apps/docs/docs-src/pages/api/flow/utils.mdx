@@ -47,13 +47,7 @@ shell has none. Four placements, in decreasing order of what the shell tells
 us: before `</head>`; just after `<html …>`; just after a leading doctype;
 at the front (a bare fragment).
 
-```tsx
-import { injectIntoHead } from "@vincle/flow/utils";
-
-const shell = "<html><body>…</body></html>";
-const patched = injectIntoHead(shell, `<link rel="stylesheet" href="/app.css">`);
-// <html><head><link rel="stylesheet" href="/app.css"></head><body>…</body></html>
-```
+<CodeExample src="flow/inject-into-head.tsx" output />
 
 **Signature:**
 
