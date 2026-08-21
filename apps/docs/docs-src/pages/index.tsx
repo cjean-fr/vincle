@@ -158,7 +158,7 @@ export default function HomePage() {
           responses, and static sites.
         </p>
         <p class="mt-3 text-sm text-[var(--docs-color-text-secondary)]/70">
-          Built for Node.js 20+, Bun, Deno, and Cloudflare Workers.
+          Built for Node.js 22+, Bun, Deno, and Cloudflare Workers.
         </p>
       </div>
 
@@ -271,7 +271,7 @@ export default function HomePage() {
         <FeatureCard
           icon={<ServerIcon />}
           title="Any runtime"
-          description="Node 20+, Bun, Deno, Cloudflare Workers. No DOM shim, no polyfill, no browser build step."
+          description="Node 22+, Bun, Deno, Cloudflare Workers. No DOM shim, no polyfill, no browser build step."
         />
       </div>
 

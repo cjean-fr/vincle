@@ -54,7 +54,7 @@ async function Profile({ id }: { id: string }) {
 }
 ```
 
-Sibling async branches run concurrently — `renderToString` resolves only when every branch finishes.
+Sibling async branches run in document order, one at a time — `renderToString` resolves only when every branch finishes.
 
 ## What you don't need
 

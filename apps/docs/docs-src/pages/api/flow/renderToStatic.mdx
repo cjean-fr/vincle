@@ -15,13 +15,13 @@ Build HTML files at compile time. Gives you a context to render all your pages, 
 import { renderToStatic } from "@vincle/flow";
 
 // Pure static — no adapter, no emitFragments
-function renderToStatic(fn: (ctx: PureStaticContext) => Promise<void>): Promise<void>;
+function renderToStatic<T>(fn: (ctx: PureStaticContext) => T): Promise<T>;
 
 // With deferred fragments — adapter required
-function renderToStatic(
-  fn: (ctx: StaticContext) => Promise<void>,
+function renderToStatic<T>(
+  fn: (ctx: StaticContext) => T,
   options: StaticOptions,
-): Promise<void>;
+): Promise<T>;
 ```
 
 ## Options
@@ -37,18 +37,18 @@ function renderToStatic(
 
 | Method       | Signature                                | Description                                   |
 | ------------ | ---------------------------------------- | --------------------------------------------- |
-| `renderPage` | `(page: () => VNode) => Promise<string>` | Renders a page returning the full HTML string |
+| `renderPage` | `(node: () => JSX.Element) => Promise<string>` | Renders a page returning the full HTML string |
 
 ### StaticContext
 
 | Method          | Signature                                                                  | Description                                              |
 | --------------- | -------------------------------------------------------------------------- | -------------------------------------------------------- |
 | `renderPage`    | `(page: () => VNode) => Promise<string>`                                   | Renders a page returning the full HTML string            |
-| `emitFragments` | `(emit: (id: string, url: string, html: string) => void) => Promise<void>` | Materializes deferred fragments, passes each to callback |
+| `emitFragments` | `(emit: (id: string, url: string, html: string) => void \| Promise<void>) => Promise<void>` | Materializes deferred fragments, passes each to callback |
 
 ## Pure static
 
-No lazy `Template` in your pages? Call `renderToStatic` without arguments. The handler receives a `PureStaticContext` — `emitFragments` does not exist, so the type system prevents accidental use.
+No lazy `Template` in your pages? Call `renderToStatic` without options (just the handler). The handler receives a `PureStaticContext` — `emitFragments` does not exist, so the type system prevents accidental use.
 
 <CodeExample src="flow/pure-static.tsx" />
 
@@ -57,13 +57,5 @@ No lazy `Template` in your pages? Call `renderToStatic` without arguments. The h
 Pass `{ adapter }` as the second argument. The handler receives a `StaticContext` with `emitFragments`. Each deferred fragment is rendered and passed to your callback.
 
 <CodeExample src="flow/deferred-static.tsx" />
-
-## Fragment file naming
-
-The `generatePath` option controls where fragments are written:
-
-| Option         | Default                              | Description                |
-| -------------- | ------------------------------------ | -------------------------- |
-| `generatePath` | ``(id) => `/fragments/${id}.html` `` | URL path for each fragment |
 
 The same path must be declared in the page's `Include src` so the browser knows where to find each fragment.

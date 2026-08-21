@@ -68,14 +68,26 @@ Returns a Vite plugin with `enforce: "pre"` — runs before esbuild/Vite's own t
 
 ## Standalone transformer
 
-```ts
-import transformer from "@vincle/vite-plugin-precompile/transformer";
-import ts from "typescript";
+The transform is also exposed for programmatic use — it is exactly what the Vite plugin calls internally:
 
-const result = ts.transform(sourceFile, [
-  transformer(program, { runtimeSource: "preact/jsx-runtime" }),
-]);
+```ts
+import precompileTransform from "@vincle/vite-plugin-precompile/transformer";
+
+const result = precompileTransform(
+  code, // source text
+  "/src/App.tsx", // file id — its extension selects tsx vs jsx
+  { runtimeSource: "preact/jsx-runtime" }, // optional PluginConfig
+  renderAttr, // optional — build-time attribute serializer (secure mode)
+  renderEscape, // optional — build-time content escaper (secure mode)
+);
+// → { code: string, map: SourceMap } | null (null when nothing to rewrite)
+
+if (result && result.code !== code) {
+  // feed result.code to your pipeline, keep result.map
+}
 ```
+
+`renderAttr` / `renderEscape` are the target runtime's own `jsxAttr` / `jsxEscape`, injected by the plugin in secure mode so static attributes and text are sanitized byte-identically to the dynamic path. Passing neither reverts to Deno-precompile-compatible behavior (static attributes trusted and inlined verbatim, like `secure: false`).
 
 ## How it works
 

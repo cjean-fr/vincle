@@ -1,0 +1,81 @@
+---
+title: Utils
+sidebar:
+  group: Flow API
+  order: 7
+---
+
+# Utils
+
+Helpers for shell post-processing and fragment ids. Imported from `@vincle/flow/utils`.
+
+## composeShell
+
+Chains several `transformShell` functions into one, left to right — each
+transform receives the output of the previous one. Falsy entries are skipped,
+so an adapter's own (possibly `undefined`) transform can be spliced in
+cleanly.
+
+```tsx
+import { NativeAdapter, createAdapter } from "@vincle/flow/adapters";
+import { composeShell, injectIntoHead } from "@vincle/flow/utils";
+
+const metadata = () => (html: string) => injectIntoHead(html, "<title>Home</title>");
+
+const MyAdapter = createAdapter({
+  ...NativeAdapter,
+  transformShell: composeShell(NativeAdapter.transformShell, metadata()),
+});
+```
+
+Each transform receives the active `ShellContext` as its second argument, so a
+fragment-aware transform (e.g. NativeAdapter's polyfill injection) still sees
+the pending fragment count.
+
+**Signature:**
+
+```tsx
+function composeShell(
+  ...transforms: Array<((shell: string, ctx: ShellContext) => string) | undefined | null | false>,
+): (shell: string, ctx: ShellContext) => string;
+```
+
+## injectIntoHead
+
+Injects `content` immediately before `</head>`, opening a `<head>` if the
+shell has none. Four placements, in decreasing order of what the shell tells
+us: before `</head>`; just after `<html …>`; just after a leading doctype;
+at the front (a bare fragment).
+
+```tsx
+import { injectIntoHead } from "@vincle/flow/utils";
+
+const shell = "<html><body>…</body></html>";
+const patched = injectIntoHead(shell, `<link rel="stylesheet" href="/app.css">`);
+// <html><head><link rel="stylesheet" href="/app.css"></head><body>…</body></html>
+```
+
+**Signature:**
+
+```tsx
+function injectIntoHead(html: string, content: string): string;
+```
+
+## assertFragmentId
+
+Validates a fragment id against `/^[a-zA-Z][a-zA-Z0-9_-]*$/` — letters,
+digits, hyphens and underscores, starting with a letter. `Template` and
+`Include` call it when registering; call it yourself when accepting ids from
+untrusted input.
+
+```tsx
+import { assertFragmentId } from "@vincle/flow/utils";
+
+assertFragmentId(userInput, "Slot name"); // throws if invalid
+```
+
+**Signature:**
+
+```tsx
+function assertFragmentId(id: string, label: string): void;
+```

@@ -111,20 +111,21 @@ the full model.
 Zero runtime dependencies. No virtual DOM. No reconciliation.
 
 Most JSX runtimes allocate virtual DOM nodes, build a tree, diff it, and only
-then produce HTML. Vincle skips every one of those steps: JSX renders directly
-to an HTML string (wrapped in a `RawString`) at call time — bottom-up, as the
-JSX expression is evaluated. There is no descriptor tree, no separate render
-walk, no intermediate representation. `renderToString` only unwraps the
-already-rendered result.
+then produce HTML. Vincle skips every one of those steps. With the precompile
+transform, JSX renders directly to an HTML string (wrapped in a `RawString`)
+at call time — bottom-up, as the JSX expression is evaluated. On the classic
+`react-jsx` path, `jsx()` builds a lightweight `VNode` and `renderToString`
+performs the traversal. Either way there is no virtual DOM, no separate render
+walk after a descriptor tree, and no intermediate representation to reconcile.
 
 ### Async-native
 
 Any component can be `async`. `renderToString` awaits the whole tree.
 
 The component that needs data is the component that fetches it — no prop-drilling
-from a top-level loader. Sibling subtrees are evaluated concurrently, and the
-result is a single `Promise<string>` that resolves when the full document is
-ready.
+from a top-level loader. Sibling subtrees are evaluated in document order, one at
+a time, and the result is a single `Promise<string>` that resolves when the full
+document is ready.
 
 <CodeExample src="guide/async/async-component.tsx" />
 

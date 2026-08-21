@@ -3,5 +3,7 @@
   "adapters": { "title": "Adapters", "order": 2 },
   "renderToStream": { "title": "renderToStream", "order": 3 },
   "renderToStatic": { "title": "renderToStatic", "order": 4 },
-  "serve": { "title": "serve", "order": 5 }
+  "serve": { "title": "serve", "order": 5 },
+  "renderToFlowEvents": { "title": "renderToFlowEvents", "order": 6 },
+  "utils": { "title": "Utils", "order": 7 }
 }

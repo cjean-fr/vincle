@@ -62,8 +62,8 @@ async function Comments() {
 ```
 
 No `Suspense` boundaries, no fallback declarations — the `await` is the
-boundary. Sibling async branches run concurrently; the `Promise<string>`
-resolves when every branch finishes.
+boundary. Sibling async branches run in document order, one at a time; the
+`Promise<string>` resolves when every branch finishes.
 
 ### Context is scoped, not provider-based
 
@@ -165,7 +165,7 @@ function Timer({ time }: { time: number }) {
 
 ## What you gain
 
-- **~3 KB** instead of ~140 KB — zero runtime dependencies
+- **A few KB** instead of ~140 KB — zero runtime dependencies
 - **8–14× faster** than `react-dom/server` in rendering
 - **Security by default** — URL scheme blocking, event handler filtering,
   content escaping — no opt-in required

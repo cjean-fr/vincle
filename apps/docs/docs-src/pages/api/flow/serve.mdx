@@ -7,7 +7,7 @@ sidebar:
 
 # serve
 
-Higher-level HTTP helper that builds a `Response` from a page function. Supports content negotiation for HTMX and Unpoly clients.
+Higher-level HTTP helper that builds a `Response` from a page function. Supports optional content negotiation (HTMX).
 
 ## Signature
 
@@ -16,9 +16,9 @@ import { serve } from "@vincle/flow/http";
 
 function serve(
   req: Request,
-  page: (n: Negotiation) => VNode,
+  page: (n: Negotiation) => JSX.Element,
   adapter: StreamingAdapter,
-  opts?: ServeOptions,
+  opts?: FlowOptions & ResponseInit & { negotiate?: Negotiate; mode?: "full" | "fragment" },
 ): Promise<Response>;
 ```
 
@@ -27,9 +27,9 @@ function serve(
 | Param     | Type                        | Description                          |
 | --------- | --------------------------- | ------------------------------------ |
 | `req`     | `Request`                   | Incoming HTTP request                |
-| `page`    | `(n: Negotiation) => VNode` | Page component function              |
-| `adapter` | `StreamingAdapter`          | Adapter for encoding fragments       |
-| `opts`    | `ServeOptions`              | Optional flow options, headers, mode |
+| `page`    | `(n: Negotiation) => JSX.Element` | Page component function              |
+| `adapter` | `StreamingAdapter`                | Adapter for encoding fragments       |
+| `opts`    | `FlowOptions & ResponseInit & { negotiate?: Negotiate; mode?: "full" \| "fragment" }` | Optional flow options, headers, mode |
 
 ## Usage
 
@@ -45,4 +45,4 @@ Bun.serve({
 });
 ```
 
-`serve` builds a `Response` from a page function with optional content negotiation for HTMX and Unpoly clients. It wraps `renderToStream` internally.
+`serve` builds a `Response` from a page function with optional content negotiation (HTMX). It wraps `renderToStream` internally.

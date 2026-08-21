@@ -32,8 +32,7 @@ import { Slot } from "@vincle/flow";
 A `Slot` registers nothing in the pending store — it is purely a passive hole.
 
 `Slot` is the recommended way to define the layout's insertion points. The
-`name` is **required** and must be a valid fragment id
-(`/^[a-zA-Z][a-zA-Z0-9_-]*$/`).
+`name` is **required**.
 
 ## `<Template>` — fill a slot (sync or lazy)
 
@@ -41,14 +40,14 @@ Pushes content into an existing slot by name. **Unified** — one component for
 both synchronous and deferred content. The behaviour
 depends on `children`:
 
-| `children` type | `fallback` | Behaviour                                  |
-| --------------- | ---------- | ------------------------------------------ |
-| Plain JSX       | —          | Registers content, no placeholder rendered |
-| Plain JSX       | provided   | Dev warning: `fallback` ignored for sync   |
-| `(signal) => …` | —          | Lazy content, no placeholder               |
-| `(signal) => …` | provided   | Lazy content with placeholder + fallback   |
+| `children` type | `fallback` | Behaviour                                        |
+| --------------- | ---------- | ------------------------------------------------ |
+| Plain JSX       | —          | Content registered; placeholder rendered (empty) |
+| Plain JSX       | provided   | Content registered; placeholder shows `fallback` |
+| `(signal) => …` | —          | Lazy content; placeholder rendered (empty)       |
+| `(signal) => …` | provided   | Lazy content; placeholder shows `fallback`       |
 
-### Sync — push content, no placeholder
+### Sync — push content
 
 `children` is deferred automatically — plain JSX works:
 
@@ -110,17 +109,20 @@ required — works with any static file server.
 
 ## Return types
 
-The return type of a factory — or of a plain JSX child — determines the
-behaviour:
+`Template` children accept the full `TemplateContent` type — a renderable JSX
+node, a string, or an async iterable, each optionally produced by a factory
+that receives the `AbortSignal`:
 
-| Return type            | Behaviour                                                |
-| ---------------------- | -------------------------------------------------------- |
-| A renderable JSX node       | One-shot patch — renders once and resolves               |
-| `Promise<JSX.Element>`      | Resolves asynchronously, then patches in                 |
-| `AsyncIterable<JSX.Element>`| A **stream** — one patch per item, as each item resolves |
+| Children / return type                              | Behaviour                                              |
+| --------------------------------------------------- | ------------------------------------------------------ |
+| `JSX.Element`                                       | One-shot patch — renders once and resolves             |
+| `string`                                            | Rendered as text — one-shot patch                      |
+| `(signal: AbortSignal) => JSX.Element`              | **Cancellable** — receives the signal, one-shot patch  |
+| `AsyncIterable<JSX.Element>`                        | A **stream** — one patch per item, as each item resolves |
+| `(signal: AbortSignal) => AsyncIterable<JSX.Element>` | **Cancellable stream** — one patch per item          |
 
-The runtime unwraps `Promise` and `AsyncIterable` automatically inside the
-factory — you never need to call `.then()` or `for await` yourself.
+The runtime unwraps `AsyncIterable` automatically inside the factory — you
+never need to call `.then()` or `for await` yourself.
 
 ## Common props
 
