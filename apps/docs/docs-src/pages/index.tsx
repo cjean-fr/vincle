@@ -188,7 +188,7 @@ export default function HomePage() {
       <div class="mb-24 flex flex-wrap items-center gap-4">
         <a
           href="/guide/introduction"
-          class="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-colors transition-transform hover:shadow-xl hover:shadow-indigo-500/30 active:scale-[0.97] dark:from-indigo-400 dark:via-violet-400 dark:to-purple-400 dark:shadow-indigo-400/20 dark:hover:shadow-indigo-400/30"
+          class="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-colors transition-transform hover:shadow-xl hover:shadow-indigo-500/30 active:scale-[0.97] dark:shadow-indigo-400/20 dark:hover:shadow-indigo-400/30"
         >
           Get started
           <svg
@@ -313,7 +313,7 @@ function UseCaseCard({ icon, title, before, after }: UseCaseCardProps) {
   return (
     <div class="docs-usecase-card group relative rounded-2xl border border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] p-6 transition-colors hover:border-[var(--docs-color-accent)] hover:shadow-[var(--docs-color-accent)]/10 hover:shadow-md">
       <div class="relative">
-        <div class="mb-4 flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-600 ring-1 ring-red-200/50 dark:bg-red-950 dark:text-red-400 dark:ring-red-800/50">
+        <div class="mb-4 flex size-10 items-center justify-center rounded-xl bg-[var(--docs-color-accent-soft)] text-[var(--docs-color-accent)] ring-1 ring-[var(--docs-color-accent)]/10">
           {icon}
         </div>
         <h3 class="mb-3 text-base font-semibold text-[var(--docs-color-text)]">{title}</h3>
