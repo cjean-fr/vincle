@@ -26,13 +26,16 @@ use [Static generation](/integration/static) instead.
 ## renderToStream
 
 Returns a `ReadableStream<string>`. The shell chunk is emitted first; fragment
-chunks follow as they resolve. The adapter is optional — it defaults to
-`NativeAdapter` (a ~550B polyfill is injected only when fragments are present).
+chunks follow as they resolve. The adapter is required — pass a streaming
+adapter (e.g. `NativeAdapter`) as the second argument. A ~550B polyfill is
+injected only when fragments are present.
 
 <CodeExample src="flow/deferred-stream.tsx" />
 
-The stream never buffers: each chunk is written as soon as it is available.
-The response `Content-Type` is `text/html` with `chunked` transfer encoding.
+The shell is rendered fully before it is written — it arrives as a single
+chunk. Fragments stream in as they resolve, each written as soon as it is
+available. The response `Content-Type` is `text/html` with `chunked` transfer
+encoding.
 
 ## Node HTTP server
 
@@ -64,12 +67,13 @@ Bun.serve({
 ```
 
 `serve` builds a `Response` from a page function with optional content
-negotiation for HTMX and Unpoly clients.
+negotiation (HTMX).
 
 ## Async iterables — streaming sequences
 
 An `AsyncIterable` returned by the factory streams one patch per yielded item.
-Each `yield` produces an independent patch with the configured `merge` type:
+Each `yield` produces a patch; every patch from a single `<Template>` carries
+that template's `merge` type:
 
 <CodeExample src="flow/stream-iterable.tsx" />
 
@@ -87,6 +91,6 @@ exhausts or the client disconnects.
 | `"before"`  | Content inserted as previous sibling      |
 | `"after"`   | Content inserted as next sibling          |
 
-Each patch in a streaming sequence carries its own merge type. First item can
-`"replace"` the placeholder; subsequent items can `"append"` to the same
-target.
+A template's `merge` applies to the whole streaming sequence — every patch from
+a single `<Template>` carries the same merge type. For a different merge per
+chunk, target separate `<Template>`s.

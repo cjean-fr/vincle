@@ -44,7 +44,7 @@ title: FAQ
         name: "What runtimes does Vincle support?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Node.js 20+, Bun, Deno, and Cloudflare Workers (with nodejs_compat_v2 flag). No DOM shim or polyfill required — Vincle has zero browser dependencies.",
+          text: "Node.js 22+, Bun, Deno, and Cloudflare Workers (with nodejs_compat flag). No DOM shim or polyfill required — Vincle has zero browser dependencies.",
         },
       },
       {
@@ -52,7 +52,7 @@ title: FAQ
         name: "How do I handle async data fetching in Vincle?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Any component can be async. renderToString walks the tree depth-first and awaits every async component it encounters. Sibling async branches run concurrently. The component that needs data is the component that fetches it — no top-level loader, no prop-drilling.",
+          text: "Any component can be async. renderToString walks the tree depth-first and awaits every async component it encounters. Sibling async branches run in document order, one at a time. The component that needs data is the component that fetches it — no top-level loader, no prop-drilling.",
         },
       },
       {
@@ -76,7 +76,7 @@ title: FAQ
         name: "What is the bundle size of Vincle?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "@vincle/core is approximately 14 KB gzipped with zero runtime dependencies. For comparison, react-dom/server is around 140 KB. The @vincle/flow package for streaming and fragments adds roughly 3 KB.",
+          text: "@vincle/core is approximately 14 KB gzipped with zero runtime dependencies. For comparison, react-dom/server is around 140 KB. The @vincle/flow package for streaming and fragments adds a few KB.",
         },
       },
       {
@@ -92,7 +92,7 @@ title: FAQ
         name: "How do I debug rendering issues?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Vincle fails fast on common mistakes: an invalid tag name, a function passed as an attribute value, and a missing context value all throw. TypeScript catches type errors at build time. When a component throws, the error message is annotated with the component name. For runtime issues, wrap components in try/catch or use @vincle/flow's onError handlers for per-fragment error recovery.",
+          text: "Vincle fails fast on common mistakes: an invalid tag name, a function passed as an attribute value, and a missing context value all throw. TypeScript catches type errors at build time. For runtime issues, wrap components in try/catch or use @vincle/flow's onError handlers for per-fragment error recovery.",
         },
       },
     ],
@@ -144,10 +144,10 @@ the component tree and don't need client-side interactivity.
 
 | Runtime                | Support | Notes                               |
 | ---------------------- | ------- | ----------------------------------- |
-| **Node.js 20+**        | ✅ Full | Native `AsyncLocalStorage`          |
+| **Node.js 22+**       | ✅ Full | Native `AsyncLocalStorage`          |
 | **Bun**                | ✅ Full | Node-compatible `AsyncLocalStorage` |
 | **Deno**               | ✅ Full | Node-compatible `AsyncLocalStorage` |
-| **Cloudflare Workers** | ✅ Full | Requires `nodejs_compat_v2` flag    |
+| **Cloudflare Workers** | ✅ Full | Requires `nodejs_compat` flag       |
 
 No DOM shim, no polyfill, no browser build step. Vincle works wherever
 JavaScript runs.
@@ -176,7 +176,7 @@ async function Page() {
 const html = await renderToString(<Page id="42" />);
 ```
 
-Sibling async branches run concurrently. The returned `Promise<string>`
+Sibling async branches run in document order, one at a time. The returned `Promise<string>`
 resolves when every branch has finished rendering. No prop-drilling, no
 top-level loader — the component that needs data is the component that
 fetches it.
@@ -208,7 +208,9 @@ client mechanism:
 - **WebPlatformAdapter** — native browser support, no JS
 - **EsiAdapter** — CDN-level ESI composition
 
-All adapters work in both streaming and static generation modes.
+All adapters work in both streaming and static generation modes except
+`EsiAdapter`, which declares `streaming: false` and is rejected by
+`renderToStream`.
 
 ## Can I catch rendering errors without crashing the whole page?
 
@@ -246,7 +248,7 @@ See the [Error handling API](/api/core/error-handling) page for details.
 | Package        | Size (gzip) | Dependencies        |
 | -------------- | ----------- | ------------------- |
 | `@vincle/core` | ~14 KB      | 0                   |
-| `@vincle/flow` | ~3 KB       | 0 (depends on core) |
+| `@vincle/flow` | a few KB | 0 (depends on core) |
 
 No hidden dependencies, no runtime you don't need. Every byte is accounted
 for.
@@ -277,4 +279,3 @@ serve(req, () => <Page />, NativeAdapter, {
 
 - **GitHub Issues** — [github.com/cjean-fr/vincle/issues](https://github.com/cjean-fr/vincle/issues)
 - **Documentation** — the rest of this site
-- **GitHub Discussions** — coming soon

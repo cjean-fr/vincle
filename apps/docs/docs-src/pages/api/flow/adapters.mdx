@@ -16,20 +16,21 @@ An adapter controls how placeholders and patches are encoded in the HTML shell. 
 | Adapter              | Target                                             | Merge support                           | Size           |
 | -------------------- | -------------------------------------------------- | --------------------------------------- | -------------- |
 | `NativeAdapter`      | Inline polyfill via `<template for>`               | replace, append, prepend, before, after | ~550B polyfill |
-| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | replace, append, prepend, before        | —              |
+| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | replace, append, prepend, before, after | —              |
 | `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | replace, append, prepend, before, after | —              |
 | `WebPlatformAdapter` | WICG declarative partial updates                   | replace only                            | —              |
 | `EsiAdapter`         | CDN edge composition via `esi:include`             | replace                                 | —              |
 
 ## Usage
 
-Pass an adapter to `renderToStream` or `renderToStatic`. When omitted, `NativeAdapter` is the default:
+Pass an adapter to `renderToStream` or `renderToStatic`. It is a required
+second argument — there is no implicit default:
 
 ```tsx
 import { renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
 
-const stream = renderToStream(() => <Page />);
-// Defaults to NativeAdapter
+const stream = renderToStream(() => <Page />, NativeAdapter);
 ```
 
 ## Merge types

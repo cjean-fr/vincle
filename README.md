@@ -25,6 +25,7 @@ Monorepo of high-performance, type-safe tools built around JSX-to-HTML rendering
 | App                   | Description                            |
 | :-------------------- | :------------------------------------- |
 | [`docs`](./apps/docs) | Documentation site for `@vincle/core`. |
+| [`bench`](./apps/bench) | Benchmarks vs @kitajs/html, React, Preact, hono/jsx + CI ratio gate. |
 
 ## Development
 

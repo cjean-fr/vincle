@@ -123,6 +123,6 @@ fetches a single fragment independently (e.g. HTMX `hx-get` on a
 serve(req, () => <Page />, NativeAdapter, { mode: "fragment" });
 ```
 
-When `mode` is set in both `options` and the negotiation result, the
-negotiation value takes precedence — this lets the request header
-override the server default.
+When `mode` is set in both `options` and the negotiation result, the value
+passed to `serve()` wins — `opts.mode ?? negotiation.mode` — so options
+override whatever the request header suggests.

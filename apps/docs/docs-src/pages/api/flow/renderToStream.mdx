@@ -7,53 +7,78 @@ sidebar:
 
 # renderToStream
 
-Returns a `ReadableStream<string>`. The shell is streamed first, in as many chunks as it takes; fragment chunks follow as they resolve.
+Returns a `ReadableStream<string>`. The shell is rendered in full and emitted as a single chunk first; fragment chunks follow as they resolve.
 
 ## Signature
 
 ```tsx
 import { renderToStream } from "@vincle/flow";
 
-function renderToStream(page: () => VNode, options?: StreamOptions): ReadableStream<string>;
+function renderToStream(
+  node: () => JSX.Element,
+  adapter: StreamingAdapter,
+  opts?: FlowOptions & { mode?: "full" | "fragment" },
+): ReadableStream<string>;
 ```
 
 ## Options
 
-| Option    | Type          | Default         | Description                                   |
-| --------- | ------------- | --------------- | --------------------------------------------- |
-| `adapter` | `Adapter`     | `NativeAdapter` | Adapter for encoding placeholders and patches |
-| `signal`  | `AbortSignal` | —               | Signal to abort the stream                    |
+| Option           | Type                     | Default  | Description                                      |
+| ---------------- | ------------------------ | -------- | ------------------------------------------------ |
+| `signal`         | `AbortSignal`            | —        | Signal to abort the stream                       |
+| `onError`        | `FlowOptions["onError"]` | —        | Handler for fragment / stream render errors      |
+| `defaultTimeout` | `number`                 | —        | Per-fragment render timeout in ms                |
+| `mode`           | `"full" \| "fragment"`   | `"full"` | `"fragment"` emits neither shell nor close       |
+
+`FlowOptions` is `{ signal?, onError?, defaultTimeout? }`. The adapter is a
+required second argument, not an option.
 
 ## Usage
 
 <CodeExample src="flow/deferred-stream.tsx" />
 
-The stream never buffers: each chunk is written as soon as it is available. The response `Content-Type` is `text/html` with chunked transfer encoding.
+Each chunk is written as soon as it is available — the shell as a single chunk, then one chunk per fragment. The response `Content-Type` is `text/html` with chunked transfer encoding.
 
-## The shell streams too
+## The shell is emitted as a single chunk
 
-The shell is not held back until it is complete. It is written out at every point where rendering has to wait, so a `<head>` reaches the browser while a slow component further down the `<body>` is still pending — the browser starts fetching stylesheets and fonts instead of waiting on your database.
+The shell is not streamed progressively. It is rendered in full and emitted as
+**one** chunk — the browser receives the complete `<head>` and shell body before
+any fragment content arrives. Only the fragments arrive as they resolve.
 
 ```tsx
+import { renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
 const Slow = async () => <p>{await fetchSomething()}</p>;
 
-renderToStream(() => (
-  <html>
-    <head>
-      <link rel="stylesheet" href="/app.css" /> {/* sent immediately */}
-    </head>
-    <body>
-      <Slow /> {/* the stream waits here, having already sent the head */}
-    </body>
-  </html>
-));
+renderToStream(
+  () => (
+    <html>
+      <head>
+        <link rel="stylesheet" href="/app.css" /> {/* in the single shell chunk */}
+      </head>
+      <body>
+        <Slow /> {/* resolves later; its patch streams in after the shell */}
+      </body>
+    </html>
+  ),
+  NativeAdapter,
+);
 ```
 
-Chunk boundaries fall on suspension points and nowhere else: a fully synchronous page is still written as a single chunk.
+Because the shell is emitted whole, chunk boundaries are simple: one shell
+chunk, then one chunk per fragment as each resolves. A fully synchronous page
+is still written as a single chunk.
 
-Async siblings resolve in document order rather than concurrently, because the bytes have to come out in that order anyway. When you want independent regions to render in parallel, that is what [`<Template>` and `<Slot>`](/api/flow/components) are for — they render out of order and patch into place as they land.
+Async siblings resolve in document order rather than concurrently, because the
+bytes have to come out in that order anyway. When you want independent regions
+to render in parallel, that is what [`<Template>` and `<Slot>`](/api/flow/components)
+are for — they render out of order and patch into place as they land.
 
-> **An adapter that declares `transformShell` opts out.** A transform that takes the whole document cannot be applied to a prefix of it, so such an adapter's shell is buffered as before. `NativeAdapter` is in this case — it decides whether to inject its polyfill from state that only the end of the render settles. `TurboAdapter`, `HtmxAdapter` and `WebPlatformAdapter` all stream.
+> **`transformShell` does not change this.** The shell is always buffered —
+> rendered completely before it is emitted — with or without a `transformShell`
+> hook. `transformShell` post-processes the whole shell before it enters the
+> stream; it is not an exception to the buffering.
 
 ## Node HTTP server
 

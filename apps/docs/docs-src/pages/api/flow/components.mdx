@@ -19,28 +19,28 @@ Declares a named insertion point in the shell. Its children render immediately a
 
 | Prop       | Type     | Default | Description                                                    |
 | ---------- | -------- | ------- | -------------------------------------------------------------- |
-| `name`     | `string` | —       | Fragment id, required. Must match `/^[a-zA-Z][a-zA-Z0-9_-]*$/` |
-| `children` | `VNode`  | —       | Fallback content rendered immediately in the shell             |
+| `name`     | `string` | —       | Fragment id, required                            |
+| `children` | `VNode`  | —       | Fallback content rendered immediately in the shell |
 
 ## Template
 
-Pushes content into a target slot by name. Unified — handles both sync and lazy content:
+Pushes content into a target slot by name. Unified — handles both sync and lazy content. A placeholder is **always** rendered; `fallback` is its content:
 
-- **Sync** (plain JSX `children`) → registers content, no placeholder
-- **Lazy** (factory `children`) → deferred, with optional `fallback` placeholder
+- **Sync** (plain JSX `children`) → content registered; placeholder rendered, `fallback` is its content
+- **Lazy** (factory `children`) → content deferred; placeholder rendered, `fallback` is its content
 
 <CodeExample src="flow/defer-signal.tsx" />
 
 **Props:**
 
-| Prop       | Type                                                        | Default     | Description                            |
-| ---------- | ----------------------------------------------------------- | ----------- | -------------------------------------- |
-| `target`   | `string`                                                    | —           | Target slot id to push content into    |
-| `fallback` | `VNode`                                                     | —           | Placeholder shown while rendering lazy |
-| `children` | `VNode \| ((signal: AbortSignal) => VNode)`                 | —           | Content (plain JSX or factory)         |
-| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target      |
-| `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms      |
-| `onError`  | `(error: Error) => VNode`                                   | —           | Per-fragment error handler             |
+| Prop       | Type                                                        | Default     | Description                                  |
+| ---------- | ----------------------------------------------------------- | ----------- | -------------------------------------------- |
+| `target`   | `string`                                                    | —           | Target slot id to push content into          |
+| `fallback` | `VNode`                                                     | —           | Content rendered in the placeholder          |
+| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | — | Content — plain JSX, a factory, or an async iterable |
+| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target            |
+| `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms            |
+| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | —        | Per-fragment error handler                   |
 
 ## Include
 
@@ -54,6 +54,44 @@ Browser fetches a fragment from a URL after the shell lands. No server-push requ
 | ---------- | -------- | ------- | -------------------------------------- |
 | `src`      | `string` | —       | URL of the fragment HTML file to fetch |
 | `fallback` | `VNode`  | —       | Placeholder shown while fetching       |
+
+## Style / Script — asset emission
+
+`<Style>` and `<Script>` emit their tag at their own position in the tree, once per `name` — first occurrence wins. Later occurrences return `null`, so a page can declare its own CSS/JS without a separate asset-resolution pass.
+
+```tsx
+import { Style, Script } from "@vincle/flow/components";
+
+const Page = () => (
+  <>
+    <Style name="page.css" media="screen">
+      {`.hero { color: red; }`}
+    </Style>
+    <Script name="page.js" defer src="/page.js" />
+    <main>…</main>
+  </>
+);
+```
+
+**Style props:**
+
+| Prop       | Type                                       | Default | Description                     |
+| ---------- | ------------------------------------------ | ------- | ------------------------------- |
+| `name`     | `string`                                   | —       | Asset id, required, dedup key   |
+| `media`    | `string`                                   | —       | `media` attribute               |
+| `children` | `string \| (() => Awaitable<string>)`      | —       | CSS text, evaluated only if this occurrence emits |
+
+**Script props:**
+
+| Prop       | Type                                  | Default | Description                     |
+| ---------- | ------------------------------------- | ------- | ------------------------------- |
+| `name`     | `string`                              | —       | Asset id, required, dedup key   |
+| `src`      | `string`                              | —       | `src` attribute                 |
+| `module`   | `boolean`                             | `false` | Sets `type="module"`            |
+| `defer`    | `boolean`                             | `false` | Sets the `defer` attribute      |
+| `children` | `string \| (() => Awaitable<string>)` | —       | Inline JS, evaluated only if this occurrence emits |
+
+In static generation, standalone fragment files (`emitFragments`) suppress asset emission — the shell that includes them already carries the assets, so fragments are emitted without a duplicate `<style>`/`<script>` tag.
 
 ## Content forms
 
@@ -69,5 +107,5 @@ Browser fetches a fragment from a URL after the shell lands. No server-push requ
 | Return type            | Behaviour                                            |
 | ---------------------- | ---------------------------------------------------- |
 | A renderable JSX node  | One-shot patch — renders once and resolves           |
-| `Promise<VNode>`       | Resolves asynchronously, then patches in             |
-| `AsyncIterable<VNode>` | A stream — one patch per item, as each item resolves |
+| `Promise<JSX.Element>` | Resolves asynchronously, then patches in             |
+| `AsyncIterable<JSX.Element>` | A stream — one patch per item, as each item resolves |

@@ -1,0 +1,79 @@
+---
+title: renderToFlowEvents
+sidebar:
+  group: Flow API
+  order: 6
+---
+
+# renderToFlowEvents
+
+Low-level streaming primitive: returns a `ReadableStream<FlowEvent>` of raw
+events instead of adapter-encoded HTML. `renderToStream` is exactly this
+primitive piped through the adapter's own encoding — reach for it when you need
+the shell, fragments, and close as separate events (custom wire format, custom
+framing, or a client protocol the built-in adapters don't cover).
+
+## Signature
+
+```tsx
+import { renderToFlowEvents } from "@vincle/flow";
+
+function renderToFlowEvents(
+  node: () => JSX.Element,
+  adapter: StreamingAdapter,
+  opts?: FlowOptions & { mode?: "full" | "fragment" },
+): ReadableStream<FlowEvent>;
+```
+
+The adapter is a required second argument, as in `renderToStream`. A
+non-streaming adapter (`EsiAdapter`) is rejected at compile time and at
+runtime.
+
+## Events
+
+`FlowEvent` is a discriminated union:
+
+| Event      | Shape                                     | Emitted when                                            |
+| ---------- | ----------------------------------------- | ------------------------------------------------------- |
+| `shell`    | `{ type: "shell"; html: string }`         | The page shell is fully rendered (one event)            |
+| `fragment` | `{ type: "fragment"; id: string; html: string; merge: MergeType }` | A deferred fragment is ready; `html` is the raw inner content, `merge` is that template's merge type |
+| `close`    | `{ type: "close"; html: string }`         | The closing `</body></html>` tags, after all fragments  |
+
+The shell is rendered completely before its event is emitted — it is never
+streamed progressively. Fragments follow as they resolve, one event each
+(streaming templates emit one event per yielded item). `opts.mode: "fragment"`
+suppresses the `shell` and `close` events entirely.
+
+## Consuming the events
+
+```tsx
+import { renderToFlowEvents } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+const stream = renderToFlowEvents(() => <Page />, NativeAdapter);
+
+for await (const ev of stream) {
+  switch (ev.type) {
+    case "shell":
+      // ev.html — the full shell, before closing tags
+      break;
+    case "fragment":
+      // ev.id, ev.html, ev.merge — patch into the shell yourself
+      break;
+    case "close":
+      // ev.html — trailing </body></html>
+      break;
+  }
+}
+```
+
+Backpressure and cancellation are handled by the stream: cancelling it (or
+passing `opts.signal`) aborts pending renders and releases the producer.
+
+## Options
+
+Same `FlowOptions` as `renderToStream` — `signal`, `onError`,
+`defaultTimeout` — plus `mode: "full" | "fragment"`.
+
+See [renderToStream](/api/flow/renderToStream) for the ready-made encoding, or
+[Adapters](/api/flow/adapters) for the built-in wire formats.
