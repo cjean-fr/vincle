@@ -1,0 +1,66 @@
+name: Mutation
+
+# Manual trigger only. The full suite runs ~10 min, ~6 of which are `core`:
+# running it on every PR cost more than it gave back, since the `break`
+# thresholds only move when the tested code itself changes.
+#
+# Thresholds live in each `stryker.config.json`. This workflow doesn't repeat
+# them: Stryker exits non-zero under threshold on its own, and the job fails
+# with it.
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package to mutate (workspace name), or \"all\" for all four"
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - "@vincle/core"
+          - "@vincle/flow"
+          - "@vincle/precompile-core"
+          - "@vincle/vite-plugin-precompile"
+
+jobs:
+  mutation:
+    name: Mutation testing — ${{ inputs.package }}
+    runs-on: ubuntu-latest
+    # `core` alone takes ~6 min on this machine; the default of 360 would let
+    # a stuck run tie up a runner for an hour.
+    timeout-minutes: 30
+    env:
+      DO_NOT_TRACK: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # The input goes through the environment rather than script
+      # interpolation: `choice` already constrains it, but interpolating an
+      # input into a `run:` is the pattern we don't want copied elsewhere.
+      - name: Mutation
+        env:
+          PACKAGE: ${{ inputs.package }}
+        run: |
+          if [ "$PACKAGE" = "all" ]; then
+            bun x turbo run mutation
+          else
+            bun x turbo run mutation --filter="$PACKAGE"
+          fi
+
+      - name: Upload Mutation Reports
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mutation-reports
+          path: packages/*/reports/
+          if-no-files-found: ignore
