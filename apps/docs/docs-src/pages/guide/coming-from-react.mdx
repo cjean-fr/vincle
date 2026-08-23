@@ -48,13 +48,22 @@ React requires `Suspense` boundaries and a streaming API for async data.
 Vincle lets any component be `async` directly:
 
 ```tsx
-// React — Suspense + fallback
-function Comments() {
-  const data = use(fetchComments()); // use() requires Suspense
+// React — the promise is created above the boundary and passed down;
+// use() cannot take a promise created fresh in the same render
+function Page() {
+  const commentsPromise = fetchComments();
+  return (
+    <Suspense fallback={<Spinner />}>
+      <Comments commentsPromise={commentsPromise} />
+    </Suspense>
+  );
+}
+function Comments({ commentsPromise }) {
+  const data = use(commentsPromise);
   return <ul>{data.map(/* … */)}</ul>;
 }
 
-// Vincle — just async
+// Vincle — just async, no boundary, no promise plumbing
 async function Comments() {
   const data = await fetchComments();
   return <ul>{data.map(/* … */)}</ul>;
@@ -67,26 +76,38 @@ boundary. Sibling async branches run in document order, one at a time; the
 
 ### Context is scoped, not provider-based
 
-React uses a provider tree: every context value must be wrapped in a
-`<Context.Provider>` component, and nested providers create a chain of
-React elements in the tree.
+React's `useContext` is a hook: it only works inside a component, and that
+component must render as a descendant of the provider in the JSX tree. A
+plain helper function can't call it, even one invoked during the same
+render.
 
-Vincle uses `AsyncLocalStorage`-backed scopes. Values are set with
-`setContext()` inside a `withScope()` callback — no provider components,
-no wrapper elements.
+Vincle's `useContext` reads from the active `AsyncLocalStorage` scope, not
+from a tree position. Anything that runs inside `withScope` can call it —
+a component, a helper function, a logger — with no provider ancestor
+required.
 
 ```tsx
-// React — provider wraps the tree
-<AuthProvider value={{ user }}>
-  <ThemeProvider value="dark">
-    <Page />
-  </ThemeProvider>
-</AuthProvider>;
+// React — useContext only works inside a component in the provider's
+// descendant tree; a plain function can't call it, even mid-render
+function AuditRow({ action }: { action: string }) {
+  const { user } = useContext(AuthContext); // OK — rendered inside <AuthProvider>
+  return <li>{user.name} — {action}</li>;
+}
+function logAction(action: string) {
+  const { user } = useContext(AuthContext); // invalid hook call — not a component
+  console.log(`${user.name}: ${action}`);
+}
 
-// Vincle — context is set imperatively, no wrapper components
+// Vincle — useContext reads the active scope, so plain functions can
+// call it too, as long as they run inside withScope
+function logAction(action: string) {
+  const { user } = useContext(Auth); // works — no component, no provider needed
+  console.log(`${user.name}: ${action}`);
+}
+
 await withScope(() => {
   setContext(Auth, { user });
-  setContext(Theme, "dark");
+  logAction("viewed dashboard");
   return renderToString(<Page />);
 });
 ```
@@ -96,22 +117,33 @@ interfere, even when they set different context values.
 
 ### Event handlers are strings, not closures
 
-React handlers are JavaScript closures that capture scope. Vincle handlers
-are HTML attribute strings — because there is no client runtime to attach
-them.
+React handlers are closures — a new function identity on every render,
+which is why passing one to a memoized child needs `useCallback` to keep
+that identity stable. Vincle has no re-renders to begin with: a handler is
+just an HTML attribute string, identical every time.
+
+Untrusted values never belong inside the handler string itself. They travel
+through a regular attribute instead — auto-escaped like any other — and the
+handler reads them back at runtime:
 
 ```tsx
-// React — closure
-<button onClick={() => handleDelete(id)}>Delete</button>
+// React — a fresh closure every render; useCallback exists specifically
+// to give it a stable identity so memoized children don't re-render
+const onDelete = useCallback(() => handleDelete(id), [id]);
+<DeleteButton onClick={onDelete}>Delete</DeleteButton>;
 
-// Vincle — string, rendered as HTML attribute
-<button onclick={`handleDelete("${id}")`}>Delete</button>
+// Vincle — id travels through an auto-escaped attribute, not through the
+// handler string; the handler itself never changes
+<button data-id={id} onclick="handleDelete(this.dataset.id)">
+  Delete
+</button>;
 ```
 
 A function-valued handler throws — there is nothing to attach it to, so the
-render fails rather than emit a button whose handler does nothing. Handler
-strings are HTML-escaped, but the JavaScript inside them is not sanitised.
-Never interpolate untrusted data.
+render fails rather than emit a button whose handler does nothing. The
+handler string is HTML-escaped, but the JavaScript inside it is not — which
+is exactly why untrusted data belongs in an attribute (as above), never
+interpolated directly into the string.
 
 ### No `useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`
 
