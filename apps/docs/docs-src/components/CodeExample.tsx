@@ -38,8 +38,27 @@ async function readOutput(file: string): Promise<string> {
   return (typeof output === "string" ? [output] : output).join("\n");
 }
 
+/**
+ * Resolve `src` to an example file, confined to `examplesDir`.
+ *
+ * `src` comes from MDX frontmatter — data, not code — and with `output` the
+ * resolved file is `import()`ed: an uncontained `../../…` (or an absolute path)
+ * would read files outside the examples directory and, worse, execute them at
+ * build time.
+ */
+export function resolveExampleSrc(examplesDir: string, src: string): string {
+  const resolved = path.resolve(examplesDir, src);
+  if (!resolved.startsWith(path.resolve(examplesDir) + path.sep)) {
+    throw new Error(
+      `[docs] CodeExample src "${src}" resolves outside the examples directory — ` +
+        "only relative paths inside it are allowed.",
+    );
+  }
+  return resolved;
+}
+
 export function CodeExample({ src, language, meta, output }: CodeExampleProps): JSX.Element {
-  const file = path.resolve(useDocs().config.examples, src);
+  const file = resolveExampleSrc(useDocs().config.examples, src);
   const code = readFile(file, "utf-8");
 
   if (!output) {
