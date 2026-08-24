@@ -1,4 +1,4 @@
-import { renderToString, withScope, type JSX } from "@vincle/core";
+import { renderToString, withScope, type Awaitable, type Renderable } from "@vincle/core";
 
 /** A post-render HTML transform: receives the assembled document, returns the next. */
 export type Transform = (html: string) => string;
@@ -13,9 +13,10 @@ export function composeTransforms(
 /**
  * Render one page in its own scope, then apply `transforms` to the assembled
  * HTML. Per-page context (`setDocs`, `setVite`) must be set inside `node`.
+ * The factory returns `Renderable`, not `JSX.Element`: layouts may be async.
  */
 export function renderDocument(
-  node: () => JSX.Element,
+  node: () => Awaitable<Renderable>,
   options: { transforms?: Transform[] } = {},
 ): Promise<string> {
   return withScope(async () => {
