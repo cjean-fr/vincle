@@ -122,10 +122,10 @@ export interface DocsConfig {
   image?: string;
   sitemap?: boolean;
   handlers?: Record<string, HandlerEntry>;
-  /** Override the default page shell (Layout). Receives children already wrapped by the handler's prose wrapper. */
+  /** Override the default page shell (Layout). Receives children already wrapped by the handler's prose wrapper. May be async — `renderDocument` awaits it. */
   layout?: (props: {
     children: import("@vincle/core").JSX.Element;
-  }) => import("@vincle/core").JSX.Element;
+  }) => import("@vincle/core").Awaitable<import("@vincle/core").JSX.Element>;
 }
 
 export interface ResolvedDocsConfig {
@@ -146,7 +146,7 @@ export interface ResolvedDocsConfig {
   handlers: Record<string, HandlerEntry>;
   layout: (props: {
     children: import("@vincle/core").JSX.Element;
-  }) => import("@vincle/core").JSX.Element;
+  }) => import("@vincle/core").Awaitable<import("@vincle/core").JSX.Element>;
 }
 
 export interface Page {

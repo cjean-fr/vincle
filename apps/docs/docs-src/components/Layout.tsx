@@ -9,19 +9,38 @@ import { PageFooter } from "./PageFooter.js";
 import { SearchDialog } from "./SearchDialog.js";
 import { TableOfContents } from "./TableOfContents.js";
 import { Tabs } from "./Tabs.js";
-import { ThemeToggle, themeInitScript } from "./ThemeToggle.js";
+import { ThemeToggle, themeInitScript, themeScriptHash } from "./ThemeToggle.js";
 
-const DEFAULT_CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://img.shields.io https://github.com https://badge.fury.io https://unpkg.com https://img.badgesize.io",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
+// The hosts the `<head>` below actually loads from — a 'self'-only policy
+// would block the site's own font stylesheets, font files and preconnects.
+const FONT_STYLES = "https://api.fontshare.com https://fonts.googleapis.com";
+const FONT_FILES = "https://api.fontshare.com https://fonts.gstatic.com";
+const FONT_PRECONNECTS = `${FONT_STYLES} https://fonts.gstatic.com`;
+
+/**
+ * The default page CSP.
+ *
+ * - `script-src` allows the inline theme bootstrap **by hash**, not
+ *   `'unsafe-inline'`: the hash is derived from `themeInitScriptSource` at
+ *   render time, so it cannot drift from the script it authorizes.
+ * - `style-src` keeps `'unsafe-inline'` — expressive-code emits per-token
+ *   `style` attributes, which cannot be hashed.
+ * - `frame-ancestors` is deliberately absent: it is ignored in a meta CSP, and
+ *   only an HTTP header served by the host can enforce it.
+ */
+async function defaultCsp(): Promise<string> {
+  const scriptHash = await themeScriptHash();
+  return [
+    "default-src 'self'",
+    `script-src 'self' ${scriptHash}`,
+    `style-src 'self' 'unsafe-inline' ${FONT_STYLES}`,
+    `font-src 'self' ${FONT_FILES}`,
+    "img-src 'self' data: https://img.shields.io https://github.com https://badge.fury.io https://unpkg.com https://img.badgesize.io",
+    `connect-src 'self' ${FONT_PRECONNECTS}`,
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
 
 // The JSON goes out as an ordinary child: `<script>` is rawtext, and its
 // escaping neutralizes `</script` in a form JSON reads back (`\u003c`). No
@@ -46,13 +65,13 @@ const StructuredData = ({
   </script>
 );
 
-export function Layout({ children }: { children: JSX.Element }) {
+export async function Layout({ children }: { children: JSX.Element }): Promise<JSX.Element> {
   const { config, meta, currentPage } = useDocs();
   const title = meta.title ? `${meta.title} — ${config.title}` : config.title;
   const description = meta.description ?? config.description;
   const image = meta.image ?? config.image;
   const canonical = config.site ? config.site + currentPage : null;
-  const csp = meta.csp ?? DEFAULT_CSP;
+  const csp = meta.csp ?? (await defaultCsp());
   const is404 = currentPage === "/404";
   const isHome = currentPage === "/";
 
