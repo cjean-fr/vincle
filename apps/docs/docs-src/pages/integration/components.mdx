@@ -7,38 +7,22 @@ sidebar:
 
 # Components
 
-Three primitives split the concern between declaring a placeholder and pushing
-deferred content:
+Two primitives handle declaring a placeholder and deferring content into it —
+plus a third for fetching a fragment from a separate URL entirely:
 
-- **`<Slot>`** — a named hole with fallback content rendered immediately in the
-  shell
-- **`<Template>`** — pushes content into a slot, sync or lazy
+- **`<Template>`** — defers content into a placeholder, sync or lazy; renders
+  its own placeholder, so it's self-sufficient
+- **`<Slot>`** — a named hole, standing in for a `<Template>` that renders
+  elsewhere in the tree
 - **`<Include>`** — client-side fetch placeholder
 
-## `<Slot>` — named insertion point
+## `<Template>` — defer content (sync or lazy)
 
-Declares a named hole in the shell. Its `children` are rendered **immediately**
-as placeholder content — visible until a `<Template>` replaces them. An empty
-slot renders an empty placeholder.
-
-```tsx
-import { Slot } from "@vincle/flow";
-
-<Slot name="comments">
-  <p>Loading comments…</p>
-</Slot>;
-```
-
-A `Slot` registers nothing in the pending store — it is purely a passive hole.
-
-`Slot` is the recommended way to define the layout's insertion points. The
-`name` is **required**.
-
-## `<Template>` — fill a slot (sync or lazy)
-
-Pushes content into an existing slot by name. **Unified** — one component for
-both synchronous and deferred content. The behaviour
-depends on `children`:
+Registers content — plain JSX or a lazy factory — under a `target` id, and
+renders a placeholder in its own place showing `fallback` until that content
+is ready. No `<Slot>` required: for the common case, placeholder and content
+live together, in the same spot. **Unified** — one component for both
+synchronous and deferred content. The behaviour depends on `children`:
 
 | `children` type | `fallback` | Behaviour                                        |
 | --------------- | ---------- | ------------------------------------------------ |
@@ -100,6 +84,50 @@ discarded and routed to `onError` instead of being emitted.
 Not every adapter supports all merge types — an unsupported merge is rejected
 at registration with a clear error.
 
+## `<Slot>` — named insertion point
+
+Declares a named hole in the shell, standing in for a `<Template>` that
+renders **elsewhere** in the tree — typically a layout reserving a spot by
+name, filled later by a page-specific component that has no other way to
+reach into that layout. Its `children` are rendered **immediately** as
+placeholder content — visible until the matching `<Template>` patches them.
+An empty slot renders an empty placeholder.
+
+```tsx
+import { Slot } from "@vincle/flow";
+
+<Slot name="comments">
+  <p>Loading comments…</p>
+</Slot>;
+```
+
+A `Slot` registers nothing in the pending store — it is purely a passive
+hole. `name` is **required**.
+
+If the placeholder and the deferred content are declared in the same spot,
+skip `Slot` — `Template` alone, with its own `fallback`, is simpler and does
+the same job (see above). Reach for `Slot` only for the decoupled case.
+
+**Ordering matters when pairing them.** Every adapter renders a placeholder
+as an element (or marker) carrying the target's id, and every adapter's
+patch resolves to the *first* match in the document — the same rule HTML
+`id` uniqueness and `getElementById` already impose. So `<Slot>` must come
+before the matching `<Template>`, and that `<Template>` should skip its own
+`fallback` — passing one renders a second, dead placeholder with the same id
+right next to `Slot`'s live one:
+
+```tsx
+// Layout.tsx — reserves the spot; has no idea what fills it
+<Slot name="comments">
+  <p>Loading comments…</p>
+</Slot>
+
+// CommentsPage.tsx — fills it; has no idea where it renders
+<Template target="comments">
+  <LiveComments />
+</Template>
+```
+
 ## `<Include>` — client-side fetch
 
 Browser fetches the fragment from a URL after the shell lands. No server-push
@@ -128,8 +156,8 @@ never need to call `.then()` or `for await` yourself.
 
 | Prop       | Applies to | Meaning                                                   |
 | ---------- | ---------- | --------------------------------------------------------- |
-| `name`     | `Slot`     | id of the placeholder (required)                          |
-| `target`   | `Template` | target slot id to push content into                       |
+| `name`     | `Slot`     | id of the placeholder (required)                           |
+| `target`   | `Template` | id the placeholder (and its later patch) is registered under |
 | `fallback` | `Template` | placeholder content shown in the shell (lazy only)        |
 | `merge`    | `Template` | how content applies to its target (default `"replace"`)   |
 | `timeout`  | `Template` | per-fragment render timeout in ms                         |

@@ -1,0 +1,54 @@
+---
+title: renderFragment
+sidebar:
+  group: Flow API
+  order: 5
+---
+
+# renderFragment
+
+Render a single fragment on demand, outside a full site build — the piece
+on-demand regeneration needs. Given fresh content, it produces the exact
+bytes `emitFragments` would have written for that `id` during a full build,
+at the same URL.
+
+## Signature
+
+```tsx
+import { renderFragment } from "@vincle/flow";
+
+function renderFragment(
+  id: string,
+  content: TemplateContent,
+  options: RenderFragmentOptions,
+): Promise<{ url: string; html: string }>;
+```
+
+## Options
+
+| Option         | Type                      | Default                              | Description                                     |
+| -------------- | ------------------------- | ------------------------------------- | ------------------------------------------------ |
+| `adapter`      | `Adapter`                 | — (required)                          | Wire-format adapter — the same one the full build uses |
+| `generatePath` | `(id: string) => string`  | ``(id) => `/fragments/${id}.html` ``  | Must match the full build's convention             |
+| `timeout`      | `number`                  | —                                      | Forwarded to the underlying `<Template>`           |
+| `onError`      | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | — | Forwarded to the underlying `<Template>`   |
+
+## Usage
+
+<CodeExample src="flow/render-fragment.tsx" />
+
+Call it from wherever your data changes — a webhook, a queue consumer, a
+scheduled function. It doesn't know about Netlify, Vercel, or any other
+host: it returns `{ url, html }`, and writing those bytes to that URL is
+your platform's job — a blob store, an on-demand revalidation call, or a
+CDN purge and re-upload.
+
+The page that includes the fragment (`<Include src={url}>` or an adapter's
+`Frame`) is untouched — it already points at `url`, and that URL's content
+just changed. Nothing else in the site needs rebuilding.
+
+`content` accepts anything `<Template>` does, including an `AsyncIterable` —
+but `renderFragment` resolves once, to the last value produced, then
+returns. It is not a substitute for [streaming](/integration/streaming): an
+`AsyncIterable` that never completes never resolves, and this call has
+nothing to push it to over time.

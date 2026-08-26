@@ -319,6 +319,23 @@ await renderToStatic(
 );
 ```
 
+### On-demand fragment regeneration
+
+When one piece of data changes, `renderFragment` writes just its fragment — no site rebuild:
+
+```tsx
+import { renderFragment } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+const { url, html } = await renderFragment("price-AAPL", <span>{price}</span>, {
+  adapter: NativeAdapter,
+});
+// `url` matches what the full build wrote — upload `html` there (blob store,
+// on-demand revalidation, CDN purge + PUT…). The shell that includes it is untouched.
+```
+
+This is host-agnostic on purpose — it fits Netlify's on-demand functions or Vercel's on-demand revalidation, but doesn't depend on either.
+
 ### HTTP responses with negotiation
 
 Negotiation is **opt-in and decoupled from the adapter**: pass a `negotiate` function (e.g. `negotiateHtmx`, or your own) to extract per-request hints and headers. Without it, the full page is rendered and the client library extracts its own target.
@@ -375,6 +392,7 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `renderToStream`     | `@vincle/flow`      | Streams shell + fragments as a `ReadableStream<string>` via the given `adapter`               |
 | `renderToFlowEvents` | `@vincle/flow`      | Lower level: `ReadableStream<FlowEvent>` (semantic events) with backpressure and cancellation |
 | `renderToStatic`     | `@vincle/flow`      | Runs `handler` in a static render scope                                                       |
+| `renderFragment`     | `@vincle/flow`      | Renders one fragment on demand, outside a full build — for on-demand regeneration             |
 | `serve`              | `@vincle/flow/http` | Full HTTP `Response` builder                                                                  |
 
 ### Negotiation
