@@ -9,11 +9,49 @@ sidebar:
 
 Components for deferring content in the HTML shell. Imported from `@vincle/flow`.
 
+## Template
+
+Registers content to render later, in place of a placeholder. Unified —
+handles both sync and lazy content. `Template` renders its own placeholder —
+`fallback` is its content — so no `Slot` needs to exist first:
+
+- **Sync** (plain JSX `children`) → content registered; placeholder rendered, `fallback` is its content
+- **Lazy** (factory `children`) → content deferred; placeholder rendered, `fallback` is its content
+
+<CodeExample src="flow/defer-signal.tsx" />
+
+This is the common case: placeholder and deferred content declared together,
+in one place, nothing else required. Reach for `Slot` only when the
+placeholder's position needs to be declared somewhere `Template` can't reach
+directly — see below.
+
+**Props:**
+
+| Prop       | Type                                                        | Default     | Description                                  |
+| ---------- | ----------------------------------------------------------- | ----------- | -------------------------------------------- |
+| `target`   | `string`                                                    | —           | Id the placeholder (and its later patch) is registered under |
+| `fallback` | `VNode`                                                     | —           | Content rendered in the placeholder          |
+| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | — | Content — plain JSX, a factory, or an async iterable |
+| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target            |
+| `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms            |
+| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | —        | Per-fragment error handler                   |
+
 ## Slot
 
-Declares a named insertion point in the shell. Its children render immediately as placeholder content, visible until a `Template` replaces them.
+Declares a named insertion point that stands in for a `Template` rendered
+elsewhere in the tree — typically a layout reserving a spot that a
+page-specific component fills later, by matching `target` to `name`. Its
+children render immediately as placeholder content, visible until the
+matching `Template` patches them.
 
 <CodeExample src="flow/fill-signal.tsx" />
+
+Every adapter renders a placeholder as an element (or marker) carrying that
+one id, and every adapter's patch resolves to the *first* match in the
+document — the same rule HTML `id` uniqueness and `getElementById` already
+impose. So when pairing `Slot` with `Template`, `Slot` must come first, and
+`Template` should skip its own `fallback` — passing one there just renders a
+second, dead placeholder with the same id right next to `Slot`'s live one.
 
 **Props:**
 
@@ -21,26 +59,6 @@ Declares a named insertion point in the shell. Its children render immediately a
 | ---------- | -------- | ------- | -------------------------------------------------------------- |
 | `name`     | `string` | —       | Fragment id, required                            |
 | `children` | `VNode`  | —       | Fallback content rendered immediately in the shell |
-
-## Template
-
-Pushes content into a target slot by name. Unified — handles both sync and lazy content. A placeholder is **always** rendered; `fallback` is its content:
-
-- **Sync** (plain JSX `children`) → content registered; placeholder rendered, `fallback` is its content
-- **Lazy** (factory `children`) → content deferred; placeholder rendered, `fallback` is its content
-
-<CodeExample src="flow/defer-signal.tsx" />
-
-**Props:**
-
-| Prop       | Type                                                        | Default     | Description                                  |
-| ---------- | ----------------------------------------------------------- | ----------- | -------------------------------------------- |
-| `target`   | `string`                                                    | —           | Target slot id to push content into          |
-| `fallback` | `VNode`                                                     | —           | Content rendered in the placeholder          |
-| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | — | Content — plain JSX, a factory, or an async iterable |
-| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target            |
-| `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms            |
-| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | —        | Per-fragment error handler                   |
 
 ## Include
 

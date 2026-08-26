@@ -81,6 +81,19 @@ This is useful for real-time feeds, progress indicators, or any scenario where
 data arrives in multiple batches. The stream stays open until the iterable
 exhausts or the client disconnects.
 
+### Driven by events, not a fixed dataset
+
+The generator doesn't have to enumerate a known dataset — anything adaptable
+into an `AsyncIterable` works, including a live event source. Node's
+`events.on` turns any `EventEmitter` into one, so each event becomes its own
+patch for as long as the connection stays open:
+
+<CodeExample src="flow/stream-events.tsx" />
+
+The factory's `signal` combines the request's abort signal with the
+fragment's `timeout` — passing it to `on` stops the listener the moment
+either fires, instead of leaking it for the life of the emitter.
+
 ## Merge types during streaming
 
 | `merge`     | Effect                                    |
