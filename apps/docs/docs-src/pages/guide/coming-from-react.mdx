@@ -25,45 +25,73 @@ virtual DOM, no hydration, no client runtime.
 
 ### No client runtime
 
-React components hydrate on the client. Vincle components run once, produce
-a string, and stop. There is no JavaScript shipped to the browser unless you
-explicitly add it.
+React's classic answer ships the full runtime and hydration code to the
+browser for every component. Modern React narrows that with Server
+Components: a component with no `"use client"` directive renders on the
+server and ships no JS of its own — much like Vincle, for content that
+never changes.
+
+That exception ends the moment a component needs state. `useState` only
+exists in a Client Component, so the runtime and reconciler come back,
+unconditionally, no matter how small the component is. Vincle has no such
+fork — every component renders the same way — and it doesn't answer
+"how do I make this interactive" itself. That's delegated, in the markup,
+to standard HTML or to a purpose-built client library instead of a UI
+framework's runtime:
 
 ```tsx
-// React — ships React runtime + component code to browser
-export function Page() {
+// React — needs "use client" the moment state enters the picture; ships
+// React + ReactDOM + the reconciler just to run this one counter
+"use client";
+export function Counter() {
   const [count, setCount] = useState(0);
   return <button onClick={() => setCount((c) => c + 1)}>{count}</button>;
 }
 
-// Vincle — renders HTML once, zero JS shipped
-export function Page() {
-  return renderToString(<button onclick="let c=0;this.onclick=()=>this.textContent=++c">0</button>);
+// Vincle — renders once; the counting is delegated to Alpine.js (a few KB,
+// built for exactly this), not to a framework runtime
+export function Counter() {
+  return (
+    <div x-data="{ count: 0 }">
+      <button x-on:click="count++" x-text="count">0</button>
+    </div>
+  );
 }
 ```
 
+The two components solve the same problem, but Vincle's answer isn't "ship
+less of the same kind of thing" — it's a different kind of thing
+altogether: a small library scoped to this one button, not a framework
+runtime scoped to the whole page.
+
 ### Async is native, not Suspense
 
-React requires `Suspense` boundaries and a streaming API for async data.
-Vincle lets any component be `async` directly:
+Modern React (Server Components) lets an async component `await` directly
+— much like Vincle always has, no `use()` needed for a plain top-level
+fetch. What's still required is a `<Suspense>` boundary above it if you
+want the shell to stream while it resolves, and a framework that
+implements the RSC protocol to run any of it at all.
+
+Vincle has no boundary and no protocol: every component can be `async`,
+anywhere, with no framework requirement.
 
 ```tsx
-// React — the promise is created above the boundary and passed down;
-// use() cannot take a promise created fresh in the same render
+// React Server Component — awaits directly, but still needs a Suspense
+// ancestor for the fallback to stream, and a framework like Next.js to
+// run it
+async function Comments() {
+  const data = await fetchComments();
+  return <ul>{data.map(/* … */)}</ul>;
+}
 function Page() {
-  const commentsPromise = fetchComments();
   return (
     <Suspense fallback={<Spinner />}>
-      <Comments commentsPromise={commentsPromise} />
+      <Comments />
     </Suspense>
   );
 }
-function Comments({ commentsPromise }) {
-  const data = use(commentsPromise);
-  return <ul>{data.map(/* … */)}</ul>;
-}
 
-// Vincle — just async, no boundary, no promise plumbing
+// Vincle — the same shape, no boundary, no framework
 async function Comments() {
   const data = await fetchComments();
   return <ul>{data.map(/* … */)}</ul>;
@@ -72,7 +100,31 @@ async function Comments() {
 
 No `Suspense` boundaries, no fallback declarations — the `await` is the
 boundary. Sibling async branches run in document order, one at a time; the
-`Promise<string>` resolves when every branch finishes.
+`Promise<string>` resolves when every branch finishes. (React's Client
+Component pattern — reading a promise with `use()` instead of awaiting it
+— still needs that same boundary, plus the promise created above it and
+passed down as a prop.)
+
+That's the default: `renderToString` simply waits. If you want the
+Suspense-shaped tradeoff instead — ship the shell immediately, patch
+`Comments` in once it resolves — that's opt-in via `@vincle/flow`:
+
+```tsx
+import { Template } from "@vincle/flow";
+
+function Page() {
+  return (
+    <Template target="comments" fallback={<Spinner />} timeout={5000}>
+      <Comments />
+    </Template>
+  );
+}
+```
+
+By default the patch travels via a ~550 B polyfill (`NativeAdapter`).
+Swap in `WebPlatformAdapter` to use the same
+[WICG declarative partial updates](https://github.com/WICG/declarative-partial-updates)
+proposal with no polyfill at all — on browsers that implement it natively.
 
 ### Context is scoped, not provider-based
 
@@ -88,9 +140,17 @@ required.
 
 ```tsx
 // React — useContext only works inside a component in the provider's
-// descendant tree; a plain function can't call it, even mid-render
+// descendant tree; a plain function can't call it, even mid-render.
+// React 19 renders the context itself as the provider — no `.Provider`.
+function App({ user }) {
+  return (
+    <AuthContext value={{ user }}>
+      <AuditRow action="viewed dashboard" />
+    </AuthContext>
+  );
+}
 function AuditRow({ action }: { action: string }) {
-  const { user } = useContext(AuthContext); // OK — rendered inside <AuthProvider>
+  const { user } = useContext(AuthContext); // OK — rendered inside <AuthContext>
   return <li>{user.name} — {action}</li>;
 }
 function logAction(action: string) {
@@ -100,6 +160,7 @@ function logAction(action: string) {
 
 // Vincle — useContext reads the active scope, so plain functions can
 // call it too, as long as they run inside withScope
+const Auth = context<{ user: { name: string } }>("Auth");
 function logAction(action: string) {
   const { user } = useContext(Auth); // works — no component, no provider needed
   console.log(`${user.name}: ${action}`);
@@ -117,41 +178,99 @@ interfere, even when they set different context values.
 
 ### Event handlers are strings, not closures
 
-React handlers are closures — a new function identity on every render,
-which is why passing one to a memoized child needs `useCallback` to keep
-that identity stable. Vincle has no re-renders to begin with: a handler is
-just an HTML attribute string, identical every time.
-
-Untrusted values never belong inside the handler string itself. They travel
-through a regular attribute instead — auto-escaped like any other — and the
-handler reads them back at runtime:
+React handlers are closures, captured automatically from the surrounding
+scope. Vincle handlers are attribute strings, evaluated by the browser —
+which also means Vincle never intercepts an attribute it doesn't
+recognize. Nothing gets rewritten into a synthetic event system, so a
+library that reads plain HTML attributes plugs straight in, with nothing
+in between:
 
 ```tsx
-// React — a fresh closure every render; useCallback exists specifically
-// to give it a stable identity so memoized children don't re-render
+// React — the closure needs the component, and its runtime, in the loop
 const onDelete = useCallback(() => handleDelete(id), [id]);
 <DeleteButton onClick={onDelete}>Delete</DeleteButton>;
 
-// Vincle — id travels through an auto-escaped attribute, not through the
-// handler string; the handler itself never changes
-<button data-id={id} onclick="handleDelete(this.dataset.id)">
+// Vincle — no handler, no library, not even JavaScript: a standard HTML
+// form, submitted the way forms have worked since before either framework
+// existed. Forms only speak GET/POST natively, so DELETE is a route, not
+// a verb
+<form action={`/items/${id}/delete`} method="POST">
+  <button type="submit">Delete</button>
+</form>;
+```
+
+If a full navigation is more than you want, that same passthrough lets a
+progressive-enhancement library swap the response in without one:
+
+```tsx
+// Vincle + HTMX — no handler to write at all. HTMX reads the attributes,
+// issues the request, and swaps the response in; rendering the markup
+// was the framework's whole job
+<button hx-delete={`/api/items/${id}`} hx-target="#item-list" hx-swap="outerHTML">
   Delete
 </button>;
 ```
 
-A function-valued handler throws — there is nothing to attach it to, so the
-render fails rather than emit a button whose handler does nothing. The
-handler string is HTML-escaped, but the JavaScript inside it is not — which
-is exactly why untrusted data belongs in an attribute (as above), never
-interpolated directly into the string.
+The same idea works with any attribute-driven library — Stimulus
+(`data-action="click->list#delete"`), Turbo, or a hand-written
+`onclick="…"` string when a dependency isn't worth it. What they share is
+the mechanism: an ordinary HTML attribute, not a closure something has to
+reconcile back onto the element later. A function-valued handler prop
+still throws at render time on the server — there is nothing to attach it
+to.
+
+That mechanism matters most once markup arrives *after* the first render —
+a live feed, infinite scroll, a streamed fragment. A closure can't travel
+inside an HTML string; injected markup has no `onClick` attached, so React
+has to re-render that subtree itself, through the runtime already
+hydrated on the page, to wire one back up. (The one door around that,
+`dangerouslySetInnerHTML`, runs exactly Vincle's model underneath — a
+plain attribute, not a closure — minus the auto-escaping.)
+
+In Vincle, a plain attribute is live the instant the browser parses it —
+first response or streamed in later, no reconciliation, no re-hydration
+pass. `@vincle/flow`'s `<Template>` — the same component from the async
+section above — leans on exactly this:
+
+```tsx
+import { Template } from "@vincle/flow";
+
+async function CommentForm() {
+  return (
+    <form hx-post="/comments" hx-target="#comment-list" hx-swap="afterbegin">
+      <textarea name="body"></textarea>
+      <button type="submit">Post</button>
+    </form>
+  );
+}
+
+function Page() {
+  return (
+    <Template target="comment-form" fallback={<p>Loading…</p>} timeout={5000}>
+      <CommentForm />
+    </Template>
+  );
+}
+```
+
+Whether `CommentForm` renders in the first response or streams in seconds
+later as a `<Template>` patch, HTMX picks up `hx-post` the moment the
+fragment lands — the behavior never depended on a render pass to begin
+with. For updates pushed from the server rather than triggered by a click,
+flow's `HtmxAdapter` speaks HTMX's own out-of-band swap format directly,
+so the same library handles both directions.
 
 ### No `useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`
 
 None of these exist. There is no state, no lifecycle, no re-rendering.
-Every render is a fresh, deterministic function call.
+Every render is a fresh, deterministic function call. Where React reaches
+for a hook to manage something that keeps happening *after* the render —
+a ticking clock, an interval — Vincle has nothing to reach for on the
+server, so that job goes to whichever client library is already handling
+interactivity elsewhere on the page:
 
 ```tsx
-// React — hooks for state and effects
+// React — hooks for state and effects, ticking in the browser after mount
 function Timer() {
   const [time, setTime] = useState(0);
   useEffect(() => {
@@ -161,11 +280,23 @@ function Timer() {
   return <p>{time}s</p>;
 }
 
-// Vincle — the time is whatever it is at render time
-function Timer({ time }: { time: number }) {
-  return <p>{time}s</p>;
+// Vincle — the server renders the starting value; ticking after that is
+// Alpine's job, not the framework's
+function Timer({ initialTime }: { initialTime: number }) {
+  return (
+    <div x-data={`{ time: ${initialTime} }`} x-init="setInterval(() => time++, 1000)">
+      <p><span x-text="time">{initialTime}</span>s</p>
+    </div>
+  );
 }
 ```
+
+This one genuinely ticks — Vincle isn't reproducing the behavior with a
+framework of its own, it's handing the one part that needs a client
+runtime to a library built for it. React Compiler now auto-inserts most
+`useMemo`/`useCallback` calls for you, which removes the boilerplate — but
+it's still optimizing away re-renders that happen. Vincle has none to
+optimize away in the first place, compiler or not.
 
 ## Migration checklist
 
@@ -181,7 +312,7 @@ function Timer({ time }: { time: number }) {
 | `Suspense`                | Async component + `<Template>` from `@vincle/flow`                                |
 | `ErrorBoundary`           | No equivalent — try/catch at top level, `onError` in `@vincle/flow` for streaming |
 | `dangerouslySetInnerHTML` | Same API — also `raw(html)` as child                                              |
-| `onClick={() => fn()}`    | `onclick="fn()"` as string                                                        |
+| `onClick={() => fn()}`    | HTML `<form>`, `hx-*`/`data-action`/`x-on:click`, or `onclick="fn()"` (global `fn`) |
 | `className` / `class`     | Both work — HTML name wins if both present, no merge                              |
 | `htmlFor` → `for`         | `htmlFor` remapped to `for`; `for` wins if both present                           |
 | `@types/react`            | Optional — install it for attribute autocomplete                                  |
@@ -189,7 +320,8 @@ function Timer({ time }: { time: number }) {
 ## What you lose
 
 - **Hydration** — Vincle does not hydrate. If you need interactive components,
-  pair it with HTMX, Turbo, Alpine.js, or a client-side framework
+  pair it with plain HTML forms, HTMX, Turbo, Alpine.js, or a client-side
+  framework
 - **React ecosystem** — MUI, Radix, TanStack Table, React Router all require
   the React runtime
 - **React Server Components** — not RSC-aware; use Next.js App Router for

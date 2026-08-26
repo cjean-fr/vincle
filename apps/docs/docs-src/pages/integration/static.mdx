@@ -58,3 +58,22 @@ The `generatePath` option controls where fragments are written:
 The same path must be declared in the page's `<Include src="...">` so the
 browser knows where to find each fragment. Use a consistent convention across
 your build script and templates to keep them in sync.
+
+## On-demand regeneration
+
+A full rebuild is wasteful when only one piece of data changed — a price, a
+stock count, a comment count. Because each fragment is a standalone file at a
+predictable URL, only that file needs to change; the shell page that
+`<Include>`s it is untouched.
+
+`renderFragment` produces exactly the bytes a full build would have written
+for one `id`, without rendering any page:
+
+<CodeExample src="flow/render-fragment.tsx" />
+
+This is what Netlify's on-demand functions or Vercel's on-demand
+revalidation need: a handler that, given fresh data, returns the fragment's
+`{ url, html }`. Writing those bytes to `url` — a blob store, a
+revalidation call, a CDN purge and re-upload — is host-specific and stays in
+your handler; `renderFragment` itself doesn't know which host it's running
+on. See [`renderFragment`](/api/flow/renderFragment) for the full API.
