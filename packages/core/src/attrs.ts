@@ -515,6 +515,17 @@ function isPlainObject(value: unknown): boolean {
 // No script, but arbitrary CSS (clickjacking) once keys come from data.
 const RE_INVALID_STYLE_PROP = /[;:{}<>"'\s]|\p{C}/u;
 
+// A *value* carrying `;` injects them just the same — `{ color: data }` with
+// `data = "red;position:fixed"`. Values are repaired rather than dropped:
+// `url(data:image/png;base64,…)` is a legitimate value, and CSS reads `\;`
+// back as `;`, so escaping changes nothing a browser parses. The backslash is
+// escaped by the same pass — otherwise a smuggled `red\;` would survive as a
+// live separator. Control characters have no business in a value at all and
+// are dropped, like invalid names.
+const RE_UNSAFE_STYLE_VALUE = /[\\;\p{Cc}]/u;
+const RE_STYLE_VALUE_CONTROLS = /\p{Cc}/u;
+const RE_STYLE_VALUE_ESCAPE = /[\\;]/g;
+
 function styleToString(obj: Record<string, string | number | null | undefined>): string {
   let out = "";
   for (const key in obj) {
@@ -522,8 +533,15 @@ function styleToString(obj: Record<string, string | number | null | undefined>):
     if (value === null || value === undefined) continue;
     const prop = camelToKebab(key);
     if (RE_INVALID_STYLE_PROP.test(prop)) continue;
+    const str = typeof value === "string" ? value : String(value);
+    if (RE_UNSAFE_STYLE_VALUE.test(str)) {
+      if (RE_STYLE_VALUE_CONTROLS.test(str)) continue;
+      if (out) out += ";";
+      out += `${prop}:${str.replace(RE_STYLE_VALUE_ESCAPE, "\\$&")}`;
+      continue;
+    }
     if (out) out += ";";
-    out += `${prop}:${value}`;
+    out += `${prop}:${str}`;
   }
   return out;
 }
