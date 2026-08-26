@@ -208,9 +208,27 @@ describe("buildAttrs style", () => {
     expect(buildAttrs({ style: { "}html{display": "none" } })).toBe("");
   });
 
-  test("values are left alone — only names are a closed vocabulary", () => {
+  // A value carrying `;` used to pass through verbatim and inject declarations
+  // exactly as a smuggled name did. Values are repaired rather than dropped —
+  // `url(data:…;base64,…)` is legitimate — by CSS-escaping `\` and `;` in one
+  // pass, which no browser parses any differently.
+  test("values carrying CSS syntax are escaped, not passed through", () => {
     expect(buildAttrs({ style: { color: "red;position:fixed" } })).toBe(
-      ' style="color:red;position:fixed"',
+      ' style="color:red\\;position:fixed"',
+    );
+    // A pre-existing backslash must not survive to re-arm the separator.
+    expect(buildAttrs({ style: { color: "red\\;position:fixed" } })).toBe(
+      ' style="color:red\\\\\\;position:fixed"',
+    );
+    expect(buildAttrs({ style: { background: "url(data:image/png;base64,iVBOR)" } })).toBe(
+      ' style="background:url(data:image/png\\;base64,iVBOR)"',
+    );
+  });
+
+  test("a control character drops its declaration, like an invalid name", () => {
+    expect(buildAttrs({ style: { color: "re\u0000d" } })).toBe("");
+    expect(buildAttrs({ style: { color: "red", background: "bl\u0007ue" } })).toBe(
+      ' style="color:red"',
     );
   });
 
