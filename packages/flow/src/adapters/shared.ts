@@ -2,6 +2,8 @@ import type { JSX, RawString } from "@vincle/core";
 
 import type { AdapterCapabilities, MergeType } from "../types.js";
 
+import { assertAdapter } from "../config.js";
+
 type Child = JSX.Element | RawString | string | null;
 
 /**
@@ -50,5 +52,8 @@ export function createAdapter<const C extends AdapterCapabilities = typeof DEFAU
     ...spec,
     capabilities: spec.capabilities ?? (DEFAULT_CAPABILITIES as unknown as C),
   };
+  // A mistyped adapter (a missing slot, a bad merge list) fails here, at
+  // definition time — not when the first fragment tries to use it.
+  assertAdapter(adapter, "createAdapter");
   return adapter;
 }

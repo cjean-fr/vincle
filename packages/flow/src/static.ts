@@ -3,6 +3,7 @@ import { raw, renderToString, snapshot, withScope, type JSX } from "@vincle/core
 import type { Adapter } from "./adapters/index.js";
 
 import { withFlow, initFlowAssets, suppressFlowAssets } from "./context.js";
+import { assertAdapter, PREFIX, describeValue } from "./config.js";
 import { flushTemplates } from "./flushTemplates.js";
 
 const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
@@ -62,6 +63,15 @@ export async function renderToStatic<T>(
   const adapter = options?.adapter;
   const generatePath = options?.generatePath ?? DEFAULT_GENERATE_PATH;
 
+  // Fail fast on the options, before a single page renders.
+  assertAdapter(adapter, "renderToStatic");
+  if (options?.generatePath !== undefined && typeof options.generatePath !== "function") {
+    throw new Error(
+      `${PREFIX} renderToStatic: generatePath must be a function (id) => string, ` +
+        `got ${describeValue(options.generatePath)}. Example: (id) => \`/fragments/\${id}.html\`.`,
+    );
+  }
+
   return withFlow(
     async (ctx) => {
       const staticCtx: StaticContext = {
@@ -74,13 +84,13 @@ export async function renderToStatic<T>(
             return adapter?.transformShell ? adapter.transformShell(html, ctx) : html;
           }, snapshot()),
         emitFragments: async (cb) => {
-          if (!adapter) {
-            throw new Error(
-              "emitFragments requires an adapter. " +
-                "Pass { adapter: ... } to renderToStatic. " +
-                "Example: renderToStatic(handler, { adapter: NativeAdapter })",
-            );
-          }
+if (!adapter) {
+              throw new Error(
+                `${PREFIX} emitFragments(): emitFragments requires an adapter — fragments cannot ` +
+                  "be framed into standalone files without one. Pass { adapter: ... } to renderToStatic. " +
+                  "Example: renderToStatic(handler, { adapter: NativeAdapter })",
+              );
+            }
           // Standalone fragment files carry no assets — the shell including them
           // already has them — so this scope suppresses emission, and `<Style>`
           // returns null rather than a tag a later pass would have to remove.

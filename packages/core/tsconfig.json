@@ -15,5 +15,8 @@
       "@vincle/core": ["./index.ts"],
       "@vincle/core/*": ["./src/*.ts"]
     }
-  }
+  },
+  // `tmp/` holds the SKILL.md examples that `skill-contract.test.ts` extracts and
+  // type-checks under their own tsconfig. They are not part of the package.
+  "exclude": ["tmp"]
 }

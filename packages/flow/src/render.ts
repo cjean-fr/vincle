@@ -6,6 +6,7 @@ import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
 import type { ShellContext } from "./adapters/shared.js";
 
 import { withFlow } from "./context.js";
+import { assertAdapter, assertFlowOptions } from "./config.js";
 import { createStream } from "./create-stream.js";
 import { flushTemplates } from "./flushTemplates.js";
 
@@ -153,6 +154,20 @@ export async function runSequence(
 }
 
 /**
+ * Validate the streaming entry's inputs before a single byte is rendered:
+ * the adapter must be complete, the options must be well-formed. Both public
+ * streaming entry points call this, so a misconfiguration fails at setup.
+ */
+function assertStreamInput(
+  source: string,
+  adapter: Adapter,
+  opts: FlowOptions | undefined,
+): void {
+  assertFlowOptions(opts, source);
+  assertAdapter(adapter, source);
+}
+
+/**
  * Return a `ReadableStream<FlowEvent>` with proper backpressure and cancellation.
  */
 export function renderToFlowEvents(
@@ -160,6 +175,7 @@ export function renderToFlowEvents(
   adapter: StreamingAdapter,
   opts: FlowOptions & { mode?: "full" | "fragment" } = {},
 ): ReadableStream<FlowEvent> {
+  assertStreamInput("renderToFlowEvents", adapter, opts);
   return createStream((emit, signal) => runSequence(emit, signal, node, adapter, opts), {
     signal: opts.signal,
   });
@@ -179,10 +195,12 @@ export function renderToStream(
   adapter: StreamingAdapter,
   opts?: FlowOptions & { mode?: "full" | "fragment" },
 ): ReadableStream<string> {
+  assertStreamInput("renderToStream", adapter, opts);
   if (adapter.capabilities.streaming !== true) {
     throw new Error(
-      "[vincle/flow] renderToStream requires an adapter with capabilities.streaming: true. " +
-        "This adapter declares itself non-streaming — use renderToStatic for static output.",
+      "[vincle/flow] renderToStream(): this adapter does not stream — capabilities.streaming is false, " +
+        "so it can only produce static output. Use renderToStatic() with this adapter, or pass a " +
+        "streaming adapter (TurboAdapter, NativeAdapter, HtmxAdapter, WebPlatformAdapter).",
     );
   }
   return renderToFlowEvents(node, adapter, opts).pipeThrough(encodeWith(adapter));

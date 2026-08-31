@@ -1,3 +1,5 @@
+import { PREFIX } from "./config.js";
+
 /**
  * Create a per-entry timeout signal that aborts with a descriptive error when
  * the timeout fires. Combines with the parent request signal via
@@ -20,7 +22,14 @@ export function createTimeoutSignal(
 
   const timer = new AbortController();
   const tid = setTimeout(
-    () => timer.abort(new Error(`Template "${id}" timed out after ${ms}ms`)),
+    () =>
+      timer.abort(
+        new Error(
+          `${PREFIX} Fragment "${id}" timed out after ${ms}ms — its content did not finish in time. ` +
+            "Increase the timeout (the fragment's timeout prop or defaultTimeout), or make the " +
+            "content finish faster, e.g. by forwarding the abort signal to fetch().",
+        ),
+      ),
     ms,
   );
 

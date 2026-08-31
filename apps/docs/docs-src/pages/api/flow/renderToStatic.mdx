@@ -31,6 +31,11 @@ function renderToStatic<T>(
 | `adapter`      | `Adapter`                | — (required)                         | Wire-format adapter for fragment framing |
 | `generatePath` | `(id: string) => string` | ``(id) => `/fragments/${id}.html` `` | URL path for each fragment               |
 
+**Options are validated up front** — before a single page renders. A missing
+or malformed `adapter`, or a non-function `generatePath`, fails at the call
+with a message prefixed `[vincle/flow]` that names the option, the offending
+value, and the fix. See [Error handling](/api/core/error-handling).
+
 ## Contexts
 
 ### PureStaticContext

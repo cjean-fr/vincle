@@ -9,6 +9,7 @@ import {
   withScope,
   snapshot,
   resetContextStorage,
+  resetNamedContexts,
   SyncContextStore,
 } from "./context.js";
 
@@ -19,17 +20,19 @@ describe("context", () => {
   describe("useContext / setContext", () => {
     beforeEach(() => resetContextStorage());
 
-    it("throws outside withScope", () => {
-      expect(() => useContext(UserToken)).toThrow("[vincle/core] useContext/setContext");
+    it("throws outside withScope, naming the call that needs a scope", () => {
+      expect(() => useContext(UserToken)).toThrow(
+        "[vincle/core] useContext: no active context scope",
+      );
       expect(() => setContext(UserToken, { name: "x" })).toThrow(
-        "[vincle/core] useContext/setContext",
+        "[vincle/core] setContext: no active context scope",
       );
     });
 
-    it("throws when context not found in scope", async () => {
+    it("throws when context not found in scope, naming the key", async () => {
       await withScope(() => {
         expect(() => useContext(UserToken)).toThrow(
-          "[vincle/core] useContext() — context not found in current scope.",
+          '[vincle/core] useContext("test:user"): the value was never set in the current scope',
         );
       });
     });
@@ -101,7 +104,7 @@ describe("context", () => {
       await withScope(async () => {
         setContext(UserToken, { name: "Parent" });
         await withScope(() => {
-          expect(() => useContext(UserToken)).toThrow("not found in current scope");
+          expect(() => useContext(UserToken)).toThrow(/never set in the current scope/);
         });
       });
     });
@@ -135,7 +138,7 @@ describe("context", () => {
 
     it("snapshot throws outside withScope", () => {
       resetContextStorage();
-      expect(() => snapshot()).toThrow("[vincle/core] useContext/setContext");
+      expect(() => snapshot()).toThrow("[vincle/core] snapshot: no active context scope");
     });
   });
 
@@ -305,6 +308,8 @@ describe("context", () => {
   });
 
   describe("context(key) — leak guard", () => {
+    afterAll(() => resetNamedContexts());
+
     it("keeps the key → symbol identity, and refuses a key built per request", () => {
       // The cap can't just stop memoizing — that would make
       // `context(k) !== context(k)` silently true. It throws instead.

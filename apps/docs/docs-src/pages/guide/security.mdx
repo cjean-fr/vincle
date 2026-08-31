@@ -136,6 +136,21 @@ neither form reads back there, and `</script` cannot appear in such a template
 at all. That content is yours to guarantee — pass it through
 [`raw()`](#the-raw-escape-hatch).
 
+**The rule protects the HTML boundary, not the JavaScript one.** It guarantees
+the element cannot be closed early; it says nothing about the code you built.
+Untrusted data concatenated into JS source is still an injection — the quote
+ends the string, `;` starts a statement:
+
+```tsx
+<script>{`const name = "${user.name}";`}</script>  // ❌ user.name = '";alert(1);//'
+<script>{`const name = ${JSON.stringify(user.name)};`}</script>  // ✅
+```
+
+**`dangerouslySetInnerHTML` on a `<script>` turns the rule off entirely** — it
+is trusted HTML by definition, so nothing is neutralised. It is the React idiom
+for inline scripts *because React entity-escapes script children*; vincle does
+not, so the plain child form is both simpler and safer here.
+
 ## What the compiler guarantees (and what it doesn't)
 
 A common question: if the JSX compiler already turned `<div>` into a `jsx()`
@@ -183,6 +198,27 @@ hardcoded markup. Never pass user input directly to `raw()`.
 
 <CodeExample src="safety/one-rule.tsx" output />
 
+### `raw()` in an attribute
+
+`raw()` promises trusted *markup*, which is not the same promise as a trusted
+*attribute value*. One character separates them: the quote that ends the value.
+It is therefore the one thing escaped on that path — everything else stays
+verbatim.
+
+Escaping it changes nothing a parser reads back, since an attribute value is
+entity-decoded before it reaches CSS, JS or the DOM: `style={raw('font-family:"Inter"')}`
+still means what it says. What it removes is the breakout — an attribute cannot
+be closed and the tag reopened, even through `raw()`.
+
+A URL attribute is the deliberate exception in the other direction: a
+`RawString` there skips the scheme check, because `raw()` means "I vouch for
+this value".
+
+<CodeExample src="safety/raw-attribute.tsx" output />
+
+Sanitized HTML is still not an attribute value. DOMPurify output contains
+quotes by construction; it belongs in element content, not in a `title`.
+
 ## Defense in Depth
 
 Seven independent layers protect your output. No single bypass — except
@@ -200,6 +236,10 @@ Seven independent layers protect your output. No single bypass — except
 |     |                         | time, not at runtime                               |                                                          |
 |   6 | Tag & Attr Validation   | `isValidTag` / `isValidAttrName`                   | Injection through malformed tag or attribute names       |
 |   7 | Rawtext Escaping        | `escapeRawTagContent` — sub-language, not entities | `</script>`/`</style>` breakout — unlike Preact/React    |
+|   8 | Own properties only     | Props and style bags are read with `Object.hasOwn` | A polluted `Object.prototype` adding an attribute or a  |
+|     |                         |                                                    | declaration to every element rendered                   |
+|   9 | Attribute delimiter     | A `RawString` attribute value is verbatim but `"`  | A trusted value ending its attribute and reopening the  |
+|     |                         | is escaped                                         | tag                                                     |
 
 Each layer is independently verifyable — see [Invariants](#invariants).
 
@@ -207,17 +247,22 @@ Each layer is independently verifyable — see [Invariants](#invariants).
 
 What Vincle protects and what it does not:
 
-| Protected                                         | Not covered                                           |
-| ------------------------------------------------- | ----------------------------------------------------- |
-| HTML injection via text content, attributes, URLs | Input sanitization (use DOMPurify for untrusted HTML) |
-| Event handler attribute injection                 | HTTP headers / CSP (set by your server)               |
-| Malformed tag / attribute names                   | CSRF tokens, authentication, session management       |
-| CSS injection via a `style` object's property names | CSS injection via a `style` object's **values** — `style={{ color: untrusted }}` can still emit arbitrary declarations |
+| Protected                                                         | Not covered                                                              |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| HTML injection via text content, attributes, URLs                 | Input sanitization (use DOMPurify for untrusted HTML)                    |
+| Event handler attribute injection                                 | HTTP headers / CSP (set by your server)                                  |
+| Malformed tag / attribute names                                   | CSRF tokens, authentication, session management                          |
+| A polluted `Object.prototype` reaching props or a style bag       | The pollution itself — fix the merge that allows it                      |
+| CSS injection through a `style` **object**: names carrying syntax are dropped, values are CSS-escaped | CSS injection through a `style` **string** — `style={untrusted}` is an author-written declaration list, escaped for the attribute, not parsed |
+| `</script>` / `</style>` breakout, whatever shape the child is    | The JavaScript you built: `` `"${untrusted}"` `` inside `<script>` — serialize with `JSON.stringify` |
+| Every attribute value, including `on*`                            | `<iframe srcdoc={untrusted}>` — the value is decoded *and then parsed as a document*, so escaping it is not enough |
+|                                                                   | `<meta http-equiv="refresh" content={untrusted}>` — the URL lives inside `content`, which is not a URL attribute |
 
 If you need to render untrusted user-generated HTML, run it through a
-sanitizer first, then pass the result via `raw()`. The same applies to a
-`style` value built from untrusted input: only the property name is checked,
-not the value.
+sanitizer first, then pass the result via `raw()` — in element content, never
+as an attribute value.
+
+<CodeExample src="safety/style-injection.tsx" output />
 
 ## Best Practices
 
@@ -226,8 +271,11 @@ not the value.
 2. **Prefer JSX string values over `raw()`.** Default escaping is safe.
 3. **Use `RawString` only as a return type** for functions that generate
    trusted HTML (Markdown renderers, helpers).
-4. **Enable the ESLint plugin** to catch unsafe `raw()` calls and inline event
-   handlers at the source, before they are a render-time error.
+4. **Enable the ESLint plugin** to catch React-only patterns, `javascript:`
+   URLs and function-valued event handlers at the source, before they are a
+   render-time error. It does not judge `raw()` — nothing can decide from the
+   syntax whether a value is trusted; that call is yours, which is why `raw(`
+   is deliberately greppable.
 
 ## Invariants
 
@@ -245,6 +293,8 @@ Each invariant is enforced by property-based (fuzz) or unit tests:
 | I-08 | No implicit `RawString` creation                                 | Code review                                    |
 | I-09 | Invalid tag names fail fast, at construction (throw `TypeError`) | `static-fold.test.ts`                          |
 | I-10 | Every production regex is declared, safe, and matches the source | `redos-audit.test.ts`                          |
+| I-11 | An inherited property is never an attribute or a declaration     | `attrs.test.ts`                                |
+| I-12 | A `RawString` attribute value cannot end its attribute           | `attrs.test.ts`                                |
 
 ## ASVS Compliance
 
@@ -257,12 +307,16 @@ Standard). Each row below is held by the tests listed in
 |  1.1.2 | Output encoding as final step                        |   2   |   ✅   |
 |  1.2.1 | Context-relevant output encoding (HTML, attr, URL)   |   1   |   ✅   |
 |  1.2.2 | Safe URL protocols only                              |   1   |   ✅   |
-|  1.2.3 | JS context — `</script>` breakout prevention         |   1   |   ✅   |
+|  1.2.3 | JS context — `</script>` breakout prevention[^js]    |   1   |   ✅   |
 |  1.3.7 | Template injection protection — no dynamic templates |   2   |   ✅   |
 | 1.3.12 | ReDoS-free regex — inventory derived from the source | **3** |   ✅   |
 | 15.1.4 | Zero runtime dependencies                            | **3** |   ✅   |
 | 15.1.5 | `raw()` documented as dangerous                      | **3** |   ✅   |
 | 16.5.4 | Fail-stop on error — no partial/corrupted output     | **3** |   ✅   |
+
+[^js]: The element boundary, in the form the sub-language reads back. The
+    JavaScript *string* context is the author's: serialize untrusted data with
+    `JSON.stringify` rather than concatenating it into source.
 
 ## References
 

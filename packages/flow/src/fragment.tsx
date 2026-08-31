@@ -2,6 +2,7 @@ import type { Adapter } from "./adapters/index.js";
 import type { OnError, TemplateContent } from "./types.js";
 
 import { Template } from "./components/Template.js";
+import { assertAdapter, assertFlowOptions, PREFIX } from "./config.js";
 import { renderToStatic } from "./static.js";
 
 export interface RenderFragmentOptions {
@@ -33,6 +34,16 @@ export async function renderFragment(
   content: TemplateContent,
   opts: RenderFragmentOptions,
 ): Promise<{ url: string; html: string }> {
+  // Fail fast on the options, before a single byte is rendered.
+  if (opts.adapter === undefined) {
+    throw new Error(
+      `${PREFIX} renderFragment: opts.adapter is required — pass the same adapter the site's ` +
+        "full build uses (e.g. TurboAdapter).",
+    );
+  }
+  assertAdapter(opts.adapter, "renderFragment");
+  assertFlowOptions(opts, "renderFragment");
+
   let result: { url: string; html: string } | undefined;
 
   await renderToStatic(
@@ -50,7 +61,12 @@ export async function renderFragment(
   );
 
   if (!result) {
-    throw new Error(`[vincle/flow] renderFragment("${id}") produced no output.`);
+    throw new Error(
+      `${PREFIX} renderFragment("${id}"): produced no output for this id. ` +
+        "The fragment was never registered or rendered — its content may have thrown or timed out " +
+        "(check the onError/console log), or the id differs from the <Template target> that was " +
+        "rendered. Verify the id matches and that the content renders.",
+    );
   }
   return result;
 }

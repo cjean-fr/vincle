@@ -157,3 +157,31 @@ describe("vite-plugin-precompile", () => {
     });
   });
 });
+
+describe("plugin config", () => {
+  it("rejects a non-string runtimeSource at plugin creation", () => {
+    expect(() => precompile({ runtimeSource: 42 as never })).toThrow(
+      "[vincle/vite-plugin-precompile] config: runtimeSource must be a non-empty string module",
+    );
+  });
+
+  it("rejects an empty runtimeSource at plugin creation", () => {
+    expect(() => precompile({ runtimeSource: "" })).toThrow(
+      "[vincle/vite-plugin-precompile] config: runtimeSource must be a non-empty string module",
+    );
+  });
+
+  it("rejects a non-boolean secure at plugin creation", () => {
+    expect(() => precompile({ secure: "yes" as never })).toThrow(
+      "[vincle/vite-plugin-precompile] config: secure must be a boolean",
+    );
+  });
+
+  it("accepts a valid config", () => {
+    const plugin = precompile({
+      runtimeSource: "@vincle/core/jsx-precompile-runtime",
+      secure: false,
+    });
+    expect(plugin.name).toBe("@vincle/vite-plugin-precompile");
+  });
+});

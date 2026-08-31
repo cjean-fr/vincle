@@ -246,7 +246,7 @@ describe("renderToString never throws synchronously", () => {
     expect(threw).toBe(false);
     await expect(promise).rejects.toThrow("boom");
   });
-})
+});
 describe("Error annotation", () => {
   test("prefixes the message with the throwing component's name", async () => {
     function Boom() {
@@ -309,9 +309,9 @@ describe("Error annotation", () => {
     function Wrapper() {
       return jsx(Boom, {});
     }
-    await expect(
-      renderToString(jsx("script", { children: jsx(Wrapper, {}) })),
-    ).rejects.toThrow("[Boom] not found");
+    await expect(renderToString(jsx("script", { children: jsx(Wrapper, {}) }))).rejects.toThrow(
+      "[Boom] not found",
+    );
   });
 
   test("a rejecting async generator component is annotated too", async () => {
@@ -326,12 +326,11 @@ describe("Error annotation", () => {
     function Boom() {
       throw new Error("not found");
     }
-    await expect(
-      renderToString(jsx("script", { children: jsx(Boom, {}) })),
-    ).rejects.toThrow("[Boom] not found");
+    await expect(renderToString(jsx("script", { children: jsx(Boom, {}) }))).rejects.toThrow(
+      "[Boom] not found",
+    );
   });
 });
-
 
 // ── The walk's element contract ────────────────────────────────────────────
 //
@@ -448,6 +447,26 @@ describe("rawtext content survives every child shape", () => {
     expect(await script([null, undefined, false])).toBe("<script></script>");
     expect(await script(42)).toBe("<script>42</script>");
     expect(await script(raw("<\\/script>"))).toBe("<script><\\/script></script>");
+  });
+
+  // The last shape the rule missed: a leaf that is neither a string nor any of
+  // the containers above — an object with a `toString`, a boxed primitive. It
+  // went through `valueToText`, which HTML-escapes, so `<` reached the
+  // JavaScript engine as `&lt;`. Both paths are asserted because the fold and
+  // the walk coerce it in different functions.
+  test("an object leaf is coerced, not entity-escaped", async () => {
+    const code = { toString: () => 'if (a < b) x = "</script>";' };
+    const expected = '<script>if (a < b) x = "\\u003c/script>";</script>';
+
+    expect(await script(code)).toBe(expected); // walk
+    expect(await renderToString(jsx("script", { children: code }))).toBe(expected); // fold
+    expect(
+      await renderToString(jsx("style", { children: { toString: () => "a{}</style>" } })),
+    ).toBe("<style>a{}<\\/style></style>");
+    // Outside rawtext the coercion still escapes, as text always has.
+    expect(await renderToString(jsx("div", { children: code }))).toBe(
+      '<div>if (a &lt; b) x = "&lt;/script&gt;";</div>',
+    );
   });
 
   // A `<script>` with a non-JS `type` is a data block, and the ones that occur

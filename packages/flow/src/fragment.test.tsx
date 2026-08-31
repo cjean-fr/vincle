@@ -42,7 +42,7 @@ describe("renderFragment", () => {
   it("throws when the id never resolves to a fragment", async () => {
     async function* empty() {}
     await expect(renderFragment("price-AAPL", empty(), { adapter: TurboAdapter })).rejects.toThrow(
-      'renderFragment("price-AAPL") produced no output',
+      'renderFragment("price-AAPL"): produced no output for this id',
     );
   });
 });
