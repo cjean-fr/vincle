@@ -2,6 +2,7 @@ import { useContext, type JSX, type VNode } from "@vincle/core";
 import { schemeOf } from "@vincle/core/html";
 
 import { Flow, renderPlaceholder } from "../context.js";
+import { PREFIX } from "../config.js";
 
 // Include fetches an HTML fragment, so its `src` is a strict whitelist:
 // http(s) or a relative path only.
@@ -49,10 +50,15 @@ function isAllowedUrl(url: string): boolean {
 export function Include<const S extends string>(props: IncludeProps<S>): JSX.Element {
   const { nextId } = useContext(Flow);
 
-  if (!isAllowedUrl(props.src))
+  if (!isAllowedUrl(props.src)) {
+    const scheme = schemeOf(props.src);
     throw new Error(
-      `Include: "${props.src}" has a forbidden scheme — only http(s): or relative paths are allowed`,
+      `${PREFIX} <Include src="${props.src}">: forbidden scheme${
+        scheme !== undefined ? ` ${JSON.stringify(scheme)}` : ""
+      } — only http(s): or relative paths are allowed. ` +
+        'Use an absolute http(s) URL or a path relative to the page, e.g. src="/fragments/hero.html".',
     );
+  }
 
   return renderPlaceholder(nextId(), props.fallback, props.src);
 }

@@ -1,7 +1,10 @@
 import { withScope, renderToString } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { Asset, assetUrl, setVite, type ViteManifest } from "./index.js";
+import { Asset, assetUrl, loadViteManifest, setVite, type ViteManifest } from "./index.js";
 
 async function render(node: unknown): Promise<string> {
   return renderToString(node as Parameters<typeof renderToString>[0]);
@@ -132,8 +135,18 @@ describe("Asset (production mode)", () => {
 describe("Asset (no setup)", () => {
   it("throws a clear error when setVite was not called", async () => {
     await withScope(async () => {
-      await expect(render(<Asset entry="src/main.ts" />)).rejects.toThrow(/context not found/);
+      await expect(render(<Asset entry="src/main.ts" />)).rejects.toThrow(
+        'useContext("@vincle/vite:scope"): the value was never set in the current scope',
+      );
     });
+  });
+});
+
+describe("setVite", () => {
+  it("rejects a non-string base, naming the value", () => {
+    expect(() => setVite(null, { base: 42 as never })).toThrow(
+      '[vincle/vite-plugin] setVite: base must be a string URL prefix, e.g. { base: "/cdn/" }, got number',
+    );
   });
 });
 
@@ -189,10 +202,24 @@ describe("assetUrl (production mode)", () => {
     });
   });
 
-  it("throws when the entry is not in the manifest", async () => {
+  it("throws when the entry is not in the manifest, listing known entries", async () => {
     await withScope(async () => {
       setVite(manifest);
       expect(() => assetUrl("src/does-not-exist.png")).toThrow(/not found in manifest/);
+    });
+  });
+
+  it("suggests the closest entry when the miss looks like a typo", async () => {
+    await withScope(async () => {
+      setVite(manifest);
+      expect(() => assetUrl("src/logo.sv")).toThrow('Did you mean "src/logo.svg"?');
+    });
+  });
+
+  it("suggests a case-different entry", async () => {
+    await withScope(async () => {
+      setVite(manifest);
+      expect(() => assetUrl("SRC/logo.svg")).toThrow('Did you mean "src/logo.svg"?');
     });
   });
 
@@ -203,5 +230,49 @@ describe("assetUrl (production mode)", () => {
       expect(html).toContain('src="/assets/logo-Bx7k2.svg"');
       expect(html).toContain('alt="logo"');
     });
+  });
+});
+
+describe("loadViteManifest", () => {
+  it("returns null when the file is absent", async () => {
+    expect(await loadViteManifest("/nonexistent/vincle-manifest-test/manifest.json")).toBeNull();
+  });
+
+  it("names the file when it is not valid JSON", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "vincle-manifest-"));
+    const file = join(dir, "manifest.json");
+    try {
+      await writeFile(file, "{ not json", "utf-8");
+      await expect(loadViteManifest(file)).rejects.toThrow(
+        `loadViteManifest: the manifest at "${file}" is not valid JSON`,
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a manifest that is not an object of chunks", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "vincle-manifest-"));
+    const file = join(dir, "manifest.json");
+    try {
+      await writeFile(file, "[1, 2, 3]", "utf-8");
+      await expect(loadViteManifest(file)).rejects.toThrow(
+        `the manifest at "${file}" must be a JSON object mapping source entries to chunks`,
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("parses a valid manifest", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "vincle-manifest-"));
+    const file = join(dir, "manifest.json");
+    try {
+      const manifest = { "src/main.ts": { file: "assets/main-abc.js" } };
+      await writeFile(file, JSON.stringify(manifest), "utf-8");
+      expect(await loadViteManifest(file)).toEqual(manifest);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

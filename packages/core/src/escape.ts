@@ -106,7 +106,9 @@ for (const [tag, { pattern, escape }] of Object.entries(RAWTEXT_LANG)) {
 const RE_ESCAPE_ATTR = /[&<"]/;
 
 /**
- * Escape a string for a double-quoted attribute value — `&`, `<`, `>`, `"`.
+ * Escape a string for a double-quoted attribute value — `&`, `<`, `"`.
+ *
+ * `>` is deliberately left alone: it cannot end a double-quoted value.
  *
  * @example
  * ```ts
@@ -286,11 +288,14 @@ export function valueToText(v: unknown): string {
   if (typeof v === "number" || typeof v === "bigint") return String(v);
   if (v instanceof RawString) return v.value;
   // A VNode is not a text value: stringifying one would emit `[object Object]`
-  // silently. The message says what to do instead.
+  // silently. The message says what to do instead — naming only what the reader
+  // can act on: `valueToText` and `renderNode` are internal, and sending someone
+  // looking for a symbol they cannot import is worse than saying less.
   if (v instanceof VNode) {
     throw new Error(
-      "[vincle/core] valueToText received a VNode — a component must render " +
-        "through a tree walk (renderNode / renderToString), not as a text value.",
+      "[vincle/core] A VNode reached a text position: a component renders through the tree walk, " +
+        "not as a text value. Check that it is used as JSX (<Comp />) rather than interpolated as " +
+        "{comp}, and that the tree is rendered with renderToString().",
     );
   }
   return escapeContent(String(v));

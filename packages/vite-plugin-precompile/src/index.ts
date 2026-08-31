@@ -23,6 +23,27 @@ const RESOLVED_VIRTUAL_ID = "\0" + VIRTUAL_MODULE_ID;
 const FRAMEWORK_RUNTIME_SUFFIX = "/jsx-runtime";
 
 export default function vitePrecompile(config?: PluginConfig): Plugin {
+  // A misconfigured plugin is a config error: name the option and the value,
+  // and fail now — not mid-build when Vite is transforming the first file.
+  if (config?.runtimeSource !== undefined && (typeof config.runtimeSource !== "string" || config.runtimeSource.length === 0)) {
+    const got =
+      typeof config.runtimeSource === "string"
+        ? JSON.stringify(config.runtimeSource)
+        : typeof config.runtimeSource === "undefined"
+          ? "undefined"
+          : typeof config.runtimeSource;
+    throw new Error(
+      `[vincle/vite-plugin-precompile] config: runtimeSource must be a non-empty string module ` +
+        `specifier, e.g. "@vincle/core/jsx-precompile-runtime", got ${got}.`,
+    );
+  }
+  if (config?.secure !== undefined && typeof config.secure !== "boolean") {
+    throw new Error(
+      `[vincle/vite-plugin-precompile] config: secure must be a boolean, got ${JSON.stringify(config.secure)}. ` +
+        "Set secure: false for Deno-precompile-compatible behavior (static attributes trusted).",
+    );
+  }
+
   let rs: string | null = null;
   let renderAttr: RenderAttr | null = null;
   /**
@@ -117,11 +138,19 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
             unknown
           >;
         } catch (err) {
-          this.error(`failed to probe ${candidateFrameworkRuntime}: ${String(err)}`);
+          this.error(
+            `[vincle/vite-plugin-precompile] failed to probe ${candidateFrameworkRuntime}: ${String(err)}. ` +
+              `The module for jsxImportSource "${candidateFrameworkRuntime.replace(FRAMEWORK_RUNTIME_SUFFIX, "")}" ` +
+              "could not be imported — is it installed and resolvable from where Vite runs? " +
+              "Or set an explicit runtimeSource.",
+          );
         }
         if (typeof mod["jsxTemplate"] !== "function") {
           this.error(
-            `jsxImportSource "${candidateFrameworkRuntime.replace(FRAMEWORK_RUNTIME_SUFFIX, "")}" does not support the precompile transform. Use Preact, Hono, or @vincle/core, or set an explicit runtimeSource.`,
+            `[vincle/vite-plugin-precompile] jsxImportSource "${candidateFrameworkRuntime.replace(FRAMEWORK_RUNTIME_SUFFIX, "")}" ` +
+              'does not support the precompile transform — its jsx-runtime has no "jsxTemplate" export. ' +
+              "Use Preact, Hono, or @vincle/core, or set an explicit runtimeSource to a module that " +
+              "exports jsxTemplate, jsxAttr and jsxEscape.",
           );
         }
         resolvedRuntimeSource = candidateFrameworkRuntime;
@@ -152,14 +181,19 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
           renderAttr = mod.jsxAttr;
         } else {
           this.error(
-            `secure mode: "${source}" has no "jsxAttr" export — cannot sanitize static attributes`,
+            `[vincle/vite-plugin-precompile] secure mode: "${source}" has no "jsxAttr" export — ` +
+              "cannot sanitize static attributes. Set runtimeSource to a module that exports jsxAttr " +
+              "and jsxEscape, or set secure: false to trust static attributes (Deno-compatible).",
           );
         }
         if (typeof mod.jsxEscape === "function") {
           renderEscape = mod.jsxEscape;
         }
       } catch (err) {
-        this.error(`secure mode: failed to load "${source}" (${String(err)})`);
+        this.error(
+          `[vincle/vite-plugin-precompile] secure mode: failed to load "${source}" (${String(err)}). ` +
+            "Check that the module is installed and resolvable from where Vite runs, or set secure: false.",
+        );
       }
     },
 

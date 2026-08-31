@@ -33,6 +33,11 @@ function renderToStream(
 `FlowOptions` is `{ signal?, onError?, defaultTimeout? }`. The adapter is a
 required second argument, not an option.
 
+**Options are validated up front** — before a single byte is rendered. A bad
+`defaultTimeout`, `onError`, or `signal`, or an incomplete adapter, fails at the
+call with a message prefixed `[vincle/flow]` that names the option, the
+offending value, and the fix. See [Error handling](/api/core/error-handling).
+
 ## Usage
 
 <CodeExample src="flow/deferred-stream.tsx" />

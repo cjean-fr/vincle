@@ -49,7 +49,35 @@ const safe = DOMPurify.sanitize(userInput);
 
 If you need to render untrusted HTML as HTML (e.g. forum posts with basic
 formatting), use a sanitizer like [DOMPurify](https://github.com/cure53/DOMPurify)
-first, then pass the result to `raw()`.
+first, then pass the result to `raw()` — in element **content**, not as an
+attribute value (see below).
+
+## In an attribute
+
+`raw()` promises trusted *markup*. A trusted *attribute value* is a different
+promise, and one character separates them: the quote that ends the value. It is
+the only thing escaped on that path.
+
+```tsx
+// Verbatim, as everywhere else
+<div style={raw("color:red")} />;              // style="color:red"
+
+// …except `"`, so a value can never end its attribute and reopen the tag
+<a title={raw('say "hi"')}>x</a>;              // title="say &quot;hi&quot;"
+<a title={raw('" onmouseover="alert(1)')}>x</a>; // title="&quot; onmouseover=&quot;…"
+```
+
+That escaping changes nothing a parser reads back: an attribute value is
+entity-decoded before it reaches CSS, JS or the DOM, so
+`style={raw('font-family:"Inter"')}` still means what it says.
+
+Two consequences worth stating:
+
+- **Sanitizer output is not an attribute value.** DOMPurify emits quotes by
+  construction; its result belongs in content.
+- **A URL attribute skips the scheme check.** `<a href={raw("javascript:go()")}>`
+  is emitted as written — `raw()` means "I vouch for this value", and that
+  includes vouching for the scheme.
 
 ## Alternative: dangerouslySetInnerHTML
 

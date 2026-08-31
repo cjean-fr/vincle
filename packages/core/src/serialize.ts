@@ -70,7 +70,8 @@ export function isValidTag(tag: string): boolean {
 export function invalidTagMessage(tag: string): string {
   return (
     `[vincle/core] Invalid tag name ${JSON.stringify(tag)}: a tag name must not be empty, ` +
-    'start with "!" or "?", or contain whitespace, control characters, or any of " \' < > / = ` \\.'
+    'start with "!" or "?", or contain whitespace, control characters, or any of " \' < > / = ` \\ . ' +
+    'If the tag is computed, check the expression that produced it — it must be a plain tag name like "div", not a component or an undefined value.'
   );
 }
 
@@ -181,5 +182,10 @@ function foldChild(child: unknown, rawtextTag: string | undefined, state: FoldSt
     state.dynamic = true;
     return "";
   }
-  return valueToText(child);
+  // Same rule as `renderRawtextChild` in `render.ts`, and it has to be the same
+  // or the fold and the walk disagree on one leaf: inside rawtext the coercion
+  // is `String`, because HTML-escaping there corrupts the sub-language.
+  return rawtextTag === undefined
+    ? valueToText(child)
+    : escapeRawTagContent(String(child), rawtextTag);
 }

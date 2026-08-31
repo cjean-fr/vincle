@@ -40,8 +40,17 @@ export namespace JSX {
    * `async () => <div/>` all render correctly, and every one of them was rejected
    * by tsc while `Element` served as the component contract. Widening stops there
    * — an object or a symbol return is still an error.
+   *
+   * `Awaitable<Renderable>`, not `Renderable`, for the one shape the flat type
+   * cannot express: `JSX.Element` is itself awaitable, so an async component that
+   * *writes its return type down* — `async (): Promise<JSX.Element>`, the
+   * annotation anyone arriving from React reaches for — is a promise of a
+   * promise. Inference collapsed it, so it compiled only as long as nobody
+   * annotated. Making `Renderable` itself recursive is the other way to say this,
+   * and TypeScript refuses it: a type reached through its own `then` callback is
+   * TS1062. The extra level belongs on the boundary, where the walk resolves it.
    */
-  export type ElementType = string | ((props: any) => Renderable);
+  export type ElementType = string | ((props: any) => Awaitable<Renderable>);
 
   /**
    * Real attribute types per element, plus an open door for custom elements.
