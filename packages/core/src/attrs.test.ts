@@ -201,6 +201,16 @@ describe("buildAttrs style", () => {
     expect(buildAttrs({ style: { backgroundColor: "red" } })).toBe(' style="background-color:red"');
   });
 
+  // `ms` is the one vendor prefix spelled lowercase, so the kebab-case rule
+  // leaves it without its leading dash — a declaration no browser applies.
+  test("the -ms- prefix keeps its leading dash", () => {
+    expect(buildAttrs({ style: { msFlexAlign: "center" } })).toBe(' style="-ms-flex-align:center"');
+    expect(buildAttrs({ style: { WebkitBoxOrient: "vertical" } })).toBe(
+      ' style="-webkit-box-orient:vertical"',
+    );
+    expect(buildAttrs({ style: { "--brand-color": "red" } })).toBe(' style="--brand-color:red"');
+  });
+
   // A key carrying `:` or `;` smuggled extra declarations into the attribute.
   test("property names carrying CSS syntax are dropped", () => {
     expect(buildAttrs({ style: { "color:red;position": "fixed" } })).toBe("");
@@ -392,5 +402,71 @@ describe("buildAttrs style — only an object literal is a bag of declarations",
 
   test("an array style is not a bag either", () => {
     expect(buildAttrs({ style: ["color:red"] })).toBe(' style="color:red"');
+  });
+});
+
+// ── The trust boundary of an attribute ─────────────────────────────────────
+
+describe("an attribute name must name something", () => {
+  // The empty name emitted ` ="v"`, which a parser reads as an attribute called
+  // `="v"`: no injection — the value stays escaped — but nothing anyone wrote.
+  test("the empty name is not a name", () => {
+    expect(isValidAttrName("")).toBe(false);
+    expect(buildAttrs({ "": 'x" onload="alert(1)' })).toBe("");
+  });
+
+  test("a backtick is legal in a name, and stays legal", () => {
+    // Only ever a quote in attribute *values*, in browsers no longer shipped.
+    expect(isValidAttrName("a`b")).toBe(true);
+  });
+});
+
+describe("buildAttrs — the props object is read, not its prototype", () => {
+  // A prototype-pollution bug in the application is a primitive, not an
+  // exploit: it needs somewhere that *reads* a property it never wrote. A
+  // `for…in` over props was such a place, on every element of every page.
+  const polluted = <T>(key: string, value: unknown, fn: () => T): T => {
+    (Object.prototype as Record<string, unknown>)[key] = value;
+    try {
+      return fn();
+    } finally {
+      delete (Object.prototype as Record<string, unknown>)[key];
+    }
+  };
+
+  test("an inherited property is not an attribute", () => {
+    expect(polluted("onload", "alert(1)", () => buildAttrs({ class: "ok" }))).toBe(' class="ok"');
+  });
+
+  test("…nor on the async path, where the copy would make it an own property", async () => {
+    const r = await polluted("onload", "alert(1)", () =>
+      buildAttrs({ class: "ok", title: Promise.resolve("t") }),
+    );
+    expect(r).toBe(' class="ok" title="t"');
+  });
+
+  test("…nor a declaration in a style bag", () => {
+    expect(polluted("position", "fixed", () => buildAttrs({ style: { color: "red" } }))).toBe(
+      ' style="color:red"',
+    );
+  });
+});
+
+describe("a RawString attribute value cannot end the attribute", () => {
+  // `raw()` promises trusted *markup*, which is not "trusted attribute value":
+  // the quote that ends the value is the one character it must not carry.
+  test('`"` is escaped, on both serializers', () => {
+    const attack = raw('" onmouseover="alert(1)');
+    expect(buildAttrs({ title: attack })).toBe(' title="&quot; onmouseover=&quot;alert(1)"');
+    expect(serializeAttr("title", attack).value).toBe('title="&quot; onmouseover=&quot;alert(1)"');
+  });
+
+  test("everything else stays verbatim", () => {
+    // An entity, a `<`, an `&` — the point of `raw()` — and a CSS string, which
+    // the parser decodes back to `"` before the CSS parser ever sees it.
+    expect(buildAttrs({ title: raw("<b>a &amp; b</b>") })).toBe(' title="<b>a &amp; b</b>"');
+    expect(buildAttrs({ style: raw('font-family:"Foo"') })).toBe(
+      ' style="font-family:&quot;Foo&quot;"',
+    );
   });
 });

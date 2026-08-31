@@ -57,6 +57,41 @@ try {
 A thrown value that isn't an `Error` (a string, a plain object) is never
 wrapped — `catch` sees exactly what was thrown.
 
+## Message format
+
+Every error vincle raises is prefixed and self-contained — it says **where** it
+came from, **what** went wrong (naming the offending value), **why**, and **how
+to fix it**:
+
+```
+[vincle/<package>] <api or component>: <what happened>. <why>. <how to fix it>
+```
+
+Real examples:
+
+```
+[vincle/core] useContext("app:theme"): the value was never set in the current scope. Set it above the reader with setContext(key, value) inside the same withScope()…
+[vincle/flow] <Template target="hero">: merge="prepend" is not supported by this adapter — it supports: replace, append. Pick one of those, or use an adapter that supports "prepend".
+[vincle/vite-plugin] Vite entry "src/logo.sv" not found in manifest. Did you mean "src/logo.svg"? The manifest only lists files Vite bundles…
+```
+
+The prefix is stable and greppable (`[vincle/core]`, `[vincle/flow]`,
+`[vincle/vite-plugin]`, `[vincle/vite-plugin-precompile]`), so you can filter
+vincle errors out of a log or match them in CI.
+
+Config errors fail **fast**, at the entry point that receives the config —
+before a single byte is rendered or a build starts:
+
+- `@vincle/flow`: `renderToStream`, `renderToFlowEvents`, `renderToStatic`,
+  `renderFragment`, `createAdapter`, and the flow config (`mode`, `adapter`,
+  `generatePath`, `idPrefix`) are all validated at call time, as are
+  `defaultTimeout`, `onError`, `signal`, and per-fragment `timeout`.
+- `@vincle/vite-plugin`: `setVite` checks `base`; `loadViteManifest` names the
+  file when it is unreadable, not JSON, or not a manifest.
+- `@vincle/vite-plugin-precompile`: `runtimeSource` and `secure` are checked
+  when the plugin is created; build-time probes name the failing module and the
+  fix.
+
 ## Per-fragment errors (streaming)
 
 For streaming renders, `@vincle/flow` provides `onError` on the

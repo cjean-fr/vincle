@@ -34,7 +34,8 @@ function jsx(
     else if (html === null || html === undefined) children = raw("");
     else
       throw new TypeError(
-        "[vincle/core] dangerouslySetInnerHTML.__html must be a string, got " + typeof html,
+        `[vincle/core] dangerouslySetInnerHTML.__html must be a string (or null/undefined to clear), got ${typeof html}. ` +
+          'Pass markup as a string: { __html: "<b>hi</b>" }.',
       );
   }
 

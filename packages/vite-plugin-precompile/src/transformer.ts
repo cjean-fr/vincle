@@ -314,7 +314,9 @@ function emitOpening(
       emitAttribute(attr, parts, exprs, ctx);
     } else {
       throw new Error(
-        "[vite-plugin-precompile] internal: spread attribute reached emitOpening — isEligibleElement should have rejected this element",
+        "[vincle/vite-plugin-precompile] internal invariant broken: a spread attribute reached emitOpening — " +
+          "isEligibleElement should have rejected this element. This is a bug in vincle, not in your " +
+          "code or configuration — report it.",
       );
     }
   }
@@ -393,7 +395,8 @@ function emitStaticAttr(rawName: string, value: string | true, parts: string[], 
       return;
     }
     throw new Error(
-      `[vite-plugin-precompile] secure mode: jsxAttr returned a Promise for static value "${rawName}" — this should never happen`,
+      `[vincle/vite-plugin-precompile] secure mode: jsxAttr returned a Promise for static value "${rawName}" — ` +
+        "this should never happen. This is a bug in vincle, not in your code or configuration — report it.",
     );
   }
 

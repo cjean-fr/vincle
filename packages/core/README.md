@@ -115,6 +115,10 @@ complete and maintainable one becomes available.
   `[Profile] not found`. Only the innermost component — an ancestor that
   re-throws the same error doesn't add itself. A thrown value that isn't an
   `Error` passes through unchanged.
+- **Messages are self-contained**: `[vincle/<package>] <api>: <what>. <why>.
+  <how to fix it>` — the prefix is stable and greppable, and the message names
+  the offending value. Config errors fail fast, at the entry point that
+  receives the config, before anything renders.
 - **Per-fragment recovery** is `@vincle/flow`'s `onError`, for streaming.
 
 ## Test

@@ -145,20 +145,43 @@ function getStore(): ContextStore {
 
 /**
  * @internal Should only be used in tests — resets storage to force re-init.
+ *
+ * It deliberately leaves `namedContexts` alone: the tokens declared at module
+ * level are already held in variables, and clearing the table would hand the
+ * next `context("same-key")` a *different* symbol.
  */
 export function resetContextStorage(): void {
   contextStore = null;
   storeInit = null;
 }
 
-function scopeContext(): ContextMap {
+/**
+ * @internal Should only be used by the test that saturates the cap below.
+ * `namedContexts` is process-wide, so a saturated table makes every later
+ * `context()` call throw — in any package sharing the module instance.
+ */
+export function resetNamedContexts(): void {
+  namedContexts.clear();
+}
+
+function scopeContext(caller: string): ContextMap {
   const ctx = contextStore?.getStore();
   if (!ctx) {
     throw new Error(
-      "[vincle/core] useContext/setContext — no active scope. Wrap your render in withScope(() => renderToString(...)).",
+      `[vincle/core] ${caller}: no active context scope — context calls must run inside withScope(). ` +
+        "Wrap the render in one: const html = await withScope(() => renderToString(<Page />));",
     );
   }
   return ctx;
+}
+
+/**
+ * Human- and machine-readable name for a context key: the string it was
+ * declared with (a symbol's description), or `Symbol()` when anonymous.
+ */
+function describeKey(key: symbol): string {
+  const desc = (key as symbol).description;
+  return desc !== undefined ? JSON.stringify(desc) : String(key);
 }
 
 // Memoized so `context(k) === context(k)`; the cap throws rather than silently
@@ -182,7 +205,10 @@ const NAMED_CONTEXTS_MAX = 10_000;
  */
 export function context<T>(globalKey: string): ContextKey<T> {
   if (typeof globalKey !== "string" || globalKey.length === 0) {
-    throw new Error("[vincle/core] context(key): a non-empty string key is required.");
+    throw new Error(
+      `[vincle/core] context(): a non-empty string key is required, got ${JSON.stringify(globalKey as unknown)}. ` +
+        'Declare the key once at module level: const Theme = context("app:theme");',
+    );
   }
   let sym = namedContexts.get(globalKey);
   if (!sym) {
@@ -214,7 +240,7 @@ export function context<T>(globalKey: string): ContextKey<T> {
  * ```
  */
 export function setContext<T>(key: ContextKey<T>, value: T): void {
-  scopeContext().set(key, value);
+  scopeContext("setContext").set(key, value);
 }
 
 /**
@@ -228,9 +254,13 @@ export function setContext<T>(key: ContextKey<T>, value: T): void {
  * @throws if the key was never set in this scope, or if there is no scope.
  */
 export function useContext<T>(key: ContextKey<T>): T {
-  const ctx = scopeContext();
+  const ctx = scopeContext("useContext");
   if (!ctx.has(key)) {
-    throw new Error("[vincle/core] useContext() — context not found in current scope.");
+    throw new Error(
+      `[vincle/core] useContext(${describeKey(key)}): the value was never set in the current scope. ` +
+        "Set it above the reader with setContext(key, value) inside the same withScope() — " +
+        "or check that the render actually runs in the scope that sets it.",
+    );
   }
   return ctx.get(key) as T;
 }
@@ -246,7 +276,7 @@ export function useContext<T>(key: ContextKey<T>): T {
  * ```
  */
 export function snapshot(): ContextMap {
-  return new Map(scopeContext());
+  return new Map(scopeContext("snapshot"));
 }
 
 /**

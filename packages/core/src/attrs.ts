@@ -249,12 +249,17 @@ const BOOLEAN_ATTRIBUTES = new Set([
 // be a React alias (className, htmlFor, …) or need lowercasing.
 const RE_HAS_UPPER = /[A-Z]/;
 
-// Reject attribute names that can break out of a tag: whitespace, "'<>/=\`, control chars.
-// A valid name consists entirely of characters NOT in the forbidden set.
+// Reject attribute names that can break out of a tag: whitespace, `"`, `'`,
+// `<`, `>`, `/`, `=`, control chars — the HTML spec's forbidden set. A backtick
+// is *not* in it: it is legal in a name, and only ever acted as a quote in
+// attribute *values*, in browsers no longer shipped. `isValidTag` is stricter
+// (it also rejects `` ` `` and `\`) because a tag name is a wider surface.
 const RE_INVALID_ATTR_NAME = /[\s"'<>/=\p{C}]/u;
 
 export function isValidAttrName(name: string): boolean {
-  return !RE_INVALID_ATTR_NAME.test(name);
+  // The empty name emits ` ="v"`, which a parser reads as an attribute called
+  // `="v"` — no injection, but nothing anyone wrote either.
+  return name.length > 0 && !RE_INVALID_ATTR_NAME.test(name);
 }
 
 // Resolving a name means four lookups depending only on the key (alias gate,
@@ -295,6 +300,33 @@ export function attrMeta(key: string): AttrMeta {
 // No dedicated branch for event handlers: a string serializes escaped, a
 // function throws, same as any other attribute. Discouraging the practice is
 // `@vincle/eslint-plugin`'s job, not the hot path's.
+
+/**
+ * One message for both serialization paths (`serializeAttr`, `buildAttrs`), so
+ * the precompile and dynamic routes can never drift apart on what a function
+ * attribute means and how to fix it.
+ */
+function functionAttrMessage(key: string): string {
+  return (
+    `[vincle/core] Attribute "${key}" received a function as value — functions are not serializable to HTML. ` +
+    "If this is an event handler, note that vincle renders on the server: handlers cannot ship in markup. " +
+    "Pass a string, call the function first, or drop the attribute."
+  );
+}
+
+/**
+ * A `RawString` used as an *attribute* value, emitted verbatim except for `"`.
+ *
+ * `raw()` means "trusted markup", which is not the same promise as "trusted
+ * attribute value": the one character a double-quoted value cannot hold is the
+ * quote that ends it, and `title={raw('" onmouseover="alert(1)')}` closed the
+ * attribute and reopened the tag. Escaping only that one keeps `raw()` verbatim
+ * where it counts — an attribute value is entity-decoded before it reaches CSS,
+ * JS or the DOM, so `style={raw('font-family:"Foo"')}` still means what it says.
+ */
+function rawAttrValue(value: string): string {
+  return value.includes('"') ? value.replaceAll('"', "&quot;") : value;
+}
 
 /**
  * Serialize one attribute value to a `name="value"` fragment, with no leading
@@ -347,16 +379,13 @@ export function serializeAttr(key: string, value: unknown): RawString {
   // A function can't be serialized; discouraging it is
   // `no-unsafe-event-handlers`'s job, not a per-render console.warn here.
   if (type === "function") {
-    throw new Error(
-      `[vincle/core] Attribute "${key}" received a function as value. ` +
-        "Functions are not serializable to HTML. Did you forget to call a component or pass a string?",
-    );
+    throw new Error(functionAttrMessage(key));
   }
 
   // Checked before style/class: a RawString is an object, so testing it after
   // would iterate its own keys as if it were a style bag.
   if (value instanceof RawString) {
-    return new RawString(`${attrName}="${value.value}"`);
+    return new RawString(`${attrName}="${rawAttrValue(value.value)}"`);
   }
 
   // Only a plain object is a style bag — a class instance (`style={new Date()}`)
@@ -390,6 +419,10 @@ export function buildAttrs(attrs: Record<string, unknown>): string | Promise<str
   let out = "";
 
   for (const key in attrs) {
+    // Own properties only. `for…in` walks the prototype, so an enumerable
+    // property on `Object.prototype` — what a prototype-pollution bug in the
+    // application writes — became an attribute on every element rendered.
+    if (!Object.hasOwn(attrs, key)) continue;
     if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
       continue;
     const meta = attrMeta(key);
@@ -427,10 +460,7 @@ export function buildAttrs(attrs: Record<string, unknown>): string | Promise<str
     }
 
     if (type === "function") {
-      throw new Error(
-        `[vincle/core] Attribute "${key}" received a function as value. ` +
-          "Functions are not serializable to HTML. Did you forget to call a component or pass a string?",
-      );
+      throw new Error(functionAttrMessage(key));
     }
 
     // Restarts fully async rather than resuming the loop: two passes on a rare
@@ -441,7 +471,7 @@ export function buildAttrs(attrs: Record<string, unknown>): string | Promise<str
     // Before style/class: a RawString is an object, so testing it after would
     // iterate its own keys as if it were a style bag.
     if (value instanceof RawString) {
-      out += ` ${attrName}="${value.value}"`;
+      out += ` ${attrName}="${rawAttrValue(value.value)}"`;
       continue;
     }
 
@@ -478,6 +508,7 @@ export function buildAttrs(attrs: Record<string, unknown>): string | Promise<str
 async function buildAttrsAsync(attrs: Record<string, unknown>): Promise<string> {
   const resolved: Record<string, unknown> = {};
   for (const key in attrs) {
+    if (!Object.hasOwn(attrs, key)) continue;
     const value = attrs[key];
     resolved[key] = value instanceof Promise ? await value : value;
   }
@@ -526,12 +557,24 @@ const RE_UNSAFE_STYLE_VALUE = /[\\;\p{Cc}]/u;
 const RE_STYLE_VALUE_CONTROLS = /\p{Cc}/u;
 const RE_STYLE_VALUE_ESCAPE = /[\\;]/g;
 
+/**
+ * A style property name, kebab-cased — with the one vendor prefix `camelToKebab`
+ * cannot reach: `ms` is the only one spelled lowercase, so `msFlexAlign` came out
+ * `ms-flex-align` instead of `-ms-flex-align`. Same rule as React's
+ * `hyphenateStyleName`; `WebkitBoxOrient` and `--custom-prop` are already right.
+ */
+function styleProp(key: string): string {
+  const kebab = camelToKebab(key);
+  return kebab.startsWith("ms-") ? "-" + kebab : kebab;
+}
+
 function styleToString(obj: Record<string, string | number | null | undefined>): string {
   let out = "";
   for (const key in obj) {
+    if (!Object.hasOwn(obj, key)) continue; // same prototype rule as `buildAttrs`
     const value = obj[key];
     if (value === null || value === undefined) continue;
-    const prop = camelToKebab(key);
+    const prop = styleProp(key);
     if (RE_INVALID_STYLE_PROP.test(prop)) continue;
     const str = typeof value === "string" ? value : String(value);
     if (RE_UNSAFE_STYLE_VALUE.test(str)) {

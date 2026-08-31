@@ -10,6 +10,7 @@ import {
 import type { FlowConfig } from "./types.js";
 
 import { createAssetState, createSuppressedAssetState, type AssetState } from "./assets.js";
+import { assertFlowConfig, PREFIX } from "./config.js";
 import { createTemplateStore, type TemplateEntry, type TemplateStore } from "./template-store.js";
 
 export type { FlowConfig } from "./types.js";
@@ -51,8 +52,9 @@ export function renderPlaceholder(
   const { config } = useContext(Flow);
   if (!config.adapter) {
     throw new Error(
-      "[vincle/flow] renderPlaceholder requires an adapter. " +
-        "Pass { adapter: ... } to renderToStatic or use an adapter with renderToStream.",
+      `${PREFIX} renderPlaceholder("${id}"): no adapter configured — a placeholder needs an adapter ` +
+        "to emit its deferred-fragment markup. Pass { adapter: ... } to renderToStatic, " +
+        "or render through renderToStream() with an adapter.",
     );
   }
   const resolvedSrc = src ?? (config.mode === "static" ? config.generatePath(id) : null);
@@ -60,6 +62,8 @@ export function renderPlaceholder(
 }
 
 export function initFlow(config: FlowConfig): void {
+  // The funnel for every flow entry point: a wrong config stops here, at setup.
+  assertFlowConfig(config);
   let counter = 0;
   const store = createTemplateStore(config);
   const assets = createAssetState();

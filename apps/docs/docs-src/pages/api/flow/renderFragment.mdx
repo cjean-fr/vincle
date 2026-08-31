@@ -33,6 +33,11 @@ function renderFragment(
 | `timeout`      | `number`                  | —                                      | Forwarded to the underlying `<Template>`           |
 | `onError`      | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | — | Forwarded to the underlying `<Template>`   |
 
+**Options are validated up front** — `adapter` is required, and `timeout` /
+`onError` must be well-formed. A misconfiguration fails at the call with a
+message prefixed `[vincle/flow]` that names the option, the offending value,
+and the fix. See [Error handling](/api/core/error-handling).
+
 ## Usage
 
 <CodeExample src="flow/render-fragment.tsx" />

@@ -1,5 +1,3 @@
-import { escapeContent } from "@vincle/core/html";
-
 interface SearchDocument {
   url: string;
   title: string;
@@ -9,6 +7,12 @@ interface SearchDocument {
 interface SearchHit {
   document: SearchDocument;
   score: number;
+}
+
+/** A run of result text: plain, or the part the query matched. */
+interface Segment {
+  text: string;
+  marked: boolean;
 }
 
 let index: SearchDocument[] | null = null;
@@ -264,7 +268,7 @@ function createResultItem(data: {
   index: number;
   url: string;
   title: string;
-  excerpt: string;
+  excerpt: Segment[];
   query: string;
 }) {
   const item = document.createElement("li");
@@ -279,18 +283,18 @@ function createResultItem(data: {
 
   const title = document.createElement("span");
   title.className = "font-medium text-sm text-gray-900 dark:text-gray-100";
-  appendExcerpt(title, highlightTitle(data.title, data.query));
+  appendSegments(title, highlightTitle(data.title, data.query));
 
   const excerpt = document.createElement("span");
   excerpt.className = "text-xs text-gray-500 dark:text-gray-400";
-  appendExcerpt(excerpt, data.excerpt);
+  appendSegments(excerpt, data.excerpt);
 
   link.append(title, excerpt);
   item.append(link);
   return item;
 }
 
-function snippet(text: string, query: string, radius = 50): string {
+function snippet(text: string, query: string, radius = 50): Segment[] {
   const terms = query.trim().split(/\s+/).filter(Boolean);
   const lower = text.toLowerCase();
   const match = terms
@@ -299,22 +303,26 @@ function snippet(text: string, query: string, radius = 50): string {
     .toSorted((a, b) => a.idx - b.idx)[0];
 
   if (!match) {
-    return escapeContent(text.slice(0, 120)) + (text.length > 120 ? "..." : "");
+    return [
+      { text: text.slice(0, 120), marked: false },
+      ...(text.length > 120 ? [{ text: "...", marked: false }] : []),
+    ];
   }
 
   const start = Math.max(0, match.idx - radius);
   const end = Math.min(text.length, match.idx + match.term.length + radius);
-  const prefix = start > 0 ? "..." : "";
-  const suffix = end < text.length ? "..." : "";
-  const before = escapeContent(text.slice(start, match.idx));
-  const matchedText = escapeContent(text.slice(match.idx, match.idx + match.term.length));
-  const after = escapeContent(text.slice(match.idx + match.term.length, end));
-  return `${prefix}${before}<mark>${matchedText}</mark>${after}${suffix}`;
+  const segments: Segment[] = [];
+  if (start > 0) segments.push({ text: "...", marked: false });
+  segments.push({ text: text.slice(start, match.idx), marked: false });
+  segments.push({ text: text.slice(match.idx, match.idx + match.term.length), marked: true });
+  segments.push({ text: text.slice(match.idx + match.term.length, end), marked: false });
+  if (end < text.length) segments.push({ text: "...", marked: false });
+  return segments;
 }
 
-function highlightTitle(text: string, query: string): string {
+function highlightTitle(text: string, query: string): Segment[] {
   const terms = query.trim().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return escapeContent(text);
+  if (terms.length === 0) return [{ text, marked: false }];
 
   const lower = text.toLowerCase();
   const matches: { start: number; end: number }[] = [];
@@ -338,31 +346,31 @@ function highlightTitle(text: string, query: string): string {
     }
   }
 
-  let result = "";
+  const segments: Segment[] = [];
   let cursor = 0;
   for (const { start, end } of merged) {
-    result += escapeContent(text.slice(cursor, start));
-    result += `<mark>${escapeContent(text.slice(start, end))}</mark>`;
+    segments.push({ text: text.slice(cursor, start), marked: false });
+    segments.push({ text: text.slice(start, end), marked: true });
     cursor = end;
   }
-  result += escapeContent(text.slice(cursor));
-  return result;
+  segments.push({ text: text.slice(cursor), marked: false });
+  return segments;
 }
 
-function appendExcerpt(target: HTMLElement, html: string): void {
-  const parsed = new DOMParser().parseFromString(html, "text/html");
-  for (const node of parsed.body.childNodes) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      target.append(document.createTextNode(node.textContent ?? ""));
-      continue;
-    }
-    if (node instanceof HTMLElement && node.tagName === "MARK") {
+/**
+ * Builds the result DOM directly from segments. No HTML string intermediate:
+ * the segment list is the only grammar, `textContent` owns the escaping, and
+ * there is no parser to keep in trust with the emitter.
+ */
+function appendSegments(target: HTMLElement, segments: Segment[]): void {
+  for (const seg of segments) {
+    if (seg.marked) {
       const mark = document.createElement("mark");
       mark.className = "bg-yellow-200 dark:bg-yellow-800 rounded px-0.5";
-      mark.textContent = node.textContent;
+      mark.textContent = seg.text;
       target.append(mark);
-    } else {
-      target.append(document.createTextNode(node.textContent ?? ""));
+    } else if (seg.text) {
+      target.append(document.createTextNode(seg.text));
     }
   }
 }

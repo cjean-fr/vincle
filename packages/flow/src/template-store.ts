@@ -1,5 +1,6 @@
 import type { FlowConfig, MergeType, OnError, TemplateContent } from "./types.js";
 
+import { PREFIX, assertTimeout } from "./config.js";
 import { assertFragmentId } from "./utils.js";
 
 /**
@@ -42,17 +43,24 @@ export function createTemplateStore(config: FlowConfig): TemplateStore {
   const store: TemplateStore = {
     register(id, entry) {
       assertFragmentId(id, "Template");
+      assertTimeout(entry.timeout, `<Template target="${id}">`);
       if (!config.adapter) {
         throw new Error(
-          "Template requires an adapter. " +
-            "Pass { adapter: ... } to renderToStatic " +
-            "or use an adapter with renderToStream.",
+          `${PREFIX} <Template target="${id}">: Template requires an adapter — without one there ` +
+            "is no placeholder to render and no patch to emit. Pass { adapter: ... } to renderToStatic, " +
+            "or render through renderToStream/serve with an adapter " +
+            "(TurboAdapter, NativeAdapter, HtmxAdapter, WebPlatformAdapter, EsiAdapter).",
         );
       }
       if (!merges.includes(entry.merge)) {
+        const supported =
+          merges.length > 0
+            ? `it supports: ${merges.join(", ")}`
+            : "it supports no merges (static output only)";
         throw new Error(
-          `Template: merge="${entry.merge}" is not supported by this adapter ` +
-            `(supports: ${merges.join(", ")}).`,
+          `${PREFIX} <Template target="${id}" merge="${entry.merge}">: ` +
+            `merge="${entry.merge}" is not supported by this adapter — ${supported}. ` +
+            `Pick one of those, or use an adapter that supports "${entry.merge}".`,
         );
       }
       map.set(id, entry);

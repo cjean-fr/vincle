@@ -265,7 +265,11 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
     return collectAsyncIterable(child, (chunk) => renderRawtextChild(chunk, rawtextTag));
   }
   if (isIterable(child)) return renderChildrenAsync(Array.from(child), rawtextTag);
-  return escapeRawTagContent(valueToText(child), rawtextTag);
+  // `String`, not `valueToText`: the latter HTML-escapes, which inside rawtext
+  // is the one thing the whole design rejects — an entity is never decoded
+  // there, so `<script>{obj}</script>` emitted `&lt;` into the JavaScript.
+  // Every earlier branch has already taken null, boolean, RawString and VNode.
+  return escapeRawTagContent(String(child), rawtextTag);
 }
 
 /**

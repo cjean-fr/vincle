@@ -59,6 +59,9 @@ const ViteContext: ContextKey<ViteScope> = context<ViteScope>("@vincle/vite:scop
  * Load and parse a Vite manifest from disk. Returns `null` if the file does
  * not exist — that's how dev-mode setups signal "no manifest yet".
  *
+ * A file that exists but does not hold a Vite manifest is a configuration
+ * problem, not a "dev mode" signal — it throws, naming the file.
+ *
  * @example
  * const manifest = await loadViteManifest("docs/assets/.vite/manifest.json");
  * // manifest is null in dev (file absent), the parsed object after `vite build`.
@@ -69,8 +72,36 @@ export async function loadViteManifest(path: string): Promise<ViteManifest | nul
   } catch {
     return null;
   }
-  const text = await readFile(path, "utf-8");
-  return JSON.parse(text) as ViteManifest;
+  let text: string;
+  try {
+    text = await readFile(path, "utf-8");
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `[vincle/vite-plugin] loadViteManifest: could not read the manifest at "${path}" — ${reason}. ` +
+        "Check the path points at the file `vite build` wrote (.vite/manifest.json by default).",
+      { cause: err },
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `[vincle/vite-plugin] loadViteManifest: the manifest at "${path}" is not valid JSON — ${reason}. ` +
+        "Re-run `vite build`; the file may be stale or truncated.",
+      { cause: err },
+    );
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(
+      `[vincle/vite-plugin] loadViteManifest: the manifest at "${path}" must be a JSON object ` +
+        `mapping source entries to chunks, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}. ` +
+        "Re-run `vite build`; the file may be stale or truncated.",
+    );
+  }
+  return parsed as ViteManifest;
 }
 
 /**
@@ -78,6 +109,12 @@ export async function loadViteManifest(path: string): Promise<ViteManifest | nul
  * before rendering, with the loaded manifest (production) or `null` (dev).
  */
 export function setVite(manifest: ViteManifest | null, options?: { base?: string }): void {
+  if (options?.base !== undefined && typeof options.base !== "string") {
+    throw new Error(
+      `[vincle/vite-plugin] setVite: base must be a string URL prefix, e.g. { base: "/cdn/" }, ` +
+        `got ${typeof options.base}. Omit it to use the default "/".`,
+    );
+  }
   setContext(ViteContext, {
     manifest,
     base: options?.base ?? "/",
@@ -106,13 +143,67 @@ export function assetUrl(entry: string): string {
   return resolveUrl(useContext(ViteContext), entry);
 }
 
+/**
+ * One message for both resolution paths (`assetUrl`, `<Asset>`), so the
+ * precompile and component routes can never drift apart on what a missing
+ * entry means. Suggests the closest known entry when one is near.
+ */
+function missingEntryMessage(entry: string, manifest: ViteManifest): string {
+  const keys = Object.keys(manifest);
+  const near = suggestEntry(entry, keys);
+  return (
+    `[vincle/vite-plugin] Vite entry "${entry}" not found in manifest. ` +
+    (near ? `Did you mean "${near}"? ` : "") +
+    "The manifest only lists files Vite bundles — the file must be imported by (or referenced from) " +
+    "an entry point, and the manifest must be current (re-run `vite build`). " +
+    `Known entries: ${keys.length > 0 ? keys.join(", ") : "(none)"}.`
+  );
+}
+
+/** Closest manifest key by edit distance, when it is close enough to be a typo. */
+function suggestEntry(entry: string, keys: string[]): string | null {
+  const lower = entry.toLowerCase();
+  const caseMatch = keys.find((k) => k.toLowerCase() === lower);
+  if (caseMatch) return caseMatch;
+  let best: string | null = null;
+  let bestDist = Infinity;
+  for (const key of keys) {
+    const d = levenshtein(lower, key.toLowerCase());
+    if (d < bestDist) {
+      bestDist = d;
+      best = key;
+    }
+  }
+  const limit = Math.max(2, Math.floor(entry.length * 0.25));
+  return best !== null && bestDist <= limit ? best : null;
+}
+
+function levenshtein(a: string, b: string): number {
+  // Classic two-row DP. Cold path only — it runs to build an error message.
+  if (a === b) return 0;
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev: number[] = [];
+  let curr: number[] = [];
+  for (let j = 0; j <= n; j++) prev.push(j);
+  for (let i = 1; i <= m; i++) {
+    curr = [i];
+    for (let j = 1; j <= n; j++) {
+      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+      curr.push(Math.min(prev[j]! + 1, curr[j - 1]! + 1, prev[j - 1]! + cost));
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n]!;
+}
+
 function resolveUrl(scope: ViteScope, entry: string): string {
   if (scope.manifest === null) return `${scope.base}${entry}`;
   const chunk = scope.manifest[entry];
   if (!chunk) {
-    throw new Error(
-      `[vincle/vite-plugin] entry "${entry}" not found in manifest. Known entries: ${Object.keys(scope.manifest).join(", ")}`,
-    );
+    throw new Error(missingEntryMessage(entry, scope.manifest));
   }
   return `${scope.base}${chunk.file}`;
 }
@@ -156,9 +247,7 @@ function resolveProd(scope: ViteScope, entry: string): JSX.Element {
   const manifest = scope.manifest!;
   const chunk = manifest[entry];
   if (!chunk) {
-    throw new Error(
-      `[vincle/vite-plugin] entry "${entry}" not found in manifest. Known entries: ${Object.keys(manifest).join(", ")}`,
-    );
+    throw new Error(missingEntryMessage(entry, manifest));
   }
 
   const out: JSX.Element[] = [];

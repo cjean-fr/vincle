@@ -6,5 +6,5 @@
   // `nodejs_compat` est le sujet, pas un détail de configuration : c'est lui qui
   // donne `AsyncLocalStorage` à workerd, donc lui qui décide si `@vincle/core`
   // isole les scopes concurrents ou refuse de les départager.
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
 }

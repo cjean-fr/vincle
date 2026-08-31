@@ -11,6 +11,8 @@
  *
  * @module
  */
+import type { JSX, Renderable } from "./index.js";
+
 import { Fragment, raw } from "./index.js";
 
 // ── Must compile: everything `renderNode` knows how to render ─────────────
@@ -25,6 +27,14 @@ const Arr = () => [<div>a</div>, <div>b</div>];
 const Nested = () => [["a", 1], [<i>b</i>]];
 const Raw = () => raw("<b>déjà échappé</b>");
 const Async = async () => <div>tard</div>;
+// The same component with its return type written down. `JSX.Element` is itself
+// awaitable, so these are promises of promises; inference collapsed the first
+// form, and every annotated one was a type error until `ElementType` widened.
+async function AsyncAnnotated(): Promise<JSX.Element> {
+  return <div>tard</div>;
+}
+const AsyncRenderable = async (): Promise<Renderable> => <div>tard</div>;
+declare const AsyncDeclared: () => Promise<Renderable>;
 const Gen = async function* () {
   yield <li>a</li>;
   yield "b";
@@ -47,6 +57,9 @@ export const accepted = [
   <Nested />,
   <Raw />,
   <Async />,
+  <AsyncAnnotated />,
+  <AsyncRenderable />,
+  <AsyncDeclared />,
   <Gen />,
   <Compose label="x" />,
   <div>élément simple</div>,
