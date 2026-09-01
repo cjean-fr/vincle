@@ -19,9 +19,9 @@ export class VNode {
    * Validates a string tag, because this class is exported as a value: the
    * precompile contract needs `instanceof VNode`, and an exported class is a
    * constructor whoever holds it may call. The tree walk does not re-check the
-   * tag — so a name that got in here unexamined reached the document verbatim,
-   * closing tags and all. The check costs one call per element, the same one
-   * `jsx()` used to make above the fold/VNode fork.
+   * tag, so a name that got in here unexamined would reach the document
+   * verbatim, closing tags and all. One call per element; the static fold, the
+   * other way out of `jsx()`, validates for itself.
    */
   constructor(
     tag: string | ((props: any) => any),

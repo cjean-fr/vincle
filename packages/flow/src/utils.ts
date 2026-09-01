@@ -25,10 +25,9 @@ export function assertFragmentId(id: string, label: string): void {
  *   3. just after a leading doctype — a fragment shell that still declares one;
  *   4. at the front — a bare fragment, nothing to preserve.
  *
- * Cases 2 and 3 used to be one `html.startsWith("<html")` test, and a shell
- * that opened with a doctype matched neither branch: the content was prepended
- * *before* the doctype. Nothing may precede a doctype — a browser that sees
- * markup first ignores it and renders the page in quirks mode.
+ * Case 3 is why a leading doctype is matched on its own rather than folded
+ * into case 2: nothing may precede a doctype — a browser that sees markup
+ * first ignores it and renders the page in quirks mode.
  */
 export function injectIntoHead(html: string, content: string): string {
   const closingHead = html.match(/<\/head\s*>/i);

@@ -55,11 +55,11 @@ export namespace JSX {
   /**
    * Real attribute types per element, plus an open door for custom elements.
    *
-   * This used to be `{ [K in string]: Record<string, unknown> }` — every element
-   * accepting every attribute, so `<dvi clas="x" onCilck={f}/>` compiled. The
-   * machinery to do it properly already sat unused in `types.ts`, and
-   * `@vincle/flow` was already augmenting `React.JSX.IntrinsicElements` expecting
-   * it to flow through here. It does now.
+   * Per element rather than `Record<string, unknown>` for all of them, so
+   * `<dvi clas="x" onCilck={f}/>` is an error and not an element that accepts
+   * anything. The tables come from React, which is also what lets an
+   * augmentation of `React.JSX.IntrinsicElements` — `@vincle/flow` declares one
+   * — flow through here.
    */
   export type IntrinsicElements = IntrinsicElementsFromReact & CustomElements;
 
