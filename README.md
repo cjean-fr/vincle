@@ -6,11 +6,11 @@ Monorepo of high-performance, type-safe tools built around JSX-to-HTML rendering
 
 ### Core
 
-| Package                                         | Description                                                                                                       |
-| :---------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
-| [`@vincle/core`](./packages/core)               | JSX-to-HTML string renderer. Zero dependencies.                                                                   |
+| Package                                         | Description                                                                                                                   |
+| :---------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------- |
+| [`@vincle/core`](./packages/core)               | JSX-to-HTML string renderer. Zero dependencies.                                                                               |
 | [`@vincle/flow`](./packages/flow)               | Deferred fragments, streaming, and DOM patching — `<Slot>`, `<Template>`, `<Include>` + Turbo / HTMX / Native / ESI adapters. |
-| [`@vincle/vite-plugin`](./packages/vite-plugin) | Vite asset integration — `<Asset>`, `assetUrl`, manifest resolution.                                              |
+| [`@vincle/vite-plugin`](./packages/vite-plugin) | Vite asset integration — `<Asset>`, `assetUrl`, manifest resolution.                                                          |
 
 ### Tooling
 
@@ -22,9 +22,9 @@ Monorepo of high-performance, type-safe tools built around JSX-to-HTML rendering
 
 ### Apps (internal)
 
-| App                   | Description                            |
-| :-------------------- | :------------------------------------- |
-| [`docs`](./apps/docs) | Documentation site for `@vincle/core`. |
+| App                     | Description                                                          |
+| :---------------------- | :------------------------------------------------------------------- |
+| [`docs`](./apps/docs)   | Documentation site for `@vincle/core`.                               |
 | [`bench`](./apps/bench) | Benchmarks vs @kitajs/html, React, Preact, hono/jsx + CI ratio gate. |
 
 ## Development

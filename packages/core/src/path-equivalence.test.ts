@@ -110,6 +110,22 @@ function genLeaf(r: () => number): unknown {
   return "";
 }
 
+/**
+ * Does this element throw its children away?
+ *
+ * `dangerouslySetInnerHTML` replaces them, so children generated under one are
+ * built and then dropped — and *built* is where the fold decides. A subtree the
+ * fold refuses at construction (a void element carrying content, an invalid tag)
+ * but the walk never renders has no single right answer: the eager path has
+ * already seen it, the lazy path never will. That is a property of the two
+ * models, not a hole between them, so the generator does not build such trees —
+ * it would compare a construction-time refusal against a render that skipped the
+ * offending node.
+ */
+function discardsChildren(props: Record<string, unknown>): boolean {
+  return props["dangerouslySetInnerHTML"] !== undefined;
+}
+
 /** Build a child eagerly with `h`, consuming `r` at build time (never at render). */
 function gen(h: Builder, r: () => number, depth: number): unknown {
   if (depth <= 0) return genLeaf(r);
@@ -155,20 +171,22 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   }
 
   if (roll < 0.68) {
-    // Void element — with children as often as without.
+    // Void element — with children that render to nothing as often as without.
     //
     // Generating them childless only was how the fold and the tree-walk drifted
-    // unnoticed: `serializeElement` decides void handling from a `hasChildren`
-    // flag, and the two callers computed it differently (`!!children` vs
-    // `children !== undefined`), so every *falsy* child diverged —
-    // `<img>{0}</img>` folded to `<img>` and walked to `<img>0</img>`.
-    // The falsy leaves below are the ones that caught it.
+    // unnoticed: `serializeElement` used to decide void handling from a
+    // `hasChildren` flag its two callers computed differently (`!!children` vs
+    // `children !== undefined`), so every *falsy* child diverged. The children
+    // below are exactly that shape, and the one a conditional child takes.
+    //
+    // Content inside a void element is refused by both paths, which is a
+    // separate property with its own tests below: an arbitrary child here would
+    // put two refusals in one tree, and the order they are found in is a
+    // difference between eager construction and document-order rendering, not
+    // between the two serializers.
     const props = randProps(r);
-    const roll2 = r();
-    if (roll2 < 0.25) {
-      props["children"] = pick([0, "", false, null, undefined, 0n], r);
-    } else if (roll2 < 0.5) {
-      props["children"] = genLeaf(r);
+    if (!discardsChildren(props) && r() < 0.5) {
+      props["children"] = pick(["", false, null, undefined, []], r);
     }
     return h(pick(VOID, r), props);
   }
@@ -182,9 +200,44 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   const tag = pick(TAGS, r);
   const props = randProps(r);
   const nKids = Math.floor(r() * 4);
-  props["children"] =
-    nKids === 1 ? gen(h, r, depth - 1) : Array.from({ length: nKids }, () => gen(h, r, depth - 1));
+  if (!discardsChildren(props)) {
+    props["children"] =
+      nKids === 1
+        ? gen(h, r, depth - 1)
+        : Array.from({ length: nKids }, () => gen(h, r, depth - 1));
+  }
   return h(tag, props);
+}
+
+/**
+ * What a path *did*, as one comparable string: the HTML, or the refusal.
+ *
+ * The build is inside the try because the fold happens at `jsx()` time — a void
+ * element carrying content is refused while the tree is being constructed, where
+ * the tree walk refuses the same tree at render time. Comparing only successful
+ * renders would let the two paths disagree on which trees are legal at all.
+ */
+async function outcome(build: () => unknown): Promise<string> {
+  try {
+    return `html:${await renderToString(build())}`;
+  } catch (error) {
+    return `refused:${bareMessage((error as Error).message)}`;
+  }
+}
+
+/**
+ * The refusal without its component annotation.
+ *
+ * `[Profile] …` is added when an error arrives as a *component's* rejection, and
+ * the fold is what decides that shape: a promised attribute makes the folded
+ * subtree a `Promise`, which the component then returns, where the walk returns a
+ * `VNode` and the error surfaces outside the annotated call. That is a property
+ * of the error path, not of the two serializers this test compares — the refusal
+ * itself is what has to match.
+ */
+function bareMessage(message: string): string {
+  const at = message.indexOf("[vincle/");
+  return at === -1 ? message : message.slice(at);
 }
 
 describe("path equivalence: fold ≡ tree-walk", () => {
@@ -192,8 +245,8 @@ describe("path equivalence: fold ≡ tree-walk", () => {
     const failures: { seed: number; fold: string; treeWalk: string }[] = [];
     for (let seed = 1; seed <= 1000; seed++) {
       const [fold, treeWalk] = await Promise.all([
-        renderToString(gen(jsx, mulberry32(seed), 5)),
-        renderToString(gen(vnodeOf, mulberry32(seed), 5)),
+        outcome(() => gen(jsx, mulberry32(seed), 5)),
+        outcome(() => gen(vnodeOf, mulberry32(seed), 5)),
       ]);
       if (fold !== treeWalk) failures.push({ seed, fold, treeWalk });
     }
@@ -206,5 +259,40 @@ describe("path equivalence: fold ≡ tree-walk", () => {
       );
     }
     expect(failures.length).toBe(0);
+  });
+});
+
+describe("a void element carrying children", () => {
+  // TypeScript accepts `<br>{x}</br>` — `@types/react` does not forbid children
+  // on a void tag — so this input is reachable, and it has no valid HTML form: a
+  // parser drops the closing tag and reparents the content, turning `<br>x</br>`
+  // into two breaks and a text node. Both paths refuse it, with one message.
+  //
+  // The falsy children matter as much as the refusal: they are the shape a
+  // conditional child takes, and they must still render the bare element.
+  test("content inside a void element is refused by the fold", () => {
+    expect(() => jsx("br", { children: "x" })).toThrow(/<br> is a void element/);
+  });
+
+  test("…and by the tree walk, with the same message", async () => {
+    const fold = await outcome(() => jsx("br", { children: "x" }));
+    const walk = await outcome(() => jsx("br", { children: Promise.resolve("x") }));
+
+    expect(fold).toStartWith("refused:");
+    expect(walk).toBe(fold);
+  });
+
+  test("a child that renders to nothing is not content", async () => {
+    for (const child of ["", false, null, undefined, [], [null, false]]) {
+      expect(await renderToString(jsx("br", { children: child }))).toBe("<br>");
+    }
+    // `0` and `0n` are falsy but they are *text*, so they are content.
+    for (const child of [0, 0n]) {
+      expect(() => jsx("br", { children: child })).toThrow(/void element/);
+    }
+  });
+
+  test("…and an element with no children is unaffected", async () => {
+    expect(await renderToString(jsx("br", {}))).toBe("<br>");
   });
 });

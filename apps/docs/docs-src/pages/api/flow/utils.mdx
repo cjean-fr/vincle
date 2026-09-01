@@ -1,8 +1,5 @@
 ---
 title: Utils
-sidebar:
-  group: Flow API
-  order: 7
 ---
 
 # Utils
@@ -36,7 +33,7 @@ the pending fragment count.
 
 ```tsx
 function composeShell(
-  ...transforms: Array<((shell: string, ctx: ShellContext) => string) | undefined | null | false>,
+  ...transforms: Array<((shell: string, ctx: ShellContext) => string) | undefined | null | false>
 ): (shell: string, ctx: ShellContext) => string;
 ```
 

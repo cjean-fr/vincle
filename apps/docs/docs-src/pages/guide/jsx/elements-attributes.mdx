@@ -16,6 +16,28 @@ Any lowercase tag is rendered as an HTML element. Vincle knows which tags are
 
 Uppercase tags are treated as **components** (functions).
 
+### Content in a void element is refused
+
+`<img>{caption}</img>` type-checks — `@types/react` does not forbid children on
+a void tag — but it has no valid HTML form: a parser drops the closing tag and
+reparents the content, so the document stops being the one you wrote. Vincle
+throws instead:
+
+```
+[vincle/core] <img> is a void element and cannot have children, but content was
+rendered into it. …
+```
+
+A child that renders to nothing is not content, so the shape a conditional child
+takes is unaffected — `<br>{items.length > 0 && <b>x</b>}</br>` with an empty
+list still renders `<br>`. Fix the real case by moving the content out:
+
+```tsx
+<img src={src}>{caption}</img>       // ❌ throws
+<img src={src} alt={caption} />      // ✅
+<figure><img src={src} /><figcaption>{caption}</figcaption></figure>  // ✅
+```
+
 ## Attributes
 
 Attributes become HTML attributes. Most names pass through unchanged. A few

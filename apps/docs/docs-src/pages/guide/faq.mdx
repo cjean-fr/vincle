@@ -20,7 +20,7 @@ title: FAQ
         name: "How is Vincle different from React?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "React ships a virtual DOM, a reconciler, and a hydration contract — none of which help when the only output is a string. Vincle is built exclusively for server-side HTML generation: zero dependencies (~14 KB gzip), no virtual DOM, async-native rendering, security by default, and no client runtime.",
+          text: "React ships a virtual DOM, a reconciler, and a hydration contract — none of which help when the only output is a string. Vincle is built exclusively for server-side HTML generation: zero dependencies (under 10 KB gzip), no virtual DOM, async-native rendering, security by default, and no client runtime.",
         },
       },
       {
@@ -76,7 +76,7 @@ title: FAQ
         name: "What is the bundle size of Vincle?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "@vincle/core is approximately 14 KB gzipped with zero runtime dependencies. For comparison, react-dom/server is around 140 KB. The @vincle/flow package for streaming and fragments adds a few KB.",
+          text: "@vincle/core is under 10 KB gzipped with zero runtime dependencies — that is the whole package, every entry point included. For comparison, react-dom/server is around 140 KB. The @vincle/flow package for streaming and fragments adds under 7 KB on top of it.",
         },
       },
       {
@@ -123,7 +123,7 @@ contract. Vincle is built exclusively for server-side HTML generation:
 
 |                | Vincle                              | react-dom/server |
 | -------------- | ----------------------------------- | ---------------- |
-| Bundle size    | ~14 KB gzip                         | ~140 KB          |
+| Bundle size    | < 10 KB gzip                        | ~140 KB          |
 | Dependencies   | 0                                   | React runtime    |
 | Async          | Native `await`                      | Suspense-only    |
 | Virtual DOM    | None                                | Full             |
@@ -144,7 +144,7 @@ the component tree and don't need client-side interactivity.
 
 | Runtime                | Support | Notes                               |
 | ---------------------- | ------- | ----------------------------------- |
-| **Node.js 22+**       | ✅ Full | Native `AsyncLocalStorage`          |
+| **Node.js 22+**        | ✅ Full | Native `AsyncLocalStorage`          |
 | **Bun**                | ✅ Full | Node-compatible `AsyncLocalStorage` |
 | **Deno**               | ✅ Full | Node-compatible `AsyncLocalStorage` |
 | **Cloudflare Workers** | ✅ Full | Requires `nodejs_compat` flag       |
@@ -190,7 +190,7 @@ automatically sanitised:
 - **Attribute values** — `&`, `<`, `"` escaped (`>` isn't needed — it can't end a double-quoted value)
 - **URL attributes** — `javascript:` and `vbscript:` blocked; `data:` is blocked too, except image data URIs (`data:image/png`, `/jpeg`, `/gif`, `/webp`, `/avif`)
 - **Event handlers** — a function value throws; handler strings are escaped
-- **CSS values** — HTML-escaped, but not validated: a style *value* can still carry arbitrary declarations (`color: red; position: fixed`). Only property *names* are checked. Don't pass untrusted data into `style`.
+- **CSS values** — HTML-escaped, but not validated: a style _value_ can still carry arbitrary declarations (`color: red; position: fixed`). Only property _names_ are checked. Don't pass untrusted data into `style`.
 
 The only escape hatch is `raw()`, which is explicit and opt-in. See the
 [Security model](/guide/security) for the full details.
@@ -247,8 +247,8 @@ See the [Error handling API](/api/core/error-handling) page for details.
 
 | Package        | Size (gzip) | Dependencies        |
 | -------------- | ----------- | ------------------- |
-| `@vincle/core` | ~14 KB      | 0                   |
-| `@vincle/flow` | a few KB | 0 (depends on core) |
+| `@vincle/core` | < 10 KB     | 0                   |
+| `@vincle/flow` | < 7 KB      | 0 (depends on core) |
 
 No hidden dependencies, no runtime you don't need. Every byte is accounted
 for.
@@ -257,7 +257,8 @@ for.
 
 Vincle throws or blocks for:
 
-- **Invalid tag names** — throws a `TypeError` (fail fast; only reachable via a manual `jsx()` call)
+- **Invalid tag names** — throws a `TypeError`, at construction (a computed tag, or a hand-built `VNode`)
+- **Content in a void element** — throws a `TypeError`: `<img>{caption}</img>` has no valid HTML form
 - **Function-valued attributes** — throws (`on*` or not — a function has no HTML form)
 - **Missing context values** — throws when `useContext` is called before `setContext`
 - **Invalid URL schemes** — blocked and replaced with `#blocked`

@@ -300,3 +300,41 @@ describe("renderToStatic", () => {
     expect(html).toContain("MutationObserver"); // polyfill injected — a fragment exists
   });
 });
+
+describe("emitFragments across pages", () => {
+  // The site-generator shape: render a page, write its fragments, next page.
+  // `flushTemplates` tracks processed ids per call, so the store used to keep
+  // every earlier page's templates — page N re-emitted N fragments and replayed
+  // each lazy factory, which for a `(signal) => fetch(...)` means one refetch
+  // per remaining page.
+  it("emits only the current page's fragments, and runs each factory once", async () => {
+    let factoryCalls = 0;
+    const emitted: string[][] = [];
+
+    await renderToStatic(
+      async (ctx) => {
+        for (const page of ["one", "two", "three"]) {
+          await ctx.renderPage(() => (
+            <html>
+              <body>
+                <Template target={page}>
+                  {() => {
+                    factoryCalls++;
+                    return <b>{page}</b>;
+                  }}
+                </Template>
+              </body>
+            </html>
+          ));
+          const ids: string[] = [];
+          await ctx.emitFragments((id) => void ids.push(id));
+          emitted.push(ids);
+        }
+      },
+      { adapter: TurboAdapter },
+    );
+
+    expect(emitted).toEqual([["one"], ["two"], ["three"]]);
+    expect(factoryCalls).toBe(3);
+  });
+});

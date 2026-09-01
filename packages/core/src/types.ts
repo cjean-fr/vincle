@@ -1,5 +1,7 @@
 import type React from "react";
 
+import { invalidTagMessage, isValidTag } from "./tag.js";
+
 // ── VNode ──────────────────────────────────────────────────────────────────
 //
 // Defined here, not in `jsx-runtime.ts`, because `render.ts` (which owns the
@@ -13,11 +15,20 @@ export class VNode {
   readonly attrs: Record<string, unknown>;
   readonly children: unknown;
 
+  /**
+   * Validates a string tag, because this class is exported as a value: the
+   * precompile contract needs `instanceof VNode`, and an exported class is a
+   * constructor whoever holds it may call. The tree walk does not re-check the
+   * tag — so a name that got in here unexamined reached the document verbatim,
+   * closing tags and all. The check costs one call per element, the same one
+   * `jsx()` used to make above the fold/VNode fork.
+   */
   constructor(
     tag: string | ((props: any) => any),
     attrs: Record<string, unknown>,
     children: unknown,
   ) {
+    if (typeof tag === "string" && !isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
     this.tag = tag;
     this.attrs = attrs;
     this.children = children;

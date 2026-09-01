@@ -1,5 +1,5 @@
-import { on, type EventEmitter } from "node:events";
 import { Template } from "@vincle/flow";
+import { on, type EventEmitter } from "node:events";
 
 declare const priceFeed: EventEmitter; // emits "price" with { symbol, value }
 
@@ -10,7 +10,11 @@ function LivePrice() {
     <Template target="price">
       {async function* (signal) {
         for await (const [price] of on(priceFeed, "price", { signal })) {
-          yield <span>{price.symbol}: {price.value}</span>;
+          yield (
+            <span>
+              {price.symbol}: {price.value}
+            </span>
+          );
         }
       }}
     </Template>

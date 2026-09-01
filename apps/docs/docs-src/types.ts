@@ -5,13 +5,12 @@ export interface PageMeta {
   slug?: string;
   draft?: boolean;
   csp?: string;
-  sidebar?: {
-    label?: string;
-    order?: number;
-    group?: string;
-    hidden?: boolean;
-  };
 }
+
+// No `sidebar` here: label, order, grouping and hiding are decided by each
+// directory's `_meta.json` (see `lib/sidebar.ts`). A page-level copy was
+// declared and never read, and the two had already drifted — two pages claiming
+// `order: 2`, and a third order the sidebar did not use.
 
 export interface SidebarGroup {
   label: string;

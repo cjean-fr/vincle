@@ -16,8 +16,23 @@ const rules = {
   "no-global-jsx-namespace": noGlobalJsxNamespace,
 };
 
+/**
+ * One prefix, `@vincle`, everywhere.
+ *
+ * There were three: `meta.name` said `vincle`, `recommended` registered the
+ * plugin under `@vincle/core` — the name of the *renderer*, which is not an
+ * ESLint plugin at all — and the repo's own oxlint config used `vincle/`. A
+ * user who enabled `recommended` and then tried to override one rule with any
+ * of the other two spellings got "Could not find plugin".
+ *
+ * `@vincle` is ESLint's own convention for a package named
+ * `@vincle/eslint-plugin`: the prefix is the scope. It is what someone writes
+ * without reading the docs.
+ */
+const PREFIX = "@vincle";
+
 const plugin = {
-  meta: { name: "vincle" },
+  meta: { name: PREFIX },
   rules,
   configs: {} as Record<string, any>,
 };
@@ -25,16 +40,16 @@ const plugin = {
 const configs = {
   recommended: {
     plugins: {
-      "@vincle/core": plugin,
+      [PREFIX]: plugin,
     },
     rules: {
-      "@vincle/core/no-react-imports": "error",
-      "@vincle/core/no-react-hooks": "error",
-      "@vincle/core/no-unsafe-event-handlers": "warn",
-      "@vincle/core/no-javascript-urls": "error",
-      "@vincle/core/no-context": "error",
-      "@vincle/core/no-refs": "error",
-      "@vincle/core/no-global-jsx-namespace": "error",
+      [`${PREFIX}/no-react-imports`]: "error",
+      [`${PREFIX}/no-react-hooks`]: "error",
+      [`${PREFIX}/no-unsafe-event-handlers`]: "warn",
+      [`${PREFIX}/no-javascript-urls`]: "error",
+      [`${PREFIX}/no-context`]: "error",
+      [`${PREFIX}/no-refs`]: "error",
+      [`${PREFIX}/no-global-jsx-namespace`]: "error",
     },
   },
 };

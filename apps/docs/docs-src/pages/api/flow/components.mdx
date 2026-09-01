@@ -1,8 +1,5 @@
 ---
 title: Components
-sidebar:
-  group: Flow API
-  order: 1
 ---
 
 # Components
@@ -27,14 +24,14 @@ directly — see below.
 
 **Props:**
 
-| Prop       | Type                                                        | Default     | Description                                  |
-| ---------- | ----------------------------------------------------------- | ----------- | -------------------------------------------- |
-| `target`   | `string`                                                    | —           | Id the placeholder (and its later patch) is registered under |
-| `fallback` | `VNode`                                                     | —           | Content rendered in the placeholder          |
-| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | — | Content — plain JSX, a factory, or an async iterable |
-| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"` | `"replace"` | How content applies to the target            |
-| `timeout`  | `number`                                                    | —           | Per-fragment render timeout in ms            |
-| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | —        | Per-fragment error handler                   |
+| Prop       | Type                                                                                                                                                     | Default     | Description                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------ |
+| `target`   | `string`                                                                                                                                                 | —           | Id the placeholder (and its later patch) is registered under |
+| `fallback` | `VNode`                                                                                                                                                  | —           | Content rendered in the placeholder                          |
+| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | —           | Content — plain JSX, a factory, or an async iterable         |
+| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"`                                                                                              | `"replace"` | How content applies to the target                            |
+| `timeout`  | `number`                                                                                                                                                 | —           | Per-fragment render timeout in ms                            |
+| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void`                                                                                           | —           | Per-fragment error handler                                   |
 
 ## Slot
 
@@ -47,7 +44,7 @@ matching `Template` patches them.
 <CodeExample src="flow/fill-signal.tsx" />
 
 Every adapter renders a placeholder as an element (or marker) carrying that
-one id, and every adapter's patch resolves to the *first* match in the
+one id, and every adapter's patch resolves to the _first_ match in the
 document — the same rule HTML `id` uniqueness and `getElementById` already
 impose. So when pairing `Slot` with `Template`, `Slot` must come first, and
 `Template` should skip its own `fallback` — passing one there just renders a
@@ -55,9 +52,9 @@ second, dead placeholder with the same id right next to `Slot`'s live one.
 
 **Props:**
 
-| Prop       | Type     | Default | Description                                                    |
-| ---------- | -------- | ------- | -------------------------------------------------------------- |
-| `name`     | `string` | —       | Fragment id, required                            |
+| Prop       | Type     | Default | Description                                        |
+| ---------- | -------- | ------- | -------------------------------------------------- |
+| `name`     | `string` | —       | Fragment id, required                              |
 | `children` | `VNode`  | —       | Fallback content rendered immediately in the shell |
 
 ## Include
@@ -93,20 +90,20 @@ const Page = () => (
 
 **Style props:**
 
-| Prop       | Type                                       | Default | Description                     |
-| ---------- | ------------------------------------------ | ------- | ------------------------------- |
-| `name`     | `string`                                   | —       | Asset id, required, dedup key   |
-| `media`    | `string`                                   | —       | `media` attribute               |
-| `children` | `string \| (() => Awaitable<string>)`      | —       | CSS text, evaluated only if this occurrence emits |
+| Prop       | Type                                  | Default | Description                                       |
+| ---------- | ------------------------------------- | ------- | ------------------------------------------------- |
+| `name`     | `string`                              | —       | Asset id, required, dedup key                     |
+| `media`    | `string`                              | —       | `media` attribute                                 |
+| `children` | `string \| (() => Awaitable<string>)` | —       | CSS text, evaluated only if this occurrence emits |
 
 **Script props:**
 
-| Prop       | Type                                  | Default | Description                     |
-| ---------- | ------------------------------------- | ------- | ------------------------------- |
-| `name`     | `string`                              | —       | Asset id, required, dedup key   |
-| `src`      | `string`                              | —       | `src` attribute                 |
-| `module`   | `boolean`                             | `false` | Sets `type="module"`            |
-| `defer`    | `boolean`                             | `false` | Sets the `defer` attribute      |
+| Prop       | Type                                  | Default | Description                                        |
+| ---------- | ------------------------------------- | ------- | -------------------------------------------------- |
+| `name`     | `string`                              | —       | Asset id, required, dedup key                      |
+| `src`      | `string`                              | —       | `src` attribute                                    |
+| `module`   | `boolean`                             | `false` | Sets `type="module"`                               |
+| `defer`    | `boolean`                             | `false` | Sets the `defer` attribute                         |
 | `children` | `string \| (() => Awaitable<string>)` | —       | Inline JS, evaluated only if this occurrence emits |
 
 In static generation, standalone fragment files (`emitFragments`) suppress asset emission — the shell that includes them already carries the assets, so fragments are emitted without a duplicate `<style>`/`<script>` tag.
@@ -122,8 +119,8 @@ In static generation, standalone fragment files (`emitFragments`) suppress asset
 
 **Return types (for both forms):**
 
-| Return type            | Behaviour                                            |
-| ---------------------- | ---------------------------------------------------- |
-| A renderable JSX node  | One-shot patch — renders once and resolves           |
-| `Promise<JSX.Element>` | Resolves asynchronously, then patches in             |
+| Return type                  | Behaviour                                            |
+| ---------------------------- | ---------------------------------------------------- |
+| A renderable JSX node        | One-shot patch — renders once and resolves           |
+| `Promise<JSX.Element>`       | Resolves asynchronously, then patches in             |
 | `AsyncIterable<JSX.Element>` | A stream — one patch per item, as each item resolves |

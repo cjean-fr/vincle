@@ -1,8 +1,5 @@
 ---
 title: renderToFlowEvents
-sidebar:
-  group: Flow API
-  order: 6
 ---
 
 # renderToFlowEvents
@@ -33,11 +30,11 @@ runtime.
 
 `FlowEvent` is a discriminated union:
 
-| Event      | Shape                                     | Emitted when                                            |
-| ---------- | ----------------------------------------- | ------------------------------------------------------- |
-| `shell`    | `{ type: "shell"; html: string }`         | The page shell is fully rendered (one event)            |
+| Event      | Shape                                                              | Emitted when                                                                                         |
+| ---------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `shell`    | `{ type: "shell"; html: string }`                                  | The page shell is fully rendered (one event)                                                         |
 | `fragment` | `{ type: "fragment"; id: string; html: string; merge: MergeType }` | A deferred fragment is ready; `html` is the raw inner content, `merge` is that template's merge type |
-| `close`    | `{ type: "close"; html: string }`         | The closing `</body></html>` tags, after all fragments  |
+| `close`    | `{ type: "close"; html: string }`                                  | The closing `</body></html>` tags, after all fragments                                               |
 
 The shell is rendered completely before its event is emitted — it is never
 streamed progressively. Fragments follow as they resolve, one event each

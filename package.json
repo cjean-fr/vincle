@@ -26,9 +26,9 @@
       "shiki": "^4",
       "tailwindcss": "^4.3.3",
       "typescript": "^6.0.3",
-      "@typescript-eslint/parser": "^8.68.0",
-      "@typescript-eslint/utils": "^8.68.0",
-      "@typescript-eslint/rule-tester": "^8.68.0",
+      "@typescript-eslint/parser": "^8.69.0",
+      "@typescript-eslint/utils": "^8.69.0",
+      "@typescript-eslint/rule-tester": "^8.69.0",
       "unified": "^11",
       "vite": "^8.2.2",
       "vite-plugin-dts": "^5",
@@ -48,8 +48,7 @@
   "devDependencies": {
     "@oxc-project/types": "^0.139.0",
     "bun": "^1.4.0",
-    "lefthook": "^2.1.10",
-    "lint-staged": "^17.3.0",
+    "lefthook": "^2.1.12",
     "oxc-parser": "^0.139.0",
     "oxc-transform": "^0.139.0",
     "oxfmt": "^0.58.0",
@@ -59,9 +58,6 @@
   },
   "peerDependencies": {
     "typescript": "^6.0.3"
-  },
-  "lint-staged": {
-    "*": "oxfmt --no-error-on-unmatched-pattern"
   },
   "packageManager": "bun@1.3.14"
 }

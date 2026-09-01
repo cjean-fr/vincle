@@ -1,8 +1,5 @@
 ---
 title: renderToStatic
-sidebar:
-  group: Flow API
-  order: 4
 ---
 
 # renderToStatic
@@ -18,10 +15,7 @@ import { renderToStatic } from "@vincle/flow";
 function renderToStatic<T>(fn: (ctx: PureStaticContext) => T): Promise<T>;
 
 // With deferred fragments — adapter required
-function renderToStatic<T>(
-  fn: (ctx: StaticContext) => T,
-  options: StaticOptions,
-): Promise<T>;
+function renderToStatic<T>(fn: (ctx: StaticContext) => T, options: StaticOptions): Promise<T>;
 ```
 
 ## Options
@@ -40,15 +34,15 @@ value, and the fix. See [Error handling](/api/core/error-handling).
 
 ### PureStaticContext
 
-| Method       | Signature                                | Description                                   |
-| ------------ | ---------------------------------------- | --------------------------------------------- |
+| Method       | Signature                                      | Description                                   |
+| ------------ | ---------------------------------------------- | --------------------------------------------- |
 | `renderPage` | `(node: () => JSX.Element) => Promise<string>` | Renders a page returning the full HTML string |
 
 ### StaticContext
 
-| Method          | Signature                                                                  | Description                                              |
-| --------------- | -------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `renderPage`    | `(page: () => VNode) => Promise<string>`                                   | Renders a page returning the full HTML string            |
+| Method          | Signature                                                                                   | Description                                              |
+| --------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `renderPage`    | `(page: () => VNode) => Promise<string>`                                                    | Renders a page returning the full HTML string            |
 | `emitFragments` | `(emit: (id: string, url: string, html: string) => void \| Promise<void>) => Promise<void>` | Materializes deferred fragments, passes each to callback |
 
 ## Pure static

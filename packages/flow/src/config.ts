@@ -1,6 +1,6 @@
-import { ALL_MERGES } from "./adapters/shared.js";
-
 import type { FlowOptions } from "./types.js";
+
+import { ALL_MERGES } from "./adapters/shared.js";
 
 export const PREFIX = "[vincle/flow]";
 

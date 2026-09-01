@@ -7,6 +7,8 @@ import {
   resolveAttrName,
   serializeAttr,
 } from "./attrs.js";
+import { jsx } from "./jsx-runtime.js";
+import { renderToString } from "./render.js";
 import { raw } from "./types.js";
 
 // ── serializeAttr: the value taxonomy, pinned once ─────────────────────────
@@ -421,19 +423,19 @@ describe("an attribute name must name something", () => {
   });
 });
 
-describe("buildAttrs — the props object is read, not its prototype", () => {
-  // A prototype-pollution bug in the application is a primitive, not an
-  // exploit: it needs somewhere that *reads* a property it never wrote. A
-  // `for…in` over props was such a place, on every element of every page.
-  const polluted = <T>(key: string, value: unknown, fn: () => T): T => {
-    (Object.prototype as Record<string, unknown>)[key] = value;
-    try {
-      return fn();
-    } finally {
-      delete (Object.prototype as Record<string, unknown>)[key];
-    }
-  };
+// A prototype-pollution bug in the application is a primitive, not an
+// exploit: it needs somewhere that *reads* a property it never wrote. A
+// `for…in` over props was such a place, on every element of every page.
+const polluted = <T>(key: string, value: unknown, fn: () => T): T => {
+  (Object.prototype as Record<string, unknown>)[key] = value;
+  try {
+    return fn();
+  } finally {
+    delete (Object.prototype as Record<string, unknown>)[key];
+  }
+};
 
+describe("buildAttrs — the props object is read, not its prototype", () => {
   test("an inherited property is not an attribute", () => {
     expect(polluted("onload", "alert(1)", () => buildAttrs({ class: "ok" }))).toBe(' class="ok"');
   });
@@ -449,6 +451,42 @@ describe("buildAttrs — the props object is read, not its prototype", () => {
     expect(polluted("position", "fixed", () => buildAttrs({ style: { color: "red" } }))).toBe(
       ' style="color:red"',
     );
+  });
+});
+
+// Same gadget, the three reads the attribute loops don't cover. `children` and
+// `dangerouslySetInnerHTML` are read by key, once in `jsx()` and once in the
+// fold — and `dangerouslySetInnerHTML` bypasses the escaping chain, so it is
+// the one that turns the primitive into injected markup rather than a stray
+// attribute. Both paths are asserted: the fold owns the static case, which is
+// the common one, and only `jsx()` sees `dangerouslySetInnerHTML`.
+describe("the children are read from the props object, not its prototype", () => {
+  test("an inherited `children` is not content — static fold", async () => {
+    const html = await polluted("children", "POLLUTED", () =>
+      renderToString(jsx("div", { class: "ok" })),
+    );
+    expect(html).toBe('<div class="ok"></div>');
+  });
+
+  test("…nor on a void element, where it also produced a closing tag", async () => {
+    const html = await polluted("children", "POLLUTED", () => renderToString(jsx("br", {})));
+    expect(html).toBe("<br>");
+  });
+
+  test("…nor through the tree walk, which the fold declines to", async () => {
+    const html = await polluted("children", "POLLUTED", () =>
+      renderToString(jsx("div", { title: Promise.resolve("t") })),
+    );
+    expect(html).toBe('<div title="t"></div>');
+  });
+
+  test("an inherited `dangerouslySetInnerHTML` does not inject markup", async () => {
+    const html = await polluted(
+      "dangerouslySetInnerHTML",
+      { __html: "<img src=x onerror=alert(1)>" },
+      () => renderToString(jsx("div", { class: "ok" })),
+    );
+    expect(html).toBe('<div class="ok"></div>');
   });
 });
 

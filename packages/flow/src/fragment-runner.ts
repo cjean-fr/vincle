@@ -11,8 +11,9 @@ import { createTimeoutSignal } from "./timeout.js";
 
 const isLazyFactory = (
   c: TemplateContent,
-): c is ((signal: AbortSignal) => JSX.Element) | ((signal: AbortSignal) => AsyncIterable<JSX.Element>) =>
-  typeof c === "function";
+): c is
+  | ((signal: AbortSignal) => JSX.Element)
+  | ((signal: AbortSignal) => AsyncIterable<JSX.Element>) => typeof c === "function";
 
 type ClassificationResult =
   | { kind: "value"; value: JSX.Element | string }
@@ -64,7 +65,11 @@ export function runFragment(
   opts: FlowOptions,
 ): FragmentResult {
   const handle = entry.onError ?? opts.onError;
-  const { signal, cleanup } = createTimeoutSignal(entry.timeout ?? opts.defaultTimeout, opts.signal, id);
+  const { signal, cleanup } = createTimeoutSignal(
+    entry.timeout ?? opts.defaultTimeout,
+    opts.signal,
+    id,
+  );
 
   const classification = classifyEntry(entry, signal);
 
@@ -79,7 +84,9 @@ export function runFragment(
     case "stream": {
       return {
         stream: true,
-        done: runStream(id, classification.iterable, entry.merge, emit, handle, signal).finally(cleanup),
+        done: runStream(id, classification.iterable, entry.merge, emit, handle, signal).finally(
+          cleanup,
+        ),
       };
     }
     case "value": {
