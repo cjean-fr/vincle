@@ -42,17 +42,11 @@ export function serializeElement(tag: string, attrStr: string, content: string):
 // bailing to `NOT_STATIC` the instant a child is dynamic — children are walked
 // once, not detected then rendered separately.
 //
-// The bail is a `FoldState` object passed by reference, not a `string | symbol`
-// union return, so `foldChild` stays monomorphic on this deep-recursion hot
-// path. Allocated per outermost call rather than a module-level flag, so two
-// invocations on the same stack don't share state.
+// The bail travels as `null`, the fold's own return value: nothing allocated to
+// carry it, and no state for a props getter re-entering the fold to share.
 
 /** Sentinel returned by `tryRenderStatic` when the subtree cannot be folded. */
 export const NOT_STATIC = Symbol("not-static");
-
-interface FoldState {
-  dynamic: boolean;
-}
 
 /**
  * Fold `<tag …props>` to final HTML, or `NOT_STATIC` when a child is dynamic.
@@ -89,9 +83,8 @@ export function tryRenderStatic(
   // Children first: a dynamic child is the only reason to decline, and declining
   // before `buildAttrs` runs is what keeps a promised attribute from being
   // started and then dropped on the floor.
-  const state: FoldState = { dynamic: false };
-  const content = foldChildren(children, childTag, state);
-  if (state.dynamic) return NOT_STATIC;
+  const content = foldChildren(children, childTag);
+  if (content === null) return NOT_STATIC;
 
   const attrStr = buildAttrs(props);
   // A promised attribute value does not make a subtree dynamic — it makes the
@@ -104,24 +97,25 @@ export function tryRenderStatic(
   return new RawString(serializeElement(tag, attrStr, content));
 }
 
-function foldChildren(children: unknown, rawtextTag: string | undefined, state: FoldState): string {
-  if (!Array.isArray(children)) return foldChild(children, rawtextTag, state);
+function foldChildren(children: unknown, rawtextTag: string | undefined): string | null {
+  if (!Array.isArray(children)) return foldChild(children, rawtextTag);
   let out = "";
   for (let i = 0; i < children.length; i++) {
-    out += foldChild(children[i], rawtextTag, state);
-    if (state.dynamic) return "";
+    const part = foldChild(children[i], rawtextTag);
+    if (part === null) return null;
+    out += part;
   }
   return out;
 }
 
-function foldChild(child: unknown, rawtextTag: string | undefined, state: FoldState): string {
+function foldChild(child: unknown, rawtextTag: string | undefined): string | null {
   // Frequency order; the leaf taxonomy delegates to `valueToText` (escape.ts),
   // keeping inline only what rawtext escaping or frequency pays for.
   if (typeof child === "string") {
     return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
   }
   if (child instanceof RawString) return child.value;
-  if (Array.isArray(child)) return foldChildren(child, rawtextTag, state);
+  if (Array.isArray(child)) return foldChildren(child, rawtextTag);
   if (child === null || child === undefined || typeof child === "boolean") return "";
   if (
     child instanceof VNode ||
@@ -130,8 +124,7 @@ function foldChild(child: unknown, rawtextTag: string | undefined, state: FoldSt
     isIterable(child) ||
     isAsyncIterable(child)
   ) {
-    state.dynamic = true;
-    return "";
+    return null;
   }
   // Same rule as `renderRawtextChild` in `render.ts`, and it has to be the same
   // or the fold and the walk disagree on one leaf: inside rawtext the coercion
