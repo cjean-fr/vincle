@@ -20,9 +20,6 @@ export interface AdapterCapabilities {
  *   and escaped when rendered, so `"<b>hi</b>"` reaches the page as visible
  *   `<b>hi</b>` characters, not as markup. For content that really is HTML —
  *   a cache entry, a CMS body — wrap it: `raw(html)` from `@vincle/core`.
- *   (This line used to say "raw HTML", which was wrong in the direction that
- *   matters least for safety and most for use: the safe thing happened, and
- *   the documented use case silently did not.)
  * - `(signal) => JSX.Element` — lazy factory; `signal` combines the request's
  *   own abort signal with the fragment's `timeout`, so a factory can forward
  *   it to its own async work (e.g. `fetch(url, { signal })`) to cancel that

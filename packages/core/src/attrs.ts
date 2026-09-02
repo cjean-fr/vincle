@@ -283,9 +283,10 @@ const ATTR_META_MAX = 1024;
 /**
  * Everything about an attribute *name*, memoized.
  *
- * Shared with `jsxAttr`, which used to call `resolveAttrName`, `isValidAttrName`
- * and `URL_ATTRIBUTES.has` itself, uncached, on every attribute of every element
- * — the `\p{C}` regex again. One question, one place, one cache.
+ * Shared with `jsxAttr`: `resolveAttrName`, `isValidAttrName` and
+ * `URL_ATTRIBUTES.has` — the `\p{C}` regex among them — are asked once per
+ * name here instead of per attribute at each call site. One question, one
+ * place, one cache.
  */
 export function attrMeta(key: string): AttrMeta {
   let meta = ATTR_META.get(key);
