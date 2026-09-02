@@ -115,13 +115,13 @@ export type ClassValue =
 // `buildAttrs` skips or refuses them; rejecting them at compile time is the same
 // answer, given earlier.
 //
-// The line is "does this end up in the document" — nothing else. The list used to
-// be much longer and cut on the wrong side of it: `nonce` (the CSP attribute!),
-// `is`, `inputMode`, `spellCheck`, `contentEditable`, `autoCapitalize` and the
-// whole RDFa family (`property`, `about`, `typeof`, `vocab`, …) are ordinary HTML
-// attributes that `resolveAttrName` lowercases and emits correctly. Removing them
-// made `<meta property="og:title">` — the canonical Open Graph tag — a type error,
-// and it took typing the intrinsic elements for anyone to find out.
+// The line is "does this end up in the document" — nothing else, and it is easy
+// to cut on the wrong side of it. `nonce` (the CSP attribute), `is`,
+// `inputMode`, `spellCheck`, `contentEditable`, `autoCapitalize` and the whole
+// RDFa family (`property`, `about`, `typeof`, `vocab`, …) are ordinary HTML
+// attributes that `resolveAttrName` lowercases and emits correctly: adding one
+// here makes `<meta property="og:title">` — the canonical Open Graph tag — a
+// type error.
 //
 // `key` is not here either: React supplies it to intrinsic elements through
 // `ClassAttributes`, and TypeScript only consults `JSX.IntrinsicAttributes` for

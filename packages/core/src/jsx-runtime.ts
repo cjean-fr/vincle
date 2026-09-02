@@ -122,12 +122,11 @@ function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
  * Finish an array whose `from - 1`-th element suspended.
  *
  * `pending` resolves to **final text**, and the two call sites are what makes
- * that worth stating. They used to disagree: the promise branch passed a
- * `Promise<RawString | VNode>` (a value still to be rendered) and the VNode
- * branch passed a `Promise<string>` (HTML already rendered by the tree walk).
- * One `renderValue` served both, so the second was sent back through the leaf
- * taxonomy and `escapeContent` ran over finished markup — an async component
- * inside an array came out as `&lt;i&gt;two&lt;/i&gt;` on the precompile path
+ * that worth stating: one holds a `Promise<RawString | VNode>`, the other a
+ * `Promise<string>` the tree walk has already rendered. Both must arrive here
+ * rendered. A value still to be rendered goes back through the leaf taxonomy,
+ * where `escapeContent` runs over finished markup — an async component inside
+ * an array then comes out as `&lt;i&gt;two&lt;/i&gt;` on the precompile path
  * and `<i>two</i>` on every other one.
  *
  * Reachable through the shipped transform: `{items.map(() => <AsyncComp/>)}` is
@@ -211,9 +210,10 @@ export function jsxTemplate(
  * A hole the synchronous path can't finish alone: a `VNode`, a `Promise`, or a
  * container that may hold one (array, iterable) — the same taxonomy
  * `jsxEscape` owns. Delegating rather than inlining it is what keeps
- * `jsxTemplate` and `jsxEscape` agreeing on the same value: they used to
- * diverge on an array holding a `VNode` (one rendered it, the other threw),
- * unreachable through the shipped transform but not through this public export.
+ * `jsxTemplate` and `jsxEscape` agreeing on the same value. An array holding a
+ * `VNode` is where they diverge most easily — one rendering it, the other
+ * throwing — and while the shipped transform never emits that shape, this
+ * public export lets a caller build it.
  */
 function isDeferredValue(v: unknown): boolean {
   return (

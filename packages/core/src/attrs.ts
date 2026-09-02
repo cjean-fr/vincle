@@ -360,14 +360,13 @@ export function serializeAttr(key: string, value: unknown): RawString {
 
   const type = typeof value;
 
-  // String — dominant case, coercion-free
+  // Frequency order, from here down.
   if (type === "string") {
     let str = value as string;
     if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
     return new RawString(`${attrName}="${escapeAttr(str)}"`);
   }
 
-  // Boolean — HTML boolean → name alone, else stringified
   if (type === "boolean") {
     if (BOOLEAN_ATTRIBUTES.has(attrName)) return value ? raw(attrName) : raw("");
     return new RawString(`${attrName}="${value}"`);
@@ -397,14 +396,12 @@ export function serializeAttr(key: string, value: unknown): RawString {
     return new RawString(`style="${escapeAttr(styleStr)}"`);
   }
 
-  // Array class → string join
   if (attrName === "class" && Array.isArray(value)) {
     const s = classToString(value as unknown[]);
     if (!s) return raw("");
     return new RawString(`class="${escapeAttr(s)}"`);
   }
 
-  // Fallback — any other object, via toString
   let str = String(value);
   if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
   return new RawString(`${attrName}="${escapeAttr(str)}"`);
