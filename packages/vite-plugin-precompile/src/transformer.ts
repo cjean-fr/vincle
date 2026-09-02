@@ -275,8 +275,8 @@ function isEligibleElement(node: JSXElement): boolean {
   //   fails on Preact or Hono. Static text stays inlined (see `emitChildren`):
   //   that is build-time escaping, not a runtime call.
   // - **A void element carrying content.** `<img>x</img>` has no valid HTML
-  //   form, and this transform used to drop such children silently while the
-  //   runtime rendered them. One answer, and it is the runtime's.
+  //   form, and the runtime refuses it. Declining here instead of emitting a
+  //   template leaves one answer to that, and it is the runtime's.
   if (isRawtextTag(tag) && node.children.some((c) => c.type !== "JSXText")) return false;
   if (isVoidElement(tag) && node.children.some(hasRenderableContent)) return false;
   return true;

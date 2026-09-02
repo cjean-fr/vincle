@@ -57,8 +57,8 @@ export const noJavascriptUrls: RuleModule = {
     return {
       JSXAttribute(node: any) {
         // Delegates to `attrMeta`, the runtime's own name resolution, so the
-        // lint's answer matches it — a raw `.toLowerCase()` used to miss
-        // `xlinkHref="javascript:…"`.
+        // lint's answer matches it. A raw `.toLowerCase()` does not:
+        // `xlinkHref="javascript:…"` is where the two part ways.
         if (!attrMeta(attrName(node)).isUrl) return;
         const url = staticStringOf(node.value);
         if (url !== null && isDangerousUrl(url)) {

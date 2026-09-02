@@ -59,19 +59,18 @@ interface FoldState {
  *
  * The tag name is validated here because this is one of the two ways an element
  * leaves `jsx()`: the other is a `VNode`, which validates in its constructor.
- * One check per element on either path — the check used to sit in `jsx()`, above
- * the fork, which is the same single check but leaves a hand-built `VNode`
- * unguarded.
+ * One check per element on either path, and no way past it: above the fork it
+ * would be the same single check, but a hand-built `VNode` would go unguarded.
  *
  * What this deliberately does *not* do, because a second opinion on it is how
  * the fold and the tree walk drift apart:
  *
- * - **Judge the props.** There used to be a `for…in` over every prop looking for
- *   shapes the fold supposedly could not handle. `buildAttrs`, called below, is
- *   the authority on serializing props, and it handled all of them: a style
- *   object, a class array, a promised value. The scan cost a pass over every
- *   attribute of every element, called every getter in the props twice, and sent
- *   `<div style={{…}}>` and `class={[…]}` down the slow path for nothing.
+ * - **Judge the props.** `buildAttrs`, called below, is the authority on
+ *   serializing props, and it handles every shape the fold might be suspected of
+ *   not handling: a style object, a class array, a promised value. A scan for
+ *   them here costs a pass over every attribute of every element, calls every
+ *   getter in the props twice, and sends `<div style={{…}}>` and `class={[…]}`
+ *   down the slow path for nothing.
  *   `dangerouslySetInnerHTML` is the one prop shape that really is invisible here
  *   — it replaces the children this walk reads from `props` — and `jsx()` keeps
  *   that one to itself.
