@@ -93,8 +93,8 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     }
 
     // ── Regular element ──
-    // The tag name was validated by the `VNode` constructor, which every string
-    // tag reaching this walk went through; re-checking here charged every element
+    // The tag name is validated by the `VNode` constructor, which every string tag
+    // reaching this walk goes through; re-checking here would charge every element
     // for the same answer twice.
     const { tag, attrs, children } = vnode;
 
@@ -132,16 +132,16 @@ export function renderNode(vnode: unknown): string | Promise<string> {
 }
 
 function renderChildrenAsync(children: unknown, rawtextTag?: string): string | Promise<string> {
-  // A lone child is one child: it goes through `renderChild`, which is what
-  // carries the rawtext rule. Inlining the string case here and falling through
-  // to `renderNode` for everything else dropped the rule for the single-child
-  // form — `<script>{promise}</script>` has exactly one child.
+  // A lone child is one child: it goes through `renderChild`, which carries the
+  // rawtext rule. Inlining the string case here and falling through to
+  // `renderNode` for the rest loses that rule — `<script>{promise}</script>` has
+  // exactly one child.
   if (!Array.isArray(children)) return renderChild(children, rawtextTag);
   if (children.length === 0) return "";
 
-  // Concatenate directly instead of filling an array then joining; the
-  // intermediate array was the first cost centre of the renderer — 35% of time
-  // on `realworld` (V8 profile), GC included.
+  // Concatenate directly instead of filling an array then joining: the
+  // intermediate array costs 35% of the time on `realworld` (V8 profile), GC
+  // included.
   let out = "";
   for (let i = 0; i < children.length; i++) {
     const part = renderChild(children[i], rawtextTag);
@@ -244,11 +244,11 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
   // only the call, its synchronous throw and its annotation are mirrored.
   if (child instanceof VNode) {
     // An element node reaching here is the shape `renderChild` sends straight to
-    // `renderNode`; mirror that decision rather than assume a component. Without
-    // this, a `<div/>` arriving indirectly — through a promise, an array, or a
-    // component's return — hit `comp(child.attrs)` and threw
-    // `comp is not a function`, naming an internal variable instead of the
-    // problem. The entry guard only covers the *direct* child.
+    // `renderNode`; mirror that decision rather than assume a component. The entry
+    // guard only covers the *direct* child: a `<div/>` arriving through a promise,
+    // an array or a component's return would otherwise reach `comp(child.attrs)`
+    // and throw `comp is not a function`, naming an internal variable instead of
+    // the problem.
     if (typeof child.tag === "string") return renderNode(child);
     const comp = child.tag as (props: Record<string, unknown>) => unknown;
     let result: unknown;
@@ -274,7 +274,7 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
   if (isIterable(child)) return renderChildrenAsync(Array.from(child), rawtextTag);
   // `String`, not `valueToText`: the latter HTML-escapes, which inside rawtext
   // is the one thing the whole design rejects — an entity is never decoded
-  // there, so `<script>{obj}</script>` emitted `&lt;` into the JavaScript.
+  // there, so `<script>{obj}</script>` would emit `&lt;` into the JavaScript.
   // Every earlier branch has already taken null, boolean, RawString and VNode.
   return escapeRawTagContent(String(child), rawtextTag);
 }
