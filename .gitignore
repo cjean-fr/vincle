@@ -51,11 +51,8 @@ playground
 # baseline recorded elsewhere is exactly the measurement error to avoid.
 apps/bench/results/*.json
 
-# …except the ratio baseline. It records @vincle/core *relative to* each
-# reference implementation, both measured in the same run — the part that does
-# survive changing machines, because the machine's mood is common to both terms
-# and divides out. It is what gates CI, so it has to travel with the code.
-!apps/bench/results/ratios.json
+# Le plancher du gate n'est plus une mesure mais un build : `apps/bench/reference/`
+# est versionné, et rien de `results/` ne l'est.
 
 # Gate output — a run artifact, uploaded by CI, not a record.
 apps/bench/results/gate.txt
