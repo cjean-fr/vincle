@@ -1,11 +1,11 @@
 import type { VNode } from "@vincle/core";
 
-import { renderToString, withScope } from "@vincle/core";
+import { raw, renderToString, withScope } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
 import { TurboAdapter, NativeAdapter } from "../adapters/index.js";
 import { initFlow } from "../context.js";
-import { Template, Slot } from "../index.js";
+import { renderToStatic, Template, Slot } from "../index.js";
 import { renderToStream } from "../render.js";
 import { collect } from "../test-utils.js";
 
@@ -246,5 +246,38 @@ describe("edge cases — Template", () => {
     );
     expect(html).not.toContain("<script>alert(1)");
     expect(html).toContain("&lt;script>");
+  });
+});
+
+describe("a string TemplateContent is text, not markup", () => {
+  // The JSDoc said "raw HTML (stored verbatim, rendered later)" and the code
+  // escapes — so the safe thing happened while the documented use case, passing
+  // pre-rendered HTML from a cache or a CMS, silently rendered as visible
+  // characters. Both halves are pinned here so the doc and the code cannot
+  // drift apart again.
+  const emit = async (content: unknown) => {
+    let body = "";
+    await renderToStatic(
+      async (ctx) => {
+        await ctx.renderPage(() => (
+          <html>
+            <body>
+              <Template target="t">{content as never}</Template>
+            </body>
+          </html>
+        ));
+        await ctx.emitFragments((_id, _url, html) => void (body = html));
+      },
+      { adapter: TurboAdapter },
+    );
+    return body;
+  };
+
+  it("escapes a plain string", async () => {
+    expect(await emit("<b>hi</b>")).toBe('<turbo-frame id="t">&lt;b&gt;hi&lt;/b&gt;</turbo-frame>');
+  });
+
+  it("passes it through when wrapped in raw()", async () => {
+    expect(await emit(raw("<b>hi</b>"))).toBe('<turbo-frame id="t"><b>hi</b></turbo-frame>');
   });
 });

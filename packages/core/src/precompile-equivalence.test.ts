@@ -60,7 +60,17 @@ function genLeaf(r: () => number): unknown {
   if (roll < 0.68) return r() < 0.33 ? null : r() < 0.5 ? undefined : r() < 0.5;
   if (roll < 0.8) return raw("<em>" + pick(TEXTS, r) + "</em>");
   // Objects with a `toString`: both taxonomies must fall through to String().
-  if (roll < 0.9) return { toString: () => pick(TEXTS, r) };
+  // The text is drawn *now*, not inside `toString`. A leaf that draws from the
+  // PRNG when stringified is not the same value twice, and the comparison then
+  // measures how many times each path calls `String()` instead of what it
+  // emits — which is a real difference: wrap a value in an element and the fold
+  // stringifies a leaf before declining on a dynamic sibling, so the walk
+  // stringifies it a second time. That is wasted work on a pure `toString` and
+  // invisible; it made one seed in a thousand look like a renderer divergence.
+  if (roll < 0.9) {
+    const text = pick(TEXTS, r);
+    return { toString: () => text };
+  }
   return {};
 }
 
@@ -144,6 +154,35 @@ async function viaTemplate(v: unknown): Promise<string> {
   return out.value;
 }
 
+// ── The same comparison, inside a rawtext element ───────────────────────────
+
+/**
+ * Why this needs its own block: the fuzzer above compares a value *in
+ * isolation*, and `<script>` / `<style>` are the one context where the rule
+ * changes.
+ *
+ * The regression that made it necessary: a hole inside rawtext was escaped for
+ * HTML, so `a && b` came out `a &amp;&amp; b` — and an HTML parser never decodes
+ * an entity in rawtext, so the JavaScript parser received those characters
+ * literally. The tree walk had the rule, the fold was reconciled with it, and
+ * the precompile path was the third renderer nobody had checked.
+ *
+ * There is no third copy of the rule any more, and that is what this block now
+ * holds: the transform stops precompiling a rawtext element that has a dynamic
+ * hole and emits the element itself as a template hole — an ordinary `jsx()`
+ * call, the shape it already uses for components. So the rule stays where the
+ * runtime keeps it, and the target runtime is whichever one the app compiles
+ * against. The two forms below are the two sides of that: the same element,
+ * rendered directly and rendered as a hole.
+ */
+const viaWalkRawtext = (v: unknown, tag: string): Promise<string> =>
+  renderToString(jsx("div", { children: jsx(tag, { children: v }) }));
+
+async function viaTemplateRawtext(v: unknown, tag: string): Promise<string> {
+  const out = await jsxTemplate(["<div>", "</div>"], jsx(tag, { children: v }));
+  return out.value;
+}
+
 describe("path equivalence: precompile ≡ tree-walk", () => {
   test("byte-identical output across 1000 random values", async () => {
     const failures: { seed: number; walk: string; escape: string; template: string }[] = [];
@@ -170,6 +209,45 @@ describe("path equivalence: precompile ≡ tree-walk", () => {
       );
     }
     expect(failures.length).toBe(0);
+  });
+
+  test.each(["script", "style"])(
+    "byte-identical inside <%s> across 1000 random values",
+    async (tag) => {
+      const failures: { seed: number; walk: string; template: string }[] = [];
+
+      for (let seed = 1; seed <= 1000; seed++) {
+        const [walk, template] = await Promise.all([
+          viaWalkRawtext(genValue(mulberry32(seed), 4), tag),
+          viaTemplateRawtext(genValue(mulberry32(seed), 4), tag),
+        ]);
+        if (walk !== template) failures.push({ seed, walk, template });
+      }
+
+      if (failures.length > 0) {
+        const f = failures[0]!;
+        throw new Error(
+          `${failures.length}/1000 values diverged inside <${tag}>. First failing seed=${f.seed}\n` +
+            `  tree-walk:          ${JSON.stringify(f.walk)}\n` +
+            `  jsxTemplate hole:   ${JSON.stringify(f.template)}`,
+        );
+      }
+      expect(failures.length).toBe(0);
+    },
+  );
+
+  test("a hole in rawtext is not escaped for HTML", async () => {
+    // The regression itself, spelled out: these are the bytes that broke.
+    expect(await viaTemplateRawtext("if (a && b < c) {}", "script")).toBe(
+      "<div><script>if (a && b < c) {}</script></div>",
+    );
+    expect(await viaTemplateRawtext("a > b", "style")).toBe("<div><style>a > b</style></div>");
+  });
+
+  test("…but the closing tag is still neutralized", async () => {
+    const out = await viaTemplateRawtext("x = '</script><img onerror=alert(1)>'", "script");
+    expect(out).not.toContain("</script><img");
+    expect(await viaWalkRawtext("x = '</script><img onerror=alert(1)>'", "script")).toBe(out);
   });
 
   test("an array of VNodes renders the same through every path", async () => {

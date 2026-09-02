@@ -8,13 +8,13 @@
     "perf": "warn"
   },
   "rules": {
-    "vincle/no-react-imports": "error",
-    "vincle/no-react-hooks": "error",
-    "vincle/no-unsafe-event-handlers": "warn",
-    "vincle/no-javascript-urls": "error",
-    "vincle/no-context": "error",
-    "vincle/no-refs": "error",
-    "vincle/no-global-jsx-namespace": "error",
+    "@vincle/no-react-imports": "error",
+    "@vincle/no-react-hooks": "error",
+    "@vincle/no-unsafe-event-handlers": "warn",
+    "@vincle/no-javascript-urls": "error",
+    "@vincle/no-context": "error",
+    "@vincle/no-refs": "error",
+    "@vincle/no-global-jsx-namespace": "error",
     "no-inline-comments": "off",
     "consistent-function-scoping": "off",
     "no-magic-numbers": "off",
@@ -50,9 +50,9 @@
         "no-base-to-string": "off",
         "no-non-null-assertion": "off",
         "no-confusing-void-expression": "off",
-        "vincle/no-react-imports": "off",
-        "vincle/no-react-hooks": "off",
-        "vincle/no-global-jsx-namespace": "off"
+        "@vincle/no-react-imports": "off",
+        "@vincle/no-react-hooks": "off",
+        "@vincle/no-global-jsx-namespace": "off"
       }
     },
     {
@@ -65,8 +65,8 @@
     {
       "files": ["packages/core/type-contract.tsx"],
       "rules": {
-        "vincle/no-unsafe-event-handlers": "off",
-        "vincle/no-refs": "off"
+        "@vincle/no-unsafe-event-handlers": "off",
+        "@vincle/no-refs": "off"
       }
     },
     {
@@ -92,13 +92,13 @@
         "no-unnecessary-condition": "off",
         "no-unnecessary-type-assertion": "off",
         "no-unsafe-enum-comparison": "off",
-        "vincle/no-react-imports": "off",
-        "vincle/no-react-hooks": "off",
-        "vincle/no-unsafe-event-handlers": "off",
-        "vincle/no-javascript-urls": "off",
-        "vincle/no-context": "off",
-        "vincle/no-refs": "off",
-        "vincle/no-global-jsx-namespace": "off"
+        "@vincle/no-react-imports": "off",
+        "@vincle/no-react-hooks": "off",
+        "@vincle/no-unsafe-event-handlers": "off",
+        "@vincle/no-javascript-urls": "off",
+        "@vincle/no-context": "off",
+        "@vincle/no-refs": "off",
+        "@vincle/no-global-jsx-namespace": "off"
       }
     }
   ],

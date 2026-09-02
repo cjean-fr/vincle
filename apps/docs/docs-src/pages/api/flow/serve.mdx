@@ -1,8 +1,5 @@
 ---
 title: serve
-sidebar:
-  group: Flow API
-  order: 5
 ---
 
 # serve
@@ -24,11 +21,11 @@ function serve(
 
 ## Parameters
 
-| Param     | Type                        | Description                          |
-| --------- | --------------------------- | ------------------------------------ |
-| `req`     | `Request`                   | Incoming HTTP request                |
-| `page`    | `(n: Negotiation) => JSX.Element` | Page component function              |
-| `adapter` | `StreamingAdapter`                | Adapter for encoding fragments       |
+| Param     | Type                                                                                  | Description                          |
+| --------- | ------------------------------------------------------------------------------------- | ------------------------------------ |
+| `req`     | `Request`                                                                             | Incoming HTTP request                |
+| `page`    | `(n: Negotiation) => JSX.Element`                                                     | Page component function              |
+| `adapter` | `StreamingAdapter`                                                                    | Adapter for encoding fragments       |
 | `opts`    | `FlowOptions & ResponseInit & { negotiate?: Negotiate; mode?: "full" \| "fragment" }` | Optional flow options, headers, mode |
 
 **Flow options are validated up front** — `signal`, `onError`, `defaultTimeout`

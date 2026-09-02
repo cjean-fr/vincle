@@ -42,30 +42,30 @@ without it.
 
 ### Runtime
 
-| Export                            | Purpose                                   |
-| --------------------------------- | ----------------------------------------- |
-| `renderToString(node)`            | Renders a JSX tree to an HTML string      |
-| `raw(str)`                        | Marks a trusted HTML string (no escaping) |
-| `Fragment`                        | Standard JSX fragment (`<>…</>`)          |
-| `context`, `setContext`           | Scoped context for per-request isolation  |
+| Export                            | Purpose                                             |
+| --------------------------------- | --------------------------------------------------- |
+| `renderToString(node)`            | Renders a JSX tree to an HTML string                |
+| `raw(str)`                        | Marks a trusted HTML string (no escaping)           |
+| `Fragment`                        | Standard JSX fragment (`<>…</>`)                    |
+| `context`, `setContext`           | Scoped context for per-request isolation            |
 | `useContext`, `withScope`         | Read a context value; run code in an isolated scope |
-| `snapshot`                        | Captures current scope for child scopes   |
-| `jsx-runtime` / `jsx-dev-runtime` | JSX transform entry points (auto-wired)   |
+| `snapshot`                        | Captures current scope for child scopes             |
+| `jsx-runtime` / `jsx-dev-runtime` | JSX transform entry points (auto-wired)             |
 
 ### Types
 
-| Export          | Purpose                                                   |
-| --------------- | --------------------------------------------------------- |
-| `Renderable`    | Everything the renderers can render                       |
+| Export          | Purpose                                                            |
+| --------------- | ------------------------------------------------------------------ |
+| `Renderable`    | Everything the renderers can render                                |
 | `VNode`         | The engine's element representation — a class, exported as a value |
-| `RawString`     | Branded type for pre-escaped HTML                         |
-| `Awaitable<T>`  | `T` or a promise of `T`                                   |
-| `CSSProperties` | Type for inline `style` objects                           |
-| `ClassValue`    | What a `class` attribute accepts                          |
-| `FromReact<T>`  | React props → Vincle attribute props                      |
-| `JSX`           | The JSX namespace                                         |
-| `ContextKey<T>` | Branded context key type                                  |
-| `ContextMap`    | Raw context map type                                      |
+| `RawString`     | Branded type for pre-escaped HTML                                  |
+| `Awaitable<T>`  | `T` or a promise of `T`                                            |
+| `CSSProperties` | Type for inline `style` objects                                    |
+| `ClassValue`    | What a `class` attribute accepts                                   |
+| `FromReact<T>`  | React props → Vincle attribute props                               |
+| `JSX`           | The JSX namespace                                                  |
+| `ContextKey<T>` | Branded context key type                                           |
+| `ContextMap`    | Raw context map type                                               |
 
 Element attributes are typed per element, from `@types/react` — see
 [JSX types](/api/core/jsx-types).

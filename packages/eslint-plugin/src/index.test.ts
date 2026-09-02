@@ -52,18 +52,18 @@ describe("plugin index", () => {
 
   it("recommended config has all 7 rules with correct severities", () => {
     expect(recommended.rules).toEqual({
-      "@vincle/core/no-react-imports": "error",
-      "@vincle/core/no-react-hooks": "error",
-      "@vincle/core/no-unsafe-event-handlers": "warn",
-      "@vincle/core/no-javascript-urls": "error",
-      "@vincle/core/no-context": "error",
-      "@vincle/core/no-refs": "error",
-      "@vincle/core/no-global-jsx-namespace": "error",
+      "@vincle/no-react-imports": "error",
+      "@vincle/no-react-hooks": "error",
+      "@vincle/no-unsafe-event-handlers": "warn",
+      "@vincle/no-javascript-urls": "error",
+      "@vincle/no-context": "error",
+      "@vincle/no-refs": "error",
+      "@vincle/no-global-jsx-namespace": "error",
     });
   });
 
   it("every rule in recommended config exists in rules map", () => {
-    const prefix = "@vincle/core/";
+    const prefix = "@vincle/";
     const ruleKeys = Object.keys(rules);
     for (const key of Object.keys(recommended.rules!)) {
       const ruleName = key.startsWith(prefix) ? key.slice(prefix.length) : key;
@@ -72,6 +72,6 @@ describe("plugin index", () => {
   });
 
   it("recommended config references the plugin object itself", () => {
-    expect(recommended.plugins!["@vincle/core"]).toBe(plugin);
+    expect(recommended.plugins!["@vincle"]).toBe(plugin);
   });
 });

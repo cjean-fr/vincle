@@ -1,8 +1,8 @@
 import { useContext, type JSX, type VNode } from "@vincle/core";
 import { schemeOf } from "@vincle/core/html";
 
-import { Flow, renderPlaceholder } from "../context.js";
 import { PREFIX } from "../config.js";
+import { Flow, renderPlaceholder } from "../context.js";
 
 // Include fetches an HTML fragment, so its `src` is a strict whitelist:
 // http(s) or a relative path only.

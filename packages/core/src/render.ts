@@ -93,8 +93,9 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     }
 
     // ── Regular element ──
-    // The tag name was validated by `jsx()`, the only gate a string tag can come
-    // through; re-checking here charged every element for the same answer twice.
+    // The tag name was validated by the `VNode` constructor, which every string
+    // tag reaching this walk went through; re-checking here charged every element
+    // for the same answer twice.
     const { tag, attrs, children } = vnode;
 
     const attrStr = buildAttrs(attrs);
@@ -110,7 +111,6 @@ export function renderNode(vnode: unknown): string | Promise<string> {
           tag,
           resolved,
           children === undefined ? "" : await renderChildrenAsync(children, childTag),
-          children !== undefined,
         ),
       );
     }
@@ -118,11 +118,11 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     if (children !== undefined) {
       const content = renderChildrenAsync(children, childTag);
       if (content instanceof Promise) {
-        return content.then((c) => serializeElement(tag, attrStr, c, true));
+        return content.then((c) => serializeElement(tag, attrStr, c));
       }
-      return serializeElement(tag, attrStr, content, true);
+      return serializeElement(tag, attrStr, content);
     }
-    return serializeElement(tag, attrStr, "", false);
+    return serializeElement(tag, attrStr, "");
   }
   // Neither an array nor a VNode is ever an async iterable, and VNode is the
   // dominant case: only what is left pays for the protocol tests.
@@ -243,6 +243,13 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
   // async-iterable shapes it may return are already handled above and below —
   // only the call, its synchronous throw and its annotation are mirrored.
   if (child instanceof VNode) {
+    // An element node reaching here is the shape `renderChild` sends straight to
+    // `renderNode`; mirror that decision rather than assume a component. Without
+    // this, a `<div/>` arriving indirectly — through a promise, an array, or a
+    // component's return — hit `comp(child.attrs)` and threw
+    // `comp is not a function`, naming an internal variable instead of the
+    // problem. The entry guard only covers the *direct* child.
+    if (typeof child.tag === "string") return renderNode(child);
     const comp = child.tag as (props: Record<string, unknown>) => unknown;
     let result: unknown;
     try {

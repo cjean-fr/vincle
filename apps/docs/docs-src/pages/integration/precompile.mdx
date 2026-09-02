@@ -1,8 +1,5 @@
 ---
 title: Precompile transform
-sidebar:
-  group: Integration
-  order: 7
 ---
 
 # Precompile transform
@@ -28,6 +25,27 @@ virtual module (`virtual:vincle-precompile-runtime`) — no physical adapter
 file is needed. The three helpers (`jsxTemplate`, `jsxAttr`, `jsxEscape`) are
 provided by a [**Deno-precompile-compatible**](https://docs.deno.com/runtime/reference/jsx/)
 runtime – Preact, Hono, or @vincle/core.
+
+Those three are the whole contract, and the transform emits nothing else: a
+generated call to a helper your runtime does not export is not a wrong byte, it
+is a build that fails to resolve an import.
+
+## What is left to the runtime
+
+Two element shapes are handed back as ordinary JSX rather than folded into the
+template — the same treatment a component gets, so your runtime renders them
+with its own rules:
+
+- **`<script>` / `<style>` with a dynamic hole.** HTML escaping is wrong inside
+  rawtext (a parser decodes no entity there, so `a && b` would reach the JS
+  parser as `a &amp;&amp; b`), and escaping it correctly takes a helper the
+  contract does not have. Static rawtext content is still inlined, escaped at
+  build time.
+- **A void element carrying content.** `<img>{caption}</img>` has no valid HTML
+  form; `@vincle/core` refuses it at render time, and the transform declines to
+  answer for it.
+
+Both are rare, and the cost is one template hole rather than an inlined string.
 
 ## Compatible JSX frameworks
 

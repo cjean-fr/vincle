@@ -9,9 +9,7 @@ import { collect } from "../test-utils.js";
 
 describe("Include", () => {
   it("renders a placeholder pointing at src, registers nothing", async () => {
-    const html = await collect(
-      renderToStream(() => <Include src="/api/fragment" />, TurboAdapter),
-    );
+    const html = await collect(renderToStream(() => <Include src="/api/fragment" />, TurboAdapter));
     expect(html).toContain('src="/api/fragment"');
     // "No registration" means no patch ever gets drained for it.
     expect(html).not.toContain("<turbo-stream");

@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to mutate (workspace name), or \"all\" for all four"
+        description: 'Package to mutate (workspace name), or "all" for all four'
         required: false
         default: all
         type: choice

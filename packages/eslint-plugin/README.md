@@ -22,7 +22,7 @@ export default [
   {
     rules: {
       // You can override rules if needed
-      "@vincle/core/no-unsafe-event-handlers": "warn",
+      "@vincle/no-unsafe-event-handlers": "warn",
     },
   },
 ];
@@ -30,14 +30,14 @@ export default [
 
 ## Rules
 
-| Rule                       | Description                                                | Default |
-| -------------------------- | ---------------------------------------------------------- | ------- |
-| `no-react-imports`         | Disallow React and React-DOM imports.                      | `error` |
-| `no-react-hooks`           | Disallow React hooks usage (useState, useEffect, etc).     | `error` |
-| `no-unsafe-event-handlers` | Warn about event handlers which might be unsafely handled. | `warn`  |
-| `no-javascript-urls`       | Disallow `javascript:` URLs in href attributes.            | `error` |
-| `no-context`               | Disallow React Context usage.                              | `error` |
-| `no-refs`                  | Disallow React refs usage.                                 | `error` |
+| Rule                       | Description                                                                                     | Default |
+| -------------------------- | ----------------------------------------------------------------------------------------------- | ------- |
+| `no-react-imports`         | Disallow React and React-DOM imports.                                                           | `error` |
+| `no-react-hooks`           | Disallow React hooks usage (useState, useEffect, etc).                                          | `error` |
+| `no-unsafe-event-handlers` | Warn about event handlers which might be unsafely handled.                                      | `warn`  |
+| `no-javascript-urls`       | Disallow `javascript:` URLs in href attributes.                                                 | `error` |
+| `no-context`               | Disallow React Context usage.                                                                   | `error` |
+| `no-refs`                  | Disallow React refs usage.                                                                      | `error` |
 | `no-global-jsx-namespace`  | Disallow the global `JSX` namespace; import `JSX` from `@vincle/core` (or use `VNode`) instead. | `error` |
 
 ## License

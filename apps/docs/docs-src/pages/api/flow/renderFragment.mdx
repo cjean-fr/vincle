@@ -1,8 +1,5 @@
 ---
 title: renderFragment
-sidebar:
-  group: Flow API
-  order: 5
 ---
 
 # renderFragment
@@ -26,12 +23,12 @@ function renderFragment(
 
 ## Options
 
-| Option         | Type                      | Default                              | Description                                     |
-| -------------- | ------------------------- | ------------------------------------- | ------------------------------------------------ |
-| `adapter`      | `Adapter`                 | — (required)                          | Wire-format adapter — the same one the full build uses |
-| `generatePath` | `(id: string) => string`  | ``(id) => `/fragments/${id}.html` ``  | Must match the full build's convention             |
-| `timeout`      | `number`                  | —                                      | Forwarded to the underlying `<Template>`           |
-| `onError`      | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | — | Forwarded to the underlying `<Template>`   |
+| Option         | Type                                                           | Default                              | Description                                            |
+| -------------- | -------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------ |
+| `adapter`      | `Adapter`                                                      | — (required)                         | Wire-format adapter — the same one the full build uses |
+| `generatePath` | `(id: string) => string`                                       | ``(id) => `/fragments/${id}.html` `` | Must match the full build's convention                 |
+| `timeout`      | `number`                                                       | —                                    | Forwarded to the underlying `<Template>`               |
+| `onError`      | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | —                                    | Forwarded to the underlying `<Template>`               |
 
 **Options are validated up front** — `adapter` is required, and `timeout` /
 `onError` must be well-formed. A misconfiguration fails at the call with a

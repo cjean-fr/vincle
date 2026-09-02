@@ -88,8 +88,9 @@ is the only mode.
 </table>
 
 The functions named in the table are internal implementation details, not
-public API. `isSafeScheme`, for example, is not exported from `@vincle/core` —
-the public export is `schemeOf`.
+public API. `isSafeScheme`, for example, is exported from nowhere; the scheme
+reader it is built on, `schemeOf`, is available to build-time tooling from
+`@vincle/core/html` — not from `@vincle/core` itself.
 
 <CodeExample src="guide/getting-started/escaping.tsx" output />
 
@@ -148,7 +149,7 @@ ends the string, `;` starts a statement:
 
 **`dangerouslySetInnerHTML` on a `<script>` turns the rule off entirely** — it
 is trusted HTML by definition, so nothing is neutralised. It is the React idiom
-for inline scripts *because React entity-escapes script children*; vincle does
+for inline scripts _because React entity-escapes script children_; vincle does
 not, so the plain child form is both simpler and safer here.
 
 ## What the compiler guarantees (and what it doesn't)
@@ -200,8 +201,8 @@ hardcoded markup. Never pass user input directly to `raw()`.
 
 ### `raw()` in an attribute
 
-`raw()` promises trusted *markup*, which is not the same promise as a trusted
-*attribute value*. One character separates them: the quote that ends the value.
+`raw()` promises trusted _markup_, which is not the same promise as a trusted
+_attribute value_. One character separates them: the quote that ends the value.
 It is therefore the one thing escaped on that path — everything else stays
 verbatim.
 
@@ -221,7 +222,7 @@ quotes by construction; it belongs in element content, not in a `title`.
 
 ## Defense in Depth
 
-Seven independent layers protect your output. No single bypass — except
+Nine independent layers protect your output. No single bypass — except
 `raw()` — can defeat all of them.
 
 |   # | Layer                   | Mechanism                                          | Stops                                                    |
@@ -236,10 +237,10 @@ Seven independent layers protect your output. No single bypass — except
 |     |                         | time, not at runtime                               |                                                          |
 |   6 | Tag & Attr Validation   | `isValidTag` / `isValidAttrName`                   | Injection through malformed tag or attribute names       |
 |   7 | Rawtext Escaping        | `escapeRawTagContent` — sub-language, not entities | `</script>`/`</style>` breakout — unlike Preact/React    |
-|   8 | Own properties only     | Props and style bags are read with `Object.hasOwn` | A polluted `Object.prototype` adding an attribute or a  |
-|     |                         |                                                    | declaration to every element rendered                   |
-|   9 | Attribute delimiter     | A `RawString` attribute value is verbatim but `"`  | A trusted value ending its attribute and reopening the  |
-|     |                         | is escaped                                         | tag                                                     |
+|   8 | Own properties only     | Props and style bags are read with `Object.hasOwn` | A polluted `Object.prototype` adding an attribute or a   |
+|     |                         |                                                    | declaration to every element rendered                    |
+|   9 | Attribute delimiter     | A `RawString` attribute value is verbatim but `"`  | A trusted value ending its attribute and reopening the   |
+|     |                         | is escaped                                         | tag                                                      |
 
 Each layer is independently verifyable — see [Invariants](#invariants).
 
@@ -247,16 +248,16 @@ Each layer is independently verifyable — see [Invariants](#invariants).
 
 What Vincle protects and what it does not:
 
-| Protected                                                         | Not covered                                                              |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| HTML injection via text content, attributes, URLs                 | Input sanitization (use DOMPurify for untrusted HTML)                    |
-| Event handler attribute injection                                 | HTTP headers / CSP (set by your server)                                  |
-| Malformed tag / attribute names                                   | CSRF tokens, authentication, session management                          |
-| A polluted `Object.prototype` reaching props or a style bag       | The pollution itself — fix the merge that allows it                      |
+| Protected                                                                                             | Not covered                                                                                                                                   |
+| ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTML injection via text content, attributes, URLs                                                     | Input sanitization (use DOMPurify for untrusted HTML)                                                                                         |
+| Event handler attribute injection                                                                     | HTTP headers / CSP (set by your server)                                                                                                       |
+| Malformed tag / attribute names                                                                       | CSRF tokens, authentication, session management                                                                                               |
+| A polluted `Object.prototype` reaching props or a style bag                                           | The pollution itself — fix the merge that allows it                                                                                           |
 | CSS injection through a `style` **object**: names carrying syntax are dropped, values are CSS-escaped | CSS injection through a `style` **string** — `style={untrusted}` is an author-written declaration list, escaped for the attribute, not parsed |
-| `</script>` / `</style>` breakout, whatever shape the child is    | The JavaScript you built: `` `"${untrusted}"` `` inside `<script>` — serialize with `JSON.stringify` |
-| Every attribute value, including `on*`                            | `<iframe srcdoc={untrusted}>` — the value is decoded *and then parsed as a document*, so escaping it is not enough |
-|                                                                   | `<meta http-equiv="refresh" content={untrusted}>` — the URL lives inside `content`, which is not a URL attribute |
+| `</script>` / `</style>` breakout, whatever shape the child is                                        | The JavaScript you built: `` `"${untrusted}"` `` inside `<script>` — serialize with `JSON.stringify`                                          |
+| Every attribute value, including `on*`                                                                | `<iframe srcdoc={untrusted}>` — the value is decoded _and then parsed as a document_, so escaping it is not enough                            |
+|                                                                                                       | `<meta http-equiv="refresh" content={untrusted}>` — the URL lives inside `content`, which is not a URL attribute                              |
 
 If you need to render untrusted user-generated HTML, run it through a
 sanitizer first, then pass the result via `raw()` — in element content, never
@@ -281,20 +282,21 @@ as an attribute value.
 
 Each invariant is enforced by property-based (fuzz) or unit tests:
 
-|  #   | Guarantee                                                        | Enforced by                                    |
-| :--: | ---------------------------------------------------------------- | ---------------------------------------------- |
-| I-01 | No raw `<` or `>` from untrusted input                           | `escape.test.ts`                               |
-| I-02 | No executable URL scheme passes through, obfuscated or not       | `escape.test.ts` — differential vs `new URL()` |
-| I-03 | A function-valued attribute throws on both paths, `on*` or not   | `jsx-precompile-runtime.test.ts`               |
-| I-04 | Precompile ≡ VNode path, value kind by value kind                | `precompile-equivalence.test.ts` (1000 values) |
-| I-05 | Static fold ≡ tree walk — byte-identical                         | `path-equivalence.test.ts` (1000 trees)        |
-| I-06 | Concurrent renders isolated — no cross-request leakage           | `context.test.ts`, `execution-order.test.ts`   |
-| I-07 | The document never depends on component latency                  | `execution-order.test.ts`                      |
-| I-08 | No implicit `RawString` creation                                 | Code review                                    |
-| I-09 | Invalid tag names fail fast, at construction (throw `TypeError`) | `static-fold.test.ts`                          |
-| I-10 | Every production regex is declared, safe, and matches the source | `redos-audit.test.ts`                          |
-| I-11 | An inherited property is never an attribute or a declaration     | `attrs.test.ts`                                |
-| I-12 | A `RawString` attribute value cannot end its attribute           | `attrs.test.ts`                                |
+|  #   | Guarantee                                                        | Enforced by                                     |
+| :--: | ---------------------------------------------------------------- | ----------------------------------------------- |
+| I-01 | No raw `<` or `>` from untrusted input                           | `escape.test.ts`                                |
+| I-02 | No executable URL scheme passes through, obfuscated or not       | `escape.test.ts` — differential vs `new URL()`  |
+| I-03 | A function-valued attribute throws on both paths, `on*` or not   | `jsx-precompile-runtime.test.ts`                |
+| I-04 | Precompile ≡ VNode path, value kind by value kind                | `precompile-equivalence.test.ts` (1000 values)  |
+| I-05 | Static fold ≡ tree walk — byte-identical                         | `path-equivalence.test.ts` (1000 trees)         |
+| I-06 | Concurrent renders isolated — no cross-request leakage           | `context.test.ts`, `execution-order.test.ts`    |
+| I-07 | The document never depends on component latency                  | `execution-order.test.ts`                       |
+| I-08 | No implicit `RawString` creation                                 | Code review                                     |
+| I-09 | Invalid tag names fail fast, at construction (throw `TypeError`) | `static-fold.test.ts`, `types.test.ts`          |
+| I-10 | Every production regex is declared, safe, and matches the source | `redos-audit.test.ts`                           |
+| I-11 | An inherited property is never an attribute or a declaration     | `attrs.test.ts`                                 |
+| I-12 | A `RawString` attribute value cannot end its attribute           | `attrs.test.ts`                                 |
+| I-13 | Content in a void element is refused, never reparented           | `serialize.test.ts`, `path-equivalence.test.ts` |
 
 ## ASVS Compliance
 
@@ -314,8 +316,9 @@ Standard). Each row below is held by the tests listed in
 | 15.1.5 | `raw()` documented as dangerous                      | **3** |   ✅   |
 | 16.5.4 | Fail-stop on error — no partial/corrupted output     | **3** |   ✅   |
 
-[^js]: The element boundary, in the form the sub-language reads back. The
-    JavaScript *string* context is the author's: serialize untrusted data with
+[^js]:
+    The element boundary, in the form the sub-language reads back. The
+    JavaScript _string_ context is the author's: serialize untrusted data with
     `JSON.stringify` rather than concatenating it into source.
 
 ## References

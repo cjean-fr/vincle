@@ -1,8 +1,5 @@
 ---
 title: raw()
-sidebar:
-  group: API
-  order: 2
 ---
 
 # raw()
@@ -54,16 +51,16 @@ attribute value (see below).
 
 ## In an attribute
 
-`raw()` promises trusted *markup*. A trusted *attribute value* is a different
+`raw()` promises trusted _markup_. A trusted _attribute value_ is a different
 promise, and one character separates them: the quote that ends the value. It is
 the only thing escaped on that path.
 
 ```tsx
 // Verbatim, as everywhere else
-<div style={raw("color:red")} />;              // style="color:red"
+<div style={raw("color:red")} />; // style="color:red"
 
 // …except `"`, so a value can never end its attribute and reopen the tag
-<a title={raw('say "hi"')}>x</a>;              // title="say &quot;hi&quot;"
+<a title={raw('say "hi"')}>x</a>; // title="say &quot;hi&quot;"
 <a title={raw('" onmouseover="alert(1)')}>x</a>; // title="&quot; onmouseover=&quot;…"
 ```
 

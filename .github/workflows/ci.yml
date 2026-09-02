@@ -96,6 +96,14 @@ jobs:
       - name: Conformance — ${{ matrix.runtime }}
         run: bun run --filter=@vincle/core conformance:${{ matrix.runtime }}
 
+      # La taille se mesure sur `dist`, donc ici : c'est le seul job qui le
+      # construit à coup sûr. Une seule fois (bun) : l'artefact est le même pour
+      # les quatre runtimes. Ne bloque pas — au-dessus du budget, une annotation
+      # `::warning::` apparaît sur le run.
+      - name: Size report — @vincle/core
+        if: matrix.runtime == 'bun'
+        run: bun test --cwd packages/core ./size-budget.test.ts
+
   pipeline:
     runs-on: ubuntu-latest
     env:
@@ -125,6 +133,14 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      # Même raison que le lint, et elle s'est vérifiée : six fichiers de
+      # production étaient non formatés alors que le hook existait — il ne
+      # lançait pas oxfmt. Un formatage manquant ne casse rien à l'exécution,
+      # il mélange fond et forme dans le prochain diff, ce qui coûte au seul
+      # relecteur du dépôt.
+      - name: Format
+        run: bunx oxfmt --check .
+
       - name: Check
         run: bun run check
 
@@ -147,8 +163,15 @@ jobs:
             packages/*/badges/
           if-no-files-found: ignore
 
+      # `shell: bash` for `pipefail`: the gate's exit code is the whole point of
+      # the step, and a bare `| tee` returns tee's. The pipe used to live inside
+      # the npm script, where it silently turned `process.exit(1)` into a green
+      # run — the gate reported eight regressions for twenty days without ever
+      # failing CI. Keeping the redirection here, in a shell that propagates the
+      # failure, is what makes the report and the verdict the same thing.
       - name: Benchmark & performance gate
-        run: bun run --filter=@vincle/bench bench:gate
+        shell: bash
+        run: bun run --filter=@vincle/bench bench:gate | tee apps/bench/results/gate.txt
 
       - name: Upload Benchmark Results
         uses: actions/upload-artifact@v7

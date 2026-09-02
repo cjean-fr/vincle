@@ -250,13 +250,52 @@ function collectNode(
 function isEligibleElement(node: JSXElement): boolean {
   const name = node.openingElement.name;
   if (name.type !== "JSXIdentifier") return false;
-  if (!isLowercaseTag(name.name)) return false;
-  return !hasSpreadOrInnerHTML(
-    node.openingElement.attributes.map((a) => {
-      if (a.type === "JSXSpreadAttribute") return { kind: "spread" as const };
-      return { kind: "attribute" as const, name: attrName(a) };
-    }),
-  );
+  const tag = name.name;
+  if (!isLowercaseTag(tag)) return false;
+  if (
+    hasSpreadOrInnerHTML(
+      node.openingElement.attributes.map((a) => {
+        if (a.type === "JSXSpreadAttribute") return { kind: "spread" as const };
+        return { kind: "attribute" as const, name: attrName(a) };
+      }),
+    )
+  ) {
+    return false;
+  }
+  // Two element shapes the transform declines rather than answer for. Both are
+  // handed back as ordinary JSX — the same treatment a component gets — so the
+  // runtime that the app compiles against decides, with its own rules.
+  //
+  // - **A rawtext element with a dynamic hole.** HTML escaping is not merely
+  //   unnecessary inside `<script>`/`<style>`, it is wrong: a parser never
+  //   decodes an entity there, so `a && b` escaped to `a &amp;&amp; b` reaches
+  //   the JavaScript parser as those characters. Getting it right in the template
+  //   would take a helper no other precompile runtime exports, and a generated
+  //   call the target runtime does not have is a missing import — a build that
+  //   fails on Preact or Hono. Static text stays inlined (see `emitChildren`):
+  //   that is build-time escaping, not a runtime call.
+  // - **A void element carrying content.** `<img>x</img>` has no valid HTML
+  //   form, and this transform used to drop such children silently while the
+  //   runtime rendered them. One answer, and it is the runtime's.
+  if (isRawtextTag(tag) && node.children.some((c) => c.type !== "JSXText")) return false;
+  if (isVoidElement(tag) && node.children.some(hasRenderableContent)) return false;
+  return true;
+}
+
+/**
+ * Could this child put anything between a tag and its closing tag?
+ *
+ * Whitespace-only text and an empty expression (`{/* … *\/}`) cannot; a dynamic
+ * expression might, and only the runtime can say. Both `<br>{null}</br>` and
+ * `<br>x</br>` therefore reach `jsx()`, which accepts the first and refuses the
+ * second — where guessing here would refuse a conditional child that renders to
+ * nothing.
+ */
+function hasRenderableContent(child: JSXChild): boolean {
+  if (child.type === "JSXText") return collapseJsxWhitespace(child.value) !== "";
+  if (child.type === "JSXExpressionContainer")
+    return child.expression.type !== "JSXEmptyExpression";
+  return true;
 }
 
 function attrName(attr: JSXAttribute): string {
@@ -274,6 +313,8 @@ function transformElement(node: JSXElement, ctx: Ctx): string {
   const exprs: string[] = [];
 
   emitOpening(tag, node.openingElement.attributes, parts, exprs, ctx);
+  // A void element that got here has no content — `isEligibleElement` declines
+  // the ones that do — so there is nothing to skip and no closing tag to write.
   if (!isVoidElement(tag)) {
     emitChildren(node.children, parts, exprs, ctx, rawtextTagOf(tag));
     appendStatic(parts, `</${tag}>`);
@@ -309,8 +350,22 @@ function emitOpening(
 ): void {
   appendStatic(parts, `<${tag}`);
 
+  const written = new Set<string>();
+  for (const attr of attrs) {
+    if (attr.type === "JSXAttribute") written.add(attrName(attr));
+  }
+
   for (const attr of attrs) {
     if (attr.type === "JSXAttribute") {
+      // `<div className="a" class="b">`: the runtime's batch serializer skips an
+      // alias whose HTML name is also written out, so the native one wins. Here
+      // each attribute is emitted on its own, so both landed in the tag and the
+      // *parser* picked — the first one, which is the opposite answer. Attribute
+      // names are always static (a spread makes the element ineligible), so the
+      // same rule applies at build time, with no runtime cost.
+      const name = attrName(attr);
+      const html = remapAttrName(name);
+      if (html !== name && written.has(html)) continue;
       emitAttribute(attr, parts, exprs, ctx);
     } else {
       throw new Error(
@@ -445,8 +500,7 @@ function emitChildren(
         const inner = child.expression;
         const exprText = processExpressionForJsx(inner, ctx);
 
-        ctx.used.add("jsxEscape");
-        addDynamic(parts, exprs, `jsxEscape(${exprText})`);
+        addDynamic(parts, exprs, escapeCall(exprText, ctx));
       }
     } else if (child.type === "JSXElement") {
       if (isEligibleElement(child)) {
@@ -470,10 +524,23 @@ function emitChildren(
       emitChildren(child.children, parts, exprs, ctx, rawtextTag);
     } else if (child.type === "JSXSpreadChild") {
       const exprText = ctx.source.slice(child.expression.start, child.expression.end);
-      ctx.used.add("jsxEscape");
-      addDynamic(parts, exprs, `jsxEscape(${exprText})`);
+      addDynamic(parts, exprs, escapeCall(exprText, ctx));
     }
   }
+}
+
+/**
+ * The runtime call for a dynamic hole.
+ *
+ * `jsxEscape` is the only escaper the precompile contract has, and it escapes
+ * for HTML — which inside `<script>`/`<style>` produces entities the parser will
+ * never decode. There is no rawtext hole to serve here, though:
+ * `isEligibleElement` declines a rawtext element that has one, so the element
+ * reaches this file's output as JSX and its content is the runtime's business.
+ */
+function escapeCall(exprText: string, ctx: Ctx): string {
+  ctx.used.add("jsxEscape");
+  return `jsxEscape(${exprText})`;
 }
 
 function processExpressionForJsx(expr: Expression, ctx: Ctx): string {

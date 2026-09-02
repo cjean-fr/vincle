@@ -1,8 +1,5 @@
 ---
 title: Components
-sidebar:
-  group: Integration
-  order: 2
 ---
 
 # Components
@@ -65,7 +62,7 @@ cancelable work (e.g. `fetch(url, { signal })`) so that work stops early:
 ```
 
 The signal firing doesn't cut the render itself short — Vincle still renders
-whatever the factory returns. What it does control is the *outcome*: if the
+whatever the factory returns. What it does control is the _outcome_: if the
 signal has already fired by the time the render finishes, the result is
 discarded and routed to `onError` instead of being emitted.
 
@@ -110,7 +107,7 @@ the same job (see above). Reach for `Slot` only for the decoupled case.
 
 **Ordering matters when pairing them.** Every adapter renders a placeholder
 as an element (or marker) carrying the target's id, and every adapter's
-patch resolves to the *first* match in the document — the same rule HTML
+patch resolves to the _first_ match in the document — the same rule HTML
 `id` uniqueness and `getElementById` already impose. So `<Slot>` must come
 before the matching `<Template>`, and that `<Template>` should skip its own
 `fallback` — passing one renders a second, dead placeholder with the same id
@@ -141,25 +138,25 @@ required — works with any static file server.
 node, a string, or an async iterable, each optionally produced by a factory
 that receives the `AbortSignal`:
 
-| Children / return type                              | Behaviour                                              |
-| --------------------------------------------------- | ------------------------------------------------------ |
-| `JSX.Element`                                       | One-shot patch — renders once and resolves             |
-| `string`                                            | Rendered as text — one-shot patch                      |
-| `(signal: AbortSignal) => JSX.Element`              | **Cancellable** — receives the signal, one-shot patch  |
-| `AsyncIterable<JSX.Element>`                        | A **stream** — one patch per item, as each item resolves |
-| `(signal: AbortSignal) => AsyncIterable<JSX.Element>` | **Cancellable stream** — one patch per item          |
+| Children / return type                                | Behaviour                                                |
+| ----------------------------------------------------- | -------------------------------------------------------- |
+| `JSX.Element`                                         | One-shot patch — renders once and resolves               |
+| `string`                                              | Rendered as text — one-shot patch                        |
+| `(signal: AbortSignal) => JSX.Element`                | **Cancellable** — receives the signal, one-shot patch    |
+| `AsyncIterable<JSX.Element>`                          | A **stream** — one patch per item, as each item resolves |
+| `(signal: AbortSignal) => AsyncIterable<JSX.Element>` | **Cancellable stream** — one patch per item              |
 
 The runtime unwraps `AsyncIterable` automatically inside the factory — you
 never need to call `.then()` or `for await` yourself.
 
 ## Common props
 
-| Prop       | Applies to | Meaning                                                   |
-| ---------- | ---------- | --------------------------------------------------------- |
-| `name`     | `Slot`     | id of the placeholder (required)                           |
+| Prop       | Applies to | Meaning                                                      |
+| ---------- | ---------- | ------------------------------------------------------------ |
+| `name`     | `Slot`     | id of the placeholder (required)                             |
 | `target`   | `Template` | id the placeholder (and its later patch) is registered under |
-| `fallback` | `Template` | placeholder content shown in the shell (lazy only)        |
-| `merge`    | `Template` | how content applies to its target (default `"replace"`)   |
-| `timeout`  | `Template` | per-fragment render timeout in ms                         |
-| `onError`  | `Template` | per-fragment error handler, overriding the renderer's one |
-| `src`      | `Include`  | URL the browser fetches for the fragment content          |
+| `fallback` | `Template` | placeholder content shown in the shell (lazy only)           |
+| `merge`    | `Template` | how content applies to its target (default `"replace"`)      |
+| `timeout`  | `Template` | per-fragment render timeout in ms                            |
+| `onError`  | `Template` | per-fragment error handler, overriding the renderer's one    |
+| `src`      | `Include`  | URL the browser fetches for the fragment content             |

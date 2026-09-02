@@ -79,12 +79,12 @@ function PageContent() {
 
 Pushes content into a target slot by name. **Unified** — one component for both synchronous and deferred content. The behaviour depends on `children`:
 
-| `children` type     | `fallback` | Behaviour                                             |
-| ------------------- | ---------- | ----------------------------------------------------- |
-| `VNode` (plain JSX) | —          | Registers content; renders a placeholder              |
-| `VNode` (plain JSX) | provided   | Registers content; placeholder renders `fallback`     |
-| `(signal) => …`     | —          | Lazy content; renders a placeholder                   |
-| `(signal) => …`     | provided   | Lazy content; placeholder renders `fallback`          |
+| `children` type     | `fallback` | Behaviour                                         |
+| ------------------- | ---------- | ------------------------------------------------- |
+| `VNode` (plain JSX) | —          | Registers content; renders a placeholder          |
+| `VNode` (plain JSX) | provided   | Registers content; placeholder renders `fallback` |
+| `(signal) => …`     | —          | Lazy content; renders a placeholder               |
+| `(signal) => …`     | provided   | Lazy content; placeholder renders `fallback`      |
 
 **Sync** — plain JSX:
 
@@ -404,30 +404,30 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 ### Adapters
 
-| Export               | Import path             | Description                                                        |
-| -------------------- | ----------------------- | ------------------------------------------------------------------ |
+| Export               | Import path             | Description                                              |
+| -------------------- | ----------------------- | -------------------------------------------------------- |
 | `NativeAdapter`      | `@vincle/flow/adapters` | Declarative Partial Updates + polyfill — all merge types |
-| `TurboAdapter`       | `@vincle/flow/adapters` | Hotwire Turbo Streams — all merge types                            |
-| `HtmxAdapter`        | `@vincle/flow/adapters` | HTMX OOB swaps — all merge types                                   |
-| `WebPlatformAdapter` | `@vincle/flow/adapters` | Pure WICG spec, zero JS — `replace` only                           |
-| `EsiAdapter`         | `@vincle/flow/adapters` | CDN-level ESI composition — `replace` only, static only            |
-| `createAdapter`      | `@vincle/flow/adapters` | Build a custom adapter                                             |
-| `NATIVE_POLYFILL`    | `@vincle/flow/adapters` | Native adapter polyfill as a JS string                             |
-| `nativePolyfillHash` | `@vincle/flow/adapters` | `() => Promise<string>` — CSP hash for the polyfill                |
+| `TurboAdapter`       | `@vincle/flow/adapters` | Hotwire Turbo Streams — all merge types                  |
+| `HtmxAdapter`        | `@vincle/flow/adapters` | HTMX OOB swaps — all merge types                         |
+| `WebPlatformAdapter` | `@vincle/flow/adapters` | Pure WICG spec, zero JS — `replace` only                 |
+| `EsiAdapter`         | `@vincle/flow/adapters` | CDN-level ESI composition — `replace` only, static only  |
+| `createAdapter`      | `@vincle/flow/adapters` | Build a custom adapter                                   |
+| `NATIVE_POLYFILL`    | `@vincle/flow/adapters` | Native adapter polyfill as a JS string                   |
+| `nativePolyfillHash` | `@vincle/flow/adapters` | `() => Promise<string>` — CSP hash for the polyfill      |
 
 ### Types
 
-| Export                | Import path             | Description                                                    |
-| --------------------- | ----------------------- | -------------------------------------------------------------- |
-| `Adapter`             | `@vincle/flow/adapters` | `{ Placeholder, Patch, Frame, capabilities, transformShell? }` |
-| `StreamingAdapter`    | `@vincle/flow/adapters` | `Adapter` with `capabilities.streaming: true`                  |
-| `AdapterCapabilities` | `@vincle/flow/adapters` | `{ streaming: boolean; merges: readonly MergeType[] }`         |
-| `ShellContext`        | `@vincle/flow/adapters` | What `transformShell` receives: `{ templateStore: { size } }`  |
-| `PureStaticContext`   | `@vincle/flow`          | Static generation context (no `emitFragments`)                 |
-| `StaticContext`       | `@vincle/flow`          | Static generation context with `emitFragments`                 |
-| `MergeType`           | `@vincle/flow`          | `"replace" \| "append" \| "prepend" \| "before" \| "after"`    |
-| `FlowEvent`           | `@vincle/flow`          | `{ type: "shell" \| "fragment" \| "close", … }`                |
-| `Negotiation`         | `@vincle/flow`          | `{ headers?, mode?, target? }`                                 |
+| Export                | Import path             | Description                                                                                                                                              |
+| --------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Adapter`             | `@vincle/flow/adapters` | `{ Placeholder, Patch, Frame, capabilities, transformShell? }`                                                                                           |
+| `StreamingAdapter`    | `@vincle/flow/adapters` | `Adapter` with `capabilities.streaming: true`                                                                                                            |
+| `AdapterCapabilities` | `@vincle/flow/adapters` | `{ streaming: boolean; merges: readonly MergeType[] }`                                                                                                   |
+| `ShellContext`        | `@vincle/flow/adapters` | What `transformShell` receives: `{ templateStore: { size } }`                                                                                            |
+| `PureStaticContext`   | `@vincle/flow`          | Static generation context (no `emitFragments`)                                                                                                           |
+| `StaticContext`       | `@vincle/flow`          | Static generation context with `emitFragments`                                                                                                           |
+| `MergeType`           | `@vincle/flow`          | `"replace" \| "append" \| "prepend" \| "before" \| "after"`                                                                                              |
+| `FlowEvent`           | `@vincle/flow`          | `{ type: "shell" \| "fragment" \| "close", … }`                                                                                                          |
+| `Negotiation`         | `@vincle/flow`          | `{ headers?, mode?, target? }`                                                                                                                           |
 | `TemplateContent`     | `@vincle/flow`          | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` |
 
 ### Utilities

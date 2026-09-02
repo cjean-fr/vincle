@@ -1,8 +1,5 @@
 ---
 title: renderToString
-sidebar:
-  group: API
-  order: 1
 ---
 
 # renderToString
@@ -69,7 +66,7 @@ and children. `jsx()` is the only way to make one; it's exported as a **value**
 (not just a type), because the precompile runtime tests for it with
 `instanceof`.
 
-What a component may actually *return* is broader than a single `VNode` —
+What a component may actually _return_ is broader than a single `VNode` —
 elements, fragments, strings, numbers, bigints, booleans, `null`, `undefined`,
 `RawString` (from `raw()`), promises and (async) iterables of any of those.
 That broader union is `Renderable`, the type `renderToString` really accepts:

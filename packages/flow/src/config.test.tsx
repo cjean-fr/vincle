@@ -1,15 +1,22 @@
 import { withScope } from "@vincle/core";
 import { describe, expect, it } from "bun:test";
 
+import type { FlowConfig } from "./types.js";
+
 import { TurboAdapter } from "./adapters/index.js";
 import { createAdapter } from "./adapters/shared.js";
+import {
+  assertAdapter,
+  assertFlowConfig,
+  assertFlowOptions,
+  assertTimeout,
+  describeValue,
+} from "./config.js";
 import { initFlow } from "./context.js";
-import { assertAdapter, assertFlowConfig, assertFlowOptions, assertTimeout, describeValue } from "./config.js";
 import { renderFragment } from "./fragment.js";
 import { renderToFlowEvents, renderToStream } from "./render.js";
 import { renderToStatic } from "./static.js";
 import { createTemplateStore } from "./template-store.js";
-import type { FlowConfig } from "./types.js";
 
 describe("describeValue", () => {
   it("renders values unambiguously in messages", () => {
@@ -55,7 +62,7 @@ describe("assertFlowOptions", () => {
 
   it("rejects a non-function onError", () => {
     expect(() => assertFlowOptions({ onError: "nope" } as never, "test")).toThrow(
-      "[vincle/flow] test: onError must be a function (error, { id, kind }) => JSX.Element | void, got \"nope\"",
+      '[vincle/flow] test: onError must be a function (error, { id, kind }) => JSX.Element | void, got "nope"',
     );
   });
 
@@ -66,7 +73,9 @@ describe("assertFlowOptions", () => {
   });
 
   it("ignores foreign keys (e.g. ResponseInit on serve)", () => {
-    expect(() => assertFlowOptions({ status: 404, headers: { a: "b" } } as never, "test")).not.toThrow();
+    expect(() =>
+      assertFlowOptions({ status: 404, headers: { a: "b" } } as never, "test"),
+    ).not.toThrow();
   });
 });
 
@@ -220,7 +229,9 @@ describe("entry-point fail-fast", () => {
   it("renderToStatic rejects a malformed adapter before rendering", async () => {
     await expect(
       renderToStatic(async () => "ok", { adapter: { Frame: () => null } as never }),
-    ).rejects.toThrow('[vincle/flow] renderToStatic: the adapter is missing "Placeholder", "Patch"');
+    ).rejects.toThrow(
+      '[vincle/flow] renderToStatic: the adapter is missing "Placeholder", "Patch"',
+    );
   });
 
   it("renderFragment rejects a missing adapter before rendering", async () => {
@@ -240,7 +251,11 @@ describe("entry-point fail-fast", () => {
   it("initFlow rejects a bad config at setup, inside a scope", async () => {
     await withScope(async () => {
       expect(() =>
-        initFlow({ adapter: TurboAdapter, mode: "streaming", idPrefix: 1 } as unknown as FlowConfig),
+        initFlow({
+          adapter: TurboAdapter,
+          mode: "streaming",
+          idPrefix: 1,
+        } as unknown as FlowConfig),
       ).toThrow("[vincle/flow] FlowConfig.idPrefix must be a string, got 1");
     });
   });
