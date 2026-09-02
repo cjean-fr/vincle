@@ -13,15 +13,15 @@ import { flushTemplates } from "./flushTemplates.js";
  * Split a trailing `</body></html>` — with whitespace anywhere between and
  * after — off the end of the shell.
  *
- * This used to be `/((?:<\/body>)?\s*<\/html>\s*)$/`, and that regex was
- * **quadratic**. Anchored only at the end, the engine retries from every start
- * position; inside a run of whitespace each attempt lets `\s*` consume to the
- * end before failing on `<\/html>`. Measured on a document that does not close
- * with `</html>`: 100 kB of contiguous whitespace took 5,3 s, and doubling the
- * run quadrupled the time (83 → 332 → 1332 → 5348 ms). A page carrying a large
- * whitespace run in user content is enough — `renderShell` runs this on every
- * render. Found by `redos-audit.test.ts` on its first run after it started
- * reading the sources instead of its own inventory.
+ * The shape is load-bearing: a regex anchored only at the end —
+ * `/((?:<\/body>)?\s*<\/html>\s*)$/` — is **quadratic** here. The engine
+ * retries from every start position, and inside a run of whitespace each attempt
+ * lets `\s*` consume to the end before failing on `<\/html>`. Measured on a
+ * document that does not close with `</html>`: 100 kB of contiguous whitespace
+ * takes 5,3 s, and doubling the run quadruples the time
+ * (83 → 332 → 1332 → 5348 ms). `renderShell` runs this on every render, so a
+ * page carrying a large whitespace run in user content is enough.
+ * `redos-audit.test.ts` reads this file and covers it.
  *
  * `trimEnd()` removes exactly the set `\s` matches (WhiteSpace ∪ LineTerminator
  * per spec), so the bytes are unchanged; a bounded number of linear passes
@@ -47,8 +47,8 @@ function splitClosingTags(shell: string): { body: string; closingTag: string } {
  *
  * The shell arrives as a run of chunks, not one event. They are consecutive
  * slices of the same document, so nothing may be inserted between them — the
- * separator that used to follow "the shell event" is written once, when the
- * first non-shell event proves the run is over.
+ * separator is written once, when the first non-shell event proves the run is
+ * over.
  */
 function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent, string> {
   let inShell = false;
@@ -91,11 +91,9 @@ function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent,
  * Render the page shell: run the node factory, strip closing `</body></html>`
  * tags, then apply `adapter.transformShell` if present.
  *
- * `<Style>` / `<Script>` no longer need a resolution pass here — they emit their
- * tag during the render, deduplicating against `ctx.assets` as the walk reaches
- * them. That also removes an ordering constraint this function used to carry
- * silently: asset resolution had to run *after* `transformShell`, and nothing
- * said so.
+ * `<Style>` / `<Script>` emit their tag during the render, deduplicating against
+ * `ctx.assets` as the walk reaches them, so there is no resolution pass here —
+ * and so nothing to order against `transformShell`.
  *
  * @returns The transformed shell body (minus closing tags) and the raw closing
  *   tag, so callers can emit them as separate `shell` / `close` events.
