@@ -165,10 +165,10 @@ export function escapeRawTagContent(str: string, tag: string): string {
   scan.lastIndex = first.index;
   let m: RegExpExecArray | null;
   while ((m = scan.exec(str)) !== null) {
-    // Match length is no longer fixed (`<!--`, `<script`, `</script`), so it is
-    // read from the match rather than derived from the tag name. Only the
-    // leading `<` is replaced; the rest of the match is copied verbatim, which
-    // is what preserves the original case.
+    // Match length varies with the pattern (`<script` and `</script` differ by
+    // one), so it is read from the match rather than derived from the tag name.
+    // Only the leading `<` is replaced; the rest of the match is copied
+    // verbatim, which is what preserves the original case.
     const idx = m.index;
     const end = idx + m[0].length;
     out += str.slice(last, idx) + escape + str.slice(idx + 1, end);

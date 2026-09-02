@@ -53,7 +53,9 @@ export function Counter() {
 export function Counter() {
   return (
     <div x-data="{ count: 0 }">
-      <button x-on:click="count++" x-text="count">0</button>
+      <button x-on:click="count++" x-text="count">
+        0
+      </button>
     </div>
   );
 }
@@ -151,7 +153,11 @@ function App({ user }) {
 }
 function AuditRow({ action }: { action: string }) {
   const { user } = useContext(AuthContext); // OK — rendered inside <AuthContext>
-  return <li>{user.name} — {action}</li>;
+  return (
+    <li>
+      {user.name} — {action}
+    </li>
+  );
 }
 function logAction(action: string) {
   const { user } = useContext(AuthContext); // invalid hook call — not a component
@@ -208,7 +214,7 @@ progressive-enhancement library swap the response in without one:
 // was the framework's whole job
 <button hx-delete={`/api/items/${id}`} hx-target="#item-list" hx-swap="outerHTML">
   Delete
-</button>;
+</button>
 ```
 
 The same idea works with any attribute-driven library — Stimulus
@@ -219,7 +225,7 @@ reconcile back onto the element later. A function-valued handler prop
 still throws at render time on the server — there is nothing to attach it
 to.
 
-That mechanism matters most once markup arrives *after* the first render —
+That mechanism matters most once markup arrives _after_ the first render —
 a live feed, infinite scroll, a streamed fragment. A closure can't travel
 inside an HTML string; injected markup has no `onClick` attached, so React
 has to re-render that subtree itself, through the runtime already
@@ -260,11 +266,30 @@ with. For updates pushed from the server rather than triggered by a click,
 flow's `HtmxAdapter` speaks HTMX's own out-of-band swap format directly,
 so the same library handles both directions.
 
+### Props that only meant something to the reconciler
+
+A handful of React props are not typed at all, because nothing they talk to
+exists here — there is no reconciler, no hydration, no DOM. TypeScript refuses
+them at the call site rather than the renderer dropping them silently:
+
+| React prop                                                                 | Why it is gone                              | Write instead      |
+| -------------------------------------------------------------------------- | ------------------------------------------- | ------------------ |
+| `ref`                                                                      | No DOM node to hold                         | —                  |
+| `defaultValue`, `defaultChecked`                                           | "Initial" only means something to hydration | `value`, `checked` |
+| `suppressHydrationWarning`, `suppressContentEditableWarning`               | No hydration to warn about                  | —                  |
+| `radioGroup`, `autoSave`, `results`, `security`, `classID`, `unselectable` | Vendor leftovers no HTML parser reads       | —                  |
+
+Everything else React types is kept, including the ones that do reach the
+document and are easy to assume gone: `nonce`, `is`, `inputMode`, `spellCheck`,
+`contentEditable`, `autoCapitalize`, and the RDFa family (`property`, `about`,
+`typeof`, `vocab`, …). `key` is accepted and dropped at serialization, so a keyed
+list built for React still compiles.
+
 ### No `useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`
 
 None of these exist. There is no state, no lifecycle, no re-rendering.
 Every render is a fresh, deterministic function call. Where React reaches
-for a hook to manage something that keeps happening *after* the render —
+for a hook to manage something that keeps happening _after_ the render —
 a ticking clock, an interval — Vincle has nothing to reach for on the
 server, so that job goes to whichever client library is already handling
 interactivity elsewhere on the page:
@@ -285,7 +310,9 @@ function Timer() {
 function Timer({ initialTime }: { initialTime: number }) {
   return (
     <div x-data={`{ time: ${initialTime} }`} x-init="setInterval(() => time++, 1000)">
-      <p><span x-text="time">{initialTime}</span>s</p>
+      <p>
+        <span x-text="time">{initialTime}</span>s
+      </p>
     </div>
   );
 }
@@ -300,22 +327,25 @@ optimize away in the first place, compiler or not.
 
 ## Migration checklist
 
-| React pattern             | Vincle equivalent                                                                 |
-| ------------------------- | --------------------------------------------------------------------------------- |
-| `useState`                | Props or context — state lives outside the render                                 |
-| `useEffect`               | Not needed — no client lifecycle                                                  |
-| `useRef`                  | Not needed — no DOM access                                                        |
-| `useMemo` / `useCallback` | Not needed — no re-renders                                                        |
-| `useContext`              | `useContext` (same name, scoped instead of provider-based)                        |
-| `createContext`           | `context(key)` — typed, scoped, no provider component                             |
-| `React.memo`              | Not needed — every render is a fresh call                                         |
-| `Suspense`                | Async component + `<Template>` from `@vincle/flow`                                |
-| `ErrorBoundary`           | No equivalent — try/catch at top level, `onError` in `@vincle/flow` for streaming |
-| `dangerouslySetInnerHTML` | Same API — also `raw(html)` as child                                              |
-| `onClick={() => fn()}`    | HTML `<form>`, `hx-*`/`data-action`/`x-on:click`, or `onclick="fn()"` (global `fn`) |
-| `className` / `class`     | Both work — HTML name wins if both present, no merge                              |
-| `htmlFor` → `for`         | `htmlFor` remapped to `for`; `for` wins if both present                           |
-| `@types/react`            | Optional — install it for attribute autocomplete                                  |
+| React pattern                      | Vincle equivalent                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------------------- |
+| `useState`                         | Props or context — state lives outside the render                                   |
+| `useEffect`                        | Not needed — no client lifecycle                                                    |
+| `useRef`                           | Not needed — no DOM access                                                          |
+| `useMemo` / `useCallback`          | Not needed — no re-renders                                                          |
+| `useContext`                       | `useContext` (same name, scoped instead of provider-based)                          |
+| `createContext`                    | `context(key)` — typed, scoped, no provider component                               |
+| `React.memo`                       | Not needed — every render is a fresh call                                           |
+| `Suspense`                         | Async component + `<Template>` from `@vincle/flow`                                  |
+| `ErrorBoundary`                    | No equivalent — try/catch at top level, `onError` in `@vincle/flow` for streaming   |
+| `dangerouslySetInnerHTML`          | Same API — also `raw(html)` as child                                                |
+| `onClick={() => fn()}`             | HTML `<form>`, `hx-*`/`data-action`/`x-on:click`, or `onclick="fn()"` (global `fn`) |
+| `className` / `class`              | Both work — HTML name wins if both present, no merge                                |
+| `htmlFor` → `for`                  | `htmlFor` remapped to `for`; `for` wins if both present                             |
+| `@types/react`                     | Optional — install it for attribute autocomplete                                    |
+| `defaultValue` / `defaultChecked`  | `value` / `checked` — nothing rehydrates, so there is no "initial" value            |
+| `ref` / `suppressHydrationWarning` | Not typed — no reconciler to talk to (`@vincle/no-refs` flags them)                 |
+| `<img>{caption}</img>`             | Refused — no valid HTML form; use `alt`, or a `<figure>`                            |
 
 ## What you lose
 

@@ -128,3 +128,32 @@ export const attrsRejected5 = <div ref={null} />;
 export const attrsRejected6 = <div>{Symbol("nope")}</div>;
 // @ts-expect-error `defaultValue` is a React notion, not an HTML attribute
 export const attrsRejected7 = <input defaultValue="x" />;
+// @ts-expect-error same, and the pair is documented together
+export const attrsRejected8 = <input defaultChecked />;
+// @ts-expect-error nothing hydrates, so nothing warns about it
+export const attrsRejected9 = <div suppressHydrationWarning />;
+// Vendor leftovers React still exposes; no HTML parser reads them.
+// @ts-expect-error radioGroup
+export const attrsRejected10 = <input radioGroup="g" />;
+// @ts-expect-error autoSave
+export const attrsRejected11 = <input autoSave="x" />;
+// @ts-expect-error unselectable
+export const attrsRejected12 = <div unselectable="on" />;
+
+// ── Must compile: props that do reach the document ────────────────────────
+//
+// The other side of the list above, and the one that broke: `ReactOnlyKeys` was
+// long enough to refuse `<meta property="og:title">` — the canonical Open Graph
+// tag — and nothing noticed until the intrinsic elements were typed. `key` is
+// accepted here and dropped at serialization, which is what keeps a keyed list
+// written for React compiling.
+export const attrsKept = (
+  <>
+    <script nonce="abc123" />
+    <meta property="og:title" content="x" />
+    <div about="#me" typeof="Person" vocab="https://schema.org/" />
+    <input inputMode="numeric" spellCheck={false} autoCapitalize="none" />
+    <div contentEditable="true" is="my-element" />
+    <li key="k">x</li>
+  </>
+);

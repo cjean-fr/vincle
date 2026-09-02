@@ -51,7 +51,7 @@ and a hydration contract. None of that helps when the only output is a string.
 Vincle is designed exclusively for server-side HTML generation. That lets it
 make different trade-offs:
 
-- **Zero dependencies** — nothing ships that you didn't write (~14 KB gzipped)
+- **Zero dependencies** — nothing ships that you didn't write (under 10 KB gzipped)
 - **No virtual DOM** — JSX renders to HTML eagerly, no intermediate tree
 - **Safe by default** — every value is escaped; dangerous URLs are blocked
 - **Async-native** — any component can be `async`, and the whole tree is awaited

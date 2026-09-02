@@ -4,6 +4,14 @@
 pre-commit:
   parallel: false
   jobs:
+    # `lint-staged` était déclaré en devDependency *et* configuré dans le
+    # package.json racine, mais aucun hook ne l'appelait : rien n'a jamais
+    # formaté quoi que ce soit au commit. oxfmt directement sur les fichiers
+    # indexés fait le travail sans la dépendance intermédiaire.
+    - name: format
+      run: bunx oxfmt --no-error-on-unmatched-pattern {staged_files}
+      stage_fixed: true
+
     - name: lint
       run: bun run lint
     - name: check

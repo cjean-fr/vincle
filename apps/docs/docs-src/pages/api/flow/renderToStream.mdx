@@ -1,8 +1,5 @@
 ---
 title: renderToStream
-sidebar:
-  group: Flow API
-  order: 3
 ---
 
 # renderToStream
@@ -23,12 +20,12 @@ function renderToStream(
 
 ## Options
 
-| Option           | Type                     | Default  | Description                                      |
-| ---------------- | ------------------------ | -------- | ------------------------------------------------ |
-| `signal`         | `AbortSignal`            | —        | Signal to abort the stream                       |
-| `onError`        | `FlowOptions["onError"]` | —        | Handler for fragment / stream render errors      |
-| `defaultTimeout` | `number`                 | —        | Per-fragment render timeout in ms                |
-| `mode`           | `"full" \| "fragment"`   | `"full"` | `"fragment"` emits neither shell nor close       |
+| Option           | Type                     | Default  | Description                                 |
+| ---------------- | ------------------------ | -------- | ------------------------------------------- |
+| `signal`         | `AbortSignal`            | —        | Signal to abort the stream                  |
+| `onError`        | `FlowOptions["onError"]` | —        | Handler for fragment / stream render errors |
+| `defaultTimeout` | `number`                 | —        | Per-fragment render timeout in ms           |
+| `mode`           | `"full" \| "fragment"`   | `"full"` | `"fragment"` emits neither shell nor close  |
 
 `FlowOptions` is `{ signal?, onError?, defaultTimeout? }`. The adapter is a
 required second argument, not an option.

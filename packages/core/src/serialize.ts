@@ -7,7 +7,13 @@ import {
   isRawtextTag,
   valueToText,
 } from "./escape.js";
+import { VOID_ELEMENTS, invalidTagMessage, isValidTag, voidChildrenMessage } from "./tag.js";
 import { RawString, VNode } from "./types.js";
+
+// The tag-name vocabulary lives in `tag.ts` (a leaf module the `VNode`
+// constructor can import) and is re-exported here, where `./html` and the tests
+// already look for it.
+export { VOID_ELEMENTS, isValidTag, invalidTagMessage } from "./tag.js";
 
 /**
  * Single source of truth for serializing one HTML element to a string.
@@ -17,71 +23,16 @@ import { RawString, VNode } from "./types.js";
  * wrapping is a bug — it must be fixed here, once, not in each caller.
  */
 
-/**
- * HTML void elements. Rendered **without** a closing tag and **without** a
- * trailing slash (`<br>`, not `<br/>`), matching `@vincle/core` — canonical
- * HTML5, email-safe, one byte smaller.
- *
- * @see https://html.spec.whatwg.org/multipage/syntax.html#void-elements
- */
-export const VOID_ELEMENTS = new Set([
-  "area",
-  "base",
-  "br",
-  "col",
-  "embed",
-  "hr",
-  "img",
-  "input",
-  "link",
-  "meta",
-  "param",
-  "source",
-  "track",
-  "wbr",
-]);
-
-// `\p{C}` under `/u` drags in Unicode tables, so valid names are memoised in a
-// `Set` — cheaper per hit than a `Map` on this hot path, and there's no value to
-// dereference. Invalid names aren't cached: they throw, so re-paying the regex
-// on the way out costs nothing anyone waits for.
-const RE_INVALID_TAG = /^[!?]|[\s"'<>/=`\\]|\p{C}/u;
-
-const VALID_TAGS = new Set<string>();
-const VALID_TAGS_MAX = 1024;
-
-export function isValidTag(tag: string): boolean {
-  const len = tag.length;
-  if (len === 0) return false;
-  let i = 0;
-  while (i < len) {
-    const c = tag.charCodeAt(i);
-    if (c < 97 || c > 122) break;
-    i++;
-  }
-  if (i === len) return true;
-
-  if (VALID_TAGS.has(tag)) return true;
-  if (RE_INVALID_TAG.test(tag)) return false;
-  if (VALID_TAGS.size < VALID_TAGS_MAX) VALID_TAGS.add(tag);
-  return true;
-}
-
-export function invalidTagMessage(tag: string): string {
-  return (
-    `[vincle/core] Invalid tag name ${JSON.stringify(tag)}: a tag name must not be empty, ` +
-    'start with "!" or "?", or contain whitespace, control characters, or any of " \' < > / = ` \\ . ' +
-    'If the tag is computed, check the expression that produced it — it must be a plain tag name like "div", not a component or an undefined value.'
-  );
-}
-
-export function serializeElement(
-  tag: string,
-  attrStr: string,
-  content: string,
-  hasChildren: boolean,
-): string {
-  if (!hasChildren && VOID_ELEMENTS.has(tag)) {
+export function serializeElement(tag: string, attrStr: string, content: string): string {
+  if (VOID_ELEMENTS.has(tag)) {
+    // The rendered `content`, not "were there children": `<img>{null}</img>` and
+    // `<br>{cond && <b/>}</br>` have children that render to nothing, which is
+    // the shape every conditional child takes. What no HTML parser can
+    // represent is *content* between a void element and its closing tag — it
+    // drops the tag and reparents the content, so the document silently stops
+    // being the one that was written. Refusing it is the only answer that keeps
+    // the output the tree.
+    if (content !== "") throw new TypeError(voidChildrenMessage(tag));
     return `<${tag}${attrStr}>`;
   }
   return `<${tag}${attrStr}>${content}</${tag}>`;
@@ -106,11 +57,15 @@ interface FoldState {
 /**
  * Fold `<tag …props>` to final HTML, or `NOT_STATIC` when a child is dynamic.
  *
- * Two things this deliberately does *not* do, because a second opinion on either
- * one is how the fold and the tree walk drift apart:
+ * The tag name is validated here because this is one of the two ways an element
+ * leaves `jsx()`: the other is a `VNode`, which validates in its constructor.
+ * One check per element on either path — the check used to sit in `jsx()`, above
+ * the fork, which is the same single check but leaves a hand-built `VNode`
+ * unguarded.
  *
- * - **Validate the tag name.** `jsx()` does it, once, and `jsx()` is the only
- *   caller this function has.
+ * What this deliberately does *not* do, because a second opinion on it is how
+ * the fold and the tree walk drift apart:
+ *
  * - **Judge the props.** There used to be a `for…in` over every prop looking for
  *   shapes the fold supposedly could not handle. `buildAttrs`, called below, is
  *   the authority on serializing props, and it handled all of them: a style
@@ -125,7 +80,12 @@ export function tryRenderStatic(
   tag: string,
   props: Record<string, unknown>,
 ): RawString | Promise<RawString> | typeof NOT_STATIC {
-  const children = props["children"];
+  if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
+
+  // `hasOwn` mirrors `jsx()` — the fold reads `children` from the same props
+  // object, so leaving it out here would keep the prototype gadget alive on
+  // every statically foldable element, which is the common case.
+  const children = Object.hasOwn(props, "children") ? props["children"] : undefined;
   const childTag = isRawtextTag(tag) ? tag : undefined;
 
   // Children first: a dynamic child is the only reason to decline, and declining
@@ -135,22 +95,15 @@ export function tryRenderStatic(
   const content = foldChildren(children, childTag, state);
   if (state.dynamic) return NOT_STATIC;
 
-  // `children !== undefined`, matching the tree-walk in `render.ts` — `!!children`
-  // diverged on a falsy child of a void element (`<img>{0}</img>` folded to
-  // `<img>` but tree-walked to `<img>0</img>`).
-  const hasChildren = children !== undefined;
-
   const attrStr = buildAttrs(props);
   // A promised attribute value does not make a subtree dynamic — it makes the
   // *folded result* awaitable, which `JSX.Element` has always allowed. Folding
   // it here rather than falling back to a VNode keeps one serializer for one
   // element, whatever its attributes turn out to be.
   if (typeof attrStr !== "string") {
-    return attrStr.then(
-      (resolved) => new RawString(serializeElement(tag, resolved, content, hasChildren)),
-    );
+    return attrStr.then((resolved) => new RawString(serializeElement(tag, resolved, content)));
   }
-  return new RawString(serializeElement(tag, attrStr, content, hasChildren));
+  return new RawString(serializeElement(tag, attrStr, content));
 }
 
 function foldChildren(children: unknown, rawtextTag: string | undefined, state: FoldState): string {

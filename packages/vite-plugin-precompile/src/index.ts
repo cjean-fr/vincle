@@ -25,7 +25,10 @@ const FRAMEWORK_RUNTIME_SUFFIX = "/jsx-runtime";
 export default function vitePrecompile(config?: PluginConfig): Plugin {
   // A misconfigured plugin is a config error: name the option and the value,
   // and fail now — not mid-build when Vite is transforming the first file.
-  if (config?.runtimeSource !== undefined && (typeof config.runtimeSource !== "string" || config.runtimeSource.length === 0)) {
+  if (
+    config?.runtimeSource !== undefined &&
+    (typeof config.runtimeSource !== "string" || config.runtimeSource.length === 0)
+  ) {
     const got =
       typeof config.runtimeSource === "string"
         ? JSON.stringify(config.runtimeSource)

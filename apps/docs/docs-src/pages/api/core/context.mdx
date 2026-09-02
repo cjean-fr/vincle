@@ -1,9 +1,5 @@
 ---
 title: Context API
-sidebar:
-  label: Context
-  group: API
-  order: 2
 ---
 
 # Context API
@@ -38,13 +34,13 @@ Creates a `ContextKey<T>` key. The `key` argument must be a non-empty
 string — a namespace is not required. The type parameter `T` enforces
 type safety at both write and read sites.
 
-### setContext(ctx, value)
+### setContext(key, value)
 
 Writes a value into the current scope. Must be called inside a `withScope`
 callback — throws if no scope is active. The value is scoped to the enclosing
 `withScope` call and all renders spawned inside it.
 
-### useContext(ctx)
+### useContext(key)
 
 Reads the value last written for that key in the current scope — there is no
 tree position involved, so a value set by a component is readable by anything
@@ -87,8 +83,8 @@ context is tied to the render call, not to the process.
 ## snapshot()
 
 Captures all context values currently set in the active scope. Pass the result
-as `seed` to a new `withScope` to fork a child scope that inherits all parent
-values.
+as `parentCtx` to a new `withScope` to fork a child scope that inherits all
+parent values.
 
 <CodeExample src="api/context/snapshot.tsx" />
 
@@ -106,3 +102,34 @@ level, set it in context, and let any component read it without passing
 This pattern keeps your components framework-agnostic: they depend on a
 context key, not on the HTTP server library, framework, request object, or
 middleware chain.
+
+## Runtime support
+
+The isolation comes from `AsyncLocalStorage`, which vincle finds in one of two
+places: `globalThis.AsyncLocalStorage`, or `node:async_hooks`. Node ≥ 12.17,
+Bun, Deno ≥ 1.11 and Cloudflare Workers with `nodejs_compat` all provide it, and
+nothing below is reachable there.
+
+On a runtime that has neither, the context falls back to a **synchronous scope**,
+and the first `withScope` call warns once:
+
+```
+[vincle/core] AsyncLocalStorage is not available on this runtime — falling back
+to a synchronous context scope. One scope at a time works; overlapping
+concurrent renders will throw rather than leak context between them.
+```
+
+One scope at a time behaves exactly as documented above, nesting included. What
+the fallback cannot do is tell a _nested_ scope from a _second concurrent
+request_: both enter `withScope` while the first callback is still awaiting. It
+refuses that case instead of answering it:
+
+```
+[vincle/core] withScope() was entered while another scope was still awaiting,
+and this runtime has no AsyncLocalStorage to tell the two apart.
+```
+
+The refusal is deliberate. A render that reads another request's context is a
+cross-request data leak, silent and untestable; an error naming the cause is a
+one-line runtime configuration fix. On Cloudflare Workers, that line is
+`compatibility_flags = ["nodejs_compat"]`.

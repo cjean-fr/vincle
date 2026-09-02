@@ -3,7 +3,7 @@ import type { Renderable } from "./types.js";
 import { serializeAttr } from "./attrs.js";
 import { escapeContent, isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { collectAsyncIterable, renderNode, sequenceFrom } from "./render.js";
-import { tryRenderStatic, NOT_STATIC, isValidTag, invalidTagMessage } from "./serialize.js";
+import { tryRenderStatic, NOT_STATIC } from "./serialize.js";
 import { VNode, raw, RawString } from "./types.js";
 
 // ── jsx — hybrid: single-pass fold of static trees, VNode for dynamic ─────
@@ -13,21 +13,25 @@ function jsx(
   attributes: Record<string, unknown> | null,
 ): VNode | RawString | Promise<RawString> {
   const props = attributes ?? {};
-  const dsih = props["dangerouslySetInnerHTML"] as
-    | { __html: string | null | undefined }
-    | undefined;
+  // `hasOwn` for the same reason as the three loops in `attrs.ts`: a props
+  // object reaches here from user code, and an enumerable `Object.prototype`
+  // property would otherwise be read as if the author had written it. This one
+  // is the sharpest of the set — `dangerouslySetInnerHTML` bypasses the whole
+  // escaping chain, so the gadget injects unescaped HTML into every element.
+  const dsih = (
+    Object.hasOwn(props, "dangerouslySetInnerHTML") ? props["dangerouslySetInnerHTML"] : undefined
+  ) as { __html: string | null | undefined } | undefined;
 
-  if (typeof tag === "string") {
-    if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
-
-    if (dsih === undefined) {
-      const folded = tryRenderStatic(tag, props);
-      if (folded !== NOT_STATIC) return folded;
-    }
+  // The tag name is validated by whichever of the two paths below takes over:
+  // `tryRenderStatic` for a folded element, the `VNode` constructor otherwise.
+  // One check per element either way, and no way past it.
+  if (typeof tag === "string" && dsih === undefined) {
+    const folded = tryRenderStatic(tag, props);
+    if (folded !== NOT_STATIC) return folded;
   }
 
   // `dangerouslySetInnerHTML` is trusted HTML — `raw` keeps it unescaped.
-  let children = props["children"];
+  let children = Object.hasOwn(props, "children") ? props["children"] : undefined;
   if (dsih !== undefined) {
     const html = dsih.__html;
     if (typeof html === "string") children = raw(html);

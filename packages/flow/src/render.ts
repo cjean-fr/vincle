@@ -1,12 +1,11 @@
 import { raw, renderToString, type JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
+import type { ShellContext } from "./adapters/shared.js";
 import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
 
-import type { ShellContext } from "./adapters/shared.js";
-
-import { withFlow } from "./context.js";
 import { assertAdapter, assertFlowOptions } from "./config.js";
+import { withFlow } from "./context.js";
 import { createStream } from "./create-stream.js";
 import { flushTemplates } from "./flushTemplates.js";
 
@@ -158,11 +157,7 @@ export async function runSequence(
  * the adapter must be complete, the options must be well-formed. Both public
  * streaming entry points call this, so a misconfiguration fails at setup.
  */
-function assertStreamInput(
-  source: string,
-  adapter: Adapter,
-  opts: FlowOptions | undefined,
-): void {
+function assertStreamInput(source: string, adapter: Adapter, opts: FlowOptions | undefined): void {
   assertFlowOptions(opts, source);
   assertAdapter(adapter, source);
 }

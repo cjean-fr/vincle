@@ -62,4 +62,9 @@ jobs:
         run: |
           cd "${{ steps.meta.outputs.package_dir }}"
           TARBALL="$(bun pm pack --quiet | tail -n1)"
-          npm publish "$TARBALL" --provenance
+          # `--access public` explicitly, and not only via each package's
+          # `publishConfig`: every package here is scoped, and npm defaults a
+          # scoped package to `restricted`. Relying on the manifest alone means
+          # one package missing the field fails its *first* publish — the one
+          # release that cannot be retried into an already-public name.
+          npm publish "$TARBALL" --provenance --access public

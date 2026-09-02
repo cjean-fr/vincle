@@ -1,7 +1,8 @@
 # @vincle/core
 
-The JSX → HTML engine. No runtime dependencies, ~14 KB gzip for the whole entry
-point (`dist/index.mjs` plus the two shared chunks it imports).
+The JSX → HTML engine. No runtime dependencies, under 10 KB gzip for the whole
+package — every entry point and shared chunk in `dist`, held there by
+`size-budget.test.ts`.
 
 One renderer, one tree walk: `renderToString` for a document. Static subtrees
 are folded to final HTML at `jsx()` time; anything dynamic stays a `VNode` for
@@ -28,9 +29,11 @@ the walk.
 
 `VNode` is a concrete class — one element (tag, attrs, children) — exported as
 a **value**, not just a type: the precompile contract (Deno/Preact) requires
-the runtime to test for it with `instanceof`. `jsx()` is the only way to make
-one. `Renderable` is the separate, broader type: everything a component may
-return (a `VNode`, a string, a promise, an iterable of any of those, …).
+the runtime to test for it with `instanceof`. `jsx()` is how you should make
+one; building one by hand is supported rather than merely possible — the
+constructor validates the tag name, because the tree walk does not re-check it.
+`Renderable` is the separate, broader type: everything a component may return (a
+`VNode`, a string, a promise, an iterable of any of those, …).
 
 ### Subpath exports
 
@@ -64,11 +67,23 @@ each one was, at some point, quietly untrue.
   `jsxTemplate` are a third traversal of the same value taxonomy — 1000 generated
   values, `src/precompile-equivalence.test.ts`. `jsxAttr` and `buildAttrs` remain
   two attribute serializers pinned by a residual equivalence in `attrs.test.ts`.
+  The precompile surface is exactly `jsxTemplate` / `jsxAttr` / `jsxEscape` — the
+  contract Deno defined and Preact and Hono also export — so the transform in
+  `@vincle/vite-plugin-precompile` emits nothing a compatible runtime lacks, and
+  hands back what it cannot express with those three (a rawtext element with a
+  dynamic hole, a void element carrying content).
 
 - **Async is never something the developer arranges.** A promise is awaited
   wherever one can appear: a child, a component's return, an array element, an
   attribute _value_, `dangerouslySetInnerHTML.__html`, a sync or async iterable.
   Nothing serializes as `[object Promise]`.
+
+- **The output is the tree, or an error.** A void element given content
+  (`<img>{caption}</img>` — which type-checks, since `@types/react` allows
+  children there) has no valid HTML form: a parser drops the closing tag and
+  reparents the content. Both paths refuse it rather than emit it. A child that
+  renders to nothing is not content, so a conditional child still renders the
+  bare element.
 
 - **Escaping and URL filtering are not optional.** Text and attributes are escaped
   by default; `<script>`/`<style>` follow rawtext rules so real JS and CSS can be
@@ -104,19 +119,20 @@ complete and maintainable one becomes available.
   recovery here.
 - `renderToString` never throws synchronously — every failure arrives as a
   rejection, so one `try`/`catch` around the await is enough. **One exception**,
-  at the root of the tree: a static subtree is folded during `jsx()`, so an
-  unserializable attribute in it throws where the JSX is _written_, before
-  `renderToString` is ever called. `renderToString(<div onClick={fn}>text</div>)`
-  throws; `renderToString(<div onClick={fn}><Comp/></div>)` rejects. Inside a
-  component the distinction disappears — `jsx()` then runs during the walk, which
-  converts the throw.
+  at the root of the tree: a static subtree is folded during `jsx()`, so what the
+  fold refuses — an unserializable attribute, an invalid tag name, content in a
+  void element — throws where the JSX is _written_, before `renderToString` is
+  ever called. `renderToString(<div onClick={fn}>text</div>)` throws;
+  `renderToString(<div onClick={fn}><Comp/></div>)` rejects. Inside a component
+  the distinction disappears — `jsx()` then runs during the walk, which converts
+  the throw.
 - A failing sibling stops the ones after it.
 - **`Error` messages are annotated with the throwing component's name**, once:
   `[Profile] not found`. Only the innermost component — an ancestor that
   re-throws the same error doesn't add itself. A thrown value that isn't an
   `Error` passes through unchanged.
 - **Messages are self-contained**: `[vincle/<package>] <api>: <what>. <why>.
-  <how to fix it>` — the prefix is stable and greppable, and the message names
+<how to fix it>` — the prefix is stable and greppable, and the message names
   the offending value. Config errors fail fast, at the entry point that
   receives the config, before anything renders.
 - **Per-fragment recovery** is `@vincle/flow`'s `onError`, for streaming.

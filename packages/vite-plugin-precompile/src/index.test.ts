@@ -155,8 +155,60 @@ describe("vite-plugin-precompile", () => {
       const vm = plugin.load(RID);
       expect(vm).toContain("@vincle/core/jsx-runtime");
     });
+
+    // The two halves of the default path are written in different files: the
+    // transform decides which helpers the output imports, the virtual module
+    // decides which ones it re-exports. Nothing compared them, and a helper
+    // added on one side only is a build that fails with "not exported by" — for
+    // every app that does not set `runtimeSource`.
+    it("re-exports every helper the transform can emit", async () => {
+      const shapes = [
+        'export const a = <a href={url} class="c">{text}</a>;',
+        "export const b = <div><style>{css}</style><script>{code}</script></div>;",
+        "export const c = <ul>{items.map((i) => <li>{i}</li>)}</ul>;",
+        "export const d = <div><img>{alt}</img><br /><Comp x={1} /></div>;",
+        "export const e = <>{one}<b>two</b></>;",
+      ];
+
+      for (const secure of [true, false]) {
+        const plugin = precompile({ secure });
+        // @ts-expect-error — internal hook
+        plugin.configResolved({ esbuild: {} });
+        // @ts-expect-error — internal hook
+        await plugin.buildStart.call(errorCtx());
+        // @ts-expect-error — internal hook
+        const reExported = named(plugin.load(RID) as string, /export \{([^}]*)\}/);
+        expect(reExported).not.toEqual([]);
+
+        for (const code of shapes) {
+          // @ts-expect-error — internal hook
+          const out = (await plugin.transform.call({}, code, "/src/app.tsx")) as {
+            code: string;
+          } | null;
+          if (!out) continue;
+          const imported = named(out.code, /import \{([^}]*)\} from/);
+          expect(imported).not.toEqual([]);
+          expect(
+            imported.filter((h) => !reExported.includes(h)),
+            `${code} (secure: ${secure})`,
+          ).toEqual([]);
+        }
+      }
+    });
   });
 });
+
+/** The names inside the first `{…}` group matched by `re`, sorted. */
+function named(code: string, re: RegExp): string[] {
+  const out = new Set<string>();
+  for (const m of code.matchAll(new RegExp(re, "g"))) {
+    for (const part of m[1]!.split(",")) {
+      const name = part.trim();
+      if (name) out.add(name);
+    }
+  }
+  return [...out].toSorted();
+}
 
 describe("plugin config", () => {
   it("rejects a non-string runtimeSource at plugin creation", () => {

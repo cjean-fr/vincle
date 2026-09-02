@@ -1,6 +1,6 @@
 import { TraceMap, originalPositionFor } from "@jridgewell/trace-mapping";
 import { renderToString } from "@vincle/core";
-import { jsxAttr, jsxEscape } from "@vincle/core/jsx-runtime";
+import { jsx, jsxAttr, jsxEscape } from "@vincle/core/jsx-runtime";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -622,9 +622,9 @@ describe("precompileTransform", () => {
       expect(preMod.html.value).toBe(rtMod.html.value);
     });
 
-    it("rawtext: precompiled <style> is byte-identical to the dynamic runtime path (secure mode)", async () => {
+    it("rawtext: a static <style> stays precompiled, byte-identical to the runtime path", async () => {
       const rand = () => Math.random().toString(36).slice(2);
-      const body = `<style>.a &gt; .b {"{"}color:red{"}"}</style>`;
+      const body = `<style>.a &gt; .b, .c:not(.d)</style>`;
 
       const runtimePath = join(TMP, `rt-${rand()}.tsx`);
       writeFileSync(
@@ -642,11 +642,133 @@ describe("precompileTransform", () => {
         },
         jsxAttr,
       )!.code;
+      expect(preSrc).toContain("jsxTemplate");
       const prePath = join(TMP, `pre-${rand()}.ts`);
       writeFileSync(prePath, preSrc);
       const preMod = (await import(prePath)) as { html: { value: string } };
 
       expect(preMod.html.value).toBe(rtMod.html.value);
     });
+
+    it("rawtext: a <style> with a dynamic hole is handed to the runtime, not templated", async () => {
+      // Escaping a hole for HTML inside rawtext is wrong (a parser decodes
+      // nothing there), and escaping it correctly would take a helper the
+      // precompile contract does not have. So the element is left as JSX and its
+      // own runtime applies its own rule — which is also why the output must
+      // still compile against a runtime that is not vincle.
+      const out = precompileTransform(
+        `const css = ".a{color:red}";\nexport const html = <div><style>{css}</style></div>;`,
+        "/src/app.tsx",
+        { runtimeSource: RT, secure: true },
+        jsxAttr,
+      );
+
+      expect(out!.code).not.toContain("jsxEscape(css)");
+      expect(out!.code).toContain("<style>{css}</style>");
+      expect(importedHelpers(out!.code)).toEqual(["jsxTemplate"]);
+    });
+  });
+
+  // ── React alias vs native name, on one element ────────────────────────────
+
+  describe("an alias and its HTML name on the same element", () => {
+    // Both spellings type-check (`VincleOverrides` declares `class` and
+    // `className`), so this is reachable. The runtime resolves it — the native
+    // name wins — and emitting both let the parser resolve it instead, the other
+    // way round: it keeps the *first* attribute.
+    const emit = (code: string): string =>
+      precompileTransform(code, "/src/app.tsx", { runtimeSource: RT }, jsxAttr)!.code;
+
+    it("keeps the native name, whichever order they are written in", () => {
+      expect(emit('export const a = <div className="a" class="b">x</div>;')).toContain(
+        '<div class="b">',
+      );
+      expect(emit('export const a = <div class="b" className="a">x</div>;')).toContain(
+        '<div class="b">',
+      );
+    });
+
+    it("drops the alias even when its value is dynamic", () => {
+      const out = emit('export const a = <div className={x} class="b">y</div>;');
+      expect(out).toContain('<div class="b">');
+      expect(out).not.toContain("jsxAttr");
+    });
+
+    it("agrees with the runtime's own answer", async () => {
+      // The same props through the runtime — this is the byte the template has
+      // to match, and it is the reason the rule is "native wins" and not
+      // "first wins".
+      expect(await renderToString(jsx("div", { className: "a", class: "b", children: "x" }))).toBe(
+        '<div class="b">x</div>',
+      );
+      expect(await renderToString(jsx("label", { htmlFor: "i", for: "j", children: "x" }))).toBe(
+        '<label for="j">x</label>',
+      );
+    });
+
+    it("leaves a lone alias alone", () => {
+      expect(emit('export const a = <div className="only">x</div>;')).toContain(
+        '<div class="only">',
+      );
+      expect(emit('export const a = <label htmlFor="i">x</label>;')).toContain('<label for="i">');
+    });
+  });
+
+  // ── The precompile contract, as the only thing the output may import ──────
+
+  /**
+   * `jsxTemplate`, `jsxAttr` and `jsxEscape` — the three helpers Deno's
+   * precompile defined and Preact and Hono also export. A generated call to
+   * anything else is not a wrong byte, it is a missing import: the build breaks,
+   * and only for the runtime that lacks it.
+   *
+   * This is the check that was missing when a fourth helper was added for
+   * rawtext holes: every unit test passed the runtime source explicitly, and the
+   * one module that has to re-export the set — the plugin's virtual module — was
+   * not in the loop.
+   */
+  const CONTRACT = new Set(["jsxAttr", "jsxEscape", "jsxTemplate"]);
+
+  describe("the generated code imports only the precompile contract", () => {
+    const cases: Record<string, string> = {
+      "rawtext hole": "export const a = <div><style>{css}</style></div>;",
+      "rawtext static": "export const a = <style>.x{'{'}color:red{'}'}</style>;",
+      "script hole": "export const a = <div><script>{code}</script></div>;",
+      "void with content": "export const a = <div><img>{alt}</img></div>;",
+      "void bare": 'export const a = <div><img src="/a.png" /></div>;',
+      "dynamic attribute": "export const a = <a href={url}>x</a>;",
+      "dynamic child": "export const a = <p>{name}</p>;",
+      "component child": "export const a = <p><Comp /></p>;",
+      fragment: "export const a = <>{one}<b>two</b></>;",
+      "array child": "export const a = <ul>{items.map((i) => <li>{i}</li>)}</ul>;",
+    };
+
+    for (const [name, code] of Object.entries(cases)) {
+      it(`${name}: no helper outside the contract`, () => {
+        for (const secure of [true, false]) {
+          const out = precompileTransform(
+            code,
+            "/src/app.tsx",
+            { runtimeSource: RT, secure },
+            jsxAttr,
+          );
+          if (!out) continue;
+          const outside = importedHelpers(out.code).filter((h) => !CONTRACT.has(h));
+          expect(outside, `secure: ${secure}`).toEqual([]);
+        }
+      });
+    }
   });
 });
+
+/** The named imports the transform injected, sorted. */
+function importedHelpers(code: string): string[] {
+  const names = new Set<string>();
+  for (const m of code.matchAll(/import \{([^}]*)\} from/g)) {
+    for (const part of m[1]!.split(",")) {
+      const name = part.trim();
+      if (name) names.add(name);
+    }
+  }
+  return [...names].toSorted();
+}
