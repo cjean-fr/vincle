@@ -82,10 +82,9 @@ export function tryRenderStatic(
 ): RawString | Promise<RawString> | typeof NOT_STATIC {
   if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
 
-  // `hasOwn` mirrors `jsx()` — the fold reads `children` from the same props
-  // object, so leaving it out here would keep the prototype gadget alive on
-  // every statically foldable element, which is the common case.
-  const children = Object.hasOwn(props, "children") ? props["children"] : undefined;
+  let children = props["children"];
+  if (children !== undefined && "children" in Object.prototype && !Object.hasOwn(props, "children"))
+    children = undefined;
   const childTag = isRawtextTag(tag) ? tag : undefined;
 
   // Children first: a dynamic child is the only reason to decline, and declining

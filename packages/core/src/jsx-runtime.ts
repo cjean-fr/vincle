@@ -13,25 +13,29 @@ function jsx(
   attributes: Record<string, unknown> | null,
 ): VNode | RawString | Promise<RawString> {
   const props = attributes ?? {};
-  // `hasOwn` for the same reason as the three loops in `attrs.ts`: a props
-  // object reaches here from user code, and an enumerable `Object.prototype`
-  // property would otherwise be read as if the author had written it. This one
-  // is the sharpest of the set — `dangerouslySetInnerHTML` bypasses the whole
-  // escaping chain, so the gadget injects unescaped HTML into every element.
+  // Read first, `hasOwn` only if the read finds something: an absent
+  // `dangerouslySetInnerHTML` — every element but a handful — costs one
+  // property miss, as it did before the guard existed. It is the one prop worth
+  // guarding: it bypasses the escaping chain, and an `Object.prototype` gadget
+  // for it is plain JSON. A polluted `children` reaches the document escaped.
+  const dsihValue = props["dangerouslySetInnerHTML"];
   const dsih = (
-    Object.hasOwn(props, "dangerouslySetInnerHTML") ? props["dangerouslySetInnerHTML"] : undefined
+    dsihValue !== undefined && Object.hasOwn(props, "dangerouslySetInnerHTML")
+      ? dsihValue
+      : undefined
   ) as { __html: string | null | undefined } | undefined;
 
-  // The tag name is validated by whichever of the two paths below takes over:
-  // `tryRenderStatic` for a folded element, the `VNode` constructor otherwise.
-  // One check per element either way, and no way past it.
+  // Validated by whichever exit takes over: `tryRenderStatic` when the element
+  // folds, the `VNode` constructor when it does not.
   if (typeof tag === "string" && dsih === undefined) {
     const folded = tryRenderStatic(tag, props);
     if (folded !== NOT_STATIC) return folded;
   }
 
   // `dangerouslySetInnerHTML` is trusted HTML — `raw` keeps it unescaped.
-  let children = Object.hasOwn(props, "children") ? props["children"] : undefined;
+  let children = props["children"];
+  if (children !== undefined && "children" in Object.prototype && !Object.hasOwn(props, "children"))
+    children = undefined;
   if (dsih !== undefined) {
     const html = dsih.__html;
     if (typeof html === "string") children = raw(html);
