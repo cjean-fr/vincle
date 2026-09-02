@@ -1,7 +1,7 @@
 import type { Renderable } from "./types.js";
 
 import { serializeAttr } from "./attrs.js";
-import { escapeContent, isAsyncIterable, isIterable, valueToText } from "./escape.js";
+import { isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { collectAsyncIterable, renderNode, sequenceFrom } from "./render.js";
 import { tryRenderStatic, NOT_STATIC } from "./serialize.js";
 import { VNode, raw, RawString } from "./types.js";
@@ -157,7 +157,6 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
 }
 
 function textValue(v: unknown): string {
-  if (typeof v === "string") return escapeContent(v);
   if (Array.isArray(v)) {
     let out = "";
     for (let i = 0; i < v.length; i++) out += textValue(v[i]!);

@@ -446,12 +446,13 @@ describe("escapeRawTagContent — script data double escape", () => {
   });
 });
 
-// ── valueToText ≡ the walks' inline leaf taxonomy ─────────────────────────
+// ── One leaf taxonomy, three entry points ─────────────────────────────────
 //
-// The walks keep an inline copy of the leaf taxonomy (delegation is measurably
-// slower); this test proves the copies agree.
+// `renderLeaf` is the definition; the walks route to it instead of restating it.
+// This test holds them to that — a copy reintroduced anywhere shows up here as a
+// disagreement.
 
-describe("valueToText ≡ the walks' inline leaf taxonomy", () => {
+describe("one leaf taxonomy, three entry points", () => {
   const LEAVES: unknown[] = [
     null,
     undefined,

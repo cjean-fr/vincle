@@ -1,12 +1,5 @@
 import { buildAttrs } from "./attrs.js";
-import {
-  escapeContent,
-  escapeRawTagContent,
-  isAsyncIterable,
-  isIterable,
-  isRawtextTag,
-  valueToText,
-} from "./escape.js";
+import { isAsyncIterable, isIterable, isRawtextTag, renderLeaf } from "./escape.js";
 import { VOID_ELEMENTS, invalidTagMessage, isValidTag, voidChildrenMessage } from "./tag.js";
 import { RawString, VNode } from "./types.js";
 
@@ -109,14 +102,9 @@ function foldChildren(children: unknown, rawtextTag: string | undefined): string
 }
 
 function foldChild(child: unknown, rawtextTag: string | undefined): string | null {
-  // Frequency order; the leaf taxonomy delegates to `valueToText` (escape.ts),
-  // keeping inline only what rawtext escaping or frequency pays for.
-  if (typeof child === "string") {
-    return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
-  }
-  if (child instanceof RawString) return child.value;
   if (Array.isArray(child)) return foldChildren(child, rawtextTag);
-  if (child === null || child === undefined || typeof child === "boolean") return "";
+  // The fold's own decision, and the only one it has: anything that renders later
+  // cannot be folded now.
   if (
     child instanceof VNode ||
     child instanceof Promise ||
@@ -126,10 +114,5 @@ function foldChild(child: unknown, rawtextTag: string | undefined): string | nul
   ) {
     return null;
   }
-  // Same rule as `renderRawtextChild` in `render.ts`, and it has to be the same
-  // or the fold and the walk disagree on one leaf: inside rawtext the coercion
-  // is `String`, because HTML-escaping there corrupts the sub-language.
-  return rawtextTag === undefined
-    ? valueToText(child)
-    : escapeRawTagContent(String(child), rawtextTag);
+  return renderLeaf(child, rawtextTag);
 }
