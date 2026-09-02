@@ -209,9 +209,9 @@ const RE_URL_TAB_NEWLINE = /[\t\n\r]/g;
  *   "recherche?q=café:x"     →  undefined      '?' ends any scheme candidate
  *   "jаvascript:alert(1)"    →  undefined      'а' is Cyrillic, not a scheme char
  *
- * The first two used to reach the document verbatim; the last two used to be
- * rewritten to `#blocked` although no browser sees a scheme in them at all — a
- * scan for the first `:` alone cannot tell those four cases apart.
+ * A scan for the first `:` alone cannot tell those four apart: it misses the
+ * scheme in the first two and invents one in the last two, where no browser
+ * sees a scheme at all.
  *
  * A scheme is `ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) ":"`. The scan stops
  * at the first character that cannot belong to one, so a long path or query is
