@@ -38,6 +38,14 @@ bun run test     # Run all tests (unit + fuzz/property-based)
 bun run check    # Type-check everything
 ```
 
+The differential fuzzers in `@vincle/core` run a fixed seed window, so a CI
+divergence replays from the failure message alone. `VINCLE_FUZZ_SEEDS` and
+`VINCLE_FUZZ_OFFSET` widen or shift it:
+
+```bash
+VINCLE_FUZZ_SEEDS=100000 bun test src/path-equivalence.test.ts
+```
+
 ## License
 
 MIT © Christophe Jean

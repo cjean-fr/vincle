@@ -62,6 +62,32 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+/**
+ * The seed window: `VINCLE_FUZZ_SEEDS` seeds after `VINCLE_FUZZ_OFFSET`.
+ *
+ * The default window is fixed, so a CI divergence replays from the failure
+ * message alone; widening the sweep takes no edit. A malformed value is
+ * refused, never clamped: a NaN count loops zero times, and a fuzzer that
+ * checks nothing reports green.
+ */
+function seedWindow(count: number): number[] {
+  const read = (name: string, fallback: number, min: number): number => {
+    const value = process.env[name];
+    if (value === undefined || value === "") return fallback;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < min) {
+      throw new Error(
+        `[vincle fuzz] ${name} must be an integer >= ${min}, got ${JSON.stringify(value)}`,
+      );
+    }
+    return n;
+  };
+  const offset = read("VINCLE_FUZZ_OFFSET", 0, 0);
+  return Array.from({ length: read("VINCLE_FUZZ_SEEDS", count, 1) }, (_, i) => offset + i + 1);
+}
+
+const SEEDS = seedWindow(1000);
+
 const TAGS = ["div", "span", "p", "section", "ul", "li", "a", "h1"];
 const VOID = ["br", "img", "hr"];
 const RAWTEXT = ["script", "style"];
@@ -93,20 +119,26 @@ function randProps(r: () => number): Record<string, unknown> {
   // these instead of declining, so this is the one prop shape where the two paths
   // do not even have the same *return type* — only the same bytes.
   if (r() < 0.12) p["href"] = Promise.resolve(r() < 0.5 ? "/p" : "javascript:alert(1)");
+  // `__html` clears the children when it is nullish, and that is a second
+  // branch: a string is trusted as markup, `null`/`undefined` render nothing.
   if (r() < 0.08)
     p["dangerouslySetInnerHTML"] = {
-      __html: r() < 0.5 ? "<b>raw</b> & stuff" : "<i>late</i> & raw",
+      __html: pick(["<b>raw</b> & stuff", "<i>late</i> & raw", null, undefined], r),
     };
   return p;
 }
 
 function genLeaf(r: () => number): unknown {
   const roll = r();
-  if (roll < 0.45) return pick(TEXTS, r);
-  if (roll < 0.6) return Math.floor(r() * 1000);
-  if (roll < 0.72) return r() < 0.33 ? null : r() < 0.5 ? undefined : r() < 0.5;
-  if (roll < 0.85) return raw("<em>" + pick(TEXTS, r) + "</em>");
-  if (roll < 0.95) return BigInt(Math.floor(r() * 10000));
+  if (roll < 0.43) return pick(TEXTS, r);
+  if (roll < 0.57) return Math.floor(r() * 1000);
+  if (roll < 0.69) return r() < 0.33 ? null : r() < 0.5 ? undefined : r() < 0.5;
+  if (roll < 0.82) return raw("<em>" + pick(TEXTS, r) + "</em>");
+  if (roll < 0.92) return BigInt(Math.floor(r() * 10000));
+  // A function that is not a component — a child, not a tag. The fold declines
+  // it (`typeof child === "function"`) and the walk stringifies it, so the two
+  // agree only because the fold hands it over rather than folding `String(fn)`.
+  if (roll < 0.96) return r() < 0.5 ? function named() {} : (): string => "x";
   return "";
 }
 
@@ -131,35 +163,43 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   if (depth <= 0) return genLeaf(r);
   const roll = r();
 
-  if (roll < 0.2) return genLeaf(r);
+  if (roll < 0.18) return genLeaf(r);
 
-  if (roll < 0.32) {
+  if (roll < 0.28) {
     // component returning a single subtree
     const body = gen(h, r, depth - 1);
     return h(() => body, {});
   }
 
-  if (roll < 0.42) {
+  if (roll < 0.36) {
     // component returning an ARRAY (the bug class fixed in point 1)
     const n = 1 + Math.floor(r() * 3);
     const items = Array.from({ length: n }, () => gen(h, r, depth - 1));
     return h(() => items, {});
   }
 
-  if (roll < 0.52) {
+  if (roll < 0.42) {
+    // Async component. The fold declines on it and renders the static siblings
+    // anyway, so an async child is where a partly folded tree meets the walk —
+    // the mix `precompile-equivalence.test.ts` generates and this one did not.
+    const body = gen(h, r, depth - 1);
+    return h(async () => body, {});
+  }
+
+  if (roll < 0.5) {
     // Fragment
     const n = 1 + Math.floor(r() * 3);
     const kids = Array.from({ length: n }, () => gen(h, r, depth - 1));
     return h(Fragment, { children: kids });
   }
 
-  if (roll < 0.56) {
+  if (roll < 0.54) {
     // a raw (possibly nested) array passed directly as a child
     const n = 1 + Math.floor(r() * 3);
     return Array.from({ length: n }, () => gen(h, r, depth - 1));
   }
 
-  if (roll < 0.6) {
+  if (roll < 0.58) {
     // A synchronous iterable that is not an array. `Renderable` has always
     // declared `Iterable<Renderable>`; the tree walk only started honouring it
     // once a `Set` was found rendering as "[object Set]".
@@ -170,7 +210,21 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
     })();
   }
 
-  if (roll < 0.68) {
+  if (roll < 0.62) {
+    // Async iterable child. One-shot, which is why the two trees are built from
+    // the seed twice instead of sharing one value.
+    const items = Array.from({ length: 1 + Math.floor(r() * 3) }, () => gen(h, r, depth - 1));
+    return (async function* () {
+      for (const item of items) yield item;
+    })();
+  }
+
+  if (roll < 0.66) {
+    // Promise of a child, container included.
+    return Promise.resolve(gen(h, r, depth - 1));
+  }
+
+  if (roll < 0.72) {
     // Void element — with children that render to nothing as often as without.
     //
     // Generating them childless only was how the fold and the tree-walk drifted
@@ -191,7 +245,7 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
     return h(pick(VOID, r), props);
   }
 
-  if (roll < 0.78) {
+  if (roll < 0.8) {
     // rawtext element (string child, may contain </script>)
     return h(pick(RAWTEXT, r), { children: pick(TEXTS, r) });
   }
@@ -241,9 +295,9 @@ function bareMessage(message: string): string {
 }
 
 describe("path equivalence: fold ≡ tree-walk", () => {
-  test("byte-identical output across 1000 random trees", async () => {
+  test(`byte-identical output across ${SEEDS.length} random trees`, async () => {
     const failures: { seed: number; fold: string; treeWalk: string }[] = [];
-    for (let seed = 1; seed <= 1000; seed++) {
+    for (const seed of SEEDS) {
       const [fold, treeWalk] = await Promise.all([
         outcome(() => gen(jsx, mulberry32(seed), 5)),
         outcome(() => gen(vnodeOf, mulberry32(seed), 5)),
@@ -253,7 +307,7 @@ describe("path equivalence: fold ≡ tree-walk", () => {
     if (failures.length > 0) {
       const f = failures[0]!;
       throw new Error(
-        `${failures.length}/1000 trees diverged. First failing seed=${f.seed}\n` +
+        `${failures.length}/${SEEDS.length} trees diverged. First failing seed=${f.seed}\n` +
           `  fold:      ${JSON.stringify(f.fold)}\n` +
           `  tree-walk: ${JSON.stringify(f.treeWalk)}`,
       );

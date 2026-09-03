@@ -82,6 +82,7 @@
     "coverage": "bun test --coverage --coverage-reporter=lcov",
     "format": "oxfmt",
     "mutation": "stryker run",
+    "mutation:fuzz": "stryker run stryker.fuzz.config.mjs",
     "test": "bun test",
     "conformance": "bun run conformance:bun && bun run conformance:node && bun run conformance:deno && bun run conformance:workerd",
     "conformance:bun": "bun --conditions=dist run conformance/run.ts",
