@@ -188,8 +188,8 @@ export function resolveAttrName(key: string): string {
       return "xml:base";
     case "xmlSpace":
       return "xml:space";
-    // The `xlink:` family. Only `xlinkHref` was mapped; the other six became
-    // `xlinkactuate`, `xlinktitle`, … — attributes with no meaning at all.
+    // The whole `xlink:` family: lowercasing any of these gives `xlinkactuate`,
+    // `xlinktitle`, … — attributes with no meaning at all.
     case "xlinkActuate":
       return "xlink:actuate";
     case "xlinkArcrole":
@@ -320,8 +320,8 @@ function functionAttrMessage(key: string): string {
  *
  * `raw()` means "trusted markup", which is not the same promise as "trusted
  * attribute value": the one character a double-quoted value cannot hold is the
- * quote that ends it, and `title={raw('" onmouseover="alert(1)')}` closed the
- * attribute and reopened the tag. Escaping only that one keeps `raw()` verbatim
+ * quote that ends it — `title={raw('" onmouseover="alert(1)')}` would close the
+ * attribute and reopen the tag. Escaping only that one keeps `raw()` verbatim
  * where it counts — an attribute value is entity-decoded before it reaches CSS,
  * JS or the DOM, so `style={raw('font-family:"Foo"')}` still means what it says.
  */
@@ -419,15 +419,15 @@ export function buildAttrs(attrs: Record<string, unknown>): string | Promise<str
   for (const key in attrs) {
     // Own properties only. `for…in` walks the prototype, so an enumerable
     // property on `Object.prototype` — what a prototype-pollution bug in the
-    // application writes — became an attribute on every element rendered.
+    // application writes — would be an attribute on every element rendered.
     if (!Object.hasOwn(attrs, key)) continue;
     if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
       continue;
     const meta = attrMeta(key);
     const attrName = meta.name;
     // `Object.hasOwn`, not `in`: `in` traverses the prototype, so an attribute
-    // resolving to an `Object.prototype` key (`<div Constructor="x" />`) was
-    // silently dropped instead of falling back to the native one already present.
+    // resolving to an `Object.prototype` key (`<div Constructor="x" />`) is
+    // dropped instead of falling back to the native one already present.
     if (attrName !== key && Object.hasOwn(attrs, attrName)) continue;
 
     const value = attrs[key];
@@ -539,8 +539,8 @@ function isPlainObject(value: unknown): boolean {
   return proto === Object.prototype || proto === null;
 }
 
-// A property *name* carrying `:` or `;` injects declarations —
-// `{ "color:red;position": "fixed" }` became `style="color:red;position:fixed"`.
+// A property *name* carrying `:` or `;` injects declarations: unfiltered,
+// `{ "color:red;position": "fixed" }` writes `color:red;position:fixed`.
 // No script, but arbitrary CSS (clickjacking) once keys come from data.
 const RE_INVALID_STYLE_PROP = /[;:{}<>"'\s]|\p{C}/u;
 
@@ -557,8 +557,8 @@ const RE_STYLE_VALUE_ESCAPE = /[\\;]/g;
 
 /**
  * A style property name, kebab-cased — with the one vendor prefix `camelToKebab`
- * cannot reach: `ms` is the only one spelled lowercase, so `msFlexAlign` came out
- * `ms-flex-align` instead of `-ms-flex-align`. Same rule as React's
+ * cannot reach: `ms` is the only one spelled lowercase, so `msFlexAlign` kebabs to
+ * `ms-flex-align` and needs the leading hyphen back. Same rule as React's
  * `hyphenateStyleName`; `WebkitBoxOrient` and `--custom-prop` are already right.
  */
 function styleProp(key: string): string {

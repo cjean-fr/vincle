@@ -76,11 +76,7 @@ const RAWTEXT_LANG = {
   style: { pattern: "</style", escape: "<\\" },
 } as const;
 
-/**
- * The rawtext tags, derived from the language table so the two can't drift
- * apart — mutation testing caught that drift once, as an unreachable fallback
- * branch nothing noticed.
- */
+/** The rawtext tags, derived from the language table so the two cannot drift apart. */
 export const RAWTEXT_TAGS: ReadonlySet<string> = new Set(Object.keys(RAWTEXT_LANG));
 
 // Per tag: a non-global matcher for the no-match fast path, and a global one to
