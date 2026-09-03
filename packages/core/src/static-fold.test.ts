@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 
 import { jsx, VNode } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { tryRenderStatic, NOT_STATIC, VOID_ELEMENTS, isValidTag } from "./serialize.js";
+import { tryRenderStatic, VOID_ELEMENTS, isValidTag } from "./serialize.js";
 import { RawString } from "./types.js";
 
 /** A getter in props can re-enter `tryRenderStatic` while the outer fold runs. */
-describe("FoldState re-entrancy", () => {
+describe("fold re-entrancy", () => {
   test("getter calls tryRenderStatic on a static tree → outer fold unaffected", () => {
     const props = {
       get ["data-x"]() {
@@ -23,14 +23,12 @@ describe("FoldState re-entrancy", () => {
   });
 
   test("getter calls tryRenderStatic with a VNode → outer fold unaffected", () => {
-    // The getter triggers an inner tryRenderStatic with a VNode (so
-    // NOT_STATIC). Without the fix, hasDynamic flipped to true inside the
-    // inner call and STAYED true after it returned, wrongly telling the
-    // outer call that its own fold is dynamic.
+    // The inner call declines, and the outer one must still fold its own
+    // children: nothing carries the inner answer out.
     const props = {
       get ["data-x"]() {
         const inner = tryRenderStatic("div", { children: new VNode("span", {}, null) });
-        expect(inner).toBe(NOT_STATIC);
+        expect(inner).toBeNull();
         return "x";
       },
       children: "hello",
@@ -47,7 +45,7 @@ describe("FoldState re-entrancy", () => {
   });
 
   test("dynamic tree (VNode child)", () => {
-    expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBe(NOT_STATIC);
+    expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBeNull();
   });
 });
 
@@ -165,12 +163,12 @@ describe("SVG foreign elements render with closing tags (not void)", () => {
 
 describe("sequential calls isolation", () => {
   test("dynamic then static", () => {
-    expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBe(NOT_STATIC);
+    expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBeNull();
     expect(tryRenderStatic("div", { children: "hello" })).toBeInstanceOf(RawString);
   });
 
   test("static then dynamic", () => {
     expect(tryRenderStatic("div", { children: "hello" })).toBeInstanceOf(RawString);
-    expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBe(NOT_STATIC);
+    expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBeNull();
   });
 });

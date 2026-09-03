@@ -3,7 +3,7 @@ import type { Renderable } from "./types.js";
 import { serializeAttr } from "./attrs.js";
 import { isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { collectAsyncIterable, renderNode, sequenceFrom } from "./render.js";
-import { tryRenderStatic, NOT_STATIC } from "./serialize.js";
+import { tryRenderStatic } from "./serialize.js";
 import { VNode, raw, RawString } from "./types.js";
 
 // ── jsx — hybrid: single-pass fold of static trees, VNode for dynamic ─────
@@ -29,7 +29,7 @@ function jsx(
   // folds, the `VNode` constructor when it does not.
   if (typeof tag === "string" && dsih === undefined) {
     const folded = tryRenderStatic(tag, props);
-    if (folded !== NOT_STATIC) return folded;
+    if (folded !== null) return folded;
   }
 
   // `dangerouslySetInnerHTML` is trusted HTML — `raw` keeps it unescaped.

@@ -32,17 +32,15 @@ export function serializeElement(tag: string, attrStr: string, content: string):
 }
 
 // `tryRenderStatic` folds an element subtree to a RawString in one traversal,
-// bailing to `NOT_STATIC` the instant a child is dynamic — children are walked
-// once, not detected then rendered separately.
+// declining the instant a child is dynamic — children are walked once, not
+// detected then rendered separately.
 //
-// The bail travels as `null`, the fold's own return value: nothing allocated to
-// carry it, and no state for a props getter re-entering the fold to share.
-
-/** Sentinel returned by `tryRenderStatic` when the subtree cannot be folded. */
-export const NOT_STATIC = Symbol("not-static");
+// The bail is `null` all the way out, the fold's own return value: nothing
+// allocated to carry it, no state for a props getter re-entering the fold to
+// share, and one answer to recognise rather than a sentinel per depth.
 
 /**
- * Fold `<tag …props>` to final HTML, or `NOT_STATIC` when a child is dynamic.
+ * Fold `<tag …props>` to final HTML, or `null` when a child is dynamic.
  *
  * The tag name is validated here because this is one of the two ways an element
  * leaves `jsx()`: the other is a `VNode`, which validates in its constructor.
@@ -65,7 +63,7 @@ export const NOT_STATIC = Symbol("not-static");
 export function tryRenderStatic(
   tag: string,
   props: Record<string, unknown>,
-): RawString | Promise<RawString> | typeof NOT_STATIC {
+): RawString | Promise<RawString> | null {
   if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
 
   let children = props["children"];
@@ -77,7 +75,7 @@ export function tryRenderStatic(
   // before `buildAttrs` runs is what keeps a promised attribute from being
   // started and then dropped on the floor.
   const content = foldChildren(children, childTag);
-  if (content === null) return NOT_STATIC;
+  if (content === null) return null;
 
   const attrStr = buildAttrs(props);
   // A promised attribute value does not make a subtree dynamic — it makes the
