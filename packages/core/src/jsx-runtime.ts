@@ -92,9 +92,9 @@ export function jsxEscape(v: unknown): RawString | VNode | Promise<RawString | V
   return new RawString(textValue(v));
 }
 
-// Single pass, matching `renderChildrenAsync` in `render.ts` — the previous
-// three-pass form (`map` then `some` then concatenate) was several times
-// slower on the all-synchronous case that's the norm here.
+// Single pass, matching `renderChildrenAsync` in `render.ts`: a three-pass form
+// (`map`, then `some`, then concatenate) is several times slower on the
+// all-synchronous case that's the norm here.
 function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
   let out = "";
   for (let i = 0; i < arr.length; i++) {
@@ -129,10 +129,8 @@ function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
  * an array then comes out as `&lt;i&gt;two&lt;/i&gt;` on the precompile path
  * and `<i>two</i>` on every other one.
  *
- * Reachable through the shipped transform: `{items.map(() => <AsyncComp/>)}` is
- * ordinary code, and the transform wraps it in `jsxEscape`. It survived because
- * the precompile suite was a case list; `precompile-equivalence.test.ts` found
- * it on the first run.
+ * Ordinary code reaches this: `{items.map(() => <AsyncComp/>)}` is exactly that
+ * shape, and the shipped transform wraps it in `jsxEscape`.
  */
 async function escapeArrayFrom(
   prefix: string,
@@ -148,8 +146,8 @@ async function escapeArrayFrom(
  * Called by the precompile transform for each attribute expression.
  *
  * The value taxonomy lives in `serializeAttr` (`attrs.ts`) — the same module
- * `buildAttrs` delegates to, so the two paths agree by construction instead of
- * by a case list (they drifted four times; one drift closed the start tag).
+ * `buildAttrs` delegates to, so the two paths agree by construction rather than
+ * by a case list: a divergence between them can go as far as closing the start tag.
  * This wrapper is the async rendez-vous for the precompile path: a promised
  * value recurses per attribute, where `buildAttrsAsync` resolves the batch.
  */
@@ -179,12 +177,11 @@ function textValue(v: unknown): string {
  * A VNode hole renders through the tree walk (`renderNode`), one hole at a
  * time, in document order — the same sequencing rule as `renderChildrenFrom`
  * in `render.ts`. `Promise.all` over the holes would overlap siblings that
- * mutate the context, reintroducing the race the sequential walk removed.
+ * mutate the context — the race the sequential walk exists to prevent.
  *
- * One pass. The previous form scanned `values` for a promise, then mapped it
- * through `textValue`, then walked the resulting array again to interleave
- * — three traversals and one array for what is almost always a two-hole
- * template.
+ * One pass: scanning `values` for a promise, mapping them through `textValue`,
+ * then walking the result to interleave is three traversals and one array for
+ * what is almost always a two-hole template.
  */
 export function jsxTemplate(
   templates: ArrayLike<string>,

@@ -24,7 +24,7 @@ import type {
 export namespace JSX {
   /**
    * What `jsx()` produces: a `VNode`, a `RawString` when the static fold
-   * succeeded, or a promise of one when an attribute value was itself a promise.
+   * succeeded, or a promise of one when an attribute value is itself a promise.
    *
    * `RawString` is a first-class renderable leaf — `renderNode` special-cases
    * `instanceof RawString` before it ever looks at `VNode` — so it belongs here
@@ -37,16 +37,16 @@ export namespace JSX {
    *
    * The return type is `Renderable`, not `Element`: the renderers handle far more
    * than nodes. `() => "text"`, `() => 42`, `() => [<a/>, <b/>]` and
-   * `async () => <div/>` all render correctly, and every one of them was rejected
-   * by tsc while `Element` served as the component contract. Widening stops there
-   * — an object or a symbol return is still an error.
+   * `async () => <div/>` all render correctly, and `Element` as the component
+   * contract rejects every one of them. Widening stops there — an object or a
+   * symbol return is still an error.
    *
    * `Awaitable<Renderable>`, not `Renderable`, for the one shape the flat type
    * cannot express: `JSX.Element` is itself awaitable, so an async component that
    * *writes its return type down* — `async (): Promise<JSX.Element>`, the
    * annotation anyone arriving from React reaches for — is a promise of a
-   * promise. Inference collapsed it, so it compiled only as long as nobody
-   * annotated. Making `Renderable` itself recursive is the other way to say this,
+   * promise. Inference collapses it, so the flat type holds only as long as nobody
+   * annotates. Making `Renderable` itself recursive is the other way to say this,
    * and TypeScript refuses it: a type reached through its own `then` callback is
    * TS1062. The extra level belongs on the boundary, where the walk resolves it.
    */

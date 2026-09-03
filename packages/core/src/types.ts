@@ -125,7 +125,7 @@ export type ClassValue =
 //
 // `key` is not here either: React supplies it to intrinsic elements through
 // `ClassAttributes`, and TypeScript only consults `JSX.IntrinsicAttributes` for
-// components, so stripping it broke every keyed list. It is dropped at
+// components, so stripping it rejects every keyed list. It is dropped at
 // serialization time, which is what makes accepting it harmless.
 type ReactOnlyKeys =
   // Reconciler-only.
