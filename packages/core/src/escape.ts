@@ -274,15 +274,33 @@ export function isSafeScheme(url: string): boolean {
 }
 
 // ── Value → text coercion ────────────────────────────────────────────────
-//
-// The taxonomy of "a value rendered as text", in test order. It lives in one
-// place because the copies of it diverged, repeatedly.
 
-export function valueToText(v: unknown): string {
+/**
+ * The leaf taxonomy: a value that is not a node, rendered as text.
+ *
+ * One definition, two escaping policies. `rawtextTag` names the sub-language
+ * when the leaf sits inside `<script>` or `<style>`, where HTML-escaping would
+ * corrupt it, and is `undefined` in ordinary content — a tag name rather than an
+ * escape function, because `escapeRawTagContent` needs the tag and a function
+ * parameter would mean a closure allocated per text node.
+ *
+ * Callers own every *non*-leaf shape, because each has its own answer for it: the
+ * walk renders a VNode, the fold declines it, `valueToText` refuses it.
+ */
+export function renderLeaf(v: unknown, rawtextTag: string | undefined): string {
   if (v === null || v === undefined || typeof v === "boolean") return "";
-  if (typeof v === "string") return escapeContent(v);
+  if (typeof v === "string")
+    return rawtextTag === undefined ? escapeContent(v) : escapeRawTagContent(v, rawtextTag);
   if (typeof v === "number" || typeof v === "bigint") return String(v);
   if (v instanceof RawString) return v.value;
+  // Inside rawtext the coercion is `String` under the tag's own escape: an entity
+  // is never decoded there, so HTML-escaping would put `&lt;` in the JavaScript.
+  return rawtextTag === undefined
+    ? escapeContent(String(v))
+    : escapeRawTagContent(String(v), rawtextTag);
+}
+
+export function valueToText(v: unknown): string {
   // A VNode is not a text value: stringifying one would emit `[object Object]`
   // silently. The message says what to do instead — naming only what the reader
   // can act on: `valueToText` and `renderNode` are internal, and sending someone
@@ -294,7 +312,7 @@ export function valueToText(v: unknown): string {
         "{comp}, and that the tree is rendered with renderToString().",
     );
   }
-  return escapeContent(String(v));
+  return renderLeaf(v, undefined);
 }
 
 // ── Iterable protocol tests ──────────────────────────────────────────────
