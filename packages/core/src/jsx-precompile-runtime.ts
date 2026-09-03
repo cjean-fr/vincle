@@ -5,7 +5,7 @@
  * the whole contract, shared with Deno's precompile and Preact: the transform
  * emits nothing a compatible runtime would not export.
  */
-export { jsxTemplate, jsxAttr, jsxEscape } from "./jsx-runtime.js";
+export { jsxTemplate, jsxAttr, jsxEscape, precompileDialect } from "./jsx-runtime.js";
 
 // Same reason as the other two runtimes: whichever entry point `jsxImportSource`
 // names has to carry the namespace.

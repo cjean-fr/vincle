@@ -52,10 +52,11 @@ describe("jsxTemplate", () => {
     );
   });
 
-  test("boolean attribute false", () => {
-    expect((jsxTemplate`<input ${jsxAttr("disabled", false)}>` as RawString).value).toBe(
-      "<input >",
-    );
+  test("boolean attribute false leaves no separator behind", () => {
+    // `jsxAttr` carries the separating space, so an attribute it drops takes
+    // the space with it — the byte-for-byte match with the runtime path, which
+    // renders `<input disabled={false} />` as `<input>`.
+    expect((jsxTemplate`<input ${jsxAttr("disabled", false)}>` as RawString).value).toBe("<input>");
   });
 
   test("null/undefined attribute", () => {
