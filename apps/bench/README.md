@@ -42,35 +42,34 @@ Les baselines **absolues** ne sont pas versionnées — elles sont spécifiques 
 machine et à un instant. On enregistre la sienne localement, juste avant de
 modifier le code.
 
-## Le gate de CI : des ratios, pas des ops/s
+## Pourquoi il n'y a pas de gate
 
-Une baseline en ops/s ne vaut que sur la machine qui l'a écrite, donc elle ne peut
-pas garder la CI. Résultat longtemps subi : la CI lançait une exécution unique —
-ce que la section ci-dessus déclare non citable — et l'archivait sans jamais la
-comparer. L'objectif n°1 du projet était le seul sur lequel rien ne pouvait
-échouer.
+Trois formes ont été essayées, mesurées, et aucune ne tient à cette échelle
+(3 à 12 % d'écart) sur cette charge :
 
-Ce qui voyage d'une machine à l'autre, c'est le **ratio** entre deux renderers
-mesurés dans la même exécution : le bruit leur est commun et se simplifie. C'est
-aussi ce que GOAL vise — « proche de kitajs », pas un nombre d'opérations.
+| forme                                           | ce qu'elle a fait                                                                                                                                                          |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ratios contre React, Preact, Hono, Kita         | confondus avec le moteur et la machine : le ratio `stack` contre React est passé de 3,25 à 2,42 sans qu'une ligne ne change. Trois semaines de `REGRESSION`, aucune vraie. |
+| A/B contre un build figé, un processus par côté | non biaisé (moyennes à ±2 % de 1,00) mais σ ≈ 3 % par paire, soit ~9 % de sensibilité à 8 paires. La régression connue, 3 % dans ce contexte, passait dessous.             |
+| le même A/B dans le contexte complet            | biais d'ordre de 10 % : le premier chauffe le JIT et laisse son GC au second. Le build **lent** a été mesuré 13 % plus rapide.                                             |
+
+Deux choses apprises au passage, et qui restent vraies :
+
+- **Le coût dépend du contexte du processus.** Le même changement valait 3 % dans
+  un processus qui ne rendait que vincle, et 11 % dans un processus qui rendait
+  aussi les quatre concurrents. Les caches d'inline pollués sont ce qui ressemble
+  à une application.
+- **Ce qui a effectivement trouvé la régression**, c'est un A/B à la main : le
+  `dist` d'avant et celui d'après, sur la même machine, dans la même session,
+  quand on soupçonne déjà une ligne. Reproductible :
 
 ```bash
-# rejouer le gate localement (8 exécutions, ~2 min)
-bun run bench:gate
+git checkout <avant> -- packages/core/src
+bun run build --filter=@vincle/core && bun run bench:stats -- --runs 8
+git checkout HEAD -- packages/core/src   # puis reconstruire
 ```
 
-```bash
-# rafraîchir la baseline de ratios — depuis une exécution CI de préférence
-bun run bench:stats -- --runs 8 --save-gate results/ratios.json
-```
-
-`results/ratios.json` est le seul fichier de `results/` versionné (exception
-explicite dans `.gitignore`). Le gate échoue si un ratio s'est **dégradé** d'au
-moins 3σ ; une amélioration ou un mouvement dans le bruit ne fait rien échouer.
-
-Deux limites, dites plutôt que tues : les cas `async` et `precompile` n'ont pas
-de concurrent, donc ils ne sont pas gatés ; et un concurrent bruyant réduit la
-sensibilité de son couple (`@kitajs/html` sur `text` a un cv de ~17 %).
+La CI mesure et archive. Elle ne tranche pas.
 
 ## Localiser un coût
 

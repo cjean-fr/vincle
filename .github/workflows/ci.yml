@@ -163,15 +163,18 @@ jobs:
             packages/*/badges/
           if-no-files-found: ignore
 
-      # `shell: bash` for `pipefail`: the gate's exit code is the whole point of
-      # the step, and a bare `| tee` returns tee's. The pipe used to live inside
-      # the npm script, where it silently turned `process.exit(1)` into a green
-      # run — the gate reported eight regressions for twenty days without ever
-      # failing CI. Keeping the redirection here, in a shell that propagates the
-      # failure, is what makes the report and the verdict the same thing.
-      - name: Benchmark & performance gate
+      # Mesure, sans verdict. Trois formes de gate ont été essayées et aucune
+      # ne tenait : ratios contre React (confondus avec le moteur et la
+      # machine — 8 fausses régressions, aucune vraie), A/B contre un build
+      # figé dans un processus isolé (σ 3 % par paire, la régression connue de
+      # 3 % passait dessous), le même A/B dans le contexte complet (biais
+      # d'ordre de 10 %, le build lent mesuré 13 % plus rapide). Les chiffres
+      # restent lisibles sur le run ; c'est à la lecture que le coût se juge.
+      - name: Benchmark
         shell: bash
-        run: bun run --filter=@vincle/bench bench:gate | tee apps/bench/results/gate.txt
+        run: |
+          mkdir -p apps/bench/results
+          bun run --filter=@vincle/bench bench:stats -- --runs 8 | tee apps/bench/results/bench.txt
 
       - name: Upload Benchmark Results
         uses: actions/upload-artifact@v7
