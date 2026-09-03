@@ -1,12 +1,5 @@
 import { buildAttrs } from "./attrs.js";
-import {
-  escapeContent,
-  escapeRawTagContent,
-  isAsyncIterable,
-  isIterable,
-  isRawtextTag,
-  valueToText,
-} from "./escape.js";
+import { isAsyncIterable, isIterable, isRawtextTag, renderLeaf } from "./escape.js";
 import { VOID_ELEMENTS, invalidTagMessage, isValidTag, voidChildrenMessage } from "./tag.js";
 import { RawString, VNode } from "./types.js";
 
@@ -39,23 +32,15 @@ export function serializeElement(tag: string, attrStr: string, content: string):
 }
 
 // `tryRenderStatic` folds an element subtree to a RawString in one traversal,
-// bailing to `NOT_STATIC` the instant a child is dynamic — children are walked
-// once, not detected then rendered separately.
+// declining the instant a child is dynamic — children are walked once, not
+// detected then rendered separately.
 //
-// The bail is a `FoldState` object passed by reference, not a `string | symbol`
-// union return, so `foldChild` stays monomorphic on this deep-recursion hot
-// path. Allocated per outermost call rather than a module-level flag, so two
-// invocations on the same stack don't share state.
-
-/** Sentinel returned by `tryRenderStatic` when the subtree cannot be folded. */
-export const NOT_STATIC = Symbol("not-static");
-
-interface FoldState {
-  dynamic: boolean;
-}
+// The bail is `null` all the way out, the fold's own return value: nothing
+// allocated to carry it, no state for a props getter re-entering the fold to
+// share, and one answer to recognise rather than a sentinel per depth.
 
 /**
- * Fold `<tag …props>` to final HTML, or `NOT_STATIC` when a child is dynamic.
+ * Fold `<tag …props>` to final HTML, or `null` when a child is dynamic.
  *
  * The tag name is validated here because this is one of the two ways an element
  * leaves `jsx()`: the other is a `VNode`, which validates in its constructor.
@@ -78,7 +63,7 @@ interface FoldState {
 export function tryRenderStatic(
   tag: string,
   props: Record<string, unknown>,
-): RawString | Promise<RawString> | typeof NOT_STATIC {
+): RawString | Promise<RawString> | null {
   if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
 
   let children = props["children"];
@@ -89,9 +74,8 @@ export function tryRenderStatic(
   // Children first: a dynamic child is the only reason to decline, and declining
   // before `buildAttrs` runs is what keeps a promised attribute from being
   // started and then dropped on the floor.
-  const state: FoldState = { dynamic: false };
-  const content = foldChildren(children, childTag, state);
-  if (state.dynamic) return NOT_STATIC;
+  const content = foldChildren(children, childTag);
+  if (content === null) return null;
 
   const attrStr = buildAttrs(props);
   // A promised attribute value does not make a subtree dynamic — it makes the
@@ -104,25 +88,21 @@ export function tryRenderStatic(
   return new RawString(serializeElement(tag, attrStr, content));
 }
 
-function foldChildren(children: unknown, rawtextTag: string | undefined, state: FoldState): string {
-  if (!Array.isArray(children)) return foldChild(children, rawtextTag, state);
+function foldChildren(children: unknown, rawtextTag: string | undefined): string | null {
+  if (!Array.isArray(children)) return foldChild(children, rawtextTag);
   let out = "";
   for (let i = 0; i < children.length; i++) {
-    out += foldChild(children[i], rawtextTag, state);
-    if (state.dynamic) return "";
+    const part = foldChild(children[i], rawtextTag);
+    if (part === null) return null;
+    out += part;
   }
   return out;
 }
 
-function foldChild(child: unknown, rawtextTag: string | undefined, state: FoldState): string {
-  // Frequency order; the leaf taxonomy delegates to `valueToText` (escape.ts),
-  // keeping inline only what rawtext escaping or frequency pays for.
-  if (typeof child === "string") {
-    return rawtextTag ? escapeRawTagContent(child, rawtextTag) : escapeContent(child);
-  }
-  if (child instanceof RawString) return child.value;
-  if (Array.isArray(child)) return foldChildren(child, rawtextTag, state);
-  if (child === null || child === undefined || typeof child === "boolean") return "";
+function foldChild(child: unknown, rawtextTag: string | undefined): string | null {
+  if (Array.isArray(child)) return foldChildren(child, rawtextTag);
+  // The fold's own decision, and the only one it has: anything that renders later
+  // cannot be folded now.
   if (
     child instanceof VNode ||
     child instanceof Promise ||
@@ -130,13 +110,7 @@ function foldChild(child: unknown, rawtextTag: string | undefined, state: FoldSt
     isIterable(child) ||
     isAsyncIterable(child)
   ) {
-    state.dynamic = true;
-    return "";
+    return null;
   }
-  // Same rule as `renderRawtextChild` in `render.ts`, and it has to be the same
-  // or the fold and the walk disagree on one leaf: inside rawtext the coercion
-  // is `String`, because HTML-escaping there corrupts the sub-language.
-  return rawtextTag === undefined
-    ? valueToText(child)
-    : escapeRawTagContent(String(child), rawtextTag);
+  return renderLeaf(child, rawtextTag);
 }

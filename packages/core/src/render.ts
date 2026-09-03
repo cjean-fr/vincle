@@ -5,6 +5,7 @@ import {
   isAsyncIterable,
   isIterable,
   isRawtextTag,
+  renderLeaf,
   valueToText,
 } from "./escape.js";
 import { serializeElement } from "./serialize.js";
@@ -53,11 +54,13 @@ export function renderToString(node: unknown): Promise<string> {
  * @internal
  */
 export function renderNode(vnode: unknown): string | Promise<string> {
-  // Leaf taxonomy inlined rather than delegated to `valueToText` — measurably
-  // faster; `escape.test.ts` pins the copy in sync.
-  if (vnode === null || vnode === undefined || typeof vnode === "boolean") return "";
-  if (typeof vnode === "string") return escapeContent(vnode);
-  if (typeof vnode === "number" || typeof vnode === "bigint") return String(vnode);
+  // Two tests, not a second copy of the leaf taxonomy: anything that is not an
+  // object is a leaf by construction, and `RawString` is the one object the fold
+  // hands back by the thousand. Everything they admit goes to `renderLeaf`, which
+  // owns what a leaf renders as. Without them a text node pays five protocol
+  // tests — two of which are `Symbol` lookups — to reach the same answer, worth
+  // 3.5 to 7.6% across `text`, `stack` and `realworld`.
+  if (vnode === null || typeof vnode !== "object") return renderLeaf(vnode, undefined);
   if (vnode instanceof RawString) return vnode.value;
 
   // ── Async primitives ──
@@ -233,10 +236,6 @@ const isElementNode = (v: unknown): boolean => v instanceof VNode && typeof v.ta
  * unless the element really is `<script>` or `<style>`.
  */
 function renderRawtextChild(child: unknown, rawtextTag: string): string | Promise<string> {
-  if (typeof child === "string") return escapeRawTagContent(child, rawtextTag);
-  if (child === null || child === undefined || typeof child === "boolean") return "";
-  if (typeof child === "number" || typeof child === "bigint") return String(child);
-  if (child instanceof RawString) return child.value;
   if (child instanceof Promise) return child.then((r) => renderRawtextChild(r, rawtextTag));
   // A component: invoked here rather than in `renderNode`, so that whatever it
   // returns comes back through this function and keeps the rule. The promise and
@@ -272,11 +271,7 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
     return collectAsyncIterable(child, (chunk) => renderRawtextChild(chunk, rawtextTag));
   }
   if (isIterable(child)) return renderChildrenAsync(Array.from(child), rawtextTag);
-  // `String`, not `valueToText`: the latter HTML-escapes, which inside rawtext
-  // is the one thing the whole design rejects — an entity is never decoded
-  // there, so `<script>{obj}</script>` would emit `&lt;` into the JavaScript.
-  // Every earlier branch has already taken null, boolean, RawString and VNode.
-  return escapeRawTagContent(String(child), rawtextTag);
+  return renderLeaf(child, rawtextTag);
 }
 
 /**

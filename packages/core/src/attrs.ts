@@ -346,34 +346,43 @@ function rawAttrValue(value: string): string {
  *   loop has nothing to filter.
  * @throws on a function value — a function cannot be serialized to HTML.
  */
-export function serializeAttr(key: string, value: unknown): RawString {
-  if (value === null || value === undefined) return raw("");
-  if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
-    return raw("");
-
-  // The validity gate matters here as much as in the batch path: a name reaching
-  // a runtime helper may be caller-controlled (spread, computed key), not
-  // author-written.
-  const meta = attrMeta(key);
-  if (!meta.valid) return raw("");
+/**
+ * The attribute *value* taxonomy: one value, already past its caller's gates, to
+ * the text that carries it into a start tag. `prefix` is the separator the
+ * caller needs — a space inside a tag, nothing for a standalone fragment — and
+ * is emitted only when the attribute is, so a value that serializes to nothing
+ * leaves no stray space behind.
+ *
+ * Both serialization paths call this, rather than each stating the taxonomy. The
+ * order of these branches is load-bearing (a `RawString` is an object and must
+ * be recognised before the style bag), and two copies of an order can drift the
+ * same way on the same day — which an equivalence test, comparing them only to
+ * each other, would not see.
+ *
+ * It returns text, not a `RawString`: the 13–16% that once paid for the copy was
+ * an object allocated per attribute, not the call. A string fragment is what the
+ * caller was building anyway.
+ *
+ * @throws on a function value — a function cannot be serialized to HTML.
+ */
+function attrFragment(key: string, meta: AttrMeta, value: unknown, prefix: string): string {
   const attrName = meta.name;
-
   const type = typeof value;
 
   // Frequency order, from here down.
   if (type === "string") {
     let str = value as string;
     if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
-    return new RawString(`${attrName}="${escapeAttr(str)}"`);
+    return `${prefix}${attrName}="${escapeAttr(str)}"`;
   }
 
   if (type === "boolean") {
-    if (BOOLEAN_ATTRIBUTES.has(attrName)) return value ? raw(attrName) : raw("");
-    return new RawString(`${attrName}="${value}"`);
+    if (BOOLEAN_ATTRIBUTES.has(attrName)) return value ? `${prefix}${attrName}` : "";
+    return `${prefix}${attrName}="${value}"`;
   }
 
   if (type === "number" || type === "bigint") {
-    return new RawString(`${attrName}="${value}"`);
+    return `${prefix}${attrName}="${value}"`;
   }
 
   // A function can't be serialized; discouraging it is
@@ -385,33 +394,39 @@ export function serializeAttr(key: string, value: unknown): RawString {
   // Checked before style/class: a RawString is an object, so testing it after
   // would iterate its own keys as if it were a style bag.
   if (value instanceof RawString) {
-    return new RawString(`${attrName}="${rawAttrValue(value.value)}"`);
+    return `${prefix}${attrName}="${rawAttrValue(value.value)}"`;
   }
 
   // Only a plain object is a style bag — a class instance (`style={new Date()}`)
   // isn't, and falls through to `String(value)` like any other attribute.
   if (attrName === "style" && isPlainObject(value)) {
     const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
-    if (!styleStr) return raw("");
-    return new RawString(`style="${escapeAttr(styleStr)}"`);
+    return styleStr ? `${prefix}style="${escapeAttr(styleStr)}"` : "";
   }
 
   if (attrName === "class" && Array.isArray(value)) {
     const s = classToString(value as unknown[]);
-    if (!s) return raw("");
-    return new RawString(`class="${escapeAttr(s)}"`);
+    return s ? `${prefix}class="${escapeAttr(s)}"` : "";
   }
 
   let str = String(value);
   if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
-  return new RawString(`${attrName}="${escapeAttr(str)}"`);
+  return `${prefix}${attrName}="${escapeAttr(str)}"`;
 }
 
-// Same taxonomy as `serializeAttr`, duplicated on purpose: delegating costs
-// 13–16 % (8 runs) since each attribute would then allocate a `RawString`.
-// Don't re-extract without re-measuring. Tables stay shared, so the two paths
-// can only diverge in branch order — pinned by `attrs.test.ts` and
-// `jsx-precompile-runtime.test.ts`.
+export function serializeAttr(key: string, value: unknown): RawString {
+  if (value === null || value === undefined) return raw("");
+  if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
+    return raw("");
+
+  // The validity gate matters here as much as in the batch path: a name reaching
+  // a runtime helper may be caller-controlled (spread, computed key), not
+  // author-written.
+  const meta = attrMeta(key);
+  if (!meta.valid) return raw("");
+
+  return new RawString(attrFragment(key, meta, value, ""));
+}
 
 export function buildAttrs(attrs: Record<string, unknown>): string | Promise<string> {
   let out = "";
@@ -434,61 +449,14 @@ export function buildAttrs(attrs: Record<string, unknown>): string | Promise<str
     if (value === null || value === undefined) continue;
     if (!meta.valid) continue;
 
-    const type = typeof value;
-
-    if (type === "string") {
-      let str = value as string;
-      if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
-      out += ` ${attrName}="${escapeAttr(str)}"`;
-      continue;
-    }
-
-    if (type === "boolean") {
-      if (BOOLEAN_ATTRIBUTES.has(attrName)) {
-        if (value) out += ` ${attrName}`;
-      } else {
-        out += ` ${attrName}="${value}"`;
-      }
-      continue;
-    }
-
-    if (type === "number" || type === "bigint") {
-      out += ` ${attrName}="${value}"`;
-      continue;
-    }
-
-    if (type === "function") {
-      throw new Error(functionAttrMessage(key));
-    }
-
-    // Restarts fully async rather than resuming the loop: two passes on a rare
-    // case beats one more branch on every element, and it's what keeps the
-    // fallback from stringifying an unresolved promise to `[object Promise]`.
+    // The one shape the fragment taxonomy does not answer, because the answer is
+    // not a fragment: restart fully async rather than resume the loop — two
+    // passes on a rare case beats one more branch on every element, and it is
+    // what keeps the fallback from stringifying a pending promise to
+    // `[object Promise]`.
     if (value instanceof Promise) return buildAttrsAsync(attrs);
 
-    // Before style/class: a RawString is an object, so testing it after would
-    // iterate its own keys as if it were a style bag.
-    if (value instanceof RawString) {
-      out += ` ${attrName}="${rawAttrValue(value.value)}"`;
-      continue;
-    }
-
-    if (attrName === "style" && isPlainObject(value)) {
-      const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
-      if (styleStr) out += ` style="${escapeAttr(styleStr)}"`;
-      continue;
-    }
-
-    if (attrName === "class" && Array.isArray(value)) {
-      const s = classToString(value as unknown[]);
-      if (!s) continue;
-      out += ` class="${escapeAttr(s)}"`;
-      continue;
-    }
-
-    let str = String(value);
-    if (meta.isUrl && !isSafeScheme(str)) str = "#blocked";
-    out += ` ${attrName}="${escapeAttr(str)}"`;
+    out += attrFragment(key, meta, value, " ");
   }
 
   return out;
