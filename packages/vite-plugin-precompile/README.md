@@ -54,7 +54,8 @@ Only needed when using a runtime other than the detected one.
 ```ts
 interface PluginConfig {
   runtimeSource?: string; // default: virtual:vincle-precompile-runtime → auto-detected
-  secure?: boolean; // true (default): sanitize static attributes at build time; false: Deno-compatible, inline verbatim
+  // Nothing else: which output the transform emits is decided by the runtime's
+  // declared precompile dialect, not by an option.
 }
 ```
 
@@ -77,8 +78,8 @@ const result = precompileTransform(
   code, // source text
   "/src/App.tsx", // file id — its extension selects tsx vs jsx
   { runtimeSource: "preact/jsx-runtime" }, // optional PluginConfig
-  renderAttr, // optional — build-time attribute serializer (secure mode)
-  renderEscape, // optional — build-time content escaper (secure mode)
+  renderAttr, // optional — build-time attribute serializer
+  renderEscape, // optional — build-time content escaper
 );
 // → { code: string, map: SourceMap } | null (null when nothing to rewrite)
 
@@ -87,7 +88,7 @@ if (result && result.code !== code) {
 }
 ```
 
-`renderAttr` / `renderEscape` are the target runtime's own `jsxAttr` / `jsxEscape`, injected by the plugin in secure mode so static attributes and text are sanitized byte-identically to the dynamic path. Passing neither reverts to Deno-precompile-compatible behavior (static attributes trusted and inlined verbatim, like `secure: false`).
+`renderAttr` / `renderEscape` are the target runtime's own `jsxAttr` / `jsxEscape`. The plugin injects them only for a runtime declaring the `"vincle"` precompile dialect, and that injection _is_ the switch: with them the transform emits its corrected, sanitized output, without them it reproduces Deno's byte for byte. A direct caller decides the same way — pass both to get the corrected output, pass neither for the reference one. Passing neither is what `compatibility: true` does: static attributes trusted and inlined verbatim, Deno's own output.
 
 ## How it works
 

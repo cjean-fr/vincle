@@ -105,20 +105,98 @@ describe("vite-plugin-precompile", () => {
     expect(result!.map!.sources).toContain("/src/app.tsx");
   });
 
-  it("secure mode errors the build when the runtime cannot be loaded", async () => {
+  it("falls back to Deno's output when the runtime cannot be loaded", async () => {
     const plugin = precompile({
-      secure: true,
       runtimeSource: "totally-bogus-module-xyz",
     });
     // @ts-expect-error — calling internal hook with minimal config for testing
     plugin.configResolved.call({}, { esbuild: {} });
+    const warnings: string[] = [];
     const ctx = {
       error(msg: string): never {
         throw new Error(msg);
       },
+      warn(msg: string): void {
+        warnings.push(msg);
+      },
     };
-    // @ts-expect-error — calling internal hook with fake context to test secure mode error handling
-    await expect(plugin.buildStart.call(ctx)).rejects.toThrow(/secure mode/);
+    // @ts-expect-error — calling internal hook with a fake plugin context
+    await plugin.buildStart.call(ctx);
+    // Nothing to read means nothing to improve on, and the generated code
+    // imports the helpers itself — so this is a warning, not a broken build.
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("could not load");
+    expect(warnings[0]).toContain("Deno's precompile transform");
+  });
+
+  /**
+   * What the build does with a runtime it could read is decided by the dialect
+   * that runtime declares — not by an option, and not by an inventory of its
+   * exports. A foreign runtime is the normal case, not a failure; a runtime
+   * claiming the `"vincle"` dialect without the helpers to back it is the
+   * failure, because nothing else could produce the output it promises.
+   */
+  describe("what the declared dialect decides", () => {
+    // A data: URL is the module — no fixture file to write or clean up.
+    const moduleOf = (source: string): string =>
+      `data:text/javascript,${encodeURIComponent(source)}`;
+
+    const buildWith = async (source: string): Promise<{ error?: string; warnings: string[] }> => {
+      const plugin = precompile({ runtimeSource: moduleOf(source) });
+      // @ts-expect-error — calling internal hook with minimal config for testing
+      plugin.configResolved.call({}, { esbuild: {} });
+      const warnings: string[] = [];
+      const ctx = {
+        error(msg: string): never {
+          throw new Error(msg);
+        },
+        warn(msg: string): void {
+          warnings.push(msg);
+        },
+      };
+      try {
+        // @ts-expect-error — calling internal hook with a fake plugin context
+        await plugin.buildStart.call(ctx);
+        return { warnings };
+      } catch (err) {
+        return { error: (err as Error).message, warnings };
+      }
+    };
+
+    it("takes a foreign runtime as it is, silently", async () => {
+      // No dialect declared: Deno's output, which is what its helpers expect.
+      // Not a warning either — this is the documented majority case.
+      const { error, warnings } = await buildWith(`export const jsxTemplate = () => "";`);
+      expect(error).toBeUndefined();
+      expect(warnings).toEqual([]);
+    });
+
+    it("refuses a runtime that claims the dialect without the helpers", async () => {
+      const { error, warnings } = await buildWith(
+        [
+          `export const precompileDialect = "vincle";`,
+          `export const jsxTemplate = () => "";`,
+          `export const jsxAttr = (n, v) => ({ value: v == null ? "" : n + '="' + v + '"' });`,
+        ].join("\n"),
+      );
+      expect(error).toContain('declares the "vincle" precompile dialect');
+      expect(error).toContain("jsxEscape");
+      expect(error).not.toContain("could not load");
+      expect(warnings).toEqual([]);
+    });
+
+    it("accepts a runtime that declares it and backs it", async () => {
+      const { error, warnings } = await buildWith(
+        [
+          `export const precompileDialect = "vincle";`,
+          `export const jsxTemplate = () => "";`,
+          `export const jsxAttr = (n, v) => ({ value: v == null ? "" : n + '="' + v + '"' });`,
+          `export const jsxEscape = (v) => ({ value: v == null ? "" : String(v) });`,
+        ].join("\n"),
+      );
+      expect(error).toBeUndefined();
+      expect(warnings).toEqual([]);
+    });
   });
 
   describe("runtime probe", () => {
@@ -170,8 +248,8 @@ describe("vite-plugin-precompile", () => {
         "export const e = <>{one}<b>two</b></>;",
       ];
 
-      for (const secure of [true, false]) {
-        const plugin = precompile({ secure });
+      for (const compatibility of [true, false]) {
+        const plugin = precompile({ compatibility });
         // @ts-expect-error — internal hook
         plugin.configResolved({ esbuild: {} });
         // @ts-expect-error — internal hook
@@ -190,7 +268,7 @@ describe("vite-plugin-precompile", () => {
           expect(imported).not.toEqual([]);
           expect(
             imported.filter((h) => !reExported.includes(h)),
-            `${code} (secure: ${secure})`,
+            `${code} (compatibility: ${compatibility})`,
           ).toEqual([]);
         }
       }
@@ -223,16 +301,9 @@ describe("plugin config", () => {
     );
   });
 
-  it("rejects a non-boolean secure at plugin creation", () => {
-    expect(() => precompile({ secure: "yes" as never })).toThrow(
-      "[vincle/vite-plugin-precompile] config: secure must be a boolean",
-    );
-  });
-
   it("accepts a valid config", () => {
     const plugin = precompile({
       runtimeSource: "@vincle/core/jsx-precompile-runtime",
-      secure: false,
     });
     expect(plugin.name).toBe("@vincle/vite-plugin-precompile");
   });

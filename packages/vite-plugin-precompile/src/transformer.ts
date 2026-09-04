@@ -28,24 +28,11 @@ import { parseSync, visitorKeys } from "oxc-parser";
 
 export interface PluginConfig {
   runtimeSource?: string;
-  /**
-   * When `true` (default), static attributes are sanitized at build time by
-   * running them through the runtime's own attribute serializer (`renderAttr`)
-   * instead of being inlined verbatim. This mirrors what the runtime does for
-   * dynamic values (URL-scheme blocking, unsafe-CSS dropping, name remapping).
-   *
-   * Set to `false` for Deno-precompile-compatible behavior: static attributes
-   * are trusted and inlined verbatim (name-remapped and HTML-escaped, but no
-   * URL/CSS sanitization). This is useful when migrating from Deno's
-   * `jsx: "precompile"` transform or when the build-time dependency on the
-   * runtime module is undesirable.
-   */
-  secure?: boolean;
 }
 
 /**
  * Build-time attribute serializer — the runtime's `jsxAttr`. Injected by the
- * Vite plugin (loaded from `runtimeSource`) when `secure` is on, so the
+ * Vite plugin (loaded from `runtimeSource`) unless `compatibility` is on, so the
  * transformer itself stays dependency-free and synchronous. For a static
  * string/boolean value `jsxAttr` always returns synchronously.
  *
@@ -60,7 +47,7 @@ export type RenderAttr = (
 
 /**
  * Build-time content escaper — the runtime's `jsxEscape`. Injected by the Vite
- * plugin (loaded from `runtimeSource`) when `secure` is on, so the transformer
+ * plugin (loaded from `runtimeSource`) unless `compatibility` is on, so the transformer
  * itself stays dependency-free and synchronous. For a static string value
  * `jsxEscape` always returns synchronously.
  *
@@ -87,14 +74,28 @@ export interface TransformResult {
 interface Ctx {
   source: string;
   used: Set<string>;
-  /** Present in secure mode (default); sanitizes static attributes at build time. */
+  /** Present unless `compatibility` is on; sanitizes static attributes at build time. */
   renderAttr: RenderAttr | null;
   /**
-   * Present in secure mode (default); escapes static text content using the
-   * target runtime's own escaping rules (byte-identity). When null (Deno mode
-   * or runtime lacks jsxEscape), falls back to Vincle's escapeContent.
+   * Present unless `compatibility` is on; escapes static text content using the
+   * target runtime's own escaping rules (byte-identity). When null —
+   * compatibility mode, or a direct caller that passed `renderAttr` alone —
+   * falls back to Vincle's escapeContent. The plugin never gets there: it
+   * refuses a runtime that exports one helper and not the other.
    */
   renderEscape: RenderEscape | null;
+  /**
+   * Reproduce Deno's precompile output, defects included — true whenever no
+   * serializer was injected.
+   *
+   * There is no option behind this. A serializer arrives only for a runtime
+   * that declares the `"vincle"` precompile dialect, which is the runtime that
+   * promises a precompiled page renders the same bytes as a dynamic one. That
+   * promise is what makes it safe to correct the reference transform; without
+   * it, correcting anything would mean guessing how the target runtime
+   * serializes, so the reference output is what gets emitted.
+   */
+  compatibility: boolean;
 }
 
 /** Minimal structural view of an oxc AST node for generic traversal. */
@@ -171,8 +172,9 @@ export default function precompileTransform(
   const ctx: Ctx = {
     source: code,
     used: new Set<string>(),
-    renderAttr: config?.secure !== false ? (renderAttr ?? null) : null,
-    renderEscape: config?.secure !== false ? (renderEscape ?? null) : null,
+    renderAttr: renderAttr ?? null,
+    renderEscape: renderEscape ?? null,
+    compatibility: renderAttr === undefined,
   };
   const replacements: Replacement[] = [];
 
@@ -214,7 +216,7 @@ function collectNode(
 ): void {
   if (node.type === "JSXElement") {
     const el = node as unknown as JSXElement;
-    if (isEligibleElement(el)) {
+    if (isEligibleElement(el, ctx)) {
       replacements.push({
         start: el.start,
         end: el.end,
@@ -247,7 +249,7 @@ function collectNode(
   });
 }
 
-function isEligibleElement(node: JSXElement): boolean {
+function isEligibleElement(node: JSXElement, ctx: Ctx): boolean {
   const name = node.openingElement.name;
   if (name.type !== "JSXIdentifier") return false;
   const tag = name.name;
@@ -277,7 +279,14 @@ function isEligibleElement(node: JSXElement): boolean {
   // - **A void element carrying content.** `<img>x</img>` has no valid HTML
   //   form, and the runtime refuses it. Declining here instead of emitting a
   //   template leaves one answer to that, and it is the runtime's.
-  if (isRawtextTag(tag) && node.children.some((c) => c.type !== "JSXText")) return false;
+  // …unless compatibility mode was asked for, where reproducing Deno's output
+  // is the whole point: it precompiles such an element and escapes the hole, so
+  // the CSS or JS comes out with entities in it. Preact escapes it on its
+  // dynamic path too, so nothing diverges *there*; here it does, and that is
+  // what opting in buys.
+  if (!ctx.compatibility && isRawtextTag(tag) && node.children.some((c) => c.type !== "JSXText")) {
+    return false;
+  }
   if (isVoidElement(tag) && node.children.some(hasRenderableContent)) return false;
   return true;
 }
@@ -316,7 +325,7 @@ function transformElement(node: JSXElement, ctx: Ctx): string {
   // A void element that got here has no content — `isEligibleElement` declines
   // the ones that do — so there is nothing to skip and no closing tag to write.
   if (!isVoidElement(tag)) {
-    emitChildren(node.children, parts, exprs, ctx, rawtextTagOf(tag));
+    emitChildren(node.children, parts, exprs, ctx, rawtextTagOf(tag), ctx.compatibility);
     appendStatic(parts, `</${tag}>`);
   }
 
@@ -407,19 +416,26 @@ function emitAttribute(attr: JSXAttribute, parts: string[], exprs: string[], ctx
   }
 
   // Dynamic value: always handled by the runtime (name remapping, sanitizing,
-  // drop-if-unsafe). The separating space lives in the static part, like
-  // Deno's output — `jsxAttr` returns `name="value"` with no leading space, so
-  // a dropped attribute leaves a harmless extra space rather than gluing tokens.
+  // drop-if-unsafe). The separating space goes in the static text, which is the
+  // contract every precompile transform is written against — `jsxAttr` returns
+  // `name="value"` bare. A runtime that drops the attribute is left with that
+  // space; `@vincle/core` takes it back in `jsxTemplate`, where the tag is
+  // being assembled and the space can be recognised as a separator.
   if (init.type === "JSXExpressionContainer") {
     const expr = init.expression;
     if (expr.type !== "JSXEmptyExpression") {
-      ctx.used.add("jsxAttr");
       const exprText = processExpressionForJsx(expr, ctx);
+      const htmlName = attrNameFor(rawName, ctx);
       appendStatic(parts, " ");
-      addDynamic(parts, exprs, `jsxAttr(${JSON.stringify(rawName)}, ${exprText})`);
+      if (ctx.compatibility && COMPAT_INLINED_BOOLEAN_ATTRS.has(htmlName)) {
+        addDynamic(parts, exprs, `(${exprText}) ? ${JSON.stringify(htmlName)} : ""`);
+        return;
+      }
+      ctx.used.add("jsxAttr");
+      addDynamic(parts, exprs, `jsxAttr(${JSON.stringify(htmlName)}, ${exprText})`);
       return;
     }
-    appendStatic(parts, ` ${remapAttrName(rawName)}=""`);
+    appendStatic(parts, ` ${attrNameFor(rawName, ctx)}=""`);
   }
 }
 
@@ -433,7 +449,7 @@ function emitAttribute(attr: JSXAttribute, parts: string[], exprs: string[], ctx
  * `href="#blocked"`, unsafe `style` dropped, …) — while the output stays fully
  * static.
  *
- * Deno mode (`secure: false`, `ctx.renderAttr` is null): static attributes are
+ * Compatibility mode (`ctx.renderAttr` is null): static attributes are
  * trusted and inlined. The name is remapped to its HTML form (`className` →
  * `class`, `tabIndex` → `tabindex`) — `resolveAttrName` falls back to
  * lowercasing, which covers event-handler names (`onClick` → `onclick`) — and
@@ -443,19 +459,25 @@ function emitAttribute(attr: JSXAttribute, parts: string[], exprs: string[], ctx
  */
 function emitStaticAttr(rawName: string, value: string | true, parts: string[], ctx: Ctx): void {
   if (ctx.renderAttr) {
-    const rendered = ctx.renderAttr(rawName, value);
+    // The HTML name, not the authored one: remapping belongs to the transform,
+    // which is where Deno does it, and a runtime's `jsxAttr` need not. Preact's
+    // does not — it remaps when rendering a VNode, so a precompiled
+    // `className="box"` reached the page as `className="box"` and styled
+    // nothing. Idempotent for a runtime that remaps too, `@vincle/core`
+    // included.
+    const rendered = ctx.renderAttr(attrNameFor(rawName, ctx), value);
     const text = typeof rendered === "string" ? rendered : (rendered as any)?.value;
     if (typeof text === "string") {
       if (text) appendStatic(parts, ` ${text}`);
       return;
     }
     throw new Error(
-      `[vincle/vite-plugin-precompile] secure mode: jsxAttr returned a Promise for static value "${rawName}" — ` +
+      `[vincle/vite-plugin-precompile] jsxAttr returned a Promise for static value "${rawName}" — ` +
         "this should never happen. This is a bug in vincle, not in your code or configuration — report it.",
     );
   }
 
-  const name = remapAttrName(rawName);
+  const name = attrNameFor(rawName, ctx);
 
   if (value === true) {
     appendStatic(parts, ` ${name}`);
@@ -464,20 +486,96 @@ function emitStaticAttr(rawName: string, value: string | true, parts: string[], 
   }
 }
 
+const RE_TRAILING_SPACE = /\s+$/;
+
+/**
+ * The two names Deno's table resolves differently, compatibility only —
+ * measured against 2.9.2 and 2.9.6.
+ *
+ * `xlinkHref` → `href` is it modernising: SVG2 replaced `xlink:href`, and both
+ * work in a browser. `xmlnsXlink` → `xmlnsxlink` is its default lowercasing
+ * with no table entry, and that one is not an attribute at all — the namespace
+ * declaration it was meant to be is `xmlns:xlink`. Reproducing both is what
+ * opting into its output means.
+ */
+const COMPAT_NAME_OVERRIDES = new Map([
+  ["xlink:href", "href"],
+  ["xmlns:xlink", "xmlnsxlink"],
+]);
+
+/** The HTML name this attribute gets, per the mode's table. */
+function attrNameFor(rawName: string, ctx: Ctx): string {
+  const name = remapAttrName(rawName);
+  return ctx.compatibility ? (COMPAT_NAME_OVERRIDES.get(name) ?? name) : name;
+}
+
+/**
+ * The attributes Deno's precompile inlines as `expr ? "name" : ""` instead of
+ * calling `jsxAttr` — measured against 2.9.2 and 2.9.6, in HTML-name form.
+ *
+ * Its own defects come with it, which is why this is compatibility-only: the
+ * value of a non-boolean value is dropped (`readOnly={"x"}` renders `readonly`,
+ * not `readonly="x"`), and `""` counts as absent where Preact's dynamic path
+ * emits the attribute. `hidden`, `draggable`, `contentEditable` and
+ * `spellCheck` are *not* in it — Deno routes those through `jsxAttr`, since
+ * they take a value.
+ */
+const COMPAT_INLINED_BOOLEAN_ATTRS = new Set([
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "default",
+  "defer",
+  "disabled",
+  "formnovalidate",
+  "inert",
+  "ismap",
+  "loop",
+  "multiple",
+  "muted",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "selected",
+]);
+
+/**
+ * `trimTrailingText`: right-trim the text that ends this element, the way
+ * Deno's precompile does — `<span>a </span>` becomes `<span>a</span>`.
+ *
+ * Only in compatibility mode, and it is not a formatting detail: the space is
+ * one an HTML parser renders, so `<span>a </span><span>b</span>` reads "ab"
+ * there. Deno's own `jsx: "react-jsx"` keeps it, and so does the default mode
+ * here, which follows the JSX rule the runtime path also applies.
+ *
+ * Only a text node in last position triggers it. A trailing element, an
+ * expression or a fragment does not — measured against Deno 2.9.2 and 2.9.6.
+ */
 function emitChildren(
   children: JSXChild[],
   parts: string[],
   exprs: string[],
   ctx: Ctx,
   rawtextTag: string | undefined,
+  trimTrailingText = false,
 ): void {
+  const last = children[children.length - 1];
   for (const child of children) {
     if (child.type === "JSXText") {
       // Mirrors what the dynamic path does at runtime, so precompiled output
       // is byte-identical. `appendStatic`/`escapeForTemplate` handles the
       // template-literal metacharacters (backtick, `${`, `\`) for all branches.
-      const collapsed = collapseJsxWhitespace(child.value);
-      if (rawtextTag && ctx.renderAttr === null) {
+      const collapsed =
+        trimTrailingText && child === last
+          ? collapseJsxWhitespace(child.value).replace(RE_TRAILING_SPACE, "")
+          : collapseJsxWhitespace(child.value);
+      if (rawtextTag && ctx.compatibility) {
         // Deno mode: entities stay verbatim, matching Deno's own precompile —
         // an HTML parser never decodes entities inside rawtext anyway.
         appendStatic(parts, collapsed);
@@ -503,11 +601,11 @@ function emitChildren(
         addDynamic(parts, exprs, escapeCall(exprText, ctx));
       }
     } else if (child.type === "JSXElement") {
-      if (isEligibleElement(child)) {
+      if (isEligibleElement(child, ctx)) {
         const tag = (child.openingElement.name as JSXIdentifier).name;
         emitOpening(tag, child.openingElement.attributes, parts, exprs, ctx);
         if (!isVoidElement(tag)) {
-          emitChildren(child.children, parts, exprs, ctx, rawtextTagOf(tag));
+          emitChildren(child.children, parts, exprs, ctx, rawtextTagOf(tag), ctx.compatibility);
           appendStatic(parts, `</${tag}>`);
         }
       } else {

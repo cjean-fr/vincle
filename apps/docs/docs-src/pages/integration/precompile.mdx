@@ -14,10 +14,10 @@ rendering.
 
 ```ts
 // Before: runtime creates a VNode tree
-jsx("div", { class: "x" }, jsx("span", {}, "hello"));
+jsx("div", { class: cls }, jsx("span", {}, text));
 
 // After (precompile): direct string assembly
-jsxTemplate`<div ${jsxAttr("class", "x")}><span>${jsxEscape("hello")}</span></div>`;
+jsxTemplate`<div ${jsxAttr("class", cls)}><span>${jsxEscape(text)}</span></div>`;
 ```
 
 The plugin auto-detects your `jsxImportSource` and wires the helpers through a
@@ -29,6 +29,64 @@ runtime – Preact, Hono, or @vincle/core.
 Those three are the whole contract, and the transform emits nothing else: a
 generated call to a helper your runtime does not export is not a wrong byte, it
 is a build that fails to resolve an import.
+
+`jsxAttr` returns `name="value"` bare, so the separating space in front of a
+hole is the transform's — that is the contract, and it is what makes a template
+compiled here run on any runtime holding it, and Deno's own templates run on
+`@vincle/core`. The space an attribute leaves behind when the runtime drops it
+(`<input value={null} />`) is taken back at assembly time by `jsxTemplate`,
+which knows it is inside a start tag: the precompiled page matches the runtime
+path byte for byte, where the reference implementation renders `<input >`.
+
+## What is guaranteed
+
+There is nothing to configure: **the runtime decides which output the transform
+emits.** For `@vincle/core` it corrects Deno's transform — bug fixes,
+sanitization, one less allocation; for every other runtime it reproduces Deno
+byte for byte, defects included.
+
+That is the whole rule, and each half is checked.
+
+**`@vincle/core`** — or any runtime declaring the `"vincle"` precompile dialect
+— gets the corrected output, and with it the promise that precompiled or not,
+the page is the same bytes. Tested, not asserted: every shape that has ever
+diverged (boolean attributes with each kind of value, a hole inside `<script>`,
+tabs, trailing text, the attribute names with two spellings, the elements the
+transform declines) is rendered twice, plugin off and plugin on, and the two
+must match.
+
+**Any other runtime** gets Deno's output, checked against a trace captured from
+Deno itself — not the rendered page, but every helper call in order and the
+names chosen, because a name resolved differently is a divergence even when the
+page looks the same. Deno's defects are part of that output:
+
+- The text that ends an element is right-trimmed, so
+  `<span>a </span><span>b</span>` precompiles to markup that reads `ab`.
+- A boolean attribute with a dynamic value is inlined as `expr ? "name" : ""`,
+  never reaching the runtime: `readOnly={"x"}` loses its value, and
+  `readOnly={""}` loses the attribute.
+- A `<script>` or `<style>` holding a hole is precompiled with the hole escaped
+  for HTML, the one place a parser decodes nothing: `a && b` reaches the
+  JavaScript engine as `a &amp;&amp; b`.
+- Static attributes are inlined with no URL or CSS filtering.
+- Two attribute names resolve differently: `xlinkHref` becomes `href` (SVG2
+  renamed it), and `xmlnsXlink` becomes `xmlnsxlink`, which is not an attribute.
+
+Correcting those for a foreign runtime would mean guessing how it serializes,
+and the guess would be wrong: Preact's dynamic path escapes rawtext too, so
+"fixing" the escape would make its precompiled page differ from its own dynamic
+one. A runtime that does promise byte-identity can declare the dialect and get
+the corrections — the line is drawn at the promise, not at the package name.
+
+An adapter keeps its runtime's dialect by re-exporting it whole:
+
+```ts
+// vincle-runtime.ts — keeps the dialect
+export * from "@vincle/core/jsx-precompile-runtime";
+```
+
+Naming only the three helpers drops the dialect, and the build then treats the
+target as a foreign runtime — the conservative direction.
 
 ## What is left to the runtime
 
@@ -93,7 +151,7 @@ precompile({
 });
 ```
 
-## Build-time sanitization (secure mode)
+## Build-time sanitization
 
 **Enabled by default.** Static attribute values are hardened at build time
 using the runtime's own attribute serializer (`jsxAttr`). This catches XSS
@@ -104,16 +162,22 @@ in your source passes any linter but is a real vulnerability:
 // Static string — looks harmless, linter passes
 <a href="javascript:alert(1)">click</a>
 
-// Without secure mode → inlined verbatim in the bundle
+// Targeting a foreign runtime → inlined verbatim in the bundle
 //   <a href="javascript:alert(1)">click</a>
 
-// Secure mode → blocked at build time
+// Targeting @vincle/core → blocked at build time
 //   <a href="#blocked">click</a>
 ```
 
-The same URL-scheme blocking, unsafe-CSS dropping, and name remapping that
-the runtime applies to _dynamic_ values also applies to static ones —
-but resolved before the browser runs a single byte.
+The same URL-scheme blocking, style-declaration confinement, and name remapping
+that the runtime applies to _dynamic_ values also applies to static ones — but
+resolved before the browser runs a single byte.
+
+A runtime that declares the `"vincle"` dialect has to back it with both
+`jsxAttr` and `jsxEscape`, or the build fails: a build that quietly stopped
+filtering would look like one that never filtered. A runtime that declares
+nothing is the ordinary case and builds without any of this — that is the
+reference output, not a failure.
 
 ### How it works
 
@@ -123,7 +187,7 @@ directly into the generated template literal, so **there is zero runtime
 cost** — no wrapper objects, no deferred calls, no extra branching.
 
 ```ts
-// vite.config.ts — secure mode is ON by default
+// vite.config.ts — build-time sanitization is ON by default
 import precompile from "@vincle/vite-plugin-precompile";
 import { defineConfig } from "vite";
 
@@ -132,31 +196,45 @@ export default defineConfig({
 });
 ```
 
-### What is caught?
+### What is caught, and by whom
 
-| Attack surface        | Example                                   | Secure mode output        |
-| --------------------- | ----------------------------------------- | ------------------------- |
-| `javascript:` URLs    | `<a href="javascript:alert(1)">x</a>`     | `<a href="#blocked">x`    |
-| `vbscript:` URLs      | `<a href="vbscript:msgbox">x</a>`         | `<a href="#blocked">x`    |
-| Unsafe `data:` URLs   | `<iframe src="data:text/html,<script>…">` | `<iframe src="#blocked">` |
-| `on*` event handlers  | `<button onclick="alert(1)">x</button>`   | `<button>x</button>`      |
-| React names in output | `<div className="box">x</div>`            | `<div class="box">x`      |
+The table is `@vincle/core`'s policy, applied at build time. Target another
+runtime and you get _its_ policy: Preact's `jsxAttr` does not block
+`javascript:`, so a static one is inlined as written. What the plugin
+guarantees is that a static value gets the same treatment as a dynamic one on
+the runtime you ship — not that the runtime you ship filters anything.
 
-### Opting out: Deno-precompile-compatible mode
+| Attack surface           | Example                                   | `@vincle/core` output     |
+| ------------------------ | ----------------------------------------- | ------------------------- |
+| `javascript:` URLs       | `<a href="javascript:alert(1)">x</a>`     | `<a href="#blocked">x`    |
+| `vbscript:` URLs         | `<a href="vbscript:msgbox">x</a>`         | `<a href="#blocked">x`    |
+| Unsafe `data:` URLs      | `<iframe src="data:text/html,<script>…">` | `<iframe src="#blocked">` |
+| Smuggled CSS declaration | `<div style={{ "color:red;top": "0" }}>`  | attribute dropped         |
+| React names in output    | `<div className="box">x</div>`            | `<div class="box">x`      |
 
-Set `secure: false` to match Deno's own `jsx: "precompile"` transform:
-static attributes are trusted and inlined verbatim (name-remapped and
-HTML-escaped, but no URL/CSS sanitization applied at build time).
+### What is not caught
 
-```ts
-precompile({
-  secure: false,
-});
-```
+An `on*` attribute is emitted as written: its value is escaped for the
+attribute, so it cannot break out of the tag, but nothing judges the script
+inside it — `<button onclick="alert(1)">` stays. Same for the content of a
+`style` value: a declaration you write is kept whatever it says, and what is
+confined is only the number of declarations, one key and one value each. Both
+hold on the dynamic path too, so this is the runtime's policy, not a gap in the
+build-time pass.
 
-Use this when migrating an existing Deno precompile setup, when you have
-your own build-time sanitizer, or when the build-time dependency on the
-runtime module is undesirable.
+### Why only `@vincle/core`
 
-Build-time sanitization works with any runtime module that exports
-`jsxAttr` — Vincle, Preact, and Hono all support it.
+Sanitizing at build time needs a runtime whose serializer the transform can
+trust, and trust has a precise meaning here: the runtime promises that a
+precompiled page renders what a dynamic one renders. `@vincle/core` makes that
+promise and is tested against it.
+
+Preact and Hono export `jsxAttr` too, and running static values through it
+would filter nothing they do not already filter — while the corrections that
+come with it would push their precompiled output away from their own dynamic
+output. Their rawtext escape is the clearest case: Preact escapes it on both
+paths, so decoding it would be the divergence, not the fix.
+
+The line is therefore the promise, not the package name — any runtime making it
+can declare the dialect. Attribute _names_ are remapped by the transform either
+way, since a runtime's `jsxAttr` need not do it and Preact's does not.
