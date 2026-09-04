@@ -225,22 +225,22 @@ quotes by construction; it belongs in element content, not in a `title`.
 Nine independent layers protect your output. No single bypass — except
 `raw()` — can defeat all of them.
 
-|   # | Layer                   | Mechanism                                          | Stops                                                    |
-| --: | ----------------------- | -------------------------------------------------- | -------------------------------------------------------- |
-|   1 | Type System             | `RawString` branded type — explicit trust boundary | Accidental trust of untrusted strings                    |
-|   2 | HTML Escaping           | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>` in text; `&`, `<`, `"` in attributes       |
-|   3 | URL Filtering           | `isSafeScheme` — blocks executable schemes         | `javascript:`, `vbscript:`, unsafe `data:` URIs          |
-|   4 | Unserializable values   | Any function value throws; a string is emitted     | A closure silently vanishing instead of becoming markup  |
-|   5 | Build-time Sanitization | `@vincle/vite-plugin-precompile` defaults to       | Literal `javascript:`, unsafe CSS, `on*` — at build time |
-|     |                         | `secure: true` — static attributes run through     | before the browser parses any HTML                       |
-|     |                         | the same `jsxAttr` as dynamic values, at build     |                                                          |
-|     |                         | time, not at runtime                               |                                                          |
-|   6 | Tag & Attr Validation   | `isValidTag` / `isValidAttrName`                   | Injection through malformed tag or attribute names       |
-|   7 | Rawtext Escaping        | `escapeRawTagContent` — sub-language, not entities | `</script>`/`</style>` breakout — unlike Preact/React    |
-|   8 | Own properties only     | Props and style bags are read with `Object.hasOwn` | A polluted `Object.prototype` adding an attribute or a   |
-|     |                         |                                                    | declaration to every element rendered                    |
-|   9 | Attribute delimiter     | A `RawString` attribute value is verbatim but `"`  | A trusted value ending its attribute and reopening the   |
-|     |                         | is escaped                                         | tag                                                      |
+|   # | Layer                   | Mechanism                                          | Stops                                                   |
+| --: | ----------------------- | -------------------------------------------------- | ------------------------------------------------------- |
+|   1 | Type System             | `RawString` branded type — explicit trust boundary | Accidental trust of untrusted strings                   |
+|   2 | HTML Escaping           | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>` in text; `&`, `<`, `"` in attributes      |
+|   3 | URL Filtering           | `isSafeScheme` — blocks executable schemes         | `javascript:`, `vbscript:`, unsafe `data:` URIs         |
+|   4 | Unserializable values   | Any function value throws; a string is emitted     | A closure silently vanishing instead of becoming markup |
+|   5 | Build-time Sanitization | `@vincle/vite-plugin-precompile` defaults to       | Literal `javascript:` and unsafe `data:` URLs —         |
+|     |                         | sanitizing — static attributes run through         | at build time, before the browser parses any            |
+|     |                         | the same `jsxAttr` as dynamic values, at build     | HTML                                                    |
+|     |                         | time, not at runtime                               |                                                         |
+|   6 | Tag & Attr Validation   | `isValidTag` / `isValidAttrName`                   | Injection through malformed tag or attribute names      |
+|   7 | Rawtext Escaping        | `escapeRawTagContent` — sub-language, not entities | `</script>`/`</style>` breakout — unlike Preact/React   |
+|   8 | Own properties only     | Props and style bags are read with `Object.hasOwn` | A polluted `Object.prototype` adding an attribute or a  |
+|     |                         |                                                    | declaration to every element rendered                   |
+|   9 | Attribute delimiter     | A `RawString` attribute value is verbatim but `"`  | A trusted value ending its attribute and reopening the  |
+|     |                         | is escaped                                         | tag                                                     |
 
 Each layer is independently verifyable — see [Invariants](#invariants).
 
