@@ -90,6 +90,24 @@ if (result && result.code !== code) {
 
 `renderAttr` / `renderEscape` are the target runtime's own `jsxAttr` / `jsxEscape`. The plugin injects them only for a runtime declaring the `"vincle"` precompile dialect, and that injection _is_ the switch: with them the transform emits its corrected, sanitized output, without them it reproduces Deno's byte for byte. A direct caller decides the same way — pass both to get the corrected output, pass neither for the reference one. Passing neither is what `compatibility: true` does: static attributes trusted and inlined verbatim, Deno's own output.
 
+## Deno as the reference
+
+For a runtime that does not declare the `"vincle"` precompile dialect, the
+transform reproduces Deno's own `jsx: "precompile"` output, and
+`test-fixtures/deno-precompile-trace.json` is what Deno emitted when captured —
+every helper call in order, with the names chosen. Pull-request CI compares
+against that file, so it needs no Deno installed.
+
+```bash
+bun run scripts/capture-deno-trace.mjs          # re-capture (needs Deno)
+bun run scripts/capture-deno-trace.mjs --check  # compare, exit non-zero on drift
+```
+
+The `Deno drift` workflow runs `--check` against the latest 2.x, on demand —
+worth a run when raising the Deno version or before a release. A failure there
+is a decision to make, not a regression to fix: either follow the change, or
+record why not.
+
 ## How it works
 
 - `enforce: "pre"` — runs before esbuild/Vite's own transforms
