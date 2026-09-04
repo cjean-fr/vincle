@@ -2,7 +2,11 @@ import type { Plugin, ResolvedConfig } from "vite";
 
 import { RUNTIME_SOURCE } from "@vincle/precompile-core";
 
-import precompileTransform, { type PluginConfig, type RenderAttr } from "./transformer.js";
+import precompileTransform, {
+  type PluginConfig,
+  type RenderAttr,
+  type RenderEscape,
+} from "./transformer.js";
 
 export type { PluginConfig };
 
@@ -40,17 +44,12 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         `specifier, e.g. "@vincle/core/jsx-precompile-runtime", got ${got}.`,
     );
   }
-  if (config?.secure !== undefined && typeof config.secure !== "boolean") {
-    throw new Error(
-      `[vincle/vite-plugin-precompile] config: secure must be a boolean, got ${JSON.stringify(config.secure)}. ` +
-        "Set secure: false for Deno-precompile-compatible behavior (static attributes trusted).",
-    );
-  }
 
   let rs: string | null = null;
   let renderAttr: RenderAttr | null = null;
   /**
-   * The runtime's `jsxEscape` function, loaded at build time in secure mode.
+   * The runtime's `jsxEscape` function, loaded at build time unless
+   * `compatibility` is on.
    * Used to escape static text content using the target runtime's own
    * escaping rules, ensuring byte-identity between precompile and dynamic
    * paths. Falls back to Vincle's `escapeContent` when the runtime has no
@@ -70,7 +69,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
   /**
    * When the user provides an explicit runtimeSource, that path is used
-   * directly for both the transform output and the secure-mode build-time
+   * directly for both the transform output and the build-time
    * import.  This is null when runtimeSource is left unset (auto-detect).
    */
   let explicitRuntimeSource: string | null = null;
@@ -81,7 +80,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
    * succeeds) or @vincle/core/jsx-precompile-runtime.
    *
    * When runtimeSource is explicit, the virtual module is not involved
-   * and this field is unused; secure mode reads explicitRuntimeSource
+   * and this field is unused; the build-time load reads explicitRuntimeSource
    * first.
    */
   let resolvedRuntimeSource: string = RUNTIME_SOURCE;
@@ -126,7 +125,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
     async buildStart() {
       // If the user provided an explicit runtimeSource, that is the
-      // source for the secure-mode dynamic import (the virtual module
+      // source for the build-time dynamic import (the virtual module
       // is bypassed, so resolvedRuntimeSource is irrelevant).
       if (explicitRuntimeSource) {
         resolvedRuntimeSource = explicitRuntimeSource;
@@ -159,45 +158,46 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         resolvedRuntimeSource = candidateFrameworkRuntime;
       }
 
-      if (config?.secure === false) {
-        // Explicit opt-out: Deno-precompile-compatible behavior — static
-        // attributes are trusted and inlined verbatim (name-remapped and
-        // HTML-escaped, but no URL/CSS sanitization).
+      // Which output the transform emits is decided by the runtime, not by an
+      // option: a runtime that declares the `"vincle"` precompile dialect gets
+      // the corrected, sanitized output, because it is the one that promises a
+      // precompiled page renders the same bytes as a dynamic one. Any other —
+      // Preact, Hono, an adapter that re-exports only the three helpers — gets
+      // Deno's output, which is what its own helpers were written against.
+      //
+      // The import is the only thing inside the `try`: checking exports in
+      // there sent their absence through the catch, which then reported a
+      // module that would not load and pointed at an installation that was
+      // fine.
+      const source = resolvedRuntimeSource;
+      let mod: { jsxAttr?: RenderAttr; jsxEscape?: RenderEscape; precompileDialect?: unknown };
+      try {
+        mod = (await import(/* @vite-ignore */ source)) as typeof mod;
+      } catch (err) {
+        // Nothing to read, so nothing to improve on: Deno's output it is. Not
+        // an error — the generated code imports the helpers itself, and a
+        // module Vite can resolve but this build cannot is a normal setup.
+        this.warn(
+          `[vincle/vite-plugin-precompile] could not load "${source}" at build time ` +
+            `(${String(err)}), so the output follows Deno's precompile transform. Static ` +
+            "attributes are inlined without URL or CSS filtering.",
+        );
         return;
       }
-      // Secure mode (default): sanitizes static attributes at build time using
-      // the runtime's own jsxAttr, so there is no duplicated security logic and
-      // no runtime cost. The runtime module is the one the app already depends on.
-      //
-      // Also loads jsxEscape for static text content, so precompiled text uses
-      // the target runtime's own escaping rules (byte-identity). Vincle's extra
-      // protections (rawtext guard, URL blocking) are applied on top.
-      const source = resolvedRuntimeSource;
-      try {
-        const mod = (await import(/* @vite-ignore */ source)) as {
-          jsxAttr?: RenderAttr;
-          jsxEscape?: (
-            value: unknown,
-          ) => string | { value: string } | Promise<string | { value: string }>;
-        };
-        if (typeof mod.jsxAttr === "function") {
-          renderAttr = mod.jsxAttr;
-        } else {
-          this.error(
-            `[vincle/vite-plugin-precompile] secure mode: "${source}" has no "jsxAttr" export — ` +
-              "cannot sanitize static attributes. Set runtimeSource to a module that exports jsxAttr " +
-              "and jsxEscape, or set secure: false to trust static attributes (Deno-compatible).",
-          );
-        }
-        if (typeof mod.jsxEscape === "function") {
-          renderEscape = mod.jsxEscape;
-        }
-      } catch (err) {
+
+      if (mod.precompileDialect !== "vincle") return;
+
+      if (typeof mod.jsxAttr !== "function" || typeof mod.jsxEscape !== "function") {
         this.error(
-          `[vincle/vite-plugin-precompile] secure mode: failed to load "${source}" (${String(err)}). ` +
-            "Check that the module is installed and resolvable from where Vite runs, or set secure: false.",
+          `[vincle/vite-plugin-precompile] "${source}" declares the "vincle" precompile dialect ` +
+            "but does not export both jsxAttr and jsxEscape, so build-time sanitization cannot " +
+            'run — a literal href="javascript:…" would reach the bundle verbatim. Re-export ' +
+            "the runtime whole (`export * from`) rather than naming a subset.",
         );
       }
+      renderAttr = mod.jsxAttr;
+
+      renderEscape = mod.jsxEscape;
     },
 
     transform(code: string, id: string) {
@@ -208,7 +208,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       const result = precompileTransform(
         code,
         id,
-        { runtimeSource: rs!, secure: config?.secure },
+        { runtimeSource: rs! },
         renderAttr ?? undefined,
         renderEscape ?? undefined,
       );

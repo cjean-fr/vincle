@@ -2,15 +2,28 @@ import { TraceMap, originalPositionFor } from "@jridgewell/trace-mapping";
 import { renderToString } from "@vincle/core";
 import { jsx, jsxAttr, jsxEscape } from "@vincle/core/jsx-runtime";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import precompileTransform from "./transformer.js";
 
 const RT = "@vincle/core/jsx-runtime";
 
+/**
+ * A foreign runtime: no serializer injected, so the output is Deno's.
+ *
+ * There is no option to pass — the transform emits the reference output for
+ * every runtime but one, and `transformVincle` below is that one.
+ */
 function transform(code: string, id = "/src/app.tsx"): string {
   const result = precompileTransform(code, id, { runtimeSource: RT });
+  if (!result) throw new Error("expected a transform result, got null");
+  return result.code;
+}
+
+/** A runtime declaring the `"vincle"` dialect: corrected, sanitized output. */
+function transformVincle(code: string, id = "/src/app.tsx"): string {
+  const result = precompileTransform(code, id, { runtimeSource: RT }, jsxAttr, jsxEscape);
   if (!result) throw new Error("expected a transform result, got null");
   return result.code;
 }
@@ -165,73 +178,50 @@ describe("precompileTransform", () => {
     expect(transform(`const a = <img srcSet="a.png 1x" />;`)).toContain('<img srcset="a.png 1x">');
   });
 
-  describe("secure mode", () => {
-    function transformSecure(code: string): string {
-      const result = precompileTransform(
-        code,
-        "/src/app.tsx",
-        { runtimeSource: RT, secure: true },
-        jsxAttr,
-      );
-      if (!result) throw new Error("expected a transform result, got null");
-      return result.code;
-    }
-
-    function transformSecureWithEscape(code: string): string {
-      const result = precompileTransform(
-        code,
-        "/src/app.tsx",
-        { runtimeSource: RT, secure: true },
-        jsxAttr,
-        jsxEscape,
-      );
-      if (!result) throw new Error("expected a transform result, got null");
-      return result.code;
-    }
-
+  describe("build-time sanitization", () => {
     it("sanitizes static URL attributes at build time (output stays static)", () => {
-      const out = transformSecure(`const a = <a href="javascript:alert(1)">x</a>;`);
+      const out = transformVincle(`const a = <a href="javascript:alert(1)">x</a>;`);
       expect(out).toContain('<a href="#blocked">x</a>');
       expect(out).not.toContain("jsxAttr"); // sanitized at build time, not at runtime
       expect(out).not.toContain("javascript:");
     });
 
     it("keeps safe URLs intact and still remaps names", () => {
-      const out = transformSecure(`const a = <a href="/path" className="link">x</a>;`);
+      const out = transformVincle(`const a = <a href="/path" className="link">x</a>;`);
       expect(out).toContain('<a href="/path" class="link">x</a>');
     });
 
     it("passes through style values (CSS safety is deferred to the runtime)", () => {
-      const out = transformSecure(
+      const out = transformVincle(
         `const a = <div style="background:url(javascript:alert(1))">x</div>;`,
       );
       expect(out).toContain("javascript:");
     });
 
     it("escapes static values through the runtime", () => {
-      const out = transformSecure(`const a = <div title='a"b'>x</div>;`);
+      const out = transformVincle(`const a = <div title='a"b'>x</div>;`);
       expect(out).toContain("a&quot;b");
     });
 
     it("escapes static text content using the runtime's own jsxEscape", () => {
-      const out = transformSecureWithEscape(`const a = <div>hello & world</div>;`);
+      const out = transformVincle(`const a = <div>hello & world</div>;`);
       // jsxEscape from @vincle/core escapes & < > — same as escapeContent
       // for Vincle. For other runtimes (Preact, Hono) the escaping differs;
       // using the runtime's own jsxEscape guarantees byte-identity.
       expect(out).toContain("jsxTemplate`<div>hello &amp; world</div>`");
     });
 
-    it("decodes rawtext entities then escapeRawText (secure mode, matches dynamic runtime)", () => {
-      // Secure mode: decode entities (like the JS compiler does) then
+    it("decodes rawtext entities then escapeRawText (matches the dynamic runtime)", () => {
+      // Default: decode entities (like the JS compiler does) then
       // escapeRawText — the same path renderChild takes — so `&gt;` becomes
       // a real `>` and the output is valid CSS/JS. Unlike Deno mode where
       // rawtext entities stay verbatim.
-      const style = transformSecure("const a = <style>.a &gt; .b</style>;");
+      const style = transformVincle("const a = <style>.a &gt; .b</style>;");
       expect(style).toContain("jsxTemplate`<style>.a > .b</style>`");
-      const script = transformSecure("const a = <script>a &amp;&amp; b</script>;");
+      const script = transformVincle("const a = <script>a &amp;&amp; b</script>;");
       expect(script).toContain("jsxTemplate`<script>a && b</script>`");
       // The element's own closing tag is neutralized (breakout guard).
-      const guard = transformSecure("const a = <script>x &lt;/script&gt; y</script>;");
+      const guard = transformVincle("const a = <script>x &lt;/script&gt; y</script>;");
       expect(guard).not.toContain("</script> y");
     });
   });
@@ -327,7 +317,7 @@ describe("precompileTransform", () => {
     });
 
     it("serializes namespaced static attributes (xlink:href)", () => {
-      const out = transform('const a = <use xlink:href="#i" />;');
+      const out = transformVincle('const a = <use xlink:href="#i" />;');
       expect(out).toContain('xlink:href="#i"');
       expect(out).not.toContain("[object Object]");
     });
@@ -347,10 +337,10 @@ describe("precompileTransform", () => {
       expect(out).not.toContain("<script>");
     });
 
-    it("keeps rawtext entities verbatim (Deno-compatible mode)", () => {
-      // Deno mode (secure: false): rawtext entities stay literal — the HTML
-      // parser never decodes entities in <script>/<style> content, so keeping
-      // them verbatim is safe and matches Deno's own precompile output.
+    it("keeps rawtext entities verbatim in compatibility mode", () => {
+      // Rawtext entities stay literal — the HTML parser never decodes entities
+      // in <script>/<style> content, so keeping them verbatim is safe and
+      // matches Deno's own precompile output.
       const style = transform("const a = <style>.a &gt; .b</style>;");
       expect(style).toContain("jsxTemplate`<style>.a &gt; .b</style>`");
       const script = transform("const a = <script>a &amp;&amp; b</script>;");
@@ -359,6 +349,333 @@ describe("precompileTransform", () => {
       // entities in rawtext, so no breakout.
       const guard = transform("const a = <script>x &lt;/script&gt; y</script>;");
       expect(guard).toContain("&lt;/script&gt;");
+    });
+
+    it("…and decodes them for the vincle dialect", () => {
+      // `escapeRawTagContent` applies: entities are decoded, so the CSS and JS
+      // are what the author wrote, and the closing tag is neutralised.
+      expect(transformVincle("const a = <style>.a &gt; .b</style>;")).toContain(
+        "jsxTemplate`<style>.a > .b</style>`",
+      );
+      expect(transformVincle("const a = <script>x &lt;/script&gt; y</script>;")).toContain(
+        "\\u003c/script>",
+      );
+    });
+  });
+
+  describe("the default mode renders what the runtime renders", () => {
+    /**
+     * Toggling the plugin changes no byte — the invariant the default mode
+     * exists to hold, checked end to end rather than on the shape of the
+     * generated code.
+     *
+     * Every entry is a case that diverged at some point or could: boolean
+     * attributes with every kind of value, a hole in rawtext, tabs, trailing
+     * text, the names with two spellings, the shapes the transform declines.
+     * The compatibility mode deliberately breaks several of these, which is why
+     * it is not measured here.
+     */
+    const TAB = String.fromCharCode(9);
+    const CASES: [string, string][] = [
+      ["statique", `<div class="box" id="x">hi</div>`],
+      ["alias statique", `<div className="box" tabIndex="0">hi</div>`],
+      ["booleen statique", `<input readOnly />`],
+      ["href javascript statique", `<a href="javascript:alert(1)">x</a>`],
+      ["style string statique", `<div style="position:fixed">x</div>`],
+      ["onclick statique", `<button onclick="go()">x</button>`],
+      ["titre dynamique", `<div title={s}>x</div>`],
+      ["alias dynamique", `<div className={s} htmlFor={s}>x</div>`],
+      ["readOnly true", `<input readOnly={yes} />`],
+      ["readOnly false", `<input readOnly={no} />`],
+      ["readOnly str", `<input readOnly={s} />`],
+      ["readOnly vide", `<input readOnly={empty} />`],
+      ["disabled zero", `<input disabled={zero} />`],
+      ["value nullish", `<input value={nul} />`],
+      ["href dynamique bloque", `<a href={bad}>x</a>`],
+      ["style objet", `<div style={styleObj}>x</div>`],
+      ["aria + data", `<div aria-hidden={s} data-x={s}>x</div>`],
+      ["xlink dynamique", `<use xlinkHref={s} />`],
+      ["xlink statique", `<use xlinkHref="#i" />`],
+      ["xmlns", `<svg xmlnsXlink="u" />`],
+      ["texte + entites", `<p>fish &amp; chips &copy; &lt;b&gt;</p>`],
+      ["hole texte", `<p>{s}</p>`],
+      ["deux holes", `<p>{s}{s}</p>`],
+      ["tabulations", `<div>${TAB}x${TAB}</div>`],
+      ["pre tabs", `<pre>${TAB}x\\n${TAB}y</pre>`],
+      ["multi-ligne", `<div>  a\\n   b  </div>`],
+      ["espace fermante", `<p><span>a </span><span>b</span></p>`],
+      ["rawtext statique", `<style>.a &gt; .b</style>`],
+      ["script statique", `<script>a &amp;&amp; b</script>`],
+      ["rawtext hole", `<style>{css}</style>`],
+      ["script hole", `<script>{js}</script>`],
+      ["void au milieu", `<div>a<br />b</div>`],
+      ["fragment", `<><li>one</li><li>two</li></>`],
+      ["composant", `<div><Foo x={1} /></div>`],
+      ["spread", `<div {...spread}>x</div>`],
+      ["innerHTML", `<div dangerouslySetInnerHTML={{ __html: html }} />`],
+      ["imbrication", `<div><span class="y">{s}</span></div>`],
+      ["img void", `<img src={s} alt="a" />`],
+    ];
+
+    it("renders identically with and without the plugin, on all of them", async () => {
+      const prelude = [
+        `const s = "S"; const yes = true; const no = false; const empty = ""; const zero = 0;`,
+        `const nul = null; const bad = "javascript:alert(1)"; const css = ".a > .b";`,
+        `const js = "a && b"; const html = "<b>h</b>"; const spread = { z: 1 };`,
+        `const styleObj = { color: "red", fontSize: 12 };`,
+        `const Foo = (p: { x: number }) => "[Foo]";`,
+      ].join("\n");
+      const body = CASES.map(([, expr], i) => `export const c${i} = ${expr};`).join("\n");
+      const source = `${prelude}\n${body}`;
+      const id = Math.random().toString(36).slice(2);
+
+      const runtimePath = join(TMP, `iso-rt-${id}.tsx`);
+      writeFileSync(runtimePath, `/** @jsxImportSource @vincle/core */\n${source}`);
+      const rtMod = (await import(runtimePath)) as Record<string, unknown>;
+
+      const result = precompileTransform(
+        source,
+        "/src/app.tsx",
+        { runtimeSource: RT },
+        jsxAttr,
+        jsxEscape,
+      );
+      const outputPath = join(TMP, `iso-pre-${id}.tsx`);
+      writeFileSync(outputPath, `/** @jsxImportSource @vincle/core */\n${result!.code}`);
+      const preMod = (await import(outputPath)) as Record<string, unknown>;
+
+      const divergences: string[] = [];
+      for (const [i, [label]] of CASES.entries()) {
+        const runtime = await renderToString(rtMod[`c${i}`]);
+        const precompiled = await renderToString(preMod[`c${i}`]);
+        if (runtime !== precompiled) {
+          divergences.push(
+            `${label}\n  runtime:     ${JSON.stringify(runtime)}\n  precompiled: ${JSON.stringify(precompiled)}`,
+          );
+        }
+      }
+      expect(divergences).toEqual([]);
+    });
+  });
+
+  describe("compatibility mode against Deno's own transform", () => {
+    /**
+     * The fixture is what Deno's `jsx: "precompile"` emitted, captured by
+     * `scripts/capture-deno-trace.mjs` — so this runs without Deno installed,
+     * and regenerating it is a deliberate act with a version recorded in the
+     * file. A trace, not rendered HTML: every helper call in order with the
+     * names chosen, since a name resolved differently is a divergence even
+     * when the page looks the same.
+     *
+     * What the runtime then does with an identical template is the runtime's
+     * promise, not this one's.
+     */
+    const fixture = JSON.parse(
+      readFileSync(join(import.meta.dir, "../test-fixtures/deno-precompile-trace.json"), "utf8"),
+    ) as {
+      source: string;
+      prelude: string;
+      cases: { label: string; jsx: string; trace: string[] }[];
+    };
+
+    /**
+     * Cases where the two transforms still differ, and why.
+     *
+     * Deno turns what it cannot template into a `jsx()` call; this transform
+     * hands the element back as JSX for the compiler that follows. Same holes,
+     * different way of filling them — and emitting `jsx()` would mean a fourth
+     * helper, outside the three the precompile contract has.
+     */
+    const KNOWN_DIVERGENCES = new Set(["composant", "spread", "innerHTML"]);
+
+    it("emits the same trace, apart from the shapes it hands back as JSX", async () => {
+      const id = Math.random().toString(36).slice(2);
+      const spyPath = join(TMP, `spy-${id}.ts`);
+      writeFileSync(
+        spyPath,
+        [
+          `export const seen: string[] = [];`,
+          `export const mark = (i: number): number => (seen.push(\`— case \${i}\`), i);`,
+          `export function jsxTemplate(templates: ArrayLike<string>, ...values: unknown[]): string {`,
+          `  seen.push(\`tpl \${JSON.stringify([...(templates as string[])])} holes=\${values.length}\`);`,
+          `  return "T";`,
+          `}`,
+          `export function jsxAttr(name: string, value: unknown): string {`,
+          `  seen.push(\`attr \${JSON.stringify(name)}\`);`,
+          `  return value == null ? "" : \`\${name}="\${String(value)}"\`;`,
+          `}`,
+          `export function jsxEscape(v: unknown): string {`,
+          `  seen.push("escape");`,
+          `  return v == null ? "" : String(v);`,
+          `}`,
+          `export function jsx(): string {`,
+          `  seen.push("jsx");`,
+          `  return "J";`,
+          `}`,
+          `export const Fragment = "F";`,
+        ].join("\n"),
+      );
+
+      const source = [
+        `import { mark } from "${spyPath}";`,
+        fixture.prelude,
+        ...fixture.cases.map(
+          (c, i) => `export const m${i} = mark(${i});\nexport const c${i} = ${c.jsx};`,
+        ),
+      ].join("\n");
+
+      const result = precompileTransform(source, "/src/app.tsx", {
+        runtimeSource: spyPath,
+      });
+      const outputPath = join(TMP, `deno-conf-${id}.tsx`);
+      writeFileSync(
+        outputPath,
+        `/** @jsxImportSource @vincle/core */\n${result!.code}\nexport { seen } from "${spyPath}";\n`,
+      );
+      const { seen } = (await import(outputPath)) as { seen: string[] };
+
+      const byCase = new Map<number, string[]>();
+      let current = -1;
+      for (const line of seen) {
+        const marker = /^— case (\d+)$/.exec(line);
+        if (marker) {
+          current = Number(marker[1]);
+          byCase.set(current, []);
+          continue;
+        }
+        byCase.get(current)?.push(line);
+      }
+
+      const diverged: string[] = [];
+      fixture.cases.forEach((c, i) => {
+        const ours = byCase.get(i) ?? [];
+        if (JSON.stringify(ours) !== JSON.stringify(c.trace)) diverged.push(c.label);
+      });
+
+      expect(new Set(diverged)).toEqual(KNOWN_DIVERGENCES);
+    });
+  });
+
+  describe("defects reproduced on purpose in compatibility mode", () => {
+    // Opting in means opting into Deno's output, defects included. Each of
+    // these was measured against 2.9.2 and 2.9.6.
+
+    it("inlines a boolean attribute instead of calling jsxAttr", () => {
+      // `expr ? "name" : ""`, no runtime call at all — which is how the value
+      // of `readOnly={"x"}` is lost and `readOnly={""}` becomes no attribute.
+      const out = transform("const a = <input readOnly={b} disabled={d} />;");
+      expect(out).toContain('${(b) ? "readonly" : ""}');
+      expect(out).toContain('${(d) ? "disabled" : ""}');
+      expect(out).not.toContain("jsxAttr");
+    });
+
+    it("…for the list Deno inlines, and not for the ones it does not", () => {
+      // `hidden`, `draggable`, `contentEditable`, `spellCheck` take a value, so
+      // Deno routes them through `jsxAttr` — and so do we.
+      for (const name of ["hidden", "draggable", "contentEditable", "spellCheck"]) {
+        expect(transform(`const a = <div ${name}={v} />;`)).toContain("jsxAttr(");
+      }
+      for (const name of ["checked", "selected", "autoFocus", "formNoValidate"]) {
+        expect(transform(`const a = <input ${name}={v} />;`)).not.toContain("jsxAttr(");
+      }
+    });
+
+    it("precompiles a rawtext element with a hole, escaping it", () => {
+      // The escape is wrong for CSS and JS — an HTML parser decodes nothing in
+      // there — and it is what Deno emits. The default mode declines instead.
+      const compat = transform("const a = <style>{css}</style>;");
+      expect(compat).toContain("jsxTemplate`<style>${jsxEscape(css)}</style>`");
+
+      // For the vincle dialect the element is declined: alone in a file there
+      // is nothing left to rewrite, and nested it stays JSX for the runtime to
+      // answer for.
+      expect(
+        precompileTransform(
+          "const a = <style>{css}</style>;",
+          "/src/app.tsx",
+          { runtimeSource: RT },
+          jsxAttr,
+          jsxEscape,
+        ),
+      ).toBeNull();
+      const nested = transformVincle("const a = <div><style>{css}</style></div>;");
+      expect(nested).toContain("<style>{css}</style>");
+      expect(nested).not.toContain("jsxEscape(css)");
+    });
+
+    it("resolves the two attribute names Deno resolves differently", () => {
+      // SVG2 renamed `xlink:href` to `href`, which Deno applies; `xmlnsXlink`
+      // it simply lowercases, into an attribute that does not exist.
+      expect(transform('const a = <use xlinkHref="#i" />;')).toContain('href="#i"');
+      expect(transform("const a = <use xlinkHref={h} />;")).toContain('jsxAttr("href", h)');
+      expect(transform('const a = <svg xmlnsXlink="u" />;')).toContain('xmlnsxlink="u"');
+
+      expect(transformVincle('const a = <use xlinkHref="#i" />;')).toContain('xlink:href="#i"');
+      expect(transformVincle("const a = <use xlinkHref={h} />;")).toContain(
+        'jsxAttr("xlink:href", h)',
+      );
+      expect(transformVincle('const a = <svg xmlnsXlink="u" />;')).toContain('xmlns:xlink="u"');
+    });
+  });
+
+  describe("the name handed to the runtime", () => {
+    it("is the HTML name, not the authored one", () => {
+      // Remapping belongs to the transform: Deno (2.9.2 and 2.9.6) calls
+      // `jsxAttr("class", …)` for `className`, static or dynamic, and a
+      // runtime's own helper need not remap — Preact's does not, it remaps
+      // when rendering a VNode. Passing `className` through put
+      // `className="box"` in the page, styling nothing.
+      const seen: string[] = [];
+      const spy = (name: string, value: unknown): { value: string } => {
+        seen.push(name);
+        return { value: `${name}="${String(value)}"` };
+      };
+      precompileTransform(
+        `const a = <div className="box" tabIndex="0" htmlFor="i" readOnly />;`,
+        "/src/app.tsx",
+        { runtimeSource: RT },
+        spy,
+      );
+      expect(seen).toEqual(["class", "tabindex", "for", "readonly"]);
+    });
+
+    it("…and the same name reaches a dynamic hole", () => {
+      const out = transform(`const a = <div className={c} htmlFor={f}>x</div>;`);
+      expect(out).toContain('jsxAttr("class", c)');
+      expect(out).toContain('jsxAttr("for", f)');
+    });
+  });
+
+  describe("trailing text, and what each mode does with it", () => {
+    // Deno's precompile right-trims the text that ends an element. Measured
+    // against 2.9.2 and 2.9.6: `<span>a </span>` → `["<span>a</span>"]`, and a trailing
+    // element, expression or fragment does not trigger it.
+    const TAB = String.fromCharCode(9);
+
+    it("compatibility mode right-trims the text that ends an element", () => {
+      expect(transform("const a = <span>x </span>;")).toContain("`<span>x</span>`");
+      expect(transform("const a = <div>  x  </div>;")).toContain("`<div>  x</div>`");
+      expect(transform("const a = <div> </div>;")).toContain("`<div></div>`");
+      expect(transform("const a = <script>var a = 1; </script>;")).toContain(
+        "`<script>var a = 1;</script>`",
+      );
+      expect(transform(`const a = <div>${TAB}x${TAB}</div>;`)).toContain(`\`<div>${TAB}x</div>\``);
+    });
+
+    it("…and only for a text node in last position", () => {
+      // A trailing element keeps the space in front of it, and so does a
+      // trailing hole or fragment — Deno emits the same.
+      expect(transform("const a = <div>x <b>y</b></div>;")).toContain("`<div>x <b>y</b></div>`");
+      expect(transform("const a = <div>x {y}</div>;")).toContain("`<div>x ${");
+      expect(transform("const a = <div>x <>y </></div>;")).toContain("`<div>x y </div>`");
+    });
+
+    it("the vincle dialect keeps it, like the JSX rule and the runtime path", () => {
+      expect(transformVincle("const a = <span>x </span>;")).toContain("`<span>x </span>`");
+      expect(transformVincle("const a = <div>  x  </div>;")).toContain("`<div>  x  </div>`");
+      expect(transformVincle(`const a = <div>${TAB}x${TAB}</div>;`)).toContain(
+        `\`<div>${TAB}x${TAB}</div>\``,
+      );
     });
   });
 
@@ -419,7 +736,7 @@ describe("precompileTransform", () => {
       expect(mod.x.value).toBe('<div class="hello">world</div>');
     });
 
-    it("works with secure mode + custom runtime", async () => {
+    it("works with build-time sanitization + custom runtime", async () => {
       const adapterName = `./adapter-${Math.random().toString(36).slice(2)}.ts`;
       const adapterPath = join(TMP, adapterName.slice(2));
       const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.ts`);
@@ -438,7 +755,6 @@ describe("precompileTransform", () => {
         "/src/app.tsx",
         {
           runtimeSource: adapterPath,
-          secure: true,
         },
         jsxAttr,
       );
@@ -456,9 +772,10 @@ describe("precompileTransform", () => {
         `export const x = <div title={t} class="c">hi</div>;`,
         `export const y = <input disabled={true} type="text" />;`,
       ].join("\n");
-      const result = precompileTransform(code, "/src/app.tsx", {
-        runtimeSource: RT,
-      });
+      // With `jsxAttr` injected — what the plugin does unless `compatibility` is on —
+      // the space comes from the runtime, and the output matches the runtime
+      // path byte for byte.
+      const result = precompileTransform(code, "/src/app.tsx", { runtimeSource: RT }, jsxAttr);
       writeFileSync(outputPath, result!.code);
       const mod = (await import(outputPath)) as {
         x: { value: string };
@@ -466,6 +783,90 @@ describe("precompileTransform", () => {
       };
       expect(mod.x.value).toBe('<div title="ok" class="c">hi</div>');
       expect(mod.y.value).toBe('<input disabled type="text">');
+    });
+
+    it("an attribute the runtime drops leaves no space behind", async () => {
+      // The invariant: toggling the plugin changes no byte. The transform emits
+      // no separator of its own when the runtime's `jsxAttr` carries one, so a
+      // dropped attribute takes its space with it.
+      const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
+      const runtimePath = join(TMP, `rt-${Math.random().toString(36).slice(2)}.tsx`);
+      const body = [
+        `const empty = null;`,
+        `const off = false;`,
+        `export const x = <input value={empty} />;`,
+        `export const y = <input class="c" value={empty} />;`,
+        `export const z = <input disabled={off} name={empty} />;`,
+      ].join("\n");
+
+      writeFileSync(runtimePath, `/** @jsxImportSource @vincle/core */\n${body}`);
+      const rtMod = (await import(runtimePath)) as Record<string, unknown>;
+
+      const result = precompileTransform(body, "/src/app.tsx", { runtimeSource: RT }, jsxAttr);
+      writeFileSync(outputPath, result!.code);
+      const preMod = (await import(outputPath)) as Record<string, unknown>;
+
+      for (const key of ["x", "y", "z"]) {
+        expect(await renderToString(preMod[key])).toBe(await renderToString(rtMod[key]));
+      }
+      expect(await renderToString(preMod["x"])).toBe("<input>");
+      expect(await renderToString(preMod["y"])).toBe('<input class="c">');
+    });
+
+    it("a tab in static text survives the plugin, like every other byte", async () => {
+      // `collapseJsxWhitespace` used to turn a tab into a space, which the JSX
+      // compilers do not — so the same source rendered differently with the
+      // plugin on, visibly inside `<pre>`.
+      const TAB = String.fromCharCode(9);
+      const body = [
+        `export const a = <div>${TAB}x${TAB}</div>;`,
+        `export const b = <pre>${TAB}x\n${TAB}y</pre>;`,
+        `export const c = <div>x${TAB}y</div>;`,
+      ].join("\n");
+      const id = Math.random().toString(36).slice(2);
+
+      const runtimePath = join(TMP, `rt-${id}.tsx`);
+      writeFileSync(runtimePath, `/** @jsxImportSource @vincle/core */\n${body}`);
+      const rtMod = (await import(runtimePath)) as Record<string, unknown>;
+
+      const result = precompileTransform(
+        body,
+        "/src/app.tsx",
+        { runtimeSource: RT },
+        jsxAttr,
+        jsxEscape,
+      );
+      const outputPath = join(TMP, `pre-${id}.tsx`);
+      writeFileSync(outputPath, `/** @jsxImportSource @vincle/core */\n${result!.code}`);
+      const preMod = (await import(outputPath)) as Record<string, unknown>;
+
+      for (const key of ["a", "b", "c"]) {
+        expect(await renderToString(preMod[key])).toBe(await renderToString(rtMod[key]));
+      }
+      expect(await renderToString(preMod["a"])).toBe(`<div>${TAB}x${TAB}</div>`);
+    });
+
+    it("writes the separating space into the static text, whatever the runtime", () => {
+      // The precompile contract: `jsxAttr` returns `name="value"` bare, so the
+      // separator is the transform's to write. Verified against the reference
+      // implementation — Deno 2.9.2 and 2.9.6 emits `["<input ", ">"]` for
+      // `<input value={v} />`, and Preact 10.29.7 returns `""` for a nullish
+      // value, which is why that pile renders `<input >`.
+      //
+      // Taking the space back is the runtime's job, where the tag is being
+      // assembled: `@vincle/core` does, so a template of this shape renders
+      // `<div>` either way. Emitting the space unconditionally is what keeps
+      // the output runnable on any runtime holding the contract.
+      const emitted = (renderAttr?: typeof jsxAttr): string =>
+        precompileTransform(
+          `const t = "ok";\nexport const x = <div title={t}>hi</div>;`,
+          "/src/app.tsx",
+          { runtimeSource: RT },
+          renderAttr,
+        )!.code;
+
+      expect(emitted(jsxAttr)).toContain('<div ${jsxAttr("title", t)}>');
+      expect(emitted()).toContain('<div ${jsxAttr("title", t)}>');
     });
 
     it("routes static key/ref through jsxAttr so the runtime drops them, like Deno and the classic path", async () => {
@@ -478,8 +879,9 @@ describe("precompileTransform", () => {
       expect(result!.code).toContain('jsxAttr("ref", "r1")');
       writeFileSync(outputPath, result!.code);
       const mod = (await import(outputPath)) as { x: { value: string } };
-      // Dropped attributes leave residual spaces — same shape as Deno's output.
-      expect(mod.x.value).toBe('<div   title="ok">hi</div>');
+      // The template has Deno's shape — a space per hole in the static text —
+      // and `@vincle/core` takes back the ones its dropped attributes left.
+      expect(mod.x.value).toBe('<div title="ok">hi</div>');
     });
 
     it("wraps a precompiled child of a component in a JSX expression container (regression: literal JSXText)", async () => {
@@ -638,7 +1040,6 @@ describe("precompileTransform", () => {
         "/src/app.tsx",
         {
           runtimeSource: RT,
-          secure: true,
         },
         jsxAttr,
       )!.code;
@@ -659,7 +1060,7 @@ describe("precompileTransform", () => {
       const out = precompileTransform(
         `const css = ".a{color:red}";\nexport const html = <div><style>{css}</style></div>;`,
         "/src/app.tsx",
-        { runtimeSource: RT, secure: true },
+        { runtimeSource: RT },
         jsxAttr,
       );
 
@@ -745,16 +1146,16 @@ describe("precompileTransform", () => {
 
     for (const [name, code] of Object.entries(cases)) {
       it(`${name}: no helper outside the contract`, () => {
-        for (const secure of [true, false]) {
+        for (const compatibility of [true, false]) {
           const out = precompileTransform(
             code,
             "/src/app.tsx",
-            { runtimeSource: RT, secure },
+            { runtimeSource: RT, compatibility },
             jsxAttr,
           );
           if (!out) continue;
           const outside = importedHelpers(out.code).filter((h) => !CONTRACT.has(h));
-          expect(outside, `secure: ${secure}`).toEqual([]);
+          expect(outside, `compatibility: ${compatibility}`).toEqual([]);
         }
       });
     }
