@@ -1,0 +1,140 @@
+{
+  "source": "deno 2.9.6 (stable, release, x86_64-unknown-linux-gnu)",
+  "prelude": "const c = \"C\"; const f = \"F\"; const b = true; const h = \"H\"; const a = \"A\";\nconst d = \"D\"; const s = \"S\"; const name = \"N\"; const css = \"CSS\";\nconst p = { z: 1 };\nconst Foo = (q) => null;",
+  "cases": [
+    {
+      "label": "statique",
+      "jsx": "<div class=\"box\" id=\"x\">hi</div>",
+      "trace": ["tpl [\"<div class=\\\"box\\\" id=\\\"x\\\">hi</div>\"] holes=0"]
+    },
+    {
+      "label": "alias statique",
+      "jsx": "<div className=\"box\" tabIndex=\"0\">hi</div>",
+      "trace": ["tpl [\"<div class=\\\"box\\\" tabindex=\\\"0\\\">hi</div>\"] holes=0"]
+    },
+    {
+      "label": "alias dynamique",
+      "jsx": "<div className={c} htmlFor={f}>x</div>",
+      "trace": ["attr \"class\"", "attr \"for\"", "tpl [\"<div \",\" \",\">x</div>\"] holes=2"]
+    },
+    {
+      "label": "booleen statique",
+      "jsx": "<input readOnly />",
+      "trace": ["tpl [\"<input readonly>\"] holes=0"]
+    },
+    {
+      "label": "booleen dynamique",
+      "jsx": "<input readOnly={b} />",
+      "trace": ["tpl [\"<input \",\">\"] holes=1"]
+    },
+    {
+      "label": "disabled dynamique",
+      "jsx": "<input disabled={b} />",
+      "trace": ["tpl [\"<input \",\">\"] holes=1"]
+    },
+    {
+      "label": "xlink dynamique",
+      "jsx": "<use xlinkHref={h} />",
+      "trace": ["attr \"href\"", "tpl [\"<use \",\"></use>\"] holes=1"]
+    },
+    {
+      "label": "xlink statique",
+      "jsx": "<use xlinkHref=\"#i\" />",
+      "trace": ["tpl [\"<use href=\\\"#i\\\"></use>\"] holes=0"]
+    },
+    {
+      "label": "xmlns",
+      "jsx": "<svg xmlnsXlink=\"u\" />",
+      "trace": ["tpl [\"<svg xmlnsxlink=\\\"u\\\"></svg>\"] holes=0"]
+    },
+    {
+      "label": "aria + data",
+      "jsx": "<div aria-hidden={a} data-x={d}>x</div>",
+      "trace": [
+        "attr \"aria-hidden\"",
+        "attr \"data-x\"",
+        "tpl [\"<div \",\" \",\">x</div>\"] holes=2"
+      ]
+    },
+    {
+      "label": "onClick dynamique",
+      "jsx": "<button onClick={h}>x</button>",
+      "trace": ["attr \"onclick\"", "tpl [\"<button \",\">x</button>\"] holes=1"]
+    },
+    {
+      "label": "style dynamique",
+      "jsx": "<div style={s}>x</div>",
+      "trace": ["attr \"style\"", "tpl [\"<div \",\">x</div>\"] holes=1"]
+    },
+    {
+      "label": "hole texte",
+      "jsx": "<p>{name}</p>",
+      "trace": ["escape", "tpl [\"<p>\",\"</p>\"] holes=1"]
+    },
+    {
+      "label": "plusieurs holes",
+      "jsx": "<p>{a}{b}</p>",
+      "trace": ["escape", "escape", "tpl [\"<p>\",\"\",\"</p>\"] holes=2"]
+    },
+    {
+      "label": "composant",
+      "jsx": "<div><Foo x={1} /></div>",
+      "trace": ["jsx", "tpl [\"<div>\",\"</div>\"] holes=1"]
+    },
+    {
+      "label": "spread",
+      "jsx": "<div {...p}>x</div>",
+      "trace": ["jsx"]
+    },
+    {
+      "label": "innerHTML",
+      "jsx": "<div dangerouslySetInnerHTML={h} />",
+      "trace": ["jsx"]
+    },
+    {
+      "label": "rawtext hole",
+      "jsx": "<style>{css}</style>",
+      "trace": ["escape", "tpl [\"<style>\",\"</style>\"] holes=1"]
+    },
+    {
+      "label": "void dynamique",
+      "jsx": "<img src={s} alt=\"a\" />",
+      "trace": ["attr \"src\"", "tpl [\"<img \",\" alt=\\\"a\\\">\"] holes=1"]
+    },
+    {
+      "label": "texte final",
+      "jsx": "<span>a </span>",
+      "trace": ["tpl [\"<span>a</span>\"] holes=0"]
+    },
+    {
+      "label": "texte bordé",
+      "jsx": "<div>  a  </div>",
+      "trace": ["tpl [\"<div>  a</div>\"] holes=0"]
+    },
+    {
+      "label": "multi-ligne",
+      "jsx": "<div>  a\n   b  </div>",
+      "trace": ["tpl [\"<div>  a b</div>\"] holes=0"]
+    },
+    {
+      "label": "tabulations",
+      "jsx": "<div>\ta\t</div>",
+      "trace": ["tpl [\"<div>\\ta</div>\"] holes=0"]
+    },
+    {
+      "label": "fragment",
+      "jsx": "<><li>one</li><li>two</li></>",
+      "trace": ["tpl [\"<li>one</li><li>two</li>\"] holes=0"]
+    },
+    {
+      "label": "entités",
+      "jsx": "<p>fish &amp; chips &copy;</p>",
+      "trace": ["tpl [\"<p>fish &amp; chips ©</p>\"] holes=0"]
+    },
+    {
+      "label": "rawtext statique",
+      "jsx": "<style>.a &gt; .b</style>",
+      "trace": ["tpl [\"<style>.a &gt; .b</style>\"] holes=0"]
+    }
+  ]
+}
