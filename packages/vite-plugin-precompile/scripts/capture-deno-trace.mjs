@@ -8,12 +8,18 @@
  *
  *   bun run scripts/capture-deno-trace.mjs
  *
+ * `--check` compares instead of writing, and exits non-zero on any difference.
+ * That is what the drift workflow runs against whatever Deno is current: the
+ * fixture stays pinned for pull requests, so their CI needs no Deno and a
+ * change in Deno arrives as a reviewable diff rather than a red build on an
+ * unrelated commit.
+ *
  * The trace is what the transform *did* — every helper call in order, with the
  * names it chose, plus the static fragments — not just the rendered HTML. A
  * name resolved differently is a divergence even when the page looks the same.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -123,5 +129,40 @@ const fixture = {
   cases: CASES.map(([label, jsx], i) => ({ label, jsx, trace: byCase.get(i) ?? [] })),
 };
 const out = new URL("../test-fixtures/deno-precompile-trace.json", import.meta.url).pathname;
-writeFileSync(out, `${JSON.stringify(fixture, null, 2)}\n`);
-console.log(`${version} → ${CASES.length} cas écrits dans ${out}`);
+const serialized = `${JSON.stringify(fixture, null, 2)}\n`;
+
+if (!process.argv.includes("--check")) {
+  writeFileSync(out, serialized);
+  console.log(`${version} → ${CASES.length} cases written to ${out}`);
+  process.exit(0);
+}
+
+const pinned = JSON.parse(readFileSync(out, "utf8"));
+const drifted = fixture.cases.filter(
+  (c, i) => JSON.stringify(c.trace) !== JSON.stringify(pinned.cases[i]?.trace),
+);
+
+if (drifted.length === 0) {
+  console.log(
+    pinned.source === version
+      ? `${version} matches the fixture.`
+      : `${version} matches the fixture, captured with ${pinned.source} — bump the recorded version.`,
+  );
+  process.exit(0);
+}
+
+console.error(
+  `${version} no longer emits what the fixture recorded (${pinned.source}).\n` +
+    `${drifted.length} of ${CASES.length} cases changed:\n`,
+);
+for (const c of drifted) {
+  const before = pinned.cases.find((p) => p.label === c.label)?.trace ?? [];
+  console.error(`  ${c.label}  ${c.jsx}`);
+  console.error(`    was: ${JSON.stringify(before)}`);
+  console.error(`    now: ${JSON.stringify(c.trace)}`);
+}
+console.error(
+  "\nThe compatibility path promises this output, so a change here is a decision:\n" +
+    "follow it (rerun without --check and adjust the transform) or record why not.",
+);
+process.exit(1);
