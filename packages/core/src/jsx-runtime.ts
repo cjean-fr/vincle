@@ -89,7 +89,7 @@ export function jsxEscape(v: unknown): RawString | VNode | Promise<RawString | V
       return escapeArray(Array.from(v as Iterable<unknown>));
     }
   }
-  return new RawString(textValue(v));
+  return new RawString(valueToText(v));
 }
 
 // Single pass, matching `renderChildrenAsync` in `render.ts`: a three-pass form
@@ -142,8 +142,32 @@ async function escapeArrayFrom(
 }
 
 /**
- * Serialize a single attribute to a `name="value"` string fragment.
- * Called by the precompile transform for each attribute expression.
+ * What dialect of the precompile contract this runtime speaks.
+ *
+ * A transform reads it to know whether it may improve on Deno's output or must
+ * reproduce it: only a runtime that answers `"vincle"` promises that a
+ * precompiled page renders the same bytes as the dynamic one, because only that
+ * promise makes correcting the reference transform safe. Anything else —
+ * Preact, Hono, a hand-written adapter — gets Deno's output, defects included,
+ * since that is the behaviour its own helpers were written against.
+ *
+ * An adapter keeps the dialect by re-exporting everything (`export * from`);
+ * a named re-export of the three helpers alone drops it, and the transform then
+ * treats the target as a foreign runtime. That is the conservative direction.
+ */
+export const precompileDialect = "vincle";
+
+/**
+ * Serialize a single attribute to a `name="value"` string fragment — bare, no
+ * separating space. Called by the precompile transform for each attribute
+ * expression.
+ *
+ * Bare because that is the contract every precompile transform is written
+ * against: the separator lives in the transform's own static text, so a
+ * template compiled for Deno's runtime runs here and vice versa. What that
+ * costs is the space left behind when this returns `""`, and `jsxTemplate`
+ * takes it back at assembly time — where knowing that the space sits inside a
+ * start tag is possible.
  *
  * The value taxonomy lives in `serializeAttr` (`attrs.ts`) — the same module
  * `buildAttrs` delegates to, so the two paths agree by construction rather than
@@ -156,18 +180,6 @@ export function jsxAttr(name: string, value: unknown): RawString | Promise<RawSt
   return serializeAttr(name, value);
 }
 
-function textValue(v: unknown): string {
-  if (Array.isArray(v)) {
-    let out = "";
-    for (let i = 0; i < v.length; i++) out += textValue(v[i]!);
-    return out;
-  }
-  if (isIterable(v)) {
-    return textValue(Array.from(v as Iterable<unknown>));
-  }
-  return valueToText(v);
-}
-
 /**
  * Handle the `jsxTemplate` call from the precompile transform — a tagged
  * template literal that interleaves static template fragments with escaped
@@ -178,9 +190,9 @@ function textValue(v: unknown): string {
  * in `render.ts`. `Promise.all` over the holes would overlap siblings that
  * mutate the context — the race the sequential walk exists to prevent.
  *
- * One pass: scanning `values` for a promise, mapping them through `textValue`,
- * then walking the result to interleave is three traversals and one array for
- * what is almost always a two-hole template.
+ * One pass: scanning `values` for a promise, mapping them to text, then walking
+ * the result to interleave is three traversals and one array for what is almost
+ * always a two-hole template.
  */
 export function jsxTemplate(
   templates: ArrayLike<string>,
@@ -196,10 +208,35 @@ export function jsxTemplate(
       const prefix = out;
       return renderTemplateAsync(prefix, v, values, i + 1, templates);
     }
-    out += textValue(v);
+    out = appendHole(out, valueToText(v));
     out += templates[i + 1] ?? "";
   }
   return new RawString(out);
+}
+
+/**
+ * Append one hole's text, dropping the separator a dropped attribute leaves.
+ *
+ * `<input ${jsxAttr("value", null)}>` renders `<input>`, the same bytes the
+ * runtime path emits — the space in front of the hole belongs to an attribute
+ * that is not there. Only an empty hole inside a start tag loses it: text keeps
+ * its spaces (`<p>a ${""}b</p>` stays `a b`), and so does a hole inside a
+ * quoted value (`<div title="a ${""}">`), which is why the scan counts quotes.
+ */
+function appendHole(out: string, text: string): string {
+  if (text !== "") return out + text;
+  return out.endsWith(" ") && inStartTag(out) ? out.slice(0, -1) : out;
+}
+
+/** Is the tail of `out` inside a start tag, outside any quoted value? */
+function inStartTag(out: string): boolean {
+  const open = out.lastIndexOf("<");
+  if (open === -1 || open < out.lastIndexOf(">")) return false;
+  let quotes = 0;
+  for (let i = open; i < out.length; i++) {
+    if (out.charCodeAt(i) === 34) quotes++;
+  }
+  return quotes % 2 === 0;
 }
 
 /**
@@ -228,14 +265,17 @@ async function renderTemplateAsync(
   from: number,
   templates: ArrayLike<string>,
 ): Promise<RawString> {
-  return new RawString(
-    await sequenceFrom(
-      prefix + (await renderValue(first)) + (templates[from] ?? ""),
-      values,
-      from,
-      async (v, i) => (await renderValue(v)) + (templates[i + 1] ?? ""),
-    ),
-  );
+  // Sequential, like `sequenceFrom` in `render.ts` and for the same reason:
+  // `Promise.all` would overlap holes that mutate the context. The loop is here
+  // rather than in that helper because `appendHole` takes bytes back off `out`,
+  // which a concatenating callback cannot express — and both paths must space a
+  // template identically, whether or not a hole happened to be a promise.
+  let out = appendHole(prefix, await renderValue(first)) + (templates[from] ?? "");
+  for (let i = from; i < values.length; i++) {
+    out = appendHole(out, await renderValue(values[i]));
+    out += templates[i + 1] ?? "";
+  }
+  return new RawString(out);
 }
 
 /**

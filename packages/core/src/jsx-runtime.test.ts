@@ -145,6 +145,8 @@ describe("jsxAttr", () => {
     expect(r.value).toBe("");
   });
 
+  // The fragment is bare — the separating space is the transform's, and
+  // `jsxTemplate` is what takes it back when these cases return "".
   test("null/undefined are skipped", () => {
     expect((jsxAttr("hidden", null) as RawString).value).toBe("");
     expect((jsxAttr("hidden", undefined) as RawString).value).toBe("");

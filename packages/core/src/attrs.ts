@@ -414,6 +414,13 @@ function attrFragment(key: string, meta: AttrMeta, value: unknown, prefix: strin
   return `${prefix}${attrName}="${escapeAttr(str)}"`;
 }
 
+/**
+ * Serialize one attribute to a bare `name="value"` fragment.
+ *
+ * No separating space: `jsxAttr` hands this to a precompile template whose
+ * static text already carries one. `buildAttrs` passes `" "` straight to
+ * `attrFragment` instead, since it writes a whole start tag itself.
+ */
 export function serializeAttr(key: string, value: unknown): RawString {
   if (value === null || value === undefined) return raw("");
   if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
