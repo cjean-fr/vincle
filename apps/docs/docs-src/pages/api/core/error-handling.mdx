@@ -84,9 +84,10 @@ before a single byte is rendered or a build starts:
   `defaultTimeout`, `onError`, `signal`, and per-fragment `timeout`.
 - `@vincle/vite-plugin`: `setVite` checks `base`; `loadViteManifest` names the
   file when it is unreadable, not JSON, or not a manifest.
-- `@vincle/vite-plugin-precompile`: `runtimeSource` and `secure` are checked
-  when the plugin is created; build-time probes name the failing module and the
-  fix.
+- `@vincle/vite-plugin-precompile`: `runtimeSource` is checked when the plugin is
+  created; a runtime declaring the `"vincle"` precompile dialect without the
+  helpers to back it fails the build, and an unreadable runtime module warns and
+  falls back to Deno's output.
 
 ## Per-fragment errors (streaming)
 
