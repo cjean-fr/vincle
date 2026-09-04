@@ -13,14 +13,13 @@ import { raw, RawString, VNode } from "./types.js";
  * third traversal of the same value taxonomy, and was pinned only by a
  * hand-written case list.
  *
- * The list had a hole, and it was exactly the class the fold/walk fuzzer exists
- * to catch: a value kind one path handles and the other mishandles. An array of
- * VNodes rendered through `jsxEscape` and *threw* through `jsxTemplate`, because
- * the latter's synchronous path flattened arrays with `textValue`, which bottoms
- * out in `valueToText` — and `valueToText` refuses a VNode. `@vincle/vite-plugin-
- * precompile` wraps every hole in `jsxEscape`, so its own output never hit it;
- * but `jsxTemplate` is a public export, and GOAL wants the precompilation brick
- * to serve any runtime that exposes one.
+ * The hole such a list leaves is the class this kind of fuzzer exists to catch:
+ * a value kind one path handles and the other mishandles. An array of VNodes is
+ * that shape — `jsxTemplate` sends every container down its deferred path, so
+ * `valueToText`, which refuses a VNode, is never asked to flatten one.
+ * `@vincle/vite-plugin-precompile` wraps every hole in `jsxEscape`, so its own
+ * output never depended on that; but `jsxTemplate` is a public export, and GOAL
+ * wants the precompilation brick to serve any runtime that exposes one.
  *
  * So the comparison here is per *value*, not per tree: for every shape a hole
  * can hold, the three ways to turn it into HTML must agree byte for byte.
@@ -40,6 +39,32 @@ function mulberry32(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/**
+ * The seed window: `VINCLE_FUZZ_SEEDS` seeds after `VINCLE_FUZZ_OFFSET`.
+ *
+ * The default window is fixed, so a CI divergence replays from the failure
+ * message alone; widening the sweep takes no edit. A malformed value is
+ * refused, never clamped: a NaN count loops zero times, and a fuzzer that
+ * checks nothing reports green.
+ */
+function seedWindow(count: number): number[] {
+  const read = (name: string, fallback: number, min: number): number => {
+    const value = process.env[name];
+    if (value === undefined || value === "") return fallback;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < min) {
+      throw new Error(
+        `[vincle fuzz] ${name} must be an integer >= ${min}, got ${JSON.stringify(value)}`,
+      );
+    }
+    return n;
+  };
+  const offset = read("VINCLE_FUZZ_OFFSET", 0, 0);
+  return Array.from({ length: read("VINCLE_FUZZ_SEEDS", count, 1) }, (_, i) => offset + i + 1);
+}
+
+const SEEDS = seedWindow(1000);
 
 const TEXTS = [
   "hello world",
@@ -183,11 +208,60 @@ async function viaTemplateRawtext(v: unknown, tag: string): Promise<string> {
   return out.value;
 }
 
+// ── The same values, in a template with more than one hole ─────────────────
+
+/**
+ * A template is its static fragments interleaved with its holes, in order, and
+ * the walk of that same interleaving is the oracle.
+ *
+ * The comparison above cannot see the interleaving: one value and two empty
+ * fragments leave the loop over `values` and the `templates[i + 1]` it appends
+ * pinned by nothing, so the sequencing rule — holes in document order, no
+ * `Promise.all` over siblings — rests on a single hand-written case.
+ *
+ * `frags.length` is always `vals.length + 1`, the shape a tagged template has
+ * and the only one a transform emits. A template with a spare fragment drops it,
+ * which is a property of a call no transform makes.
+ */
+const FRAGMENTS = ["", "<p>", "</p>", "|", "<ul><li>", "</li></ul>", " & ", "\n"];
+
+function genTemplate(r: () => number, depth: number): { frags: string[]; vals: unknown[] } {
+  const n = 1 + Math.floor(r() * 4);
+  // Values first, then fragments: the draw order has to be the same for every
+  // path, or the two runs are not the same template.
+  const vals = Array.from({ length: n }, () => genValue(r, depth));
+  const frags = Array.from({ length: n + 1 }, () => pick(FRAGMENTS, r));
+  return { frags, vals };
+}
+
+const viaWalkTemplate = ({
+  frags,
+  vals,
+}: {
+  frags: string[];
+  vals: unknown[];
+}): Promise<string> => {
+  const parts: unknown[] = [];
+  for (let i = 0; i < frags.length; i++) {
+    parts.push(raw(frags[i]!));
+    if (i < vals.length) parts.push(vals[i]);
+  }
+  return renderToString(parts);
+};
+
+const viaTemplateMulti = async ({
+  frags,
+  vals,
+}: {
+  frags: string[];
+  vals: unknown[];
+}): Promise<string> => (await jsxTemplate(frags, ...vals)).value;
+
 describe("path equivalence: precompile ≡ tree-walk", () => {
-  test("byte-identical output across 1000 random values", async () => {
+  test(`byte-identical output across ${SEEDS.length} random values`, async () => {
     const failures: { seed: number; walk: string; escape: string; template: string }[] = [];
 
-    for (let seed = 1; seed <= 1000; seed++) {
+    for (const seed of SEEDS) {
       // One fresh value per path: generators are single-use.
       const [walk, escape, template] = await Promise.all([
         viaWalk(genValue(mulberry32(seed), 4)),
@@ -202,7 +276,7 @@ describe("path equivalence: precompile ≡ tree-walk", () => {
     if (failures.length > 0) {
       const f = failures[0]!;
       throw new Error(
-        `${failures.length}/1000 values diverged. First failing seed=${f.seed}\n` +
+        `${failures.length}/${SEEDS.length} values diverged. First failing seed=${f.seed}\n` +
           `  tree-walk:   ${JSON.stringify(f.walk)}\n` +
           `  jsxEscape:   ${JSON.stringify(f.escape)}\n` +
           `  jsxTemplate: ${JSON.stringify(f.template)}`,
@@ -211,12 +285,34 @@ describe("path equivalence: precompile ≡ tree-walk", () => {
     expect(failures.length).toBe(0);
   });
 
+  test(`byte-identical across ${SEEDS.length} multi-hole templates`, async () => {
+    const failures: { seed: number; walk: string; template: string }[] = [];
+
+    for (const seed of SEEDS) {
+      const [walk, template] = await Promise.all([
+        viaWalkTemplate(genTemplate(mulberry32(seed), 3)),
+        viaTemplateMulti(genTemplate(mulberry32(seed), 3)),
+      ]);
+      if (walk !== template) failures.push({ seed, walk, template });
+    }
+
+    if (failures.length > 0) {
+      const f = failures[0]!;
+      throw new Error(
+        `${failures.length}/${SEEDS.length} templates diverged. First failing seed=${f.seed}\n` +
+          `  tree-walk:   ${JSON.stringify(f.walk)}\n` +
+          `  jsxTemplate: ${JSON.stringify(f.template)}`,
+      );
+    }
+    expect(failures.length).toBe(0);
+  });
+
   test.each(["script", "style"])(
-    "byte-identical inside <%s> across 1000 random values",
+    `byte-identical inside <%s> across ${SEEDS.length} random values`,
     async (tag) => {
       const failures: { seed: number; walk: string; template: string }[] = [];
 
-      for (let seed = 1; seed <= 1000; seed++) {
+      for (const seed of SEEDS) {
         const [walk, template] = await Promise.all([
           viaWalkRawtext(genValue(mulberry32(seed), 4), tag),
           viaTemplateRawtext(genValue(mulberry32(seed), 4), tag),
@@ -227,7 +323,7 @@ describe("path equivalence: precompile ≡ tree-walk", () => {
       if (failures.length > 0) {
         const f = failures[0]!;
         throw new Error(
-          `${failures.length}/1000 values diverged inside <${tag}>. First failing seed=${f.seed}\n` +
+          `${failures.length}/${SEEDS.length} values diverged inside <${tag}>. First failing seed=${f.seed}\n` +
             `  tree-walk:          ${JSON.stringify(f.walk)}\n` +
             `  jsxTemplate hole:   ${JSON.stringify(f.template)}`,
         );
