@@ -1,0 +1,44 @@
+name: Deno drift
+
+# `compatibility` output is measured against Deno's own precompile transform, and
+# `test-fixtures/deno-precompile-trace.json` is what it emitted when captured.
+# Pull requests compare against that file, so their CI needs no Deno and stays
+# hermetic — but a pinned reference is a reference that ages.
+#
+# This job is the other half: whatever Deno is current, re-capture and compare.
+# Manual, like `mutation.yml` — it can only fail for a reason no pull request
+# caused, so it has no business on that path. Run it when raising the Deno
+# version, before a release, or whenever you want to know.
+#
+# A failure here is a decision, not a regression: follow the change (regenerate
+# the fixture and adjust the transform) or record why not.
+on:
+  workflow_dispatch:
+
+jobs:
+  drift:
+    name: Fixture against current Deno
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      # `v2.x`, the same as the conformance matrix: the latest release of the
+      # current major, which is what a user upgrading today gets. A new major is
+      # left to an explicit bump, since adopting one is its own decision.
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Compare the captured trace to what Deno emits now
+        working-directory: packages/vite-plugin-precompile
+        run: bun run scripts/capture-deno-trace.mjs --check
