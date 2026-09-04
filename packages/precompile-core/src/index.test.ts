@@ -82,8 +82,16 @@ describe("precompile-core", () => {
       expect(collapseJsxWhitespace("a b c")).toBe("a b c");
     });
 
-    it("treats tabs as spaces", () => {
-      expect(collapseJsxWhitespace("a\tb")).toBe("a b");
+    it("keeps a tab, and trims one like whitespace", () => {
+      // The JSX compilers keep it, so precompiled output has to as well: a tab
+      // and a space render differently inside `<pre>`, and the runtime path
+      // gets whatever the compiler produced.
+      expect(collapseJsxWhitespace("a\tb")).toBe("a\tb");
+      expect(collapseJsxWhitespace("\ta\t")).toBe("\ta\t");
+      // Trimmed like a space when a newline puts it at a line edge.
+      expect(collapseJsxWhitespace("\ta\n\tb")).toBe("\ta b");
+      expect(collapseJsxWhitespace("\n\ta\n")).toBe("a");
+      expect(collapseJsxWhitespace("\t\n\t")).toBe("");
     });
   });
 

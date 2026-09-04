@@ -56,7 +56,9 @@ export function isLowercaseTag(name: string): boolean {
  *   - leading whitespace is stripped from every line but the first;
  *   - trailing whitespace is stripped from every line but the last;
  *   - blank lines are dropped, non-blank lines are joined with a single space;
- *   - tabs are treated as spaces.
+ *   - a tab counts as whitespace for those trims, and is kept where it
+ *     survives them: the JSX compilers do not turn one into a space, and
+ *     `<pre>` is where the difference is visible.
  * A text node that is entirely whitespace spanning a newline collapses to "".
  */
 export function collapseJsxWhitespace(text: string): string {
@@ -69,9 +71,9 @@ export function collapseJsxWhitespace(text: string): string {
 
   let out = "";
   for (let i = 0; i < lines.length; i++) {
-    let line = (lines[i] ?? "").replace(/\t/g, " ");
-    if (i !== 0) line = line.replace(/^ +/, "");
-    if (i !== lines.length - 1) line = line.replace(/ +$/, "");
+    let line = lines[i] ?? "";
+    if (i !== 0) line = line.replace(/^[ \t]+/, "");
+    if (i !== lines.length - 1) line = line.replace(/[ \t]+$/, "");
     if (line) {
       if (i !== lastNonEmptyLine) line += " ";
       out += line;
