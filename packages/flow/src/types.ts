@@ -2,10 +2,17 @@ import type { JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 
-// These two types carry what the adapters imposed on the API: the five merge
-// positions come from Turbo and HTMX, `capabilities` from what ESI refuses.
-// Nothing tests this — shrinking either wouldn't fail a single test.
-export type MergeType = "replace" | "append" | "prepend" | "before" | "after";
+// What the adapters imposed on the API: the five merge positions come from
+// Turbo and HTMX, `capabilities` from what ESI refuses.
+export const ALL_MERGES = ["replace", "append", "prepend", "before", "after"] as const;
+
+/**
+ * The list is the single declaration; the type derives from it. `assertAdapter`
+ * validates against the same array, so the runtime check and the compile-time
+ * type cannot drift apart, and `Record<MergeType, …>` in an adapter stops
+ * compiling the moment the list changes.
+ */
+export type MergeType = (typeof ALL_MERGES)[number];
 
 export interface AdapterCapabilities {
   streaming: boolean;
