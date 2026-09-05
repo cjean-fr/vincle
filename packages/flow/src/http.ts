@@ -28,13 +28,17 @@ function appendVary(headers: Headers, value: string): void {
   headers.set("vary", tokens.join(", "));
 }
 
+/**
+ * Later sources win, so a negotiator can correct what the caller asked for —
+ * except `Vary`, which unions rather than overwrites.
+ */
 function mergeHeaders(
   defaults?: HeadersInit,
-  caller?: HeadersInit,
-  negotiation?: HeadersInit,
+  fromOptions?: HeadersInit,
+  fromNegotiation?: HeadersInit,
 ): Headers {
   const headers = new Headers(defaults);
-  for (const source of [caller, negotiation]) {
+  for (const source of [fromOptions, fromNegotiation]) {
     for (const [k, v] of new Headers(source ?? {})) {
       if (k === "vary") appendVary(headers, v);
       else headers.set(k, v);
@@ -54,7 +58,7 @@ function mergeHeaders(
  */
 export async function serve(
   req: Request,
-  page: (n: Negotiation) => JSX.Element,
+  page: (negotiation: Negotiation) => JSX.Element,
   adapter: StreamingAdapter,
   opts?: FlowOptions &
     ResponseInit & {
@@ -62,15 +66,15 @@ export async function serve(
       mode?: "full" | "fragment";
     },
 ): Promise<Response> {
-  const n = opts?.negotiate?.(req) ?? {};
-  const body = renderToStream(() => page(n), adapter, {
+  const negotiation = opts?.negotiate?.(req) ?? {};
+  const body = renderToStream(() => page(negotiation), adapter, {
     ...opts,
-    mode: opts?.mode ?? n.mode,
+    mode: opts?.mode ?? negotiation.mode,
   }).pipeThrough(new TextEncoderStream());
   const headers = mergeHeaders(
     { "content-type": "text/html; charset=utf-8" },
     opts?.headers,
-    n.headers,
+    negotiation.headers,
   );
   return new Response(body, { ...opts, headers });
 }

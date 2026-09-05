@@ -7,31 +7,33 @@ export const PREFIX = "[vincle/flow]";
  * quoted (so an empty string reads as `""`, not as nothing), errors name
  * themselves, and anything longer than a line is truncated.
  */
-export function describeValue(v: unknown): string {
-  if (v === null) return "null";
-  if (typeof v === "string") {
-    return JSON.stringify(v.length > 80 ? v.slice(0, 80) + "…" : v);
+export function describeValue(value: unknown): string {
+  if (value === null) return "null";
+  if (typeof value === "string") {
+    return JSON.stringify(value.length > 80 ? value.slice(0, 80) + "…" : value);
   }
-  if (typeof v === "number" || typeof v === "bigint" || typeof v === "boolean") return String(v);
-  if (typeof v === "function") return `function ${v.name || "<anonymous>"}`;
-  if (v instanceof Error) return `${v.name}: ${v.message}`;
+  if (typeof value === "number" || typeof value === "bigint" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (typeof value === "function") return `function ${value.name || "<anonymous>"}`;
+  if (value instanceof Error) return `${value.name}: ${value.message}`;
   try {
-    const s = JSON.stringify(v);
-    if (s === undefined) return String(v);
-    return s.length > 100 ? s.slice(0, 100) + "…" : s;
+    const json = JSON.stringify(value);
+    if (json === undefined) return String(value);
+    return json.length > 100 ? json.slice(0, 100) + "…" : json;
   } catch {
-    return String(v);
+    return String(value);
   }
 }
 
-function isAbortSignal(v: unknown): v is AbortSignal {
+function isAbortSignal(value: unknown): value is AbortSignal {
   return (
-    v instanceof AbortSignal ||
-    (v != null &&
-      typeof v === "object" &&
-      typeof (v as AbortSignal).aborted === "boolean" &&
-      typeof (v as AbortSignal).addEventListener === "function" &&
-      typeof (v as AbortSignal).onabort === "object")
+    value instanceof AbortSignal ||
+    (value != null &&
+      typeof value === "object" &&
+      typeof (value as AbortSignal).aborted === "boolean" &&
+      typeof (value as AbortSignal).addEventListener === "function" &&
+      typeof (value as AbortSignal).onabort === "object")
   );
 }
 
@@ -94,7 +96,7 @@ export function assertAdapter(adapter: unknown, source: string): void {
   const missing = ADAPTER_SLOTS.filter((slot) => typeof record[slot] !== "function");
   if (missing.length > 0) {
     throw new Error(
-      `${PREFIX} ${source}: the adapter is missing ${missing.map((m) => `"${m}"`).join(", ")} — ` +
+      `${PREFIX} ${source}: the adapter is missing ${missing.map((slot) => `"${slot}"`).join(", ")} — ` +
         "an adapter needs Placeholder, Patch and Frame. Use createAdapter() or a built-in adapter.",
     );
   }
@@ -114,7 +116,9 @@ export function assertAdapter(adapter: unknown, source: string): void {
   const merges = caps.merges;
   const validMerges =
     Array.isArray(merges) &&
-    merges.every((m) => typeof m === "string" && (ALL_MERGES as readonly string[]).includes(m));
+    merges.every(
+      (merge) => typeof merge === "string" && (ALL_MERGES as readonly string[]).includes(merge),
+    );
   if (!validMerges) {
     throw new Error(
       `${PREFIX} ${source}: adapter.capabilities.merges must be an array of merge types ` +

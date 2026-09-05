@@ -7,7 +7,7 @@
  *   which stops the producer and releases any parked `emit()` call.
  */
 export function createStream<T>(
-  producer: (emit: (t: T) => Promise<void>, signal: AbortSignal) => Promise<void>,
+  producer: (emit: (value: T) => Promise<void>, signal: AbortSignal) => Promise<void>,
   opts?: { signal?: AbortSignal },
 ): ReadableStream<T> {
   const internal = new AbortController();
@@ -15,15 +15,15 @@ export function createStream<T>(
   let controller!: ReadableStreamDefaultController<T>;
   const waiters: Array<() => void> = [];
   const flushWaiters = () => {
-    for (const r of waiters.splice(0)) r();
+    for (const resume of waiters.splice(0)) resume();
   };
   signal.addEventListener("abort", flushWaiters, { once: true });
 
-  const emit = async (ev: T) => {
+  const emit = async (value: T) => {
     if (signal.aborted) return;
     while ((controller.desiredSize ?? 1) <= 0 && !signal.aborted)
-      await new Promise<void>((r) => waiters.push(r));
-    if (!signal.aborted) controller.enqueue(ev);
+      await new Promise<void>((resolve) => waiters.push(resolve));
+    if (!signal.aborted) controller.enqueue(value);
   };
 
   return new ReadableStream<T>({
