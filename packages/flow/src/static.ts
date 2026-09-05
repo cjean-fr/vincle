@@ -3,7 +3,7 @@ import { raw, renderToString, snapshot, withScope, type JSX } from "@vincle/core
 import type { Adapter } from "./adapters/index.js";
 
 import { assertAdapter, PREFIX, describeValue } from "./config.js";
-import { withFlow, initFlowAssets, suppressFlowAssets } from "./context.js";
+import { withFlow, initFlowAssets, suppressFlowAssets, type FlowContext } from "./context.js";
 import { flushTemplates } from "./flushTemplates.js";
 
 const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
@@ -40,6 +40,60 @@ export interface StaticOptions {
 }
 
 /**
+ * The handler-facing context. `emitFragments` is always built; the overloads
+ * are what withhold it from a caller that passed no adapter, and the runtime
+ * check inside it is for the plain-JS caller the overloads do not reach.
+ */
+function createStaticContext(
+  ctx: FlowContext,
+  adapter: Adapter | undefined,
+  generatePath: (id: string) => string,
+): StaticContext {
+  return {
+    renderPage: (node) =>
+      withScope(async () => {
+        // A page boundary is an asset boundary: a fresh state before the
+        // render, so `<Style>` emits once per page rather than once per site.
+        initFlowAssets();
+        const html = await renderToString(node());
+        return adapter?.transformShell ? adapter.transformShell(html, ctx) : html;
+      }, snapshot()),
+
+    emitFragments: async (cb) => {
+      if (!adapter) {
+        throw new Error(
+          `${PREFIX} emitFragments(): emitFragments requires an adapter — fragments cannot ` +
+            "be framed into standalone files without one. Pass { adapter: ... } to renderToStatic. " +
+            "Example: renderToStatic(handler, { adapter: NativeAdapter })",
+        );
+      }
+      // Standalone fragment files carry no assets — the shell including them
+      // already has them — so this scope suppresses emission, and `<Style>`
+      // returns null rather than a tag a later pass would have to remove.
+      await withScope(async () => {
+        suppressFlowAssets();
+        await flushTemplates(ctx, async (ev) => {
+          if (ev.type === "fragment") {
+            const framed = await renderToString(
+              adapter.Frame({ id: ev.id, children: raw(ev.html) }),
+            );
+            await cb(ev.id, generatePath(ev.id), framed);
+          }
+        });
+      }, snapshot());
+      // Emitted fragments leave the store. `flushTemplates` tracks what it has
+      // processed only within one call, so without this the natural
+      // site-generator loop — `renderPage(p); emitFragments(write)` per page —
+      // re-emits every earlier fragment on every page: quadratic writes, and
+      // each lazy factory replayed, so a `(signal) => fetch(...)` is refetched
+      // once per remaining page. A fragment is written to a file here; there is
+      // nothing left to drain.
+      ctx.templateStore.clear();
+    },
+  };
+}
+
+/**
  * Static generation for pure-static sites (no lazy `<Template>` content).
  * Call without options — the handler receives a `PureStaticContext`
  * without `emitFragments`.
@@ -72,51 +126,9 @@ export async function renderToStatic<T>(
     );
   }
 
-  return withFlow(
-    async (ctx) => {
-      const staticCtx: StaticContext = {
-        renderPage: (node) =>
-          withScope(async () => {
-            // A page boundary is an asset boundary: a fresh state before the
-            // render, so `<Style>` emits once per page rather than once per site.
-            initFlowAssets();
-            const html = await renderToString(node());
-            return adapter?.transformShell ? adapter.transformShell(html, ctx) : html;
-          }, snapshot()),
-        emitFragments: async (cb) => {
-          if (!adapter) {
-            throw new Error(
-              `${PREFIX} emitFragments(): emitFragments requires an adapter — fragments cannot ` +
-                "be framed into standalone files without one. Pass { adapter: ... } to renderToStatic. " +
-                "Example: renderToStatic(handler, { adapter: NativeAdapter })",
-            );
-          }
-          // Standalone fragment files carry no assets — the shell including them
-          // already has them — so this scope suppresses emission, and `<Style>`
-          // returns null rather than a tag a later pass would have to remove.
-          await withScope(async () => {
-            suppressFlowAssets();
-            await flushTemplates(ctx, async (ev) => {
-              if (ev.type === "fragment") {
-                const framed = await renderToString(
-                  adapter.Frame({ id: ev.id, children: raw(ev.html) }),
-                );
-                await cb(ev.id, generatePath(ev.id), framed);
-              }
-            });
-          }, snapshot());
-          // Emitted fragments leave the store. `flushTemplates` tracks what it
-          // has processed only within one call, so without this the natural
-          // site-generator loop — `renderPage(p); emitFragments(write)` per page
-          // — re-emits every earlier fragment on every page: quadratic writes,
-          // and each lazy factory replayed, so a `(signal) => fetch(...)` is
-          // refetched once per remaining page. A fragment is written to a file
-          // here; there is nothing left to drain.
-          ctx.templateStore.clear();
-        },
-      };
-      return handler(staticCtx);
-    },
-    { adapter, mode: "static", generatePath },
-  );
+  return withFlow((ctx) => handler(createStaticContext(ctx, adapter, generatePath)), {
+    adapter,
+    mode: "static",
+    generatePath,
+  });
 }
