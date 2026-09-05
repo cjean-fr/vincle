@@ -31,33 +31,38 @@ export interface PluginConfig {
 }
 
 /**
- * Build-time attribute serializer — the runtime's `jsxAttr`. Injected by the
- * Vite plugin (loaded from `runtimeSource`) unless `compatibility` is on, so the
- * transformer itself stays dependency-free and synchronous. For a static
- * string/boolean value `jsxAttr` always returns synchronously.
+ * A runtime's `jsxAttr`, as it arrives — the shape is the runtime's to choose,
+ * not ours. `@vincle/core` returns a `RawString` (`{ value }`) to mark
+ * already-escaped HTML; Deno's and Preact's return a plain string. The `Promise`
+ * arm exists because the type is the general one: for the static string and
+ * boolean values this transform passes, every known runtime answers
+ * synchronously.
  *
- * The runtime wraps the result in a `RawString` to signal it's already-escaped
- * HTML; the transformer handles both the raw string (legacy) and `RawString`
- * (current) forms by inspecting the `.value` property.
+ * `normalizeSerializers` reduces all of it to text, once, at the entry point.
  */
 export type RenderAttr = (
   name: string,
   value: unknown,
 ) => string | { value: string } | Promise<string | { value: string }>;
 
-/**
- * Build-time content escaper — the runtime's `jsxEscape`. Injected by the Vite
- * plugin (loaded from `runtimeSource`) unless `compatibility` is on, so the transformer
- * itself stays dependency-free and synchronous. For a static string value
- * `jsxEscape` always returns synchronously.
- *
- * The runtime wraps the result in a `RawString` to signal it's already-escaped
- * HTML; the transformer handles both the raw string (legacy) and `RawString`
- * (current) forms by inspecting the `.value` property.
- */
+/** A runtime's `jsxEscape`, as it arrives. Same shapes as {@link RenderAttr}. */
 export type RenderEscape = (
   value: unknown,
 ) => string | { value: string } | Promise<string | { value: string }>;
+
+/**
+ * What the transform needs of a runtime, once the entry point has normalized
+ * it: text in, text out, synchronous. `attr` returns `""` for an attribute the
+ * runtime drops.
+ *
+ * The whole point is that no emit helper below ever asks what shape a foreign
+ * runtime answered in — a question that, asked in the middle of the attribute
+ * path, is asked about a value on its way into a start tag.
+ */
+interface Serializers {
+  attr: (name: string, value: string | true) => string;
+  escape: (text: string) => string;
+}
 
 export interface TransformResult {
   code: string;
@@ -71,19 +76,15 @@ export interface TransformResult {
  * accumulates the set of runtime helpers the rewritten code references so the
  * matching import can be injected once at the end.
  */
-interface Ctx {
+interface TransformContext {
   source: string;
   used: Set<string>;
-  /** Present unless `compatibility` is on; sanitizes static attributes at build time. */
-  renderAttr: RenderAttr | null;
   /**
-   * Present unless `compatibility` is on; escapes static text content using the
-   * target runtime's own escaping rules (byte-identity). When null —
-   * compatibility mode, or a direct caller that passed `renderAttr` alone —
-   * falls back to Vincle's escapeContent. The plugin never gets there: it
-   * refuses a runtime that exports one helper and not the other.
+   * The target runtime's own serializers, normalized at the entry point —
+   * `null` in compatibility mode. Everything below this line sees text in, text
+   * out; the shapes a foreign runtime may return are the entry point's problem.
    */
-  renderEscape: RenderEscape | null;
+  serializers: Serializers | null;
   /**
    * Reproduce Deno's precompile output, defects included — true whenever no
    * serializer was injected.
@@ -169,12 +170,14 @@ export default function precompileTransform(
   }
 
   const program = result.program as Program;
-  const ctx: Ctx = {
+  const serializers = normalizeSerializers(renderAttr, renderEscape);
+  const ctx: TransformContext = {
     source: code,
     used: new Set<string>(),
-    renderAttr: renderAttr ?? null,
-    renderEscape: renderEscape ?? null,
-    compatibility: renderAttr === undefined,
+    serializers,
+    // The two are one decision: no attribute serializer means no way to improve
+    // on Deno's output, so Deno's output is what gets emitted.
+    compatibility: serializers === null,
   };
   const replacements: Replacement[] = [];
 
@@ -210,7 +213,7 @@ export default function precompileTransform(
  */
 function collectNode(
   node: AnyNode,
-  ctx: Ctx,
+  ctx: TransformContext,
   replacements: Replacement[],
   inJsxChildren = false,
 ): void {
@@ -249,7 +252,7 @@ function collectNode(
   });
 }
 
-function isEligibleElement(node: JSXElement, ctx: Ctx): boolean {
+function isEligibleElement(node: JSXElement, ctx: TransformContext): boolean {
   const name = node.openingElement.name;
   if (name.type !== "JSXIdentifier") return false;
   const tag = name.name;
@@ -279,11 +282,11 @@ function isEligibleElement(node: JSXElement, ctx: Ctx): boolean {
   // - **A void element carrying content.** `<img>x</img>` has no valid HTML
   //   form, and the runtime refuses it. Declining here instead of emitting a
   //   template leaves one answer to that, and it is the runtime's.
-  // …unless compatibility mode was asked for, where reproducing Deno's output
-  // is the whole point: it precompiles such an element and escapes the hole, so
-  // the CSS or JS comes out with entities in it. Preact escapes it on its
-  // dynamic path too, so nothing diverges *there*; here it does, and that is
-  // what opting in buys.
+  // …unless this is compatibility mode, where reproducing Deno's output is the
+  // whole point: it precompiles such an element and escapes the hole, so the CSS
+  // or JS comes out with entities in it. Preact escapes it on its dynamic path
+  // too, so nothing diverges *there*; here it does, and that is the price of
+  // being the reference.
   if (!ctx.compatibility && isRawtextTag(tag) && node.children.some((c) => c.type !== "JSXText")) {
     return false;
   }
@@ -315,21 +318,20 @@ function attrName(attr: JSXAttribute): string {
   return `${attr.name.namespace.name}:${attr.name.name.name}`;
 }
 
-function transformElement(node: JSXElement, ctx: Ctx): string {
+function transformElement(node: JSXElement, ctx: TransformContext): string {
   ctx.used.add("jsxTemplate");
   const tag = (node.openingElement.name as JSXIdentifier).name;
-  const parts: string[] = [""];
-  const exprs: string[] = [];
+  const out = new TemplateBuilder();
 
-  emitOpening(tag, node.openingElement.attributes, parts, exprs, ctx);
+  emitOpening(tag, node.openingElement.attributes, out, ctx);
   // A void element that got here has no content — `isEligibleElement` declines
   // the ones that do — so there is nothing to skip and no closing tag to write.
   if (!isVoidElement(tag)) {
-    emitChildren(node.children, parts, exprs, ctx, rawtextTagOf(tag), ctx.compatibility);
-    appendStatic(parts, `</${tag}>`);
+    emitChildren(node.children, out, ctx, rawtextTagOf(tag), ctx.compatibility);
+    out.static(`</${tag}>`);
   }
 
-  return buildTaggedTemplate(parts, exprs);
+  return out.build();
 }
 
 /**
@@ -341,23 +343,21 @@ function rawtextTagOf(tag: string): string | undefined {
   return isRawtextTag(tag) ? tag : undefined;
 }
 
-function transformFragment(node: JSXFragment, ctx: Ctx): string {
+function transformFragment(node: JSXFragment, ctx: TransformContext): string {
   ctx.used.add("jsxTemplate");
-  const parts: string[] = [""];
-  const exprs: string[] = [];
-  emitChildren(node.children, parts, exprs, ctx, undefined);
-  return buildTaggedTemplate(parts, exprs);
+  const out = new TemplateBuilder();
+  emitChildren(node.children, out, ctx, undefined);
+  return out.build();
 }
 
 function emitOpening(
   tag: string,
   attrs: JSXAttributeItem[],
-  parts: string[],
-  exprs: string[],
-  ctx: Ctx,
+  out: TemplateBuilder,
+  ctx: TransformContext,
   closingBracket = ">",
 ): void {
-  appendStatic(parts, `<${tag}`);
+  out.static(`<${tag}`);
 
   const written = new Set<string>();
   for (const attr of attrs) {
@@ -375,7 +375,7 @@ function emitOpening(
       const name = attrName(attr);
       const html = remapAttrName(name);
       if (html !== name && written.has(html)) continue;
-      emitAttribute(attr, parts, exprs, ctx);
+      emitAttribute(attr, out, ctx);
     } else {
       throw new Error(
         "[vincle/vite-plugin-precompile] internal invariant broken: a spread attribute reached emitOpening — " +
@@ -385,10 +385,10 @@ function emitOpening(
     }
   }
 
-  appendStatic(parts, closingBracket);
+  out.static(closingBracket);
 }
 
-function emitAttribute(attr: JSXAttribute, parts: string[], exprs: string[], ctx: Ctx): void {
+function emitAttribute(attr: JSXAttribute, out: TemplateBuilder, ctx: TransformContext): void {
   const rawName = attrName(attr);
   const init = attr.value;
 
@@ -398,20 +398,20 @@ function emitAttribute(attr: JSXAttribute, parts: string[], exprs: string[], ctx
   if ((rawName === "key" || rawName === "ref") && (init === null || init.type === "Literal")) {
     ctx.used.add("jsxAttr");
     const valueText = init === null ? "true" : JSON.stringify(init.value);
-    appendStatic(parts, " ");
-    addDynamic(parts, exprs, `jsxAttr(${JSON.stringify(rawName)}, ${valueText})`);
+    out.static(" ");
+    out.hole(`jsxAttr(${JSON.stringify(rawName)}, ${valueText})`);
     return;
   }
 
   // Boolean attribute (no value): <input disabled />, <input readOnly />.
   if (init === null) {
-    emitStaticAttr(rawName, true, parts, ctx);
+    emitStaticAttr(rawName, true, out, ctx);
     return;
   }
 
   // Static string literal: class="x", title="hi".
   if (init.type === "Literal") {
-    emitStaticAttr(rawName, init.value, parts, ctx);
+    emitStaticAttr(rawName, init.value, out, ctx);
     return;
   }
 
@@ -426,30 +426,30 @@ function emitAttribute(attr: JSXAttribute, parts: string[], exprs: string[], ctx
     if (expr.type !== "JSXEmptyExpression") {
       const exprText = processExpressionForJsx(expr, ctx);
       const htmlName = attrNameFor(rawName, ctx);
-      appendStatic(parts, " ");
+      out.static(" ");
       if (ctx.compatibility && COMPAT_INLINED_BOOLEAN_ATTRS.has(htmlName)) {
-        addDynamic(parts, exprs, `(${exprText}) ? ${JSON.stringify(htmlName)} : ""`);
+        out.hole(`(${exprText}) ? ${JSON.stringify(htmlName)} : ""`);
         return;
       }
       ctx.used.add("jsxAttr");
-      addDynamic(parts, exprs, `jsxAttr(${JSON.stringify(htmlName)}, ${exprText})`);
+      out.hole(`jsxAttr(${JSON.stringify(htmlName)}, ${exprText})`);
       return;
     }
-    appendStatic(parts, ` ${attrNameFor(rawName, ctx)}=""`);
+    out.static(` ${attrNameFor(rawName, ctx)}=""`);
   }
 }
 
 /**
  * Emit a statically-known attribute (a boolean flag or a string literal).
  *
- * Secure mode (default, `ctx.renderAttr` present): the value is run through
+ * Secure mode (default, `ctx.serializers` present): the value is run through
  * the runtime's own `jsxAttr` at build time and the serialized result is
  * inlined, so the same URL/CSS/name handling the runtime applies to dynamic
  * values also applies to static ones (`href="javascript:…"` →
  * `href="#blocked"`, unsafe `style` dropped, …) — while the output stays fully
  * static.
  *
- * Compatibility mode (`ctx.renderAttr` is null): static attributes are
+ * Compatibility mode (`ctx.serializers` is null): static attributes are
  * trusted and inlined. The name is remapped to its HTML form (`className` →
  * `class`, `tabIndex` → `tabindex`) — `resolveAttrName` falls back to
  * lowercasing, which covers event-handler names (`onClick` → `onclick`) — and
@@ -457,32 +457,30 @@ function emitAttribute(attr: JSXAttribute, parts: string[], exprs: string[], ctx
  * runtime handles that for *dynamic* values, which always go through `jsxAttr`.
  * This matches Deno's own precompile output.
  */
-function emitStaticAttr(rawName: string, value: string | true, parts: string[], ctx: Ctx): void {
-  if (ctx.renderAttr) {
+function emitStaticAttr(
+  rawName: string,
+  value: string | true,
+  out: TemplateBuilder,
+  ctx: TransformContext,
+): void {
+  if (ctx.serializers) {
     // The HTML name, not the authored one: remapping belongs to the transform,
     // which is where Deno does it, and a runtime's `jsxAttr` need not. Preact's
     // does not — it remaps when rendering a VNode, so a precompiled
     // `className="box"` reached the page as `className="box"` and styled
     // nothing. Idempotent for a runtime that remaps too, `@vincle/core`
     // included.
-    const rendered = ctx.renderAttr(attrNameFor(rawName, ctx), value);
-    const text = typeof rendered === "string" ? rendered : (rendered as any)?.value;
-    if (typeof text === "string") {
-      if (text) appendStatic(parts, ` ${text}`);
-      return;
-    }
-    throw new Error(
-      `[vincle/vite-plugin-precompile] jsxAttr returned a Promise for static value "${rawName}" — ` +
-        "this should never happen. This is a bug in vincle, not in your code or configuration — report it.",
-    );
+    const text = ctx.serializers.attr(attrNameFor(rawName, ctx), value);
+    if (text) out.static(` ${text}`);
+    return;
   }
 
   const name = attrNameFor(rawName, ctx);
 
   if (value === true) {
-    appendStatic(parts, ` ${name}`);
+    out.static(` ${name}`);
   } else {
-    appendStatic(parts, ` ${name}="${escapeAttr(value)}"`);
+    out.static(` ${name}="${escapeAttr(value)}"`);
   }
 }
 
@@ -504,7 +502,7 @@ const COMPAT_NAME_OVERRIDES = new Map([
 ]);
 
 /** The HTML name this attribute gets, per the mode's table. */
-function attrNameFor(rawName: string, ctx: Ctx): string {
+function attrNameFor(rawName: string, ctx: TransformContext): string {
   const name = remapAttrName(rawName);
   return ctx.compatibility ? (COMPAT_NAME_OVERRIDES.get(name) ?? name) : name;
 }
@@ -559,9 +557,8 @@ const COMPAT_INLINED_BOOLEAN_ATTRS = new Set([
  */
 function emitChildren(
   children: JSXChild[],
-  parts: string[],
-  exprs: string[],
-  ctx: Ctx,
+  out: TemplateBuilder,
+  ctx: TransformContext,
   rawtextTag: string | undefined,
   trimTrailingText = false,
 ): void {
@@ -569,7 +566,7 @@ function emitChildren(
   for (const child of children) {
     if (child.type === "JSXText") {
       // Mirrors what the dynamic path does at runtime, so precompiled output
-      // is byte-identical. `appendStatic`/`escapeForTemplate` handles the
+      // is byte-identical. `TemplateBuilder.static` handles the
       // template-literal metacharacters (backtick, `${`, `\`) for all branches.
       const collapsed =
         trimTrailingText && child === last
@@ -578,35 +575,33 @@ function emitChildren(
       if (rawtextTag && ctx.compatibility) {
         // Deno mode: entities stay verbatim, matching Deno's own precompile —
         // an HTML parser never decodes entities inside rawtext anyway.
-        appendStatic(parts, collapsed);
+        out.static(collapsed);
       } else if (rawtextTag) {
         // Secure mode: decode then re-escape with escapeRawTagContent, which
         // also guards the closing tag — jsxEscape doesn't handle rawtext.
         const decoded = decodeJsxEntities(collapsed);
-        appendStatic(parts, escapeRawTagContent(decoded, rawtextTag));
+        out.static(escapeRawTagContent(decoded, rawtextTag));
       } else {
         // Non-rawtext: decode, then the runtime's own jsxEscape when available
         // (byte-identical to it), else Vincle's escapeContent as fallback.
         const decoded = decodeJsxEntities(collapsed);
-        const escaped = ctx.renderEscape
-          ? extractRawString(ctx.renderEscape(decoded))
-          : escapeContent(decoded);
-        appendStatic(parts, escaped);
+        const escaped = ctx.serializers ? ctx.serializers.escape(decoded) : escapeContent(decoded);
+        out.static(escaped);
       }
     } else if (child.type === "JSXExpressionContainer") {
       if (child.expression.type !== "JSXEmptyExpression") {
         const inner = child.expression;
         const exprText = processExpressionForJsx(inner, ctx);
 
-        addDynamic(parts, exprs, escapeCall(exprText, ctx));
+        out.hole(escapeCall(exprText, ctx));
       }
     } else if (child.type === "JSXElement") {
       if (isEligibleElement(child, ctx)) {
         const tag = (child.openingElement.name as JSXIdentifier).name;
-        emitOpening(tag, child.openingElement.attributes, parts, exprs, ctx);
+        emitOpening(tag, child.openingElement.attributes, out, ctx);
         if (!isVoidElement(tag)) {
-          emitChildren(child.children, parts, exprs, ctx, rawtextTagOf(tag), ctx.compatibility);
-          appendStatic(parts, `</${tag}>`);
+          emitChildren(child.children, out, ctx, rawtextTagOf(tag), ctx.compatibility);
+          out.static(`</${tag}>`);
         }
       } else {
         // Component / spread / dangerouslySetInnerHTML element: left as JSX for
@@ -616,13 +611,13 @@ function emitChildren(
         // it through the tree walk. Wrapping it here would double-handle it
         // (jsxEscape lets VNodes through, but the call is pure overhead).
         const replaced = processExpressionForJsx(child as unknown as Expression, ctx);
-        addDynamic(parts, exprs, replaced);
+        out.hole(replaced);
       }
     } else if (child.type === "JSXFragment") {
-      emitChildren(child.children, parts, exprs, ctx, rawtextTag);
+      emitChildren(child.children, out, ctx, rawtextTag);
     } else if (child.type === "JSXSpreadChild") {
       const exprText = ctx.source.slice(child.expression.start, child.expression.end);
-      addDynamic(parts, exprs, escapeCall(exprText, ctx));
+      out.hole(escapeCall(exprText, ctx));
     }
   }
 }
@@ -636,17 +631,17 @@ function emitChildren(
  * `isEligibleElement` declines a rawtext element that has one, so the element
  * reaches this file's output as JSX and its content is the runtime's business.
  */
-function escapeCall(exprText: string, ctx: Ctx): string {
+function escapeCall(exprText: string, ctx: TransformContext): string {
   ctx.used.add("jsxEscape");
   return `jsxEscape(${exprText})`;
 }
 
-function processExpressionForJsx(expr: Expression, ctx: Ctx): string {
+function processExpressionForJsx(expr: Expression, ctx: TransformContext): string {
   const text = ctx.source.slice(expr.start, expr.end);
   return replaceNestedJsx(expr, text, ctx);
 }
 
-function replaceNestedJsx(node: Expression, text: string, ctx: Ctx): string {
+function replaceNestedJsx(node: Expression, text: string, ctx: TransformContext): string {
   const nested: Replacement[] = [];
   collectNode(node as unknown as AnyNode, ctx, nested);
   if (nested.length === 0) return text;
@@ -662,50 +657,105 @@ function replaceNestedJsx(node: Expression, text: string, ctx: Ctx): string {
   return result;
 }
 
-// Escape the characters that have special meaning inside the template-literal
-// slices emitted by `buildTaggedTemplate` (`` ` ``, `\`, and `${`). Without
-// this, a backtick or `${` coming from static JSX text or attribute values
-// would either break codegen (SyntaxError) or, worse, inject an arbitrary
-// interpolation into the generated template.
 /**
- * Unwrap a value that may be a plain string, a `RawString`-shaped object
- * (`{ value: string }`), or a Promise of either. For static string values
- * the runtime's jsxEscape always returns synchronously; the Promise branch
- * is a type-safety escape hatch that will never trigger at build time.
+ * One runtime answer to text.
+ *
+ * `helper` and `subject` are there for the message: a runtime whose helper
+ * answers in a shape nobody planned for must name itself, rather than be
+ * reported as something else — the previous form of this check called every
+ * unknown shape a `Promise`.
  */
-function extractRawString(
+function unwrapSerialized(
   result: string | { value: string } | Promise<string | { value: string }>,
+  helper: string,
+  subject: string,
 ): string {
+  if (typeof result === "string") return result;
   if (result instanceof Promise) {
-    throw new Error("jsxEscape returned a Promise for static text — unexpected");
+    throw new Error(
+      `[vincle/vite-plugin-precompile] ${helper} returned a Promise for the static value ${subject} — ` +
+        "a static value must serialize synchronously. This is a bug in the runtime that declared the " +
+        '"vincle" precompile dialect.',
+    );
   }
-  return typeof result === "string" ? result : result.value;
+  const value: unknown = (result as { value?: unknown })?.value;
+  if (typeof value === "string") return value;
+  throw new Error(
+    `[vincle/vite-plugin-precompile] ${helper} returned neither a string nor a { value: string } ` +
+      `for the static value ${subject}, but ${result === null ? "null" : typeof result}. A runtime ` +
+      'declaring the "vincle" precompile dialect must serialize to text.',
+  );
 }
 
+/**
+ * The frontier: whatever shapes the target runtime answers in, reduced once to
+ * the two functions the transform actually uses.
+ *
+ * Returns `null` for compatibility mode — no attribute serializer means no way
+ * to improve on Deno's output. A caller that passes `renderAttr` alone keeps
+ * Vincle's own `escapeContent` for text, which is what the plugin's own check
+ * (both helpers, or neither) makes unreachable through it.
+ */
+function normalizeSerializers(
+  renderAttr: RenderAttr | undefined,
+  renderEscape: RenderEscape | undefined,
+): Serializers | null {
+  if (renderAttr === undefined) return null;
+  return {
+    attr: (name, value) =>
+      unwrapSerialized(renderAttr(name, value), "jsxAttr", JSON.stringify(name)),
+    escape: renderEscape
+      ? (text) => unwrapSerialized(renderEscape(text), "jsxEscape", "of a text node")
+      : escapeContent,
+  };
+}
+
+/**
+ * The tagged template being written: the static slices, and the runtime
+ * expressions that separate them.
+ *
+ * `parts.length === exprs.length + 1` is enforced here and nowhere else — the
+ * emit helpers append through `static` and `hole`, so no caller can leave the
+ * two out of step.
+ */
+class TemplateBuilder {
+  #parts: string[] = [""];
+  #exprs: string[] = [];
+
+  /** Append text to the current slice, escaped for a template literal. */
+  static(str: string): void {
+    this.#parts[this.#parts.length - 1] =
+      (this.#parts[this.#parts.length - 1] ?? "") + escapeForTemplate(str);
+  }
+
+  /** Close the current slice with a runtime expression, and open the next. */
+  hole(expr: string): void {
+    this.#exprs.push(expr);
+    this.#parts.push("");
+  }
+
+  build(): string {
+    if (this.#exprs.length === 0) {
+      return `jsxTemplate\`${this.#parts[0] ?? ""}\``;
+    }
+
+    let result = `jsxTemplate\`${this.#parts[0] ?? ""}`;
+    for (let i = 0; i < this.#exprs.length; i++) {
+      result += `\${${this.#exprs[i] ?? ""}}${this.#parts[i + 1] ?? ""}`;
+    }
+    result += "`";
+    return result;
+  }
+}
+
+/**
+ * Escape what has special meaning inside a template-literal slice: `` ` ``,
+ * `\`, and `${`. Left as-is, a backtick or `${` coming from static JSX text or
+ * an attribute value breaks codegen, or injects an arbitrary interpolation into
+ * the generated template.
+ */
 function escapeForTemplate(str: string): string {
   return str.replace(/[\\`]/g, "\\$&").replace(/\$\{/g, "\\${");
-}
-
-function appendStatic(parts: string[], str: string): void {
-  parts[parts.length - 1] = (parts[parts.length - 1] ?? "") + escapeForTemplate(str);
-}
-
-function addDynamic(parts: string[], exprs: string[], expr: string): void {
-  exprs.push(expr);
-  parts.push("");
-}
-
-function buildTaggedTemplate(parts: string[], exprs: string[]): string {
-  if (exprs.length === 0) {
-    return `jsxTemplate\`${parts[0] ?? ""}\``;
-  }
-
-  let result = `jsxTemplate\`${parts[0] ?? ""}`;
-  for (let i = 0; i < exprs.length; i++) {
-    result += `\${${exprs[i] ?? ""}}${parts[i + 1] ?? ""}`;
-  }
-  result += "`";
-  return result;
 }
 
 /**

@@ -772,7 +772,7 @@ describe("precompileTransform", () => {
         `export const x = <div title={t} class="c">hi</div>;`,
         `export const y = <input disabled={true} type="text" />;`,
       ].join("\n");
-      // With `jsxAttr` injected — what the plugin does unless `compatibility` is on —
+      // With `jsxAttr` injected — what the plugin does for a runtime declaring the dialect —
       // the space comes from the runtime, and the output matches the runtime
       // path byte for byte.
       const result = precompileTransform(code, "/src/app.tsx", { runtimeSource: RT }, jsxAttr);
@@ -1129,6 +1129,30 @@ describe("precompileTransform", () => {
    * not in the loop.
    */
   const CONTRACT = new Set(["jsxAttr", "jsxEscape", "jsxTemplate"]);
+
+  describe("a runtime that answers outside the contract", () => {
+    // The transform accepts whatever shape a runtime's helper returns — a plain
+    // string (Deno, Preact) or a `RawString` (@vincle/core). Anything else has
+    // to name itself: this message is the only thing standing between a broken
+    // runtime and an attribute serialized as `undefined` into a start tag.
+    const code = `export const x = <div title="hi">hello</div>;`;
+
+    it("names jsxAttr and the attribute when the shape is unknown", () => {
+      const bogus = (() => 42) as unknown as Parameters<typeof precompileTransform>[3];
+      expect(() => precompileTransform(code, "/src/app.tsx", { runtimeSource: RT }, bogus)).toThrow(
+        /jsxAttr returned neither a string nor a \{ value: string \}.*"title".*number/s,
+      );
+    });
+
+    it("says a Promise is a Promise, rather than reporting the wrong cause", () => {
+      const pending = (async () => 'title="hi"') as unknown as Parameters<
+        typeof precompileTransform
+      >[3];
+      expect(() =>
+        precompileTransform(code, "/src/app.tsx", { runtimeSource: RT }, pending),
+      ).toThrow(/jsxAttr returned a Promise for the static value "title"/);
+    });
+  });
 
   describe("the generated code imports only the precompile contract", () => {
     const cases: Record<string, string> = {
