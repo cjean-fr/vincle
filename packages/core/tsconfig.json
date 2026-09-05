@@ -16,7 +16,10 @@
       "@vincle/core/*": ["./src/*.ts"]
     }
   },
-  // `tmp/` holds the SKILL.md examples that `skill-contract.test.ts` extracts and
-  // type-checks under their own tsconfig. They are not part of the package.
-  "exclude": ["tmp"]
+  // Everything generated. Without an `include`, the default `**/*` picks up
+  // `dist/` — declarations `tsdown` derives from the very sources being checked
+  // here, and rewrites under `tsc` whenever the two run at once (`TS6053`, on
+  // files that exist). `tmp/` holds the SKILL.md examples `skill-contract.test.ts`
+  // extracts and type-checks under their own tsconfig.
+  "exclude": ["tmp", "dist", "coverage", "badges", ".turbo"]
 }
