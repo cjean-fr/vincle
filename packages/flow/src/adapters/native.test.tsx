@@ -30,6 +30,13 @@ describe("NativeAdapter", () => {
     expect(app).not.toContain("<script");
   });
 
+  it("refuses morph — the polyfill has no diffing algorithm", () => {
+    // `insertAdjacentHTML(ADJ["morph"], …)` throws in the browser, so the
+    // refusal has to happen server-side, at registration.
+    expect(NativeAdapter.capabilities.merges).not.toContain("morph");
+    expect(NativeAdapter.capabilities.merges).toContain("append");
+  });
+
   it("src placeholder is a declarative data-src template, not a fetch script (CSP)", async () => {
     const ph = await renderToString(
       NativeAdapter.Placeholder({ id: "x", src: "/api/frag", children: null }),

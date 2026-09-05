@@ -1,7 +1,6 @@
 import { raw } from "@vincle/core";
 import { escapeAttr } from "@vincle/core/html";
 
-import { ALL_MERGES } from "../types.js";
 import { injectIntoHead } from "../utils.js";
 import { POLYFILL_SCRIPT } from "./native-polyfill.js";
 import { createAdapter, type Adapter } from "./shared.js";
@@ -12,7 +11,7 @@ export { NATIVE_POLYFILL, nativePolyfillHash } from "./native-polyfill.js";
  * WICG Declarative Partial Updates wire format — no polyfill, zero JS.
  *
  * `merges: ["replace"]` only: `Patch` can write `data-merge`, but nothing reads
- * it without a polyfill, and declaring the other four would accept a merge the
+ * it without a polyfill, and declaring the others would accept a merge the
  * spec silently ignores. `withPolyfill` is what makes them real, so it's the
  * one that declares them.
  */
@@ -54,6 +53,13 @@ export const WebPlatformAdapter = createAdapter({
 });
 
 /**
+ * What the polyfill can express: `insertAdjacentHTML`'s four positions, plus
+ * `replace`. `morph` is out — diffing two DOM trees is orders of magnitude past
+ * this budget, so the adapter refuses it rather than degrading it to a replace.
+ */
+const POLYFILL_MERGES = ["replace", "append", "prepend", "before", "after"] as const;
+
+/**
  * Decorate any adapter with the ~550 B inline polyfill for the WICG
  * Declarative Partial Updates API. The polyfill is injected into `<head>`
  * only when fragments are present (`ctx.templateStore.size > 0`).
@@ -67,13 +73,13 @@ export function withPolyfill<T extends Adapter>(
   // `streaming` kept literal so `renderToStream` can still refuse a
   // non-streamable adapter at compile time — widening to `boolean` here would
   // lose that refusal for every decorated adapter.
-  capabilities: { streaming: T["capabilities"]["streaming"]; merges: typeof ALL_MERGES };
+  capabilities: { streaming: T["capabilities"]["streaming"]; merges: typeof POLYFILL_MERGES };
 } {
   return {
     ...adapter,
     // The polyfill reads `data-merge` and translates it to `insertAdjacentHTML`
-    // — exactly what the pure spec lacks — so the capability becomes true here.
-    capabilities: { streaming: adapter.capabilities.streaming, merges: ALL_MERGES },
+    // — exactly what the pure spec lacks — so those merges become real here.
+    capabilities: { streaming: adapter.capabilities.streaming, merges: POLYFILL_MERGES },
     transformShell: (shell, ctx) => {
       const transformed = adapter.transformShell ? adapter.transformShell(shell, ctx) : shell;
       if (ctx.templateStore.size === 0) return transformed;
