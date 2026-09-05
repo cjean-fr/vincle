@@ -99,13 +99,24 @@ function foldChildren(children: unknown, rawtextTag: string | undefined): string
 }
 
 function foldChild(child: unknown, rawtextTag: string | undefined): string | null {
+  // The two tests `renderNode` opens with, for the same reason. A non-object is
+  // a leaf by construction. `RawString` is the object this fold hands itself
+  // back, one per nested element, and the only hot shape that reaches
+  // `isIterable` / `isAsyncIterable` — everything else short-circuits on their
+  // `typeof` test before the `Symbol` lookup. Worth 7.0% on `stack` and 4.6% on
+  // `realworld`.
+  if (child === null || typeof child !== "object") {
+    // A function is not an object either; its decline moves here with it.
+    return typeof child === "function" ? null : renderLeaf(child, rawtextTag);
+  }
+  if (child instanceof RawString) return child.value;
+
   if (Array.isArray(child)) return foldChildren(child, rawtextTag);
   // The fold's own decision, and the only one it has: anything that renders later
   // cannot be folded now.
   if (
     child instanceof VNode ||
     child instanceof Promise ||
-    typeof child === "function" ||
     isIterable(child) ||
     isAsyncIterable(child)
   ) {
