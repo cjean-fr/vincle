@@ -38,11 +38,6 @@
       "cache": false,
       "outputs": []
     },
-    "bench:gate": {
-      "dependsOn": ["^build"],
-      "cache": false,
-      "outputs": []
-    },
     "conformance": {
       "dependsOn": ["build"],
       "outputs": []

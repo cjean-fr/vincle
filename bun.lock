@@ -48,7 +48,6 @@
         "@vincle/vite-plugin": "workspace:*",
         "gray-matter": "^4",
         "hast-util-to-html": "^9",
-        "minimatch": "^10",
         "satteri": "^0.9.1",
         "satteri-expressive-code": "^0.1.17",
         "vite-plugin-satteri": "^0.2.11",
@@ -70,7 +69,6 @@
         "@stryker-mutator/core": "^9.6.1",
         "@types/bun": "catalog:",
         "@types/react": "catalog:",
-        "oxc-parser": "^0.139.0",
         "tsdown": "catalog:",
       },
       "peerDependencies": {
@@ -88,10 +86,10 @@
         "@vincle/core": "workspace:^",
       },
       "devDependencies": {
+        "@stryker-mutator/core": "^9.6.1",
         "@types/bun": "catalog:",
         "@typescript-eslint/parser": "catalog:",
         "@typescript-eslint/rule-tester": "catalog:",
-        "@typescript-eslint/utils": "catalog:",
         "eslint": "catalog:",
         "typescript": "catalog:",
       },
