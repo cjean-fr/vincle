@@ -13,19 +13,14 @@ import { flushTemplates } from "./flushTemplates.js";
  * Split a trailing `</body></html>` — with whitespace anywhere between and
  * after — off the end of the shell.
  *
- * The shape is load-bearing: a regex anchored only at the end —
- * `/((?:<\/body>)?\s*<\/html>\s*)$/` — is **quadratic** here. The engine
- * retries from every start position, and inside a run of whitespace each attempt
- * lets `\s*` consume to the end before failing on `<\/html>`. Measured on a
- * document that does not close with `</html>`: 100 kB of contiguous whitespace
- * takes 5,3 s, and doubling the run quadruples the time
- * (83 → 332 → 1332 → 5348 ms). `renderShell` runs this on every render, so a
- * page carrying a large whitespace run in user content is enough.
- * `redos-audit.test.ts` reads this file and covers it.
- *
- * `trimEnd()` removes exactly the set `\s` matches (WhiteSpace ∪ LineTerminator
- * per spec), so the bytes are unchanged; a bounded number of linear passes
- * replaces the backtracking search.
+ * String scanning, not a regex: an end-anchored `/((?:<\/body>)?\s*<\/html>\s*)$/`
+ * is quadratic on a shell that does not close with `</html>`, because every start
+ * position lets `\s*` run to the end before failing (100 kB of contiguous
+ * whitespace: 5,3 s, and doubling the run quadruples it). `renderShell` runs on
+ * every render, so a long whitespace run in user content is enough to reach it.
+ * `trimEnd()` removes exactly what `\s` matches (WhiteSpace ∪ LineTerminator per
+ * spec), so the bytes are unchanged. `redos-audit.test.ts` scans this file, so a
+ * regex reintroduced here fails until it is declared and shown to be safe.
  */
 function splitClosingTags(shell: string): { body: string; closingTag: string } {
   const withoutTrailing = shell.trimEnd();
