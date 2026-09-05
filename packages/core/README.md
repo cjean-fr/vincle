@@ -1,8 +1,9 @@
 # @vincle/core
 
 The JSX → HTML engine. No runtime dependencies, under 10 KB gzip for the whole
-package — every entry point and shared chunk in `dist`, held there by
-`size-budget.test.ts`.
+package — every entry point and shared chunk in `dist`. `bun run size` measures
+it against that budget and CI reports the figure on every build; it warns rather
+than fails, since growth is a judgement call.
 
 One renderer, one tree walk: `renderToString` for a document. Static subtrees
 are folded to final HTML at `jsx()` time; anything dynamic stays a `VNode` for

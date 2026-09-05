@@ -102,7 +102,7 @@ jobs:
       # `::warning::` apparaît sur le run.
       - name: Size report — @vincle/core
         if: matrix.runtime == 'bun'
-        run: bun test --cwd packages/core ./size-budget.test.ts
+        run: bun run --filter=@vincle/core size
 
   pipeline:
     runs-on: ubuntu-latest
