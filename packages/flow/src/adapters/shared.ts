@@ -1,8 +1,7 @@
 import type { JSX, RawString } from "@vincle/core";
 
-import type { AdapterCapabilities, MergeType } from "../types.js";
-
 import { assertAdapter } from "../config.js";
+import { ALL_MERGES, type AdapterCapabilities, type MergeType } from "../types.js";
 
 type Child = JSX.Element | RawString | string | null;
 
@@ -33,8 +32,6 @@ export type Adapter = {
    */
   transformShell?(shell: string, ctx: ShellContext): string;
 };
-
-export const ALL_MERGES = ["replace", "append", "prepend", "before", "after"] as const;
 
 const DEFAULT_CAPABILITIES: { streaming: true; merges: typeof ALL_MERGES } = {
   streaming: true,

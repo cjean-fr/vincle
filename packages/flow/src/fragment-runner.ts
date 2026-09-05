@@ -5,7 +5,7 @@ import { renderToString, type JSX } from "@vincle/core";
 import { isAsyncIterable } from "@vincle/core/html";
 
 import type { TemplateEntry } from "./template-store.js";
-import type { FlowEvent, FlowOptions, TemplateContent } from "./types.js";
+import type { FlowEvent, FlowOptions, MergeType, TemplateContent } from "./types.js";
 
 import { createTimeoutSignal } from "./timeout.js";
 
@@ -30,8 +30,10 @@ function classifyEntry(entry: TemplateEntry, signal: AbortSignal): Classificatio
   }
 }
 
+type Emit = (ev: FlowEvent) => Promise<void>;
+
 async function emitError(
-  emit: (ev: FlowEvent) => Promise<void>,
+  emit: Emit,
   onError: FlowOptions["onError"],
   id: string,
   kind: "fragment" | "stream",
@@ -49,19 +51,37 @@ async function emitError(
   }
 }
 
-type FragmentResult = { stream: boolean; done: Promise<void> };
+/**
+ * Route a failure to the error handler. When the handler's own emit fails too
+ * the channel is broken, so the original error is the one that propagates.
+ */
+async function reportOrThrow(
+  emit: Emit,
+  onError: FlowOptions["onError"],
+  id: string,
+  kind: "fragment" | "stream",
+  error: unknown,
+): Promise<void> {
+  try {
+    await emitError(emit, onError, id, kind, error);
+  } catch {
+    throw error;
+  }
+}
+
+type FragmentResult = { isStreaming: boolean; done: Promise<void> };
 
 /**
  * Resolve a single template entry: classify the content and return the work.
  *
- * The returned `{ stream, done }` pair lets the drain loop route one-shots
+ * The returned `{ isStreaming, done }` pair lets the drain loop route one-shots
  * (barrier) vs streams (run concurrently). Classification is synchronous so
  * the caller never has to await a plain value to classify it.
  */
 export function runFragment(
   id: string,
   entry: TemplateEntry,
-  emit: (ev: FlowEvent) => Promise<void>,
+  emit: Emit,
   opts: FlowOptions,
 ): FragmentResult {
   const handle = entry.onError ?? opts.onError;
@@ -77,72 +97,71 @@ export function runFragment(
     case "sync-error": {
       cleanup();
       return {
-        stream: false,
+        isStreaming: false,
         done: emitError(emit, handle, id, "fragment", classification.error),
       };
     }
     case "stream": {
       return {
-        stream: true,
+        isStreaming: true,
         done: runStream(id, classification.iterable, entry.merge, emit, handle, signal).finally(
           cleanup,
         ),
       };
     }
     case "value": {
-      const done = (async () => {
-        let html: string;
-        try {
-          html = await renderToString(classification.value);
-        } catch (renderError) {
-          // A render error routes to the error handler; if emitError itself
-          // throws (the channel is broken), propagate the original.
-          try {
-            await emitError(emit, handle, id, "fragment", renderError);
-          } catch {
-            throw renderError;
-          }
-          return;
-        } finally {
-          cleanup();
-        }
-
-        // The render finished, but past the deadline — treat it like a render
-        // error rather than emit content the client may already have given up
-        // on waiting for.
-        if (signal.aborted) {
-          try {
-            await emitError(emit, handle, id, "fragment", signal.reason);
-          } catch {
-            throw signal.reason;
-          }
-          return;
-        }
-
-        // A failed emit is fatal — no emitError attempt here, since a broken
-        // channel can't emit the fallback either.
-        try {
-          await emit({
-            type: "fragment",
-            id,
-            html,
-            merge: entry.merge,
-          });
-        } catch (emitError_) {
-          console.error(`[vincle/flow] Failed to emit fragment "${id}"`, emitError_);
-          throw emitError_;
-        }
-      })();
-      return { stream: false, done };
+      return {
+        isStreaming: false,
+        done: runValue(id, classification.value, entry.merge, emit, handle, signal, cleanup),
+      };
     }
+  }
+}
+
+/**
+ * One-shot: render once, emit one patch. `cleanup` fires at the render
+ * boundary — the deadline covers the render, not the emit that follows it.
+ */
+async function runValue(
+  id: string,
+  value: JSX.Element | string,
+  merge: MergeType,
+  emit: Emit,
+  onError: FlowOptions["onError"],
+  signal: AbortSignal,
+  cleanup: () => void,
+): Promise<void> {
+  let html: string;
+  try {
+    html = await renderToString(value);
+  } catch (renderError) {
+    await reportOrThrow(emit, onError, id, "fragment", renderError);
+    return;
+  } finally {
+    cleanup();
+  }
+
+  // The render finished, but past the deadline — treat it like a render error
+  // rather than emit content the client may already have given up on waiting for.
+  if (signal.aborted) {
+    await reportOrThrow(emit, onError, id, "fragment", signal.reason);
+    return;
+  }
+
+  // A failed emit is fatal: a broken channel cannot carry the fallback either.
+  try {
+    await emit({ type: "fragment", id, html, merge });
+  } catch (error) {
+    console.error(`[vincle/flow] Failed to emit fragment "${id}"`, error);
+    throw error;
   }
 }
 
 async function runStream(
   id: string,
   iterable: AsyncIterable<JSX.Element>,
-  merge: TemplateEntry["merge"],
-  emit: (ev: FlowEvent) => Promise<void>,
+  merge: MergeType,
+  emit: Emit,
   onError: FlowOptions["onError"],
   signal: AbortSignal,
 ): Promise<void> {
@@ -168,11 +187,7 @@ async function runStream(
       try {
         raw = await renderToString(r.value);
       } catch (renderError) {
-        try {
-          await emitError(emit, onError, id, "stream", renderError);
-        } catch {
-          throw renderError;
-        }
+        await reportOrThrow(emit, onError, id, "stream", renderError);
         continue;
       }
 
@@ -186,11 +201,7 @@ async function runStream(
     }
   } catch (error) {
     if (fatal) throw error;
-    try {
-      await emitError(emit, onError, id, "stream", error);
-    } catch {
-      throw error; // emitError itself failed — propagate
-    }
+    await reportOrThrow(emit, onError, id, "stream", error);
   } finally {
     if (signal.aborted) await it.return?.(undefined).catch(() => {});
   }
