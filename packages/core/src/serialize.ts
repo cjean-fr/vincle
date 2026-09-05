@@ -1,5 +1,6 @@
 import { buildAttrs } from "./attrs.js";
 import { isAsyncIterable, isIterable, isRawtextTag, renderLeaf } from "./escape.js";
+import { ownChildren } from "./props.js";
 import { VOID_ELEMENTS, invalidTagMessage, isValidTag, voidChildrenMessage } from "./tag.js";
 import { RawString, VNode } from "./types.js";
 
@@ -66,9 +67,7 @@ export function tryRenderStatic(
 ): RawString | Promise<RawString> | null {
   if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
 
-  let children = props["children"];
-  if (children !== undefined && "children" in Object.prototype && !Object.hasOwn(props, "children"))
-    children = undefined;
+  const children = ownChildren(props);
   const childTag = isRawtextTag(tag) ? tag : undefined;
 
   // Children first: a dynamic child is the only reason to decline, and declining

@@ -2,6 +2,7 @@ import type { Renderable } from "./types.js";
 
 import { serializeAttr } from "./attrs.js";
 import { isAsyncIterable, isIterable, valueToText } from "./escape.js";
+import { ownChildren } from "./props.js";
 import { collectAsyncIterable, renderNode, sequenceFrom } from "./render.js";
 import { tryRenderStatic } from "./serialize.js";
 import { VNode, raw, RawString } from "./types.js";
@@ -33,9 +34,7 @@ function jsx(
   }
 
   // `dangerouslySetInnerHTML` is trusted HTML — `raw` keeps it unescaped.
-  let children = props["children"];
-  if (children !== undefined && "children" in Object.prototype && !Object.hasOwn(props, "children"))
-    children = undefined;
+  let children = ownChildren(props);
   if (dsih !== undefined) {
     const html = dsih.__html;
     if (typeof html === "string") children = raw(html);
