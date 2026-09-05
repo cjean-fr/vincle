@@ -52,8 +52,8 @@ export async function flushTemplates(
       const oneShots: Promise<void>[] = [];
       for (const [id, entry] of wave) {
         processed.add(id);
-        const { stream, done } = runFragment(id, entry, emit, opts);
-        (stream ? live : oneShots).push(done);
+        const { isStreaming, done } = runFragment(id, entry, emit, opts);
+        (isStreaming ? live : oneShots).push(done);
       }
       await settleOrThrow(oneShots);
       continue;
