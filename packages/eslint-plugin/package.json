@@ -41,6 +41,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc",
+    "mutation": "stryker run",
     "test": "bun test",
     "check": "tsc --noEmit",
     "format": "oxfmt"
@@ -49,6 +50,7 @@
     "@vincle/core": "workspace:^"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
     "@types/bun": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "@typescript-eslint/rule-tester": "catalog:",
