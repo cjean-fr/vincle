@@ -13,8 +13,8 @@ An adapter controls how placeholders and patches are encoded in the HTML shell. 
 | Adapter              | Target                                             | Merge support                           | Size           |
 | -------------------- | -------------------------------------------------- | --------------------------------------- | -------------- |
 | `NativeAdapter`      | Inline polyfill via `<template for>`               | replace, append, prepend, before, after | ~550B polyfill |
-| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | replace, append, prepend, before, after | —              |
-| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | replace, append, prepend, before, after | —              |
+| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | the five above + morph (Turbo >= 8)     | —              |
+| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | the five above + morph (htmx >= 4)      | —              |
 | `WebPlatformAdapter` | WICG declarative partial updates                   | replace only                            | —              |
 | `EsiAdapter`         | CDN edge composition via `esi:include`             | replace                                 | —              |
 
@@ -39,5 +39,8 @@ const stream = renderToStream(() => <Page />, NativeAdapter);
 | `"prepend"` | Content inserted as first child of target |
 | `"before"`  | Content inserted as previous sibling      |
 | `"after"`   | Content inserted as next sibling          |
+| `"morph"`   | Target is diffed against content in place |
+
+The first five say **where** content goes; `"morph"` says **how** it is applied — the client diffs the target instead of swapping it, so focus, scroll position and form state survive.
 
 Not every adapter supports all merge types — an unsupported merge is rejected at registration with a clear error.

@@ -33,7 +33,7 @@ Vincle ships five built-in adapters. Import from `@vincle/flow/adapters`:
       <td>
         <CheckIcon />
       </td>
-      <td>all 5</td>
+      <td>all 5 positions</td>
       <td>General purpose, no extra JS</td>
     </tr>
     <tr>
@@ -44,7 +44,7 @@ Vincle ships five built-in adapters. Import from `@vincle/flow/adapters`:
       <td>
         <CheckIcon />
       </td>
-      <td>all 5</td>
+      <td>all 6</td>
       <td>Rails / Hotwire stack</td>
     </tr>
     <tr>
@@ -55,7 +55,7 @@ Vincle ships five built-in adapters. Import from `@vincle/flow/adapters`:
       <td>
         <CheckIcon />
       </td>
-      <td>all 5</td>
+      <td>all 6</td>
       <td>Django / Laravel / any backend</td>
     </tr>
     <tr>
@@ -89,7 +89,7 @@ Uses the [WICG Declarative Partial Updates](https://github.com/WICG/declarative-
 with a bundled ~550 B MutationObserver polyfill that is **automatically injected**
 only when fragments are pending. Pure-static pages stay polyfill-free.
 
-- All merge types supported (`replace`, `append`, `prepend`, `before`, `after`)
+- All five merge positions (`replace`, `append`, `prepend`, `before`, `after`); `morph` needs a diffing client and is refused
 - Zero client configuration — the polyfill just works when present
 - Recommended for most applications
 
@@ -113,6 +113,11 @@ import { TurboAdapter } from "@vincle/flow/adapters";
 //   <turbo-stream action="replace" target="comments">
 //     <template>…</template>
 //   </turbo-stream>
+
+// Patch, merge="morph" (Turbo >= 8):
+//   <turbo-stream action="replace" method="morph" target="comments">
+//     <template>…</template>
+//   </turbo-stream>
 ```
 
 ### HtmxAdapter
@@ -128,6 +133,9 @@ import { HtmxAdapter } from "@vincle/flow/adapters";
 
 // Patch:
 //   <div id="comments" hx-swap-oob="outerHTML">…</div>
+
+// Patch, merge="morph" (htmx >= 4):
+//   <div id="comments" hx-swap-oob="outerMorph">…</div>
 ```
 
 HTMX negotiation is available via `negotiateHtmx` — see

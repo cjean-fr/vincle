@@ -13,6 +13,12 @@ describe("HtmxAdapter", () => {
     ).toContain('hx-swap-oob="beforebegin"');
   });
 
+  it("morph maps to the htmx 4 outerMorph swap", async () => {
+    expect(
+      await renderToString(HtmxAdapter.Patch({ id: "x", children: "c", merge: "morph" })),
+    ).toContain('hx-swap-oob="outerMorph"');
+  });
+
   it("Frame renders <div>", async () => {
     expect(await renderToString(HtmxAdapter.Frame({ id: "x", children: "c" }))).toContain("<div");
   });
