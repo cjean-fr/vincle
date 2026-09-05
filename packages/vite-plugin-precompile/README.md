@@ -88,7 +88,7 @@ if (result && result.code !== code) {
 }
 ```
 
-`renderAttr` / `renderEscape` are the target runtime's own `jsxAttr` / `jsxEscape`. The plugin injects them only for a runtime declaring the `"vincle"` precompile dialect, and that injection _is_ the switch: with them the transform emits its corrected, sanitized output, without them it reproduces Deno's byte for byte. A direct caller decides the same way — pass both to get the corrected output, pass neither for the reference one. Passing neither is what `compatibility: true` does: static attributes trusted and inlined verbatim, Deno's own output.
+`renderAttr` / `renderEscape` are the target runtime's own `jsxAttr` / `jsxEscape`. The plugin injects them only for a runtime declaring the `"vincle"` precompile dialect, and that injection _is_ the switch: with them the transform emits its corrected, sanitized output, without them it reproduces Deno's byte for byte. A direct caller decides the same way — pass both to get the corrected output, pass neither for the reference one, where static attributes are trusted and inlined verbatim. There is no `compatibility` option to set: what the runtime declares is the whole decision.
 
 ## Deno as the reference
 

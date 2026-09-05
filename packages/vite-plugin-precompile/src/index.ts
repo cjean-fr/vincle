@@ -45,19 +45,16 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
     );
   }
 
-  let rs: string | null = null;
+  let runtimeSourceForTransform: string | null = null;
   let renderAttr: RenderAttr | null = null;
   /**
-   * The runtime's `jsxEscape` function, loaded at build time unless
-   * `compatibility` is on.
-   * Used to escape static text content using the target runtime's own
-   * escaping rules, ensuring byte-identity between precompile and dynamic
-   * paths. Falls back to Vincle's `escapeContent` when the runtime has no
-   * `jsxEscape` export (should not happen for compatible runtimes).
+   * The runtime's `jsxEscape`, loaded at build time — static text is then
+   * escaped by the target runtime's own rules, which is what makes a
+   * precompiled page byte-identical to the dynamic one. Null for a runtime
+   * that does not declare the `"vincle"` dialect, and for a runtime this build
+   * cannot load: the transform then emits Deno's output.
    */
-  let renderEscape:
-    | ((value: unknown) => string | { value: string } | Promise<string | { value: string }>)
-    | null = null;
+  let renderEscape: RenderEscape | null = null;
 
   /**
    * When jsxImportSource is set, this holds the candidate path
@@ -91,12 +88,12 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
     configResolved(resolvedConfig: ResolvedConfig) {
       if (config?.runtimeSource) {
-        rs = config.runtimeSource;
+        runtimeSourceForTransform = config.runtimeSource;
         explicitRuntimeSource = config.runtimeSource;
         return;
       }
 
-      rs = VIRTUAL_MODULE_ID;
+      runtimeSourceForTransform = VIRTUAL_MODULE_ID;
 
       const esbuild = resolvedConfig.esbuild;
       const jsxImportSource =
@@ -208,7 +205,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       const result = precompileTransform(
         code,
         id,
-        { runtimeSource: rs! },
+        { runtimeSource: runtimeSourceForTransform! },
         renderAttr ?? undefined,
         renderEscape ?? undefined,
       );
