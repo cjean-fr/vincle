@@ -19,7 +19,6 @@
     "@vincle/vite-plugin": "workspace:*",
     "gray-matter": "^4",
     "hast-util-to-html": "^9",
-    "minimatch": "^10",
     "satteri": "^0.9.1",
     "satteri-expressive-code": "^0.1.17",
     "vite-plugin-satteri": "^0.2.11"
