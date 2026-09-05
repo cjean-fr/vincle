@@ -1,7 +1,7 @@
 import type { MdxCompileOptions } from "satteri";
 
 import grayMatter from "gray-matter";
-import { rmSync } from "node:fs";
+import { readdirSync, rmSync } from "node:fs";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -11,27 +11,63 @@ import expressiveCode from "satteri-expressive-code";
 import { EC_THEMES, getSharedRenderer } from "./expressive-code.js";
 import { wrapTables } from "./hast-plugins.js";
 
-/**
- * Where compiled MDX lands before being imported.
- *
- * Namespaced by pid: `turbo run test build` runs `@vincle/docs:test` and
- * `@vincle/docs:build` in parallel — neither depends on the other — and both
- * call `rebuildAll()`, which `rm -rf`s this directory. One used to wipe what
- * the other had just written, between the `writeFile` and the `import`:
- * `Cannot find module …/.compiled/integration/static.tsx`, about a third of
- * the time.
- *
- * The directory stays inside the project tree: the compiled module imports
- * `@vincle/core`, so resolution still needs to find `node_modules`.
- */
-export const COMPILED_DIR = path.resolve(
-  import.meta.dirname,
-  "../pages/.compiled",
-  String(process.pid),
-);
+/** Where compiled MDX lands before being imported. */
+const COMPILED_ROOT = path.resolve(import.meta.dirname, "../pages/.compiled");
 
-// Otherwise a directory per build piles up in the dev tree — a `kill -9` leaves
-// one behind, gitignored and overwritten by the next pid.
+/**
+ * One directory per run, named by pid.
+ *
+ * `turbo run test build` runs `@vincle/docs:test` and `@vincle/docs:build` side
+ * by side — neither depends on the other — and each calls `rebuildAll()`, which
+ * `rm -rf`s its own directory. A shared one has each wipe what the other just
+ * wrote, between the `writeFile` and the `import`.
+ *
+ * It stays inside the project tree: the compiled module imports `@vincle/core`,
+ * so resolution still has to find `node_modules`.
+ */
+export const COMPILED_DIR = path.join(COMPILED_ROOT, String(process.pid));
+
+/** `kill(pid, 0)` kills nothing — it asks whether the process is still there. */
+function isRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    // EPERM: it exists, it is simply not ours.
+    return (err as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/**
+ * Drop the directories left behind by runs that are over.
+ *
+ * The `exit` handler below covers a clean shutdown and nothing else: a process
+ * ended by a signal — Ctrl+C on the dev server — never runs it, and a pid does
+ * not come back (`pid_max` is in the millions), so each of those runs leaks its
+ * directory for good. Sweeping on the way in is what makes the cleanup total,
+ * `kill -9` included, which no handler can reach.
+ *
+ * Only dead pids, never this one: `turbo run test build` has two of these
+ * processes writing side by side, and a live pid is another run's directory.
+ */
+function sweepFinishedRuns(): void {
+  let entries;
+  try {
+    entries = readdirSync(COMPILED_ROOT, { withFileTypes: true });
+  } catch {
+    return; // Nothing compiled yet.
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const pid = Number(entry.name);
+    if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) continue;
+    if (isRunning(pid)) continue;
+    rmSync(path.join(COMPILED_ROOT, entry.name), { recursive: true, force: true });
+  }
+}
+
+sweepFinishedRuns();
+
 process.once("exit", () => {
   rmSync(COMPILED_DIR, { recursive: true, force: true });
 });
