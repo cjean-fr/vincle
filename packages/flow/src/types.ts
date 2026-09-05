@@ -2,9 +2,12 @@ import type { JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 
-// What the adapters imposed on the API: the five merge positions come from
-// Turbo and HTMX, `capabilities` from what ESI refuses.
-export const ALL_MERGES = ["replace", "append", "prepend", "before", "after"] as const;
+// What the adapters imposed on the API: the five positions come from Turbo and
+// HTMX, `morph` from the diffing swap both grew (Turbo 8, htmx 4), and
+// `capabilities` from what ESI refuses. `morph` is the one entry that says
+// *how* rather than *where*, so an adapter with no diffing client on the other
+// end rejects it instead of falling back to a plain replace.
+export const ALL_MERGES = ["replace", "append", "prepend", "before", "after", "morph"] as const;
 
 /**
  * The list is the single declaration; the type derives from it. `assertAdapter`

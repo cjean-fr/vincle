@@ -77,6 +77,11 @@ discarded and routed to `onError` instead of being emitted.
 | `"prepend"` | Content inserted as first child of target |
 | `"before"`  | Content inserted as previous sibling      |
 | `"after"`   | Content inserted as next sibling          |
+| `"morph"`   | Target is diffed against content in place |
+
+The first five say **where** the content goes; `"morph"` says **how** it is
+applied — the client diffs the target instead of swapping it, so focus, scroll
+position and form state survive.
 
 Not every adapter supports all merge types — an unsupported merge is rejected
 at registration with a clear error.

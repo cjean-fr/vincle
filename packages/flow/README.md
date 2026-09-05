@@ -172,15 +172,18 @@ Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/
 
 `merge` describes how content is applied **relative to the target DOM element identified by `id`**.
 
-| `merge`     | Effect                                          |
-| ----------- | ----------------------------------------------- |
-| `"replace"` | Target element is replaced by content (default) |
-| `"append"`  | Content inserted as last child of target        |
-| `"prepend"` | Content inserted as first child of target       |
-| `"before"`  | Content inserted as previous sibling of target  |
-| `"after"`   | Content inserted as next sibling of target      |
+| `merge`     | Effect                                                         |
+| ----------- | -------------------------------------------------------------- |
+| `"replace"` | Target element is replaced by content (default)                |
+| `"append"`  | Content inserted as last child of target                       |
+| `"prepend"` | Content inserted as first child of target                      |
+| `"before"`  | Content inserted as previous sibling of target                 |
+| `"after"`   | Content inserted as next sibling of target                     |
+| `"morph"`   | Target element is diffed against content, preserving DOM state |
 
-An adapter that cannot express a merge **rejects it at registration** with a clear error (see capabilities). `WebPlatformAdapter` and `EsiAdapter` support `"replace"` only.
+The first five say **where** content goes; `"morph"` says **how** it is applied — the client diffs instead of swapping, so focus, scroll position and form state survive the update. It needs a diffing client: `TurboAdapter` (Turbo >= 8) and `HtmxAdapter` (htmx >= 4) only.
+
+An adapter that cannot express a merge **rejects it at registration** with a clear error (see capabilities). `NativeAdapter` supports the five positions but not `"morph"` — diffing is far past a 550 B budget. `WebPlatformAdapter` and `EsiAdapter` support `"replace"` only.
 
 ## Adapters
 
@@ -213,7 +216,7 @@ This is surfaced in the type system. `renderToStream` / `serve` require a stream
 
 #### `NativeAdapter` (~550 B polyfill)
 
-Uses the [Declarative Partial Updates](https://developer.chrome.com/blog/declarative-partial-updates) API plus a minimal polyfill injected via `transformShell`. All merge types, no external client library, works in modern browsers.
+Uses the [Declarative Partial Updates](https://developer.chrome.com/blog/declarative-partial-updates) API plus a minimal polyfill injected via `transformShell`. All five merge positions (not `"morph"`), no external client library, works in modern browsers.
 
 Every update is a **declarative `<template for>`** — the merge mode rides on `data-merge`, lazy client fetches on `data-src`. There are **no per-fragment inline scripts**; the only JS is a single static polyfill, which makes a strict CSP straightforward:
 
@@ -404,16 +407,16 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 ### Adapters
 
-| Export               | Import path             | Description                                              |
-| -------------------- | ----------------------- | -------------------------------------------------------- |
-| `NativeAdapter`      | `@vincle/flow/adapters` | Declarative Partial Updates + polyfill — all merge types |
-| `TurboAdapter`       | `@vincle/flow/adapters` | Hotwire Turbo Streams — all merge types                  |
-| `HtmxAdapter`        | `@vincle/flow/adapters` | HTMX OOB swaps — all merge types                         |
-| `WebPlatformAdapter` | `@vincle/flow/adapters` | Pure WICG spec, zero JS — `replace` only                 |
-| `EsiAdapter`         | `@vincle/flow/adapters` | CDN-level ESI composition — `replace` only, static only  |
-| `createAdapter`      | `@vincle/flow/adapters` | Build a custom adapter                                   |
-| `NATIVE_POLYFILL`    | `@vincle/flow/adapters` | Native adapter polyfill as a JS string                   |
-| `nativePolyfillHash` | `@vincle/flow/adapters` | `() => Promise<string>` — CSP hash for the polyfill      |
+| Export               | Import path             | Description                                             |
+| -------------------- | ----------------------- | ------------------------------------------------------- |
+| `NativeAdapter`      | `@vincle/flow/adapters` | Declarative Partial Updates + polyfill — no `morph`     |
+| `TurboAdapter`       | `@vincle/flow/adapters` | Hotwire Turbo Streams — all merge types                 |
+| `HtmxAdapter`        | `@vincle/flow/adapters` | HTMX OOB swaps — all merge types                        |
+| `WebPlatformAdapter` | `@vincle/flow/adapters` | Pure WICG spec, zero JS — `replace` only                |
+| `EsiAdapter`         | `@vincle/flow/adapters` | CDN-level ESI composition — `replace` only, static only |
+| `createAdapter`      | `@vincle/flow/adapters` | Build a custom adapter                                  |
+| `NATIVE_POLYFILL`    | `@vincle/flow/adapters` | Native adapter polyfill as a JS string                  |
+| `nativePolyfillHash` | `@vincle/flow/adapters` | `() => Promise<string>` — CSP hash for the polyfill     |
 
 ### Types
 
@@ -425,7 +428,7 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `ShellContext`        | `@vincle/flow/adapters` | What `transformShell` receives: `{ templateStore: { size } }`                                                                                            |
 | `PureStaticContext`   | `@vincle/flow`          | Static generation context (no `emitFragments`)                                                                                                           |
 | `StaticContext`       | `@vincle/flow`          | Static generation context with `emitFragments`                                                                                                           |
-| `MergeType`           | `@vincle/flow`          | `"replace" \| "append" \| "prepend" \| "before" \| "after"`                                                                                              |
+| `MergeType`           | `@vincle/flow`          | `"replace" \| "append" \| "prepend" \| "before" \| "after" \| "morph"`                                                                                   |
 | `FlowEvent`           | `@vincle/flow`          | `{ type: "shell" \| "fragment" \| "close", … }`                                                                                                          |
 | `Negotiation`         | `@vincle/flow`          | `{ headers?, mode?, target? }`                                                                                                                           |
 | `TemplateContent`     | `@vincle/flow`          | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` |
