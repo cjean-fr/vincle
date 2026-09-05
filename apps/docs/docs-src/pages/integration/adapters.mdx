@@ -124,10 +124,10 @@ Encodes placeholders with `hx-get` attributes and patches as
 import { HtmxAdapter } from "@vincle/flow/adapters";
 
 // Placeholder in shell:
-//   <div hx-get="/_fragments/comments" hx-trigger="load">Loading…</div>
+//   <div id="comments" hx-get="/_fragments/comments" hx-trigger="load" hx-swap="outerHTML">Loading…</div>
 
 // Patch:
-//   <div hx-swap-oob="replace:#comments">…</div>
+//   <div id="comments" hx-swap-oob="outerHTML">…</div>
 ```
 
 HTMX negotiation is available via `negotiateHtmx` — see
