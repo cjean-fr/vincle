@@ -83,6 +83,7 @@
     "format": "oxfmt",
     "mutation": "stryker run",
     "mutation:fuzz": "stryker run stryker.fuzz.config.mjs",
+    "size": "bun run scripts/size.ts",
     "test": "bun test",
     "conformance": "bun run conformance:bun && bun run conformance:node && bun run conformance:deno && bun run conformance:workerd",
     "conformance:bun": "bun --conditions=dist run conformance/run.ts",
