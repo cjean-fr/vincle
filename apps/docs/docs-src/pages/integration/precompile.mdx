@@ -4,10 +4,11 @@ title: Precompile transform
 
 # Precompile transform
 
-We've ported Deno's precompile to Vite, making precompilation available on
-any JS runtime — Node, Bun, Deno, Edge, browser.
+We've ported Deno's precompile, making precompilation available on any JS
+runtime — Node, Bun, Deno, Edge, browser — through a Vite plugin, a Bun plugin,
+or the transform on its own.
 
-`@vincle/vite-plugin-precompile` transforms JSX at build time. Instead of
+`@vincle/precompile` transforms JSX at build time. Instead of
 emitting `jsx()` calls that create intermediate objects, it rewrites JSX into
 tagged template literals — less allocations, less GC pressure, faster
 rendering.
@@ -37,6 +38,36 @@ compiled here run on any runtime holding it, and Deno's own templates run on
 (`<input value={null} />`) is taken back at assembly time by `jsxTemplate`,
 which knows it is inside a start tag: the precompiled page matches the runtime
 path byte for byte, where the reference implementation renders `<input >`.
+
+## What it buys
+
+The same 100-row list rendered both ways in one process — `jsx()` per element
+against what the transform emits — with the two documents asserted byte-identical
+before anything is timed, over 8 runs in fresh processes:
+
+| path                       |          ops/s |
+| -------------------------- | -------------: |
+| tree walk (`jsx()`)        | 58,939 ± 1,918 |
+| precompile (`jsxTemplate`) | 76,206 ± 3,551 |
+
+**1.29× ± 0.03**, on a row that mixes what a template really carries: literal
+markup (`<li class="item">`) and holes for what the transform cannot know — an
+attribute and the text.
+
+What it saves is exactly what it can inline. On the same list with nothing
+literal, every attribute a hole, the two paths are level — 3%. With the class
+literal instead, 35%. A page is mostly literal markup, so it sits at the high
+end; a table where every value comes from the data sits at the low one.
+
+It pays **per render repeated**. A statically generated page is rendered once,
+and there is nothing to amortise — precompile is for a server answering
+requests, not for a build that writes files.
+
+Reproduce:
+
+```bash
+bun run --filter=@vincle/bench bench:stats -- --runs 8
+```
 
 ## What is guaranteed
 
@@ -90,7 +121,7 @@ target as a foreign runtime — the conservative direction.
 
 ## What is left to the runtime
 
-Two element shapes are handed back as ordinary JSX rather than folded into the
+Two element shapes are handed back as ordinary JSX rather than serialized into the
 template — the same treatment a component gets, so your runtime renders them
 with its own rules:
 
@@ -129,7 +160,7 @@ relies on. If your project targets React, the plugin throws a build error.
 Just add the plugin:
 
 ```ts
-import precompile from "@vincle/vite-plugin-precompile";
+import precompile from "@vincle/precompile/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -139,6 +170,62 @@ export default defineConfig({
 
 No adapter file, no extra config. The plugin detects the runtime from your
 `jsxImportSource` and wires up the helpers automatically through a virtual module.
+
+### Without Vite
+
+A server that imports its own modules never reaches a Vite plugin, whatever the
+config says — and that is most SSR setups. On Bun, load the transform from a
+preload script instead:
+
+```ts
+// preload.ts
+import { plugin } from "bun";
+import precompile from "@vincle/precompile/bun";
+
+plugin(precompile());
+```
+
+```bash
+bun --preload ./preload.ts server.ts
+```
+
+Two differences, both from what Bun's plugin API offers: there is no virtual
+module, so the helpers are imported from `runtimeSource`
+(`@vincle/core/jsx-runtime` unless you set another), and there is no
+end-of-build hook, so nothing warns when the plugin matches no file. The direct
+check works everywhere — a transformed module imports `jsxTemplate`.
+
+Any other pipeline calls the transform itself, which is what both adapters do:
+
+```ts
+import precompileTransform from "@vincle/precompile";
+
+const result = precompileTransform(code, "/src/App.tsx", {
+  runtimeSource: "@vincle/core/jsx-runtime",
+});
+// → { code, map } | null — null when there was nothing to rewrite
+```
+
+### Knowing it runs
+
+A precompiled module and a runtime-rendered one emit the same document — that is
+the guarantee above, and it is also what makes a misconfiguration silent: if the
+plugin never sees your JSX, nothing in the output says so, and only the speed
+differs. It happens for an ordinary reason: **a page rendered by an SSG, or by a
+server that imports its own modules, never goes through Vite**, so no Vite plugin
+can touch it. Declaring the plugin in `vite.config.ts` is not enough on its own —
+the build that renders your JSX has to be the one Vite runs.
+
+The plugin says so at the end of a build it did nothing in:
+
+```
+[vincle/precompile] nothing was precompiled in this build: no
+.jsx/.tsx module passed through it at all (11 module(s) seen). …
+```
+
+If that build is not the one that renders your JSX — a client bundle with no JSX
+in it, say — the plugin does not belong in it. Otherwise the modules are not
+reaching Vite, and the transform is not running.
 
 ### Custom runtime
 
@@ -188,7 +275,7 @@ cost** — no wrapper objects, no deferred calls, no extra branching.
 
 ```ts
 // vite.config.ts — build-time sanitization is ON by default
-import precompile from "@vincle/vite-plugin-precompile";
+import precompile from "@vincle/precompile/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({

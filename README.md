@@ -14,11 +14,11 @@ Monorepo of high-performance, type-safe tools built around JSX-to-HTML rendering
 
 ### Tooling
 
-| Package                                                               | Description                                          |
-| :-------------------------------------------------------------------- | :--------------------------------------------------- |
-| [`@vincle/eslint-plugin`](./packages/eslint-plugin)                   | ESLint rules for safe @vincle/core usage.            |
-| [`@vincle/precompile-core`](./packages/precompile-core)               | AST helpers for JSX precompile transforms.           |
-| [`@vincle/vite-plugin-precompile`](./packages/vite-plugin-precompile) | Vite plugin for Deno-style JSX precompile transform. |
+| Package                                                 | Description                                                      |
+| :------------------------------------------------------ | :--------------------------------------------------------------- |
+| [`@vincle/eslint-plugin`](./packages/eslint-plugin)     | ESLint rules for safe @vincle/core usage.                        |
+| [`@vincle/precompile-core`](./packages/precompile-core) | AST helpers for JSX precompile transforms.                       |
+| [`@vincle/precompile`](./packages/precompile)           | Deno-style JSX precompile transform, with Vite and Bun adapters. |
 
 ### Apps (internal)
 
@@ -34,7 +34,7 @@ Managed with **Bun workspaces** and **Turbo**.
 ```bash
 bun install
 bun run build    # Build all packages
-bun run test     # Run all tests (unit + fuzz/property-based)
+bun run test     # Run all tests (unit + differential fuzzers)
 bun run check    # Type-check everything
 ```
 

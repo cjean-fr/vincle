@@ -46,24 +46,54 @@ Which is the better design is a real argument, and it is not settled by this
 page. What it does settle is that a benchmark comparing the two defaults is not
 comparing the same work — see below.
 
+## Attribute names are a list, not a rule
+
+SVG mixes two conventions in one namespace: `viewBox` and `preserveAspectRatio`
+are camelCase in the specification, `stroke-width` and `clip-path` are
+hyphenated. No transformation separates them — only a list does. Given
+`<svg viewBox="0 0 24 24" strokeWidth={2} clipPath="url(#a)" />`:
+
+| Renderer                  | Output                                                                 |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `@vincle/core`            | `<svg viewBox="0 0 24 24" stroke-width="2" clip-path="url(#a)"></svg>` |
+| `react-dom/server`        | `<svg viewBox="0 0 24 24" stroke-width="2" clip-path="url(#a)"></svg>` |
+| `hono/jsx`                | `<svg viewBox="0 0 24 24" stroke-width="2" clip-path="url(#a)"></svg>` |
+| `preact-render-to-string` | `<svg viewBox="0 0 24 24" strokeWidth="2" clipPath="url(#a)"></svg>`   |
+| `@kitajs/html`            | `<svg viewBox="0 0 24 24" strokeWidth="2" clipPath="url(#a)"></svg>`   |
+
+The split is a convention, not a defect. `@kitajs/html` and Preact pass
+attribute names through, so you write the name the markup carries —
+`stroke-width` renders as `stroke-width`. Vincle, React and Hono accept the
+camelCase spelling and map it, which is what the exception list is for.
+
+What earns the section is the failure mode of mixing the two. An HTML parser
+lowercases `strokeWidth` to `strokewidth`, which is not an SVG attribute, so the
+stroke keeps its default width — `getComputedStyle` reports `1px` where
+`stroke-width="7"` reports `7px`. `viewBox` survives, because the parser's
+foreign-content adjustment table names it; `strokeWidth` is not in that table.
+Nothing reports this: no error, no warning, and `@kitajs/html`'s types accept
+both spellings. JSX written against `@types/react` — which is every icon set
+shipped as components — is camelCase throughout.
+
 ## Performance
 
 Ratios, not milliseconds. Each competitor is measured in the same process as
-Vincle, so the machine's mood is common to both terms and divides out; that is
-what makes the number survive a change of hardware, and it is what gates CI.
-Recorded over 8 runs.
+Vincle, so the machine's mood is common to both terms and divides out — which is
+what lets the number survive a change of hardware. It does not make it exact:
+each ratio below is the mean over 8 fresh processes, and the spread is printed
+next to it because it is the size of the effects people usually argue about.
 
 **Higher is better for Vincle. Below 1 means Vincle is slower.**
 
-| Case        | vs `@kitajs/html` | vs `preact` | vs `react` | vs `hono/jsx` |
-| ----------- | ----------------: | ----------: | ---------: | ------------: |
-| `text`      |             0.67× |       2.14× |      8.27× |         9.32× |
-| `stack`     |             0.54× |       2.69× |      3.25× |         5.89× |
-| `realworld` |             0.69× |       1.84× |      1.93× |         4.02× |
+| Case        | vs `@kitajs/html` |  vs `preact` |   vs `react` | vs `hono/jsx` |
+| ----------- | ----------------: | -----------: | -----------: | ------------: |
+| `text`      |      0.62× ± 0.01 | 1.67× ± 0.05 | 6.18× ± 0.54 |  7.51× ± 0.50 |
+| `stack`     |      0.48× ± 0.01 | 2.47× ± 0.04 | 2.30× ± 0.06 |  4.37× ± 0.07 |
+| `realworld` |      0.65× ± 0.02 | 1.56× ± 0.06 | 1.92× ± 0.10 |  3.29× ± 0.13 |
 
 Against React, Preact and Hono the comparison is like-for-like: all three escape
 by default, all three build a tree, and the outputs match. Vincle is between
-1.8× and 9.3× faster.
+1.6× and 7.5× faster.
 
 ### Reading the kitajs column
 
@@ -71,7 +101,7 @@ Two differences compound in that column, and neither is an implementation
 detail.
 
 **It renders a different string.** `realworld` happens to contain no character
-needing an escape, so there the comparison is fair — 0.69× is a real number for
+needing an escape, so there the comparison is fair — 0.65× is a real number for
 a real page. On any input carrying `&` or `<`, the two produce different bytes,
 and Vincle is doing work kitajs is not.
 
@@ -82,13 +112,16 @@ it. Comparing them measures the tree, not the renderer.
 Vincle has a path with no tree — the [precompile
 transform](/integration/precompile) emits `jsxTemplate` calls the way kitajs
 emits concatenations. Measured on the same 100-row list, output verified
-identical byte for byte before timing, over 7 fresh processes:
+identical byte for byte before timing, over 7 fresh processes on each engine:
 
-| Renderer                    |               µs |                                          |
-| --------------------------- | ---------------: | ---------------------------------------- |
-| `@vincle/core` (precompile) | **11.24 ± 0.32** | escapes                                  |
-| `@kitajs/html` (`safe`)     |     18.70 ± 0.83 | escapes → Vincle **1.67× ± 0.10** faster |
-| `@kitajs/html` (default)    |      7.17 ± 0.58 | does not escape                          |
+| Renderer                    |    Bun / JSC |    Node / V8 |                                               |
+| --------------------------- | -----------: | -----------: | --------------------------------------------- |
+| `@vincle/core` (precompile) | **10.56** µs | **13.94** µs | escapes                                       |
+| `@kitajs/html` (`safe`)     |     13.43 µs |     18.05 µs | escapes → Vincle **1.27×** / **1.29×** faster |
+| `@kitajs/html` (default)    |      9.85 µs |     10.92 µs | does not escape                               |
+
+Both engines, because a gap on one of them alone is that engine's own
+deoptimisation rather than a property of the code.
 
 So: on the tree-walking path Vincle is slower than kitajs, and on the
 comparable path it is faster. Both are true, and neither on its own is the
@@ -154,10 +187,13 @@ live in [`@vincle/flow`](/integration/streaming), a separate install.
 ## Reproducing this
 
 ```bash
-bun run --filter=@vincle/bench bench
+bun run --filter=@vincle/bench bench:stats -- --runs 8
 ```
 
-The ratio table comes from `bench:gate`, which writes
-`apps/bench/results/ratios.json` and fails CI on a regression. The like-for-like
-kitajs measurement is `apps/bench/src/ab-precompile-kita.js`; it refuses to
-report a number if the two outputs differ by a single byte.
+It prints the table above: one row per implementation, over 8 fresh processes,
+each ratio computed inside a process and then averaged. Two series of 8 differ
+by about the spread printed next to each ratio, which is why it is printed. A
+single run is not a measurement — the protocol, and what counts as a real delta,
+are in `apps/bench/README.md`. The like-for-like kitajs measurement is
+`apps/bench/src/ab-precompile-kita.js`; it refuses to report a number if the two
+outputs differ by a single byte.
