@@ -40,6 +40,14 @@ export default [
 | `no-refs`                  | Disallow React refs usage.                                                                      | `error` |
 | `no-global-jsx-namespace`  | Disallow the global `JSX` namespace; import `JSX` from `@vincle/core` (or use `VNode`) instead. | `error` |
 
+## Rules that live elsewhere
+
+`@vincle/core` refuses content inside a void element (`<img>{caption}</img>`) at
+render time. To be told while writing, enable `void-dom-elements-no-children`
+from `eslint-plugin-react`, or its port of the same name in oxlint — it reads a
+tag and its children and nothing else, so despite the package it sits in, it is
+a rule about JSX rather than about React. It is not repeated here.
+
 ## License
 
 MIT © Christophe Jean
