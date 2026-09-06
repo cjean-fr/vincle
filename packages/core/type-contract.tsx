@@ -25,7 +25,7 @@ const Nul = () => null;
 const Undef = () => undefined;
 const Arr = () => [<div>a</div>, <div>b</div>];
 const Nested = () => [["a", 1], [<i>b</i>]];
-const Raw = () => raw("<b>déjà échappé</b>");
+const Raw = () => raw("<b>already escaped</b>");
 const Async = async () => <div>tard</div>;
 // The same component with its return type written down. `JSX.Element` is itself
 // awaitable, so these are promises of promises; inference collapsed the first
@@ -62,7 +62,7 @@ export const accepted = [
   <AsyncDeclared />,
   <Gen />,
   <Compose label="x" />,
-  <div>élément simple</div>,
+  <div>simple element</div>,
   <my-element data-x="1">custom</my-element>,
   <>fragment court</>,
   <Fragment>fragment explicite</Fragment>,
@@ -91,7 +91,7 @@ declare const isActive: boolean;
 export const attrsAccepted = [
   <div class={["a", isActive && "b", null]} style={{ color: "red", "--brand": 1 }} />,
   <div class="simple" style="color:red" />,
-  <li key="k">clé relevée par le transform, pas un attribut</li>,
+  <li key="k">key picked up by the transform, not an attribute</li>,
   <input disabled readOnly maxLength={3} autoFocus />,
   <a href={Promise.resolve("/tard")} title={raw("d&eacute;j&agrave;")} />,
   // A handler is inline script, so it's a string.
@@ -100,7 +100,7 @@ export const attrsAccepted = [
   <svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 0h10v10z" strokeWidth={2} />
   </svg>,
-  <label htmlFor="champ">étiquette</label>,
+  <label htmlFor="field">label</label>,
   <div dangerouslySetInnerHTML={{ __html: "<b>x</b>" }} />,
   // Custom elements stay open: a hyphen, and nobody knows their attributes.
   // `data-*` / `aria-*` pass everywhere (TypeScript doesn't check non-identifier

@@ -5,12 +5,12 @@
     "outDir": "./dist",
     "rootDir": "./",
     "types": ["bun"],
-    // `conformance/` s'auto-référence par le nom du paquet, ce que la carte
-    // `exports` résout vers `dist/*.d.mts` — donc vers un dossier que `tsdown`
-    // efface avant de le régénérer. `check` se mettrait à dépendre de `build`,
-    // et à perdre la course contre lui. Le type-check lit les sources ; c'est
-    // d'elles que `tsdown` dérive ces mêmes `.d.mts`. L'exécution, elle, passe
-    // toujours par `exports` — c'est tout l'intérêt de ces fichiers.
+    // `conformance/` refers to itself by package name, which the `exports` map
+    // resolves to `dist/*.d.mts` — a directory `tsdown` wipes before it
+    // regenerates it. That would make `check` depend on `build` and lose the
+    // race against it. The type-check reads the sources, which are what `tsdown`
+    // derives those same `.d.mts` from. Execution still goes through `exports`,
+    // which is what those files are for.
     "paths": {
       "@vincle/core": ["./index.ts"],
       "@vincle/core/*": ["./src/*.ts"]

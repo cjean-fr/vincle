@@ -159,7 +159,7 @@ describe("Style/Script — render pipeline integration", () => {
         () => (
           <html>
             <body>
-              <p>{raw("écrivez <!-- vincle:style:base --> ici")}</p>
+              <p>{raw("write <!-- vincle:style:base --> here")}</p>
               <Style name="base">{"body { color: red }"}</Style>
             </body>
           </html>
@@ -168,7 +168,7 @@ describe("Style/Script — render pipeline integration", () => {
       ),
     );
 
-    expect(html).toContain("écrivez <!-- vincle:style:base --> ici");
+    expect(html).toContain("write <!-- vincle:style:base --> here");
     // The real component still emits, at its own position, exactly once.
     expect(html.match(/<style data-name="base">/g)).toHaveLength(1);
     expect(html.indexOf("<style")).toBeGreaterThan(html.indexOf("ici"));
