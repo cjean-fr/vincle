@@ -6,8 +6,8 @@ it against that budget and CI reports the figure on every build; it warns rather
 than fails, since growth is a judgement call.
 
 One renderer, one tree walk: `renderToString` for a document. Static subtrees
-are folded to final HTML at `jsx()` time; anything dynamic stays a `VNode` for
-the walk.
+are serialized to final HTML at `jsx()` time; anything dynamic stays a `VNode`
+for the walk.
 
 ## Status
 
@@ -60,7 +60,7 @@ each one was, at some point, quietly untrue.
   shows it: `<Template>` / `<Slot>` in `@vincle/flow`. See
   `src/execution-order.test.ts`.
 
-- **The fold and the walk emit the same bytes.** A static subtree pre-rendered at
+- **The static path and the walk emit the same bytes.** A static subtree serialized at
   `jsx()` time is byte-identical to the same subtree walked as a `VNode` — 1000
   generated trees, `src/path-equivalence.test.ts`.
 
@@ -70,7 +70,7 @@ each one was, at some point, quietly untrue.
   two attribute serializers pinned by a residual equivalence in `attrs.test.ts`.
   The precompile surface is exactly `jsxTemplate` / `jsxAttr` / `jsxEscape` — the
   contract Deno defined and Preact and Hono also export — so the transform in
-  `@vincle/vite-plugin-precompile` emits nothing a compatible runtime lacks, and
+  `@vincle/precompile` emits nothing a compatible runtime lacks, and
   hands back what it cannot express with those three (a rawtext element with a
   dynamic hole, a void element carrying content).
 
@@ -120,8 +120,8 @@ complete and maintainable one becomes available.
   recovery here.
 - `renderToString` never throws synchronously — every failure arrives as a
   rejection, so one `try`/`catch` around the await is enough. **One exception**,
-  at the root of the tree: a static subtree is folded during `jsx()`, so what the
-  fold refuses — an unserializable attribute, an invalid tag name, content in a
+  at the root of the tree: a static subtree is serialized during `jsx()`, so what
+  that refuses — an unserializable attribute, an invalid tag name, content in a
   void element — throws where the JSX is _written_, before `renderToString` is
   ever called. `renderToString(<div onClick={fn}>text</div>)` throws;
   `renderToString(<div onClick={fn}><Comp/></div>)` rejects. Inside a component

@@ -7,15 +7,15 @@ import { raw } from "./types.js";
 /**
  * Path-equivalence fuzzer — the structural guard for the hybrid model.
  *
- * The engine builds HTML two ways over the same value taxonomy: the eager fold
+ * The engine builds HTML two ways over the same value taxonomy: the static path
  * (`jsx` pre-renders static subtrees to a `RawString`) and the VNode tree walk
  * (`renderNode`). A "hole" is any value kind one path handles and the other
  * mishandles — silently, since the fallback is `escapeContent(String(v))`, not an
  * error. That's the class of bug an eager (single-path) renderer can't have.
  *
  * This test proves the two paths agree: a seeded generator builds the *same
- * logical tree* twice — once with `jsx` (fold on) and once with `vnodeOf` (the
- * VNode `jsx` returns when the fold bails, so every element stays a VNode) — and
+ * logical tree* twice — once with `jsx` (static path on) and once with `vnodeOf` (the
+ * VNode `jsx` returns when the static path bails, so every element stays a VNode) — and
  * asserts byte-identical output. Any divergence is a hole; the failing seed
  * reproduces it.
  */
@@ -23,11 +23,11 @@ import { raw } from "./types.js";
 type Builder = (tag: any, props: any) => unknown;
 
 /**
- * The control: builds the same `VNode` `jsx` returns once the fold has bailed,
+ * The control: builds the same `VNode` `jsx` returns once the static path has bailed,
  * so every element takes the tree-walk path.
  *
- * Hand-written rather than derived — there is no "`jsx` minus the fold" to call.
- * It has to differ from `jsx` in exactly one way, the fold, or the comparison
+ * Hand-written rather than derived — there is no "`jsx` minus the static path" to call.
+ * It has to differ from `jsx` in exactly one way, the static path, or the comparison
  * stops meaning anything, so its `dangerouslySetInnerHTML` handling is kept
  * aligned with `jsx`'s by hand.
  */
@@ -115,7 +115,7 @@ function randProps(r: () => number): Record<string, unknown> {
   // A `RawString` in an attribute is an object, and used to be read as a style bag
   // on this path only.
   if (r() < 0.08) p["style"] = raw("color:blue");
-  // A promised attribute value: the fold now returns a `Promise<RawString>` for
+  // A promised attribute value: the static path now returns a `Promise<RawString>` for
   // these instead of declining, so this is the one prop shape where the two paths
   // do not even have the same *return type* — only the same bytes.
   if (r() < 0.12) p["href"] = Promise.resolve(r() < 0.5 ? "/p" : "javascript:alert(1)");
@@ -135,9 +135,9 @@ function genLeaf(r: () => number): unknown {
   if (roll < 0.69) return r() < 0.33 ? null : r() < 0.5 ? undefined : r() < 0.5;
   if (roll < 0.82) return raw("<em>" + pick(TEXTS, r) + "</em>");
   if (roll < 0.92) return BigInt(Math.floor(r() * 10000));
-  // A function that is not a component — a child, not a tag. The fold declines
+  // A function that is not a component — a child, not a tag. The static path declines
   // it (`typeof child === "function"`) and the walk stringifies it, so the two
-  // agree only because the fold hands it over rather than folding `String(fn)`.
+  // agree only because the static path hands it over rather than serializing `String(fn)`.
   if (roll < 0.96) return r() < 0.5 ? function named() {} : (): string => "x";
   return "";
 }
@@ -146,8 +146,9 @@ function genLeaf(r: () => number): unknown {
  * Does this element throw its children away?
  *
  * `dangerouslySetInnerHTML` replaces them, so children generated under one are
- * built and then dropped — and *built* is where the fold decides. A subtree the
- * fold refuses at construction (a void element carrying content, an invalid tag)
+ * built and then dropped — and *built* is where the static path decides. A
+ * subtree it refuses at construction (a void element carrying content, an
+ * invalid tag)
  * but the walk never renders has no single right answer: the eager path has
  * already seen it, the lazy path never will. That is a property of the two
  * models, not a hole between them, so the generator does not build such trees —
@@ -179,8 +180,8 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   }
 
   if (roll < 0.42) {
-    // Async component. The fold declines on it and renders the static siblings
-    // anyway, so an async child is where a partly folded tree meets the walk —
+    // Async component. The static path declines on it and renders the static siblings
+    // anyway, so an async child is where a partly serialized tree meets the walk —
     // the mix `precompile-equivalence.test.ts` generates and this one did not.
     const body = gen(h, r, depth - 1);
     return h(async () => body, {});
@@ -227,7 +228,7 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   if (roll < 0.72) {
     // Void element — with children that render to nothing as often as without.
     //
-    // Generating them childless only was how the fold and the tree-walk drifted
+    // Generating them childless only was how the static path and the tree-walk drifted
     // unnoticed: `serializeElement` used to decide void handling from a
     // `hasChildren` flag its two callers computed differently (`!!children` vs
     // `children !== undefined`), so every *falsy* child diverged. The children
@@ -266,7 +267,7 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
 /**
  * What a path *did*, as one comparable string: the HTML, or the refusal.
  *
- * The build is inside the try because the fold happens at `jsx()` time — a void
+ * The build is inside the try because the static path happens at `jsx()` time — a void
  * element carrying content is refused while the tree is being constructed, where
  * the tree walk refuses the same tree at render time. Comparing only successful
  * renders would let the two paths disagree on which trees are legal at all.
@@ -283,7 +284,7 @@ async function outcome(build: () => unknown): Promise<string> {
  * The refusal without its component annotation.
  *
  * `[Profile] …` is added when an error arrives as a *component's* rejection, and
- * the fold is what decides that shape: a promised attribute makes the folded
+ * the static path is what decides that shape: a promised attribute makes the serialized
  * subtree a `Promise`, which the component then returns, where the walk returns a
  * `VNode` and the error surfaces outside the annotated call. That is a property
  * of the error path, not of the two serializers this test compares — the refusal
@@ -294,21 +295,21 @@ function bareMessage(message: string): string {
   return at === -1 ? message : message.slice(at);
 }
 
-describe("path equivalence: fold ≡ tree-walk", () => {
+describe("path equivalence: static ≡ tree-walk", () => {
   test(`byte-identical output across ${SEEDS.length} random trees`, async () => {
-    const failures: { seed: number; fold: string; treeWalk: string }[] = [];
+    const failures: { seed: number; staticPath: string; treeWalk: string }[] = [];
     for (const seed of SEEDS) {
-      const [fold, treeWalk] = await Promise.all([
+      const [staticPath, treeWalk] = await Promise.all([
         outcome(() => gen(jsx, mulberry32(seed), 5)),
         outcome(() => gen(vnodeOf, mulberry32(seed), 5)),
       ]);
-      if (fold !== treeWalk) failures.push({ seed, fold, treeWalk });
+      if (staticPath !== treeWalk) failures.push({ seed, staticPath, treeWalk });
     }
     if (failures.length > 0) {
       const f = failures[0]!;
       throw new Error(
         `${failures.length}/${SEEDS.length} trees diverged. First failing seed=${f.seed}\n` +
-          `  fold:      ${JSON.stringify(f.fold)}\n` +
+          `  static:    ${JSON.stringify(f.staticPath)}\n` +
           `  tree-walk: ${JSON.stringify(f.treeWalk)}`,
       );
     }
@@ -324,16 +325,16 @@ describe("a void element carrying children", () => {
   //
   // The falsy children matter as much as the refusal: they are the shape a
   // conditional child takes, and they must still render the bare element.
-  test("content inside a void element is refused by the fold", () => {
+  test("content inside a void element is refused by the static path", () => {
     expect(() => jsx("br", { children: "x" })).toThrow(/<br> is a void element/);
   });
 
   test("…and by the tree walk, with the same message", async () => {
-    const fold = await outcome(() => jsx("br", { children: "x" }));
+    const staticPath = await outcome(() => jsx("br", { children: "x" }));
     const walk = await outcome(() => jsx("br", { children: Promise.resolve("x") }));
 
-    expect(fold).toStartWith("refused:");
-    expect(walk).toBe(fold);
+    expect(staticPath).toStartWith("refused:");
+    expect(walk).toBe(staticPath);
   });
 
   test("a child that renders to nothing is not content", async () => {

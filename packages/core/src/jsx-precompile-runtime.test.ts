@@ -175,7 +175,7 @@ describe("jsxTemplate", () => {
 // This used to be a second attribute serializer tested for equivalence against
 // `buildAttrs`. The two drifted four times; one drift — `jsxAttr('x"><script>',
 // v)` closing the start tag — was an injection. The equivalence suite died with
-// the duplication; the taxonomy is tested once, the fold's inline copy is kept
+// the duplication; the taxonomy is tested once, the static path's inline copy is kept
 // aligned by the residual equivalence below.
 
 describe("jsxAttr — the async wrapper", () => {
@@ -202,7 +202,7 @@ describe("jsxAttr — the async wrapper", () => {
 
 // ── Residual equivalence: buildAttrs ≡ serializeAttr ────────────────────────
 //
-// `buildAttrs` stays inline on purpose — delegation costs the fold 13–16% (the
+// `buildAttrs` stays inline on purpose — delegation costs the static path 13–16% (the
 // RawString allocation per attribute is the price, not the branch). That leaves
 // two copies of the value taxonomy in the engine: the inline one and
 // `serializeAttr`. The tables (`attrMeta`, style/class helpers, escape) are

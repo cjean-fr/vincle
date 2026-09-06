@@ -68,7 +68,7 @@ export function invalidTagMessage(tag: string): string {
 }
 
 /**
- * A void element was given children. One message for the fold and the walk, and
+ * A void element was given children. One message for both paths, and
  * for whichever of the two the caller happens to hit first.
  */
 export function voidChildrenMessage(tag: string): string {

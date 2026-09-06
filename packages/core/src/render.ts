@@ -55,17 +55,17 @@ export function renderToString(node: unknown): Promise<string> {
  */
 export function renderNode(vnode: unknown): string | Promise<string> {
   // Two tests, not a second copy of the leaf taxonomy: anything that is not an
-  // object is a leaf by construction, and `RawString` is the one object the fold
-  // hands back by the thousand. Everything they admit goes to `renderLeaf`, which
-  // owns what a leaf renders as. Without them a text node pays five protocol
-  // tests — two of which are `Symbol` lookups — to reach the same answer, worth
-  // 3.5 to 7.6% across `text`, `stack` and `realworld`.
-  if (vnode === null || typeof vnode !== "object") return renderLeaf(vnode, undefined);
+  // object is a leaf by construction, and `RawString` is the one object the
+  // static path hands back by the thousand. Everything they admit goes to
+  // `renderLeaf`, which owns what a leaf renders as. Without them a text node
+  // pays five protocol tests — two of which are `Symbol` lookups — to reach the
+  // same answer, worth 3.5 to 7.6% across `text`, `stack` and `realworld`.
+  if (typeof vnode !== "object" || vnode === null) return renderLeaf(vnode, undefined);
   if (vnode instanceof RawString) return vnode.value;
 
   // ── Async primitives ──
   if (vnode instanceof Promise) {
-    return vnode.then((resolved) => renderNode(resolved));
+    return vnode.then(renderNode);
   }
   if (Array.isArray(vnode)) return renderChildrenAsync(vnode);
   if (vnode instanceof VNode) {
@@ -78,14 +78,13 @@ export function renderNode(vnode: unknown): string | Promise<string> {
       } catch (error) {
         return Promise.reject(annotate(error, comp));
       }
-      // Reuses the `then` that was already there — no extra promise link.
+      // Reuses the `then` that was already there — no extra promise link, and
+      // `renderNode` is passed by reference: a `(r) => renderNode(r)` wrapper is
+      // one closure allocated per component rendered, for nothing.
       if (result instanceof Promise) {
-        return result.then(
-          (r) => renderNode(r),
-          (error: unknown) => {
-            throw annotate(error, comp);
-          },
-        );
+        return result.then(renderNode, (error: unknown) => {
+          throw annotate(error, comp);
+        });
       }
       if (isAsyncIterable(result)) {
         return collectAsyncIterable(result, renderNode).catch((error: unknown) => {
