@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsx, Fragment, VNode } from "./jsx-runtime.js";
+import { jsx, Fragment } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { raw } from "./types.js";
+import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
+import { VNode, raw } from "./types.js";
 
 /**
  * Path-equivalence fuzzer — the structural guard for the hybrid model.
@@ -28,19 +29,21 @@ type Builder = (tag: any, props: any) => unknown;
  *
  * Hand-written rather than derived — there is no "`jsx` minus the static path" to call.
  * It has to differ from `jsx` in exactly one way, the static path, or the comparison
- * stops meaning anything, so its `dangerouslySetInnerHTML` handling is kept
- * aligned with `jsx`'s by hand.
+ * stops meaning anything, so its `dangerouslySetInnerHTML` handling and its two
+ * checks — the tag gate and the void rule, run in the door's order on the final
+ * children — are kept aligned with `jsx`'s by hand.
  */
 function vnodeOf(tag: any, attributes: Record<string, unknown> | null): unknown {
   const props = attributes ?? {};
+  if (typeof tag === "string" && !isValidTag(tag)) {
+    throw new TypeError(invalidTagMessage(tag));
+  }
   const dsih = props["dangerouslySetInnerHTML"] as
     | { __html: string | null | undefined }
     | undefined;
-  return new VNode(
-    tag,
-    props,
-    dsih !== undefined ? trustedInnerHTML(dsih.__html) : props["children"],
-  );
+  const children = dsih !== undefined ? trustedInnerHTML(dsih.__html) : props["children"];
+  if (typeof tag === "string") isVoidElement(tag, children);
+  return new VNode(tag, props, children);
 }
 
 function trustedInnerHTML(html: unknown): unknown {
@@ -228,17 +231,14 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   if (roll < 0.72) {
     // Void element — with children that render to nothing as often as without.
     //
-    // Generating them childless only was how the static path and the tree-walk drifted
-    // unnoticed: `serializeElement` used to decide void handling from a
-    // `hasChildren` flag its two callers computed differently (`!!children` vs
-    // `children !== undefined`), so every *falsy* child diverged. The children
-    // below are exactly that shape, and the one a conditional child takes.
+    // Generating them childless only was how the static path and the tree-walk
+    // drifted unnoticed: void handling was decided from a `hasChildren` flag two
+    // callers computed differently (`!!children` vs `children !== undefined`), so
+    // every *falsy* child diverged. The children below are exactly that shape.
     //
-    // Content inside a void element is refused by both paths, which is a
-    // separate property with its own tests below: an arbitrary child here would
-    // put two refusals in one tree, and the order they are found in is a
-    // difference between eager construction and document-order rendering, not
-    // between the two serializers.
+    // Both paths now refuse them, at construction, which is the property under
+    // test here: `jsx()` is what builds either tree, so the two refuse at the
+    // same node or the generator has found a divergence.
     const props = randProps(r);
     if (!discardsChildren(props) && r() < 0.5) {
       props["children"] = pick(["", false, null, undefined, []], r);
@@ -337,17 +337,27 @@ describe("a void element carrying children", () => {
     expect(walk).toBe(staticPath);
   });
 
-  test("a child that renders to nothing is not content", async () => {
-    for (const child of ["", false, null, undefined, [], [null, false]]) {
-      expect(await renderToString(jsx("br", { children: child }))).toBe("<br>");
-    }
-    // `0` and `0n` are falsy but they are *text*, so they are content.
-    for (const child of [0, 0n]) {
+  test("children are refused whatever they would render to", async () => {
+    // Every one of these renders to nothing. The element was still written with
+    // content, and whether that content turns out empty belongs to this render's
+    // data rather than to the code.
+    for (const child of ["", false, null, [], [null, false], 0, 0n]) {
       expect(() => jsx("br", { children: child })).toThrow(/void element/);
     }
   });
 
-  test("…and an element with no children is unaffected", async () => {
+  test("`dangerouslySetInnerHTML` is content, on the one exit the static path never sees", async () => {
+    expect(() => jsx("img", { dangerouslySetInnerHTML: { __html: "x" } })).toThrow(/void element/);
+    // Markup that clears the element is still markup written into it.
+    expect(() => jsx("img", { dangerouslySetInnerHTML: { __html: null } })).toThrow(/void element/);
+    // The same prop on a tag that can hold content is untouched.
+    expect(
+      await renderToString(jsx("div", { dangerouslySetInnerHTML: { __html: "<b>x</b>" } })),
+    ).toBe("<div><b>x</b></div>");
+  });
+
+  test("`undefined` is the absence of a child, not a child", async () => {
+    expect(await renderToString(jsx("br", { children: undefined }))).toBe("<br>");
     expect(await renderToString(jsx("br", {}))).toBe("<br>");
   });
 });

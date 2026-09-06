@@ -130,9 +130,9 @@ with its own rules:
   parser as `a &amp;&amp; b`), and escaping it correctly takes a helper the
   contract does not have. Static rawtext content is still inlined, escaped at
   build time.
-- **A void element carrying content.** `<img>{caption}</img>` has no valid HTML
-  form; `@vincle/core` refuses it at render time, and the transform declines to
-  answer for it.
+- **A void element carrying children.** `<img>{caption}</img>` has no valid HTML
+  form; `@vincle/core` refuses it when the element is constructed, and the
+  transform declines to answer for it.
 
 Both are rare, and the cost is one template hole rather than an inlined string.
 

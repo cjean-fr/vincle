@@ -1,10 +1,10 @@
 /**
  * Tag-name vocabulary: what a tag may be called, and which tags hold nothing.
  *
- * A leaf module on purpose — it imports nothing. `types.ts` validates a tag in
- * the `VNode` constructor, and `types.ts` is what `serialize.ts` imports, so
- * these three answers cannot live in `serialize.ts` without making that pair a
- * cycle.
+ * A leaf module on purpose — it imports nothing. `serialize.ts` needs these
+ * answers, and its other user is the door that validates with them,
+ * `jsx-runtime.ts` — which is what imports `serialize.ts`. The answers cannot
+ * live there without a cycle, so they live here, one leaf both import.
  *
  * @module
  */
@@ -77,8 +77,29 @@ export function invalidTagMessage(tag: string): string {
  */
 export function voidChildrenMessage(tag: string): string {
   return (
-    `[vincle/core] <${tag}> is a void element and cannot have children, but content was rendered into it. ` +
-    "An HTML parser drops the closing tag and reparents that content, so the document would not be the one written. " +
+    `[vincle/core] <${tag}> is a void element and cannot have children. ` +
+    "An HTML parser drops the closing tag and reparents the content, so the document would not be the one written. " +
     `Move the content next to <${tag}> rather than inside it.`
   );
+}
+
+/**
+ * Whether `tag` closes no tag — refusing it when children were written into it.
+ *
+ * A `children` key is the element having been written with content; whether that
+ * content turns out empty is a property of this render's data, not of the code.
+ * Refusing only the non-empty render makes `<img>{caption}</img>` fail the first
+ * time a caption is set, which is production rather than the first page load.
+ *
+ * The answer comes back rather than being discarded: an element is classified
+ * once, when it is constructed, and the serializer is told instead of asking
+ * again. One function, so the two ways of constructing an element cannot arrive
+ * at two different answers — they once asked separately, `!!children` against
+ * `children !== undefined`, and diverged on every falsy child until a
+ * differential fuzzer found it.
+ */
+export function isVoidElement(tag: string, children: unknown): boolean {
+  if (!VOID_ELEMENTS.has(tag)) return false;
+  if (children !== undefined) throw new TypeError(voidChildrenMessage(tag));
+  return true;
 }

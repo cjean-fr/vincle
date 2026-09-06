@@ -258,7 +258,7 @@ for.
 Vincle throws or blocks for:
 
 - **Invalid tag names** — throws a `TypeError`, at construction (a computed tag, or a hand-built `VNode`)
-- **Content in a void element** — throws a `TypeError`: `<img>{caption}</img>` has no valid HTML form
+- **Children on a void element** — throws a `TypeError` at construction: `<img>{caption}</img>` has no valid HTML form, whatever `caption` holds
 - **Function-valued attributes** — throws (`on*` or not — a function has no HTML form)
 - **Missing context values** — throws when `useContext` is called before `setContext`
 - **Invalid URL schemes** — blocked and replaced with `#blocked`
