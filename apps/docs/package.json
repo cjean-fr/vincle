@@ -27,7 +27,6 @@
     "@tailwindcss/vite": "catalog:",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
-    "@vincle/vite-plugin-precompile": "workspace:*",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"
