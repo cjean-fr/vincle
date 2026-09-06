@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 
-import precompile, { type PluginConfig } from "./index.js";
+import { type PluginConfig } from "./index.js";
+import precompile from "./vite.js";
 
 function errorCtx(): { error: (msg: string) => never } {
   return {
@@ -10,7 +11,7 @@ function errorCtx(): { error: (msg: string) => never } {
   };
 }
 
-describe("vite-plugin-precompile", () => {
+describe("the vite adapter", () => {
   function callTransform(
     code: string,
     id: string,
@@ -27,7 +28,7 @@ describe("vite-plugin-precompile", () => {
 
   it("returns a Vite plugin object", () => {
     const plugin = precompile();
-    expect(plugin.name).toBe("@vincle/vite-plugin-precompile");
+    expect(plugin.name).toBe("@vincle/precompile");
     expect(plugin.enforce).toBe("pre");
     expect(typeof plugin.transform).toBe("function");
   });
@@ -291,13 +292,13 @@ function named(code: string, re: RegExp): string[] {
 describe("plugin config", () => {
   it("rejects a non-string runtimeSource at plugin creation", () => {
     expect(() => precompile({ runtimeSource: 42 as never })).toThrow(
-      "[vincle/vite-plugin-precompile] config: runtimeSource must be a non-empty string module",
+      "[vincle/precompile] config: runtimeSource must be a non-empty string module",
     );
   });
 
   it("rejects an empty runtimeSource at plugin creation", () => {
     expect(() => precompile({ runtimeSource: "" })).toThrow(
-      "[vincle/vite-plugin-precompile] config: runtimeSource must be a non-empty string module",
+      "[vincle/precompile] config: runtimeSource must be a non-empty string module",
     );
   });
 
@@ -305,6 +306,55 @@ describe("plugin config", () => {
     const plugin = precompile({
       runtimeSource: "@vincle/core/jsx-precompile-runtime",
     });
-    expect(plugin.name).toBe("@vincle/vite-plugin-precompile");
+    expect(plugin.name).toBe("@vincle/precompile");
+  });
+});
+
+// A build that never reached the transform renders the same document as one that
+// did — the warning is the only way that shows.
+describe("declared but never applied", () => {
+  function build(config?: PluginConfig) {
+    const plugin = precompile(config);
+    const warnings: string[] = [];
+    // @ts-expect-error — Vite plugin lifecycle hooks are not on the public type
+    plugin.configResolved?.({ command: "build", esbuild: {} });
+    return {
+      transform: (code: string, id: string) =>
+        // @ts-expect-error — same
+        plugin.transform!.call({ warn: () => {} }, code, id),
+      // @ts-expect-error — same
+      end: () => (plugin.buildEnd!.call({ warn: (m: string) => warnings.push(m) }), warnings),
+    };
+  }
+
+  it("warns when no JSX module went through Vite", () => {
+    const b = build({ runtimeSource: "@vincle/core/jsx-precompile-runtime" });
+    b.transform("export const a = 1;", "/app/client.ts");
+    const [warning] = b.end();
+    expect(warning).toContain("nothing was precompiled in this build");
+    expect(warning).toContain("no .jsx/.tsx module passed through it at all");
+  });
+
+  it("says so when JSX modules passed but held no JSX", () => {
+    const b = build({ runtimeSource: "@vincle/core/jsx-precompile-runtime" });
+    b.transform("export const a = 1;", "/app/thing.tsx");
+    const [warning] = b.end();
+    expect(warning).toContain("1 .jsx/.tsx module(s) passed through it");
+  });
+
+  it("stays quiet once a module has been precompiled", () => {
+    const b = build({ runtimeSource: "@vincle/core/jsx-precompile-runtime" });
+    b.transform("export const a = <div>x</div>;", "/app/page.tsx");
+    expect(b.end()).toEqual([]);
+  });
+
+  it("stays quiet in dev, where the hook fires at server close", () => {
+    const plugin = precompile({ runtimeSource: "@vincle/core/jsx-precompile-runtime" });
+    const warnings: string[] = [];
+    // @ts-expect-error — Vite plugin lifecycle hooks are not on the public type
+    plugin.configResolved?.({ command: "serve", esbuild: {} });
+    // @ts-expect-error — same
+    plugin.buildEnd!.call({ warn: (m: string) => warnings.push(m) });
+    expect(warnings).toEqual([]);
   });
 });

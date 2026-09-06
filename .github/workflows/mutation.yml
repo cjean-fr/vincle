@@ -20,7 +20,7 @@ on:
           - "@vincle/core"
           - "@vincle/flow"
           - "@vincle/precompile-core"
-          - "@vincle/vite-plugin-precompile"
+          - "@vincle/precompile"
           - "@vincle/eslint-plugin"
 
 jobs:

@@ -1,4 +1,4 @@
-name: Manuel Release (Bun)
+name: Manual Release (Bun)
 
 on:
   workflow_dispatch:
@@ -12,15 +12,15 @@ on:
           - flow
           - eslint-plugin
           - vite-plugin
-          - vite-plugin-precompile
+          - precompile
           - precompile-core
 
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      # `id-token` seul : la provenance npm en a besoin. Rien n'écrit dans le
-      # dépôt — ni tag, ni release.
+      # `id-token` alone: npm provenance needs it. Nothing writes to the
+      # repository — no tag, no release.
       id-token: write
     steps:
       - uses: actions/checkout@v6
@@ -33,8 +33,8 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      # Republier une version existante n'a pas besoin d'être gardé ici : npm
-      # refuse le doublon et le job échoue là.
+      # Republishing an existing version needs no guard here: npm refuses the
+      # duplicate and the job fails there.
       - name: Locate Package
         id: meta
         env:
@@ -53,11 +53,11 @@ jobs:
           node-version: 26
           registry-url: "https://registry.npmjs.org"
 
-      # `bun pm pack`, pas `npm pack` : seul bun résout le protocole `workspace:`
-      # en version réelle. Passer par npm publierait `workspace:^` tel quel.
+      # `bun pm pack`, not `npm pack`: only bun resolves the `workspace:` protocol
+      # to a real version. Going through npm would publish `workspace:^` as is.
       #
-      # `--quiet` n'imprime que le nom du tarball, que l'on publie nommément — un
-      # `*.tgz` publierait le premier venu si le dossier en contenait un autre.
+      # `--quiet` prints only the tarball name, which is published by name — a
+      # `*.tgz` would publish whichever came first if the directory held another.
       - name: Publish to NPM
         run: |
           cd "${{ steps.meta.outputs.package_dir }}"

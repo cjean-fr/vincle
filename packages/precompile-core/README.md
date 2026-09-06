@@ -1,6 +1,6 @@
 # @vincle/precompile-core
 
-AST-agnostic shared helpers for JSX precompile transforms. Used by `@vincle/vite-plugin-precompile`.
+AST-agnostic shared helpers for JSX precompile transforms. Used by `@vincle/precompile`.
 
 ## Install
 

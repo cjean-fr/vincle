@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import precompileTransform from "./transformer.js";
+import precompileTransform from "./index.js";
 
 const RT = "@vincle/core/jsx-runtime";
 
@@ -377,14 +377,14 @@ describe("precompileTransform", () => {
      */
     const TAB = String.fromCharCode(9);
     const CASES: [string, string][] = [
-      ["statique", `<div class="box" id="x">hi</div>`],
-      ["alias statique", `<div className="box" tabIndex="0">hi</div>`],
-      ["booleen statique", `<input readOnly />`],
+      ["static", `<div class="box" id="x">hi</div>`],
+      ["static alias", `<div className="box" tabIndex="0">hi</div>`],
+      ["static boolean", `<input readOnly />`],
       ["href javascript statique", `<a href="javascript:alert(1)">x</a>`],
       ["style string statique", `<div style="position:fixed">x</div>`],
       ["onclick statique", `<button onclick="go()">x</button>`],
       ["titre dynamique", `<div title={s}>x</div>`],
-      ["alias dynamique", `<div className={s} htmlFor={s}>x</div>`],
+      ["dynamic alias", `<div className={s} htmlFor={s}>x</div>`],
       ["readOnly true", `<input readOnly={yes} />`],
       ["readOnly false", `<input readOnly={no} />`],
       ["readOnly str", `<input readOnly={s} />`],
@@ -394,23 +394,23 @@ describe("precompileTransform", () => {
       ["href dynamique bloque", `<a href={bad}>x</a>`],
       ["style objet", `<div style={styleObj}>x</div>`],
       ["aria + data", `<div aria-hidden={s} data-x={s}>x</div>`],
-      ["xlink dynamique", `<use xlinkHref={s} />`],
-      ["xlink statique", `<use xlinkHref="#i" />`],
+      ["dynamic xlink", `<use xlinkHref={s} />`],
+      ["static xlink", `<use xlinkHref="#i" />`],
       ["xmlns", `<svg xmlnsXlink="u" />`],
       ["texte + entites", `<p>fish &amp; chips &copy; &lt;b&gt;</p>`],
-      ["hole texte", `<p>{s}</p>`],
+      ["text hole", `<p>{s}</p>`],
       ["deux holes", `<p>{s}{s}</p>`],
-      ["tabulations", `<div>${TAB}x${TAB}</div>`],
+      ["tabs", `<div>${TAB}x${TAB}</div>`],
       ["pre tabs", `<pre>${TAB}x\\n${TAB}y</pre>`],
-      ["multi-ligne", `<div>  a\\n   b  </div>`],
+      ["multi-line", `<div>  a\\n   b  </div>`],
       ["espace fermante", `<p><span>a </span><span>b</span></p>`],
-      ["rawtext statique", `<style>.a &gt; .b</style>`],
+      ["static rawtext", `<style>.a &gt; .b</style>`],
       ["script statique", `<script>a &amp;&amp; b</script>`],
       ["rawtext hole", `<style>{css}</style>`],
       ["script hole", `<script>{js}</script>`],
       ["void au milieu", `<div>a<br />b</div>`],
       ["fragment", `<><li>one</li><li>two</li></>`],
-      ["composant", `<div><Foo x={1} /></div>`],
+      ["component", `<div><Foo x={1} /></div>`],
       ["spread", `<div {...spread}>x</div>`],
       ["innerHTML", `<div dangerouslySetInnerHTML={{ __html: html }} />`],
       ["imbrication", `<div><span class="y">{s}</span></div>`],
@@ -486,7 +486,7 @@ describe("precompileTransform", () => {
      * different way of filling them — and emitting `jsx()` would mean a fourth
      * helper, outside the three the precompile contract has.
      */
-    const KNOWN_DIVERGENCES = new Set(["composant", "spread", "innerHTML"]);
+    const KNOWN_DIVERGENCES = new Set(["component", "spread", "innerHTML"]);
 
     it("emits the same trace, apart from the shapes it hands back as JSX", async () => {
       const id = Math.random().toString(36).slice(2);
