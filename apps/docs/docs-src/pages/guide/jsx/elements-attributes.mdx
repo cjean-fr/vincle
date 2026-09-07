@@ -38,6 +38,15 @@ list still renders `<br>`. Fix the real case by moving the content out:
 <figure><img src={src} /><figcaption>{caption}</figcaption></figure>  // ✅
 ```
 
+The refusal lands at render time, on the page carrying the mistake. To be told
+while writing instead, enable
+[`void-dom-elements-no-children`](https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/void-dom-elements-no-children.md)
+from `eslint-plugin-react`; oxlint carries a port under the same name. The rule
+reads a tag and its children and nothing else, so it applies to any JSX. It is
+stricter than the renderer — it reports `<img>{caption}</img>` whatever
+`caption` turns out to hold — which is what you want from a question asked
+before the page exists.
+
 ## Attributes
 
 Attributes become HTML attributes. Most names pass through unchanged. A few
