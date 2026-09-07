@@ -23,7 +23,7 @@ import type {
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace JSX {
   /**
-   * What `jsx()` produces: a `VNode`, a `RawString` when the static fold
+   * What `jsx()` produces: a `VNode`, a `RawString` when static serialization
    * succeeded, or a promise of one when an attribute value is itself a promise.
    *
    * `RawString` is a first-class renderable leaf — `renderNode` special-cases

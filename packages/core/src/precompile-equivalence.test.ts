@@ -7,7 +7,7 @@ import { raw, RawString, VNode } from "./types.js";
 /**
  * Path-equivalence fuzzer for the **third** renderer.
  *
- * `path-equivalence.test.ts` proves the fold and the tree walk emit the same
+ * `path-equivalence.test.ts` proves the static path and the tree walk emit the same
  * bytes. It says nothing about the precompile runtime — `jsxEscape` /
  * `jsxTemplate`, the helpers the Deno/Bun-style transform calls — which is a
  * third traversal of the same value taxonomy, and was pinned only by a
@@ -17,7 +17,7 @@ import { raw, RawString, VNode } from "./types.js";
  * a value kind one path handles and the other mishandles. An array of VNodes is
  * that shape — `jsxTemplate` sends every container down its deferred path, so
  * `valueToText`, which refuses a VNode, is never asked to flatten one.
- * `@vincle/vite-plugin-precompile` wraps every hole in `jsxEscape`, so its own
+ * `@vincle/precompile` wraps every hole in `jsxEscape`, so its own
  * output never depended on that; but `jsxTemplate` is a public export, and GOAL
  * wants the precompilation brick to serve any runtime that exposes one.
  *
@@ -88,7 +88,7 @@ function genLeaf(r: () => number): unknown {
   // The text is drawn *now*, not inside `toString`. A leaf that draws from the
   // PRNG when stringified is not the same value twice, and the comparison then
   // measures how many times each path calls `String()` instead of what it
-  // emits — which is a real difference: wrap a value in an element and the fold
+  // emits — which is a real difference: wrap a value in an element and the static path
   // stringifies a leaf before declining on a dynamic sibling, so the walk
   // stringifies it a second time. That is wasted work on a pure `toString` and
   // invisible; it made one seed in a thousand look like a renderer divergence.
@@ -107,7 +107,7 @@ function genValue(r: () => number, depth: number): unknown {
   if (roll < 0.24) return genLeaf(r);
 
   if (roll < 0.32) {
-    // Element that cannot fold — a dynamic child keeps it a VNode.
+    // Element that cannot be serialized — a dynamic child keeps it a VNode.
     const child = genValue(r, depth - 1);
     return jsx("div", { class: pick(["a", "b c"], r), children: [child] });
   }
@@ -189,7 +189,7 @@ async function viaTemplate(v: unknown): Promise<string> {
  * The regression that made it necessary: a hole inside rawtext was escaped for
  * HTML, so `a && b` came out `a &amp;&amp; b` — and an HTML parser never decodes
  * an entity in rawtext, so the JavaScript parser received those characters
- * literally. The tree walk had the rule, the fold was reconciled with it, and
+ * literally. The tree walk had the rule, the static path was reconciled with it, and
  * the precompile path was the third renderer nobody had checked.
  *
  * There is no third copy of the rule any more, and that is what this block now

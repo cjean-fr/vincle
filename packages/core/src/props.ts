@@ -2,8 +2,8 @@
  * Reading a props bag safely.
  *
  * A leaf module on purpose — it imports nothing, so both ways out of `jsx()`
- * (the static fold in `serialize.ts`, the `VNode` in `jsx-runtime.ts`) can ask
- * the same question and get the same answer.
+ * (static serialization in `serialize.ts`, the `VNode` in `jsx-runtime.ts`) can
+ * ask the same question and get the same answer.
  *
  * @module
  */

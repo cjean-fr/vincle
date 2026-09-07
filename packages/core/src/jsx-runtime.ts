@@ -4,10 +4,10 @@ import { serializeAttr } from "./attrs.js";
 import { isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { ownChildren } from "./props.js";
 import { collectAsyncIterable, renderNode, sequenceFrom } from "./render.js";
-import { tryRenderStatic } from "./serialize.js";
+import { serializeStatic } from "./serialize.js";
 import { VNode, raw, RawString } from "./types.js";
 
-// ── jsx — hybrid: single-pass fold of static trees, VNode for dynamic ─────
+// ── jsx — hybrid: static trees serialized in one pass, VNode for dynamic ──
 
 function jsx(
   tag: string | ((props: any) => any),
@@ -26,11 +26,11 @@ function jsx(
       : undefined
   ) as { __html: string | null | undefined } | undefined;
 
-  // Validated by whichever exit takes over: `tryRenderStatic` when the element
-  // folds, the `VNode` constructor when it does not.
+  // Validated by whichever exit takes over: `serializeStatic` when the element
+  // serializes, the `VNode` constructor when it does not.
   if (typeof tag === "string" && dsih === undefined) {
-    const folded = tryRenderStatic(tag, props);
-    if (folded !== null) return folded;
+    const html = serializeStatic(tag, props);
+    if (html !== null) return html;
   }
 
   // `dangerouslySetInnerHTML` is trusted HTML — `raw` keeps it unescaped.
