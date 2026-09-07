@@ -295,7 +295,7 @@ Each invariant is enforced by property-based (fuzz) or unit tests:
 | I-10 | Every production regex is declared, safe, and matches the source | `redos-audit.test.ts`                           |
 | I-11 | An inherited property is never an attribute or a declaration     | `attrs.test.ts`                                 |
 | I-12 | A `RawString` attribute value cannot end its attribute           | `attrs.test.ts`                                 |
-| I-13 | Content in a void element is refused, never reparented           | `serialize.test.ts`, `path-equivalence.test.ts` |
+| I-13 | Children on a void element are refused, never reparented         | `serialize.test.ts`, `path-equivalence.test.ts` |
 
 ## ASVS Compliance
 

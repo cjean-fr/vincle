@@ -8,7 +8,7 @@ import {
   renderLeaf,
   valueToText,
 } from "./escape.js";
-import { serializeElement } from "./serialize.js";
+import { serializeElement, serializeVoidElement } from "./serialize.js";
 import { RawString, VNode } from "./types.js";
 
 /**
@@ -98,7 +98,7 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     // The tag name is validated by the `VNode` constructor, which every string tag
     // reaching this walk goes through; re-checking here would charge every element
     // for the same answer twice.
-    const { tag, attrs, children } = vnode;
+    const { tag, attrs, children, isVoid } = vnode;
 
     const attrStr = buildAttrs(attrs);
     const childTag = isRawtextTag(tag) ? tag : undefined;
@@ -109,14 +109,18 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     // synchronous form below.
     if (typeof attrStr !== "string") {
       return attrStr.then(async (resolved) =>
-        serializeElement(
-          tag,
-          resolved,
-          children === undefined ? "" : await renderChildrenAsync(children, childTag),
-        ),
+        isVoid
+          ? serializeVoidElement(tag, resolved)
+          : serializeElement(
+              tag,
+              resolved,
+              children === undefined ? "" : await renderChildrenAsync(children, childTag),
+            ),
       );
     }
 
+    // A void element reaches neither branch below with children: the constructor
+    // refused that element rather than letting it render.
     if (children !== undefined) {
       const content = renderChildrenAsync(children, childTag);
       if (content instanceof Promise) {
@@ -124,7 +128,7 @@ export function renderNode(vnode: unknown): string | Promise<string> {
       }
       return serializeElement(tag, attrStr, content);
     }
-    return serializeElement(tag, attrStr, "");
+    return isVoid ? serializeVoidElement(tag, attrStr) : serializeElement(tag, attrStr, "");
   }
   // Neither an array nor a VNode is ever an async iterable, and VNode is the
   // dominant case: only what is left pays for the protocol tests.

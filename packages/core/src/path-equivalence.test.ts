@@ -228,17 +228,14 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   if (roll < 0.72) {
     // Void element — with children that render to nothing as often as without.
     //
-    // Generating them childless only was how the static path and the tree-walk drifted
-    // unnoticed: `serializeElement` used to decide void handling from a
-    // `hasChildren` flag its two callers computed differently (`!!children` vs
-    // `children !== undefined`), so every *falsy* child diverged. The children
-    // below are exactly that shape, and the one a conditional child takes.
+    // Generating them childless only was how the static path and the tree-walk
+    // drifted unnoticed: void handling was decided from a `hasChildren` flag two
+    // callers computed differently (`!!children` vs `children !== undefined`), so
+    // every *falsy* child diverged. The children below are exactly that shape.
     //
-    // Content inside a void element is refused by both paths, which is a
-    // separate property with its own tests below: an arbitrary child here would
-    // put two refusals in one tree, and the order they are found in is a
-    // difference between eager construction and document-order rendering, not
-    // between the two serializers.
+    // Both paths now refuse them, at construction, which is the property under
+    // test here: `jsx()` is what builds either tree, so the two refuse at the
+    // same node or the generator has found a divergence.
     const props = randProps(r);
     if (!discardsChildren(props) && r() < 0.5) {
       props["children"] = pick(["", false, null, undefined, []], r);
@@ -337,17 +334,17 @@ describe("a void element carrying children", () => {
     expect(walk).toBe(staticPath);
   });
 
-  test("a child that renders to nothing is not content", async () => {
-    for (const child of ["", false, null, undefined, [], [null, false]]) {
-      expect(await renderToString(jsx("br", { children: child }))).toBe("<br>");
-    }
-    // `0` and `0n` are falsy but they are *text*, so they are content.
-    for (const child of [0, 0n]) {
+  test("children are refused whatever they would render to", async () => {
+    // Every one of these renders to nothing. The element was still written with
+    // content, and whether that content turns out empty belongs to this render's
+    // data rather than to the code.
+    for (const child of ["", false, null, [], [null, false], 0, 0n]) {
       expect(() => jsx("br", { children: child })).toThrow(/void element/);
     }
   });
 
-  test("…and an element with no children is unaffected", async () => {
+  test("`undefined` is the absence of a child, not a child", async () => {
+    expect(await renderToString(jsx("br", { children: undefined }))).toBe("<br>");
     expect(await renderToString(jsx("br", {}))).toBe("<br>");
   });
 });

@@ -1,6 +1,6 @@
 import type React from "react";
 
-import { invalidTagMessage, isValidTag } from "./tag.js";
+import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
 
 // ── VNode ──────────────────────────────────────────────────────────────────
 //
@@ -14,6 +14,8 @@ export class VNode {
   readonly tag: string | ((props: any) => any);
   readonly attrs: Record<string, unknown>;
   readonly children: unknown;
+  /** Classified here so the walk writes the element without asking again. */
+  readonly isVoid: boolean;
 
   /**
    * Validates a string tag, because this class is exported as a value: the
@@ -28,7 +30,12 @@ export class VNode {
     attrs: Record<string, unknown>,
     children: unknown,
   ) {
-    if (typeof tag === "string" && !isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
+    if (typeof tag === "string") {
+      if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
+      this.isVoid = isVoidElement(tag, children);
+    } else {
+      this.isVoid = false;
+    }
     this.tag = tag;
     this.attrs = attrs;
     this.children = children;
