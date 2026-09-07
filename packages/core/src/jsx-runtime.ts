@@ -5,6 +5,7 @@ import { isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { ownChildren } from "./props.js";
 import { collectAsyncIterable, renderNode, sequenceFrom } from "./render.js";
 import { serializeStatic } from "./serialize.js";
+import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
 import { VNode, raw, RawString } from "./types.js";
 
 // ── jsx — hybrid: static trees serialized in one pass, VNode for dynamic ──
@@ -14,6 +15,16 @@ function jsx(
   attributes: Record<string, unknown> | null,
 ): VNode | RawString | Promise<RawString> {
   const props = attributes ?? {};
+
+  // The one door in, so the one place a string tag is judged. Whatever exit
+  // takes over below — static serialization, a VNode, `dsih` — inherits a valid
+  // name, and the tree walk may keep trusting it. The check used to sit in the
+  // `VNode` constructor, which was a second door while the class was exported
+  // as a value; it is not anymore, so the fork no longer has to cover it.
+  if (typeof tag === "string" && !isValidTag(tag)) {
+    throw new TypeError(invalidTagMessage(tag));
+  }
+
   // Read first, `hasOwn` only if the read finds something: an absent
   // `dangerouslySetInnerHTML` — every element but a handful — costs one
   // property miss, as it did before the guard existed. It is the one prop worth
@@ -26,8 +37,6 @@ function jsx(
       : undefined
   ) as { __html: string | null | undefined } | undefined;
 
-  // Validated by whichever exit takes over: `serializeStatic` when the element
-  // serializes, the `VNode` constructor when it does not.
   if (typeof tag === "string" && dsih === undefined) {
     const html = serializeStatic(tag, props);
     if (html !== null) return html;
@@ -45,6 +54,16 @@ function jsx(
           'Pass markup as a string: { __html: "<b>hi</b>" }.',
       );
   }
+
+  // Judged on the final children, the `dsih` substitution included: an `__html`
+  // is content the way a written child is, and a void element takes neither.
+  //
+  // An element that serialized never reaches this — it judged itself on its way
+  // out. One that declined judged too, and is judged again here, because the two
+  // read `children` separately: a props getter is free to answer `undefined` to
+  // the first read and content to the second, and this is the read the `VNode`
+  // keeps. `dsih` is the one exit the static path never sees at all.
+  if (typeof tag === "string") isVoidElement(tag, children);
 
   return new VNode(tag, props, children);
 }
@@ -303,7 +322,8 @@ function renderEscaped(v: RawString | VNode): string | Promise<string> {
   return v instanceof VNode ? renderNode(v) : v.value;
 }
 
-export { jsx, jsxs, Fragment, VNode };
+export { jsx, jsxs, Fragment };
+export type { VNode } from "./types.js";
 
 // TypeScript resolves `JSX.*` from the module named in `jsxImportSource`, which
 // for `jsx: react-jsx` is this one. Declared once in `./jsx-namespace.ts`.

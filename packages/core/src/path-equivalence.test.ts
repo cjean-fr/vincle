@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsx, Fragment, VNode } from "./jsx-runtime.js";
+import { jsx, Fragment } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { raw } from "./types.js";
+import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
+import { VNode, raw } from "./types.js";
 
 /**
  * Path-equivalence fuzzer — the structural guard for the hybrid model.
@@ -28,19 +29,21 @@ type Builder = (tag: any, props: any) => unknown;
  *
  * Hand-written rather than derived — there is no "`jsx` minus the static path" to call.
  * It has to differ from `jsx` in exactly one way, the static path, or the comparison
- * stops meaning anything, so its `dangerouslySetInnerHTML` handling is kept
- * aligned with `jsx`'s by hand.
+ * stops meaning anything, so its `dangerouslySetInnerHTML` handling and its two
+ * checks — the tag gate and the void rule, run in the door's order on the final
+ * children — are kept aligned with `jsx`'s by hand.
  */
 function vnodeOf(tag: any, attributes: Record<string, unknown> | null): unknown {
   const props = attributes ?? {};
+  if (typeof tag === "string" && !isValidTag(tag)) {
+    throw new TypeError(invalidTagMessage(tag));
+  }
   const dsih = props["dangerouslySetInnerHTML"] as
     | { __html: string | null | undefined }
     | undefined;
-  return new VNode(
-    tag,
-    props,
-    dsih !== undefined ? trustedInnerHTML(dsih.__html) : props["children"],
-  );
+  const children = dsih !== undefined ? trustedInnerHTML(dsih.__html) : props["children"];
+  if (typeof tag === "string") isVoidElement(tag, children);
+  return new VNode(tag, props, children);
 }
 
 function trustedInnerHTML(html: unknown): unknown {
@@ -341,6 +344,16 @@ describe("a void element carrying children", () => {
     for (const child of ["", false, null, [], [null, false], 0, 0n]) {
       expect(() => jsx("br", { children: child })).toThrow(/void element/);
     }
+  });
+
+  test("`dangerouslySetInnerHTML` is content, on the one exit the static path never sees", async () => {
+    expect(() => jsx("img", { dangerouslySetInnerHTML: { __html: "x" } })).toThrow(/void element/);
+    // Markup that clears the element is still markup written into it.
+    expect(() => jsx("img", { dangerouslySetInnerHTML: { __html: null } })).toThrow(/void element/);
+    // The same prop on a tag that can hold content is untouched.
+    expect(
+      await renderToString(jsx("div", { dangerouslySetInnerHTML: { __html: "<b>x</b>" } })),
+    ).toBe("<div><b>x</b></div>");
   });
 
   test("`undefined` is the absence of a child, not a child", async () => {

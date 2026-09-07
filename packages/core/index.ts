@@ -1,8 +1,9 @@
 /**
  * @vincle/core — VNode-based JSX-to-HTML renderer.
  *
- * Builds a VNode tree and walks it to produce HTML. Enables deferred
- * rendering, streaming, and tree inspection/transformation.
+ * Builds a VNode tree and walks it to produce HTML, which is what lets a render
+ * be deferred or streamed. The tree is not a public data structure: `VNode` is a
+ * type here, not a constructor, and `jsx()` is the only way to build one.
  *
  * @module
  */
@@ -13,14 +14,15 @@ export { renderToString } from "./src/render.js";
 
 // ── JSX runtime ────────────────────────────────────────────────────────────
 //
-// `VNode` is exported as a value: the precompile contract (Deno/Preact)
-// requires the runtime to *test* for it (`instanceof`) — `jsxEscape` lets a
-// VNode pass through untouched, `jsxTemplate` renders it through the tree
-// walk. Constructing one by hand stays out of contract: `jsx()` is the only
-// way in.
+// `VNode` is exported as a **type only**, the name of what `jsx()` produces —
+// for typing a component's return or a generator's yield. The runtime's
+// `instanceof` tests are internal, and the precompile contract (Deno/Preact)
+// is the three helpers `jsxTemplate` / `jsxAttr` / `jsxEscape`, none of which
+// names a VNode. The class is not reachable as a value from here, so `jsx()`
+// being the only way in is a fact of the module, not a line of documentation.
 
 export { Fragment, jsx, jsxs } from "./src/jsx-runtime.js";
-export { VNode } from "./src/jsx-runtime.js";
+export type { VNode } from "./src/jsx-runtime.js";
 
 // ── Context API ────────────────────────────────────────────────────────────
 
