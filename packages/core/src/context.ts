@@ -289,6 +289,10 @@ export function snapshot(): ContextMap {
  * ```
  */
 export async function withScope<T>(fn: () => Awaitable<T>, parentCtx?: ContextMap): Promise<T> {
-  await ensureStore();
+  // `await` on an already-resolved value still costs a microtask tick — paid
+  // once, at process start, not on every render. `ensureStore` only awaits
+  // anything the first time; once `contextStore` is set, this check is what
+  // keeps every later call synchronous up to the actual `run()`.
+  if (!contextStore) await ensureStore();
   return getStore().run(new Map(parentCtx), fn);
 }
