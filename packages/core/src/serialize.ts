@@ -19,7 +19,7 @@
 import { buildAttrs } from "./attrs.js";
 import { isAsyncIterable, isIterable, isRawtextTag, renderLeaf } from "./escape.js";
 import { ownChildren } from "./props.js";
-import { VOID_ELEMENTS, invalidTagMessage, isValidTag, voidChildrenMessage } from "./tag.js";
+import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
 import { RawString, VNode } from "./types.js";
 
 // The tag-name vocabulary lives in `tag.ts` (a leaf module the `VNode`
@@ -33,22 +33,18 @@ export { VOID_ELEMENTS, isValidTag, invalidTagMessage } from "./tag.js";
  * Any divergence in void-element handling or tag wrapping is a bug to fix here,
  * once, rather than in each of the two callers.
  *
- * The void lookup runs per element and costs 4% on a page of static markup; what
- * it buys is `<img>x</img>` refused rather than silently truncated.
+ * Two writers rather than one that asks: whether a tag closes is settled when
+ * the element is constructed, and asking again here would be a second hash of
+ * the same name on every element. `serializeVoidElement` cannot be handed
+ * content, which is the refusal made unrepresentable rather than checked.
  */
 export function serializeElement(tag: string, attrStr: string, content: string): string {
-  if (VOID_ELEMENTS.has(tag)) {
-    // The rendered `content`, not "were there children": `<img>{null}</img>` and
-    // `<br>{cond && <b/>}</br>` have children that render to nothing, which is
-    // the shape every conditional child takes. What no HTML parser can
-    // represent is *content* between a void element and its closing tag — it
-    // drops the tag and reparents the content, so the document silently stops
-    // being the one that was written. Refusing it is the only answer that keeps
-    // the output the tree.
-    if (content !== "") throw new TypeError(voidChildrenMessage(tag));
-    return `<${tag}${attrStr}>`;
-  }
   return `<${tag}${attrStr}>${content}</${tag}>`;
+}
+
+/** Write one void element: a tag that closes nothing. */
+export function serializeVoidElement(tag: string, attrStr: string): string {
+  return `<${tag}${attrStr}>`;
 }
 
 // Children are walked once: the bail happens the instant one of them is
@@ -91,6 +87,7 @@ export function serializeStatic(
   // the condition that makes it worth asking is named and tested here.
   const prototypeCarriesChildren = "children" in Object.prototype;
   const children = prototypeCarriesChildren ? ownChildren(props) : props["children"];
+  const isVoid = isVoidElement(tag, children);
   const childTag = isRawtextTag(tag) ? tag : undefined;
 
   // Children first: a dynamic child is the only reason to decline, and declining
@@ -105,9 +102,16 @@ export function serializeStatic(
   // it here rather than falling back to a VNode keeps one serializer for one
   // element, whatever its attributes turn out to be.
   if (typeof attrStr !== "string") {
-    return attrStr.then((resolved) => new RawString(serializeElement(tag, resolved, content)));
+    return attrStr.then(
+      (resolved) =>
+        new RawString(
+          isVoid ? serializeVoidElement(tag, resolved) : serializeElement(tag, resolved, content),
+        ),
+    );
   }
-  return new RawString(serializeElement(tag, attrStr, content));
+  return new RawString(
+    isVoid ? serializeVoidElement(tag, attrStr) : serializeElement(tag, attrStr, content),
+  );
 }
 
 /** An element's children, serialized into the string that goes between its tags. */
