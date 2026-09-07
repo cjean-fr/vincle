@@ -1,14 +1,13 @@
 /**
  * bench.js — realistic SSR benchmark (JS port of bench.ts)
  *
- * Suites portées depuis les benchmarks officiels :
- *   - text      : 1000× bloc texte 2 spans (wide tree) — preact-render-to-string bench
- *   - stack     : 10× arbre récursif 1000 deep (deep tree) — preact-render-to-string bench
- *   - realworld : page complète layout/head/header/footer/purchases/sidebar —
- *                 port de @kitajs/html RealWorldPage
- *   - async     : @vincle/core only (React/Preact ne rendent pas de composants async)
+ * Suites ported from the official benchmarks:
+ *   - text      : 1000× two-span text block (wide tree) — preact-render-to-string bench
+ *   - stack     : 10× 1000-deep recursive tree (deep tree) — preact-render-to-string bench
+ *   - realworld : full layout/head/header/footer/purchases/sidebar page —
+ *                 a port of @kitajs/html's RealWorldPage
  *
- * Run : `NODE_ENV=production bun run src/bench.js`
+ * Run: `NODE_ENV=production bun run src/bench.js`
  */
 
 import { createElement as kita } from "@kitajs/html";
@@ -16,7 +15,7 @@ import { renderToString } from "@vincle/core";
 import { jsxAttr, jsxEscape, jsxTemplate } from "@vincle/core/jsx-precompile-runtime";
 import { jsx } from "@vincle/core/jsx-runtime";
 import { jsx as honoJsx } from "hono/jsx";
-import { bench, group, run } from "mitata";
+import { measure } from "mitata";
 import { h } from "preact";
 import { render as preactRender } from "preact-render-to-string";
 import { createElement } from "react";
@@ -40,7 +39,7 @@ const TEXT_REPEATS = 1_000;
 const STACK_REPEATS = 10;
 const STACK_DEPTH = 1_000;
 
-// Purchases pour realworld — 3 tailles
+// Purchases for the realworld page
 const PURCHASES = generatePurchases(1_000);
 
 // 1. Text bench — 1000× Bavaria block (preact bench port)
@@ -179,177 +178,150 @@ function stackAppHono() {
   return honoJsx("div", {}, children);
 }
 
-// 3. Async — @vincle/core only
-
-function vincleAsyncTree() {
-  const AsyncItem = ({ i }) =>
-    Promise.resolve().then(() => jsx("li", { class: "item", children: `Item ${i}` }));
-  const items = Array.from({ length: 10 }, (_, i) => jsx(AsyncItem, { i }));
-  return jsx("ul", { class: "list", children: items });
-}
-
-// 4. Precompile runtime — @vincle/core only
+// 4. Precompile — the same list, both ways
 //
-// Un second renderer, avec ses propres boucles chaudes, qu'aucun cas ci-dessus
-// n'exerce. La forme est celle que le transform émet réellement.
+// A second renderer, with hot loops of its own that no case above exercises, and
+// the one case where the two terms are both ours: what the precompile transform
+// emits against the tree walk it replaces. The shape is what the transform
+// actually emits, and the bytes are asserted equal below — a ratio between two
+// documents would be a ratio between two workloads.
 
+// A row the way a template really comes out: literal markup the transform inlines,
+// and holes for what it cannot know. The mix is the measurement — with nothing
+// literal the transform has nothing to inline and the two paths are level (3% on
+// this list), with a literal class it is 35%. A fixture at either end would
+// answer a question nobody has.
 const PRECOMPILE_ROWS = 100;
-const PRECOMPILE_LI = ["<li ", ">", "</li>"];
+const PRECOMPILE_LI = ['<li class="item" ', ">", "</li>"];
 const PRECOMPILE_UL = ['<ul class="list">', "</ul>"];
 const precompileData = Array.from({ length: PRECOMPILE_ROWS }, (_, i) => ({
-  cls: i % 2 === 0 ? "row even" : "row odd",
+  index: i,
   text: `Item ${i} — a & b < c`,
 }));
 
+/** What the transform emits. */
 function precompileList() {
   const rows = [];
   for (let i = 0; i < PRECOMPILE_ROWS; i++) {
-    const { cls, text } = precompileData[i];
-    rows[i] = jsxTemplate(PRECOMPILE_LI, jsxAttr("class", cls), jsxEscape(text));
+    const { index, text } = precompileData[i];
+    rows[i] = jsxTemplate(PRECOMPILE_LI, jsxAttr("data-index", index), jsxEscape(text));
   }
   return jsxTemplate(PRECOMPILE_UL, jsxEscape(rows));
 }
 
-// Benchmark groups
+/** The same list as a tree, which is what the transform starts from. */
+function runtimeList() {
+  const rows = [];
+  for (let i = 0; i < PRECOMPILE_ROWS; i++) {
+    const { index, text } = precompileData[i];
+    rows[i] = jsx("li", { class: "item", "data-index": index, children: text });
+  }
+  return jsx("ul", { class: "list", children: rows });
+}
+
+// Measured cases
 //
-// La clé courte est ce que `stats.js` agrège et ce sur quoi une référence est
-// indexée : renommer un cas invalide les comparaisons, ce qui est voulu.
+// The short key is what `stats.js` aggregates and what a baseline is indexed on:
+// renaming a case invalidates the comparisons, which is the point. It is carried
+// by the line that measures, so no two lists have to be held in the same order
+// for a result to come out under the right name.
 
 const CASES = {
-  async: "async — 10 concurrent async components (vincle only)",
   text: `text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`,
   stack: `stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
   realworld: `realworld — full page, ${PURCHASES.length} purchases (kitajs port)`,
-  precompile: `precompile — ${PRECOMPILE_ROWS}-row list via jsxTemplate/jsxAttr/jsxEscape (vincle only)`,
+  precompile: `precompile — ${PRECOMPILE_ROWS}-row list, tree walk vs jsxTemplate (vincle only)`,
 };
 
-// --- Text ---
-
-group(CASES.text, () => {
-  bench("@vincle/core", async () => {
-    await renderToString(textAppVincle());
-  });
-  bench("react (renderToStaticMarkup)", () => {
-    renderToStaticMarkup(textAppReact());
-  });
-  bench("preact (render)", () => {
-    preactRender(textAppPreact());
-  });
-  bench("hono/jsx (toString)", () => {
-    String(textAppHono());
-  });
-  bench("@kitajs/html", () => {
-    kitaBench.textApp();
-  });
-});
-
-// --- Stack ---
-
-group(CASES.stack, () => {
-  bench("@vincle/core", async () => {
-    await renderToString(stackAppVincle());
-  });
-  bench("react (renderToStaticMarkup)", () => {
-    renderToStaticMarkup(stackAppReact());
-  });
-  bench("preact (render)", () => {
-    preactRender(stackAppPreact());
-  });
-  bench("hono/jsx (toString)", () => {
-    String(stackAppHono());
-  });
-  bench("@kitajs/html", () => {
-    kitaBench.stackApp();
-  });
-});
-
-// --- Async ---
-
-group(CASES.async, () => {
-  bench("@vincle/core", async () => {
-    await renderToString(vincleAsyncTree());
-  });
-});
-
-// --- Realworld (kitajs port) ---
-
-// Pre-construire les pages hors du bench pour ne mesurer que le rendu
+// Build the pages outside the bench so that only the render is measured
 const rwVincle = () => realworldVincle(NAME, PURCHASES);
 const rwReact = () => realworldReact(NAME, PURCHASES);
 const rwPreact = () => realworldPreact(NAME, PURCHASES);
 const rwHono = () => realworldHono(NAME, PURCHASES);
 const rwKita = () => realworldKita(NAME, PURCHASES);
 
-group(CASES.realworld, () => {
-  bench("@vincle/core", async () => {
-    await rwVincle();
-  });
-  bench("react (renderToStaticMarkup)", () => {
-    rwReact();
-  });
-  bench("preact (render)", () => {
-    rwPreact();
-  });
-  bench("hono/jsx (toString)", () => {
-    rwHono();
-  });
-  bench("@kitajs/html", () => {
-    rwKita();
-  });
-});
+// The order is the order of measurement: every line inherits the inline caches
+// the ones before it left behind, and that context is what resembles an
+// application. `@vincle/core` opens each case — the ratio reads against it.
 
-// --- Precompile runtime (vincle only) ---
+/** @type {[keyof typeof CASES, string, () => unknown][]} */
+const BENCHES = [
+  ["text", "@vincle/core", () => renderToString(textAppVincle())],
+  ["text", "react (renderToStaticMarkup)", () => renderToStaticMarkup(textAppReact())],
+  ["text", "preact (render)", () => preactRender(textAppPreact())],
+  ["text", "hono/jsx (toString)", () => String(textAppHono())],
+  ["text", "@kitajs/html", () => kitaBench.textApp()],
 
-group(CASES.precompile, () => {
-  bench("@vincle/core", async () => {
-    await precompileList();
-  });
-});
+  ["stack", "@vincle/core", () => renderToString(stackAppVincle())],
+  ["stack", "react (renderToStaticMarkup)", () => renderToStaticMarkup(stackAppReact())],
+  ["stack", "preact (render)", () => preactRender(stackAppPreact())],
+  ["stack", "hono/jsx (toString)", () => String(stackAppHono())],
+  ["stack", "@kitajs/html", () => kitaBench.stackApp()],
 
-// Run & ratio vs @vincle/core
+  ["realworld", "@vincle/core", () => rwVincle()],
+  ["realworld", "react (renderToStaticMarkup)", () => rwReact()],
+  ["realworld", "preact (render)", () => rwPreact()],
+  ["realworld", "hono/jsx (toString)", () => rwHono()],
+  ["realworld", "@kitajs/html", () => rwKita()],
+
+  ["precompile", "@vincle/core", () => renderToString(runtimeList())],
+  ["precompile", "@vincle/core (precompile)", () => renderToString(precompileList())],
+];
+
+// Measurement budget
+//
+// `measure()` warms the case up, then samples until it holds both `min_samples`
+// samples and `min_cpu_time` of accumulated time.
+//
+// mitata's defaults — 642 ms per case, and a single warm-up call as soon as that
+// call runs past 0.5 ms, which most cases here do — buy a precision internal to
+// the process that the protocol makes nothing of: what decides is the spread
+// between processes, and `stats.js` is what aggregates it. Measured over 8 runs,
+// 250 ms and 16 warm-up calls give a between-run cv of 2.0% (median) where the
+// defaults give 3.1%, for 4.5 s per run instead of 16.5.
+const MEASURE = {
+  min_cpu_time: 250e6,
+  warmup_samples: 16,
+  warmup_threshold: 100e6,
+};
+
+// mitata's `run()` is not used: its four empty calibrations cost 3.5 s per
+// process and feed only its own display, of which `--json` keeps nothing.
+// Two implementations, one document: a ratio between different bytes would be a
+// ratio between different workloads.
+{
+  const [tree, template] = await Promise.all([
+    renderToString(runtimeList()),
+    renderToString(precompileList()),
+  ]);
+  if (tree !== template) {
+    throw new Error("precompile and the tree walk do not render the same list");
+  }
+}
+
+const results = [];
+for (const [kase, name, fn] of BENCHES) {
+  const { avg } = await measure(fn, { ...MEASURE });
+  results.push({ case: kase, name, opsPerSec: 1e9 / avg });
+}
 
 // `--json` emits one machine-readable line and nothing else: a single run of
 // this benchmark is not a measurement (between-run spread is 2–4%), so the
 // aggregation belongs to `stats.js`, which runs this many times. See
 // apps/bench/README.md — the measurement protocol lives there.
-const asJson = process.argv.includes("--json");
-
-const { layout, benchmarks } = await run({ silent: asJson });
-
-// `trial.group` indexes into `layout`, and `layout[i].name` is the string passed
-// to `group()`. Mapping through the name is the only order-independent link
-// between a trial and a `CASES` key.
-//
-// The previous version assumed trials arrive in `CASES` *declaration* order and
-// consumed `Object.keys(CASES)` positionally. That silently mislabelled every
-// case as soon as the object literal was reordered without reordering the
-// `group()` calls — which had happened: `text` was reported as `async`, `stack`
-// as `text`, `async` as `stack`. A mislabelled case is worse than a missing one,
-// because `--against` then compares two unrelated suites and reports the
-// difference as a regression.
-const keyOfLabel = new Map(Object.entries(CASES).map(([key, label]) => [label, key]));
-const results = [];
-for (const trial of benchmarks) {
-  const label = layout[trial.group]?.name;
-  const kase = keyOfLabel.get(label) ?? `group${trial.group}`;
-  for (const r of trial.runs) {
-    results.push({
-      case: kase,
-      name: r.name,
-      opsPerSec: 1e9 / r.stats.avg,
-    });
-  }
-}
-
-if (asJson) {
+if (process.argv.includes("--json")) {
   console.log(JSON.stringify(results));
 } else {
   const REF = "@vincle/core";
   const fmt = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 0 }).padStart(14);
   let refOps = 0;
-  for (const { name, opsPerSec } of results) {
+  let currentCase = "";
+  for (const { case: kase, name, opsPerSec } of results) {
+    if (kase !== currentCase) {
+      console.log(`${currentCase === "" ? "" : "\n"}  ${CASES[kase]}`);
+      currentCase = kase;
+    }
     if (name === REF) {
-      if (refOps > 0) console.log();
       refOps = opsPerSec;
       console.log(`  ${name.padEnd(35)} ${fmt(opsPerSec)}  ref`);
     } else {
@@ -357,6 +329,8 @@ if (asJson) {
     }
   }
   console.log(
-    "\n  One run is not a measurement — use `bun run bench:stats` before claiming a delta.",
+    "\n  One run is not a measurement — use `bun run bench:stats` before claiming a delta.\n" +
+      "  ops/s belong to this harness. The × ratios divide out the machine, but not a\n" +
+      "  change of harness — the last one moved them by up to 7%. Re-record, don't compare.",
   );
 }

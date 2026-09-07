@@ -1,41 +1,51 @@
 /**
- * Le chemin precompile de @vincle/core contre kitajs, à production égale.
+ * @vincle/core's precompile path against kitajs, at equal production.
  *
- * `text`, `stack` et `realworld` opposent la marche d'arbre de vincle à la
- * concaténation de kitajs — deux architectures. Le chemin precompile fait ce que
- * fait kitajs, et n'y avait jamais été confronté.
+ * `text`, `stack` and `realworld` set vincle's tree walk against kitajs's string
+ * concatenation — two architectures. The precompile path does what kitajs does,
+ * and had never been put against it.
  *
- * Et kitajs n'échappe pas ses enfants par défaut, ce qu'il faut neutraliser
- * (`safe`) sinon on chiffre le prix de l'échappement en l'appelant écart de
- * performance. Les deux modes sont mesurés pour que ce prix reste lisible.
+ * And kitajs does not escape its children by default, which has to be neutralised
+ * (`safe`): otherwise the price of escaping is measured and reported as a
+ * performance gap. Both modes are measured so that price stays legible.
  *
- * 7 processus frais, médiane de 25 × 200 itérations, ± 3 erreurs-types :
- *   @vincle/core precompile     11,24 ± 0,32 µs
- *   @kitajs/html safe           18,70 ± 0,83 µs   → vincle 1,67× ± 0,10
- *   @kitajs/html défaut          7,17 ± 0,58 µs   → sortie non échappée
+ * 7 fresh processes, median of 25 × 200 iterations, ± 3 standard errors:
  *
- * Run : `NODE_ENV=production bun --conditions=dist run src/ab-precompile-kita.js`
- *       `--json` pour une ligne agrégeable sur plusieurs processus.
+ *                              Bun / JSC        Node / V8
+ *   @vincle/core precompile   10.56 ± 0.19    13.94 ± 1.44 µs
+ *   @kitajs/html safe         13.43 ± 1.19    18.05 ± 1.89 µs   → vincle 1.27× / 1.29×
+ *   @kitajs/html default       9.85 ± 1.29    10.92 ± 2.15 µs   → output not escaped
+ *
+ * Both engines, because a gap on one alone is an engine's own deoptimisation.
+ *
+ * Run: `NODE_ENV=production bun --conditions=dist run src/ab-precompile-kita.js`
+ *      `--json` for one line that aggregates across processes.
  */
 import { createElement as kita } from "@kitajs/html";
 import { jsxAttr, jsxEscape, jsxTemplate } from "@vincle/core/jsx-precompile-runtime";
 import { bench, group, run } from "mitata";
 
 const ROWS = 100;
-// `& <` est le sujet : sans eux, les deux modes de kitajs rendent les mêmes octets.
+// `& <` is the point: without them, both kitajs modes render the same bytes.
+//
+// The row is what a template really comes out as — literal markup the transform
+// inlines, and a hole for what it cannot know. With nothing literal the transform
+// has nothing to inline and measures its own worst case: on this same list, the
+// precompile path is level with the tree walk it replaces (3%), where a literal
+// class puts it 35% ahead. A fixture at either end answers a question nobody has.
 const data = Array.from({ length: ROWS }, (_, i) => ({
-  cls: i % 2 === 0 ? "row even" : "row odd",
+  index: i,
   text: `Item ${i} — a & b < c`,
 }));
 
-const LI = ["<li ", ">", "</li>"];
+const LI = ['<li class="item" ', ">", "</li>"];
 const UL = ['<ul class="list">', "</ul>"];
 
 function vinclePrecompile() {
   const rows = [];
   for (let i = 0; i < ROWS; i++) {
-    const { cls, text } = data[i];
-    rows[i] = jsxTemplate(LI, jsxAttr("class", cls), jsxEscape(text));
+    const { index, text } = data[i];
+    rows[i] = jsxTemplate(LI, jsxAttr("data-index", index), jsxEscape(text));
   }
   return String(jsxTemplate(UL, jsxEscape(rows)));
 }
@@ -43,8 +53,8 @@ function vinclePrecompile() {
 function kitajsSafe() {
   const rows = [];
   for (let i = 0; i < ROWS; i++) {
-    const { cls, text } = data[i];
-    rows[i] = kita("li", { class: cls, safe: true }, text);
+    const { index, text } = data[i];
+    rows[i] = kita("li", { class: "item", "data-index": index, safe: true }, text);
   }
   return String(kita("ul", { class: "list" }, rows));
 }
@@ -52,8 +62,8 @@ function kitajsSafe() {
 function kitajsDefault() {
   const rows = [];
   for (let i = 0; i < ROWS; i++) {
-    const { cls, text } = data[i];
-    rows[i] = kita("li", { class: cls }, text);
+    const { index, text } = data[i];
+    rows[i] = kita("li", { class: "item", "data-index": index }, text);
   }
   return String(kita("ul", { class: "list" }, rows));
 }
@@ -69,7 +79,7 @@ function assertComparable() {
   const s = kitajsSafe();
   if (v !== s) {
     const i = firstDiff(v, s);
-    console.error(`Sorties divergentes à ${i} — la comparaison serait fausse.`);
+    console.error(`Output diverges at ${i} — the comparison would be false.`);
     console.error(`  vincle : ${JSON.stringify(v.slice(i, i + 60))}`);
     console.error(`  kitajs : ${JSON.stringify(s.slice(i, i + 60))}`);
     process.exit(1);
@@ -77,7 +87,7 @@ function assertComparable() {
   return { bytes: v.length, unescaped: kitajsDefault().length };
 }
 
-/** Médiane, pas moyenne : robuste aux pauses du GC. */
+/** Median, not mean: robust to GC pauses. */
 function measure(fn) {
   for (let i = 0; i < 2000; i++) fn();
   const samples = [];
@@ -92,7 +102,7 @@ function measure(fn) {
 const { bytes, unescaped } = assertComparable();
 
 if (process.argv.includes("--json")) {
-  // Deux passes en ordre inverse : le minimum retire l'avantage du JIT froid.
+  // Two passes in reverse order: the minimum takes the cold JIT out of the result.
   const out = {
     vincle: measure(vinclePrecompile),
     kitaSafe: measure(kitajsSafe),
@@ -104,12 +114,12 @@ if (process.argv.includes("--json")) {
   console.log(JSON.stringify(out));
 } else {
   console.log(
-    `sorties identiques — ${bytes} o ; kitajs sans \`safe\` en produit ${unescaped} (non échappés)\n`,
+    `identical output — ${bytes} B; without \`safe\`, kitajs produces ${unescaped} (unescaped)\n`,
   );
-  group(`liste ${ROWS} lignes — aucun arbre construit des deux côtés`, () => {
-    bench("@vincle/core (precompile, échappe)", () => void vinclePrecompile());
-    bench("@kitajs/html (safe, échappe)", () => void kitajsSafe());
-    bench("@kitajs/html (défaut, n'échappe pas)", () => void kitajsDefault());
+  group(`${ROWS}-row list — no tree built on either side`, () => {
+    bench("@vincle/core (precompile, escapes)", () => void vinclePrecompile());
+    bench("@kitajs/html (safe, escapes)", () => void kitajsSafe());
+    bench("@kitajs/html (default, does not escape)", () => void kitajsDefault());
   });
   await run();
 }
