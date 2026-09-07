@@ -126,6 +126,54 @@ A profile does not say what is **removable**: the time of unavoidable work is
 still attributed where it happens. To put a number on a potential gain, ablate
 the code and measure the ceiling before writing the fix.
 
+## Reading what the engine emitted
+
+`bench:stats` says whether something changed and a profile says where the time
+goes; neither says what the JIT made of the code. When a rearrangement keeps
+losing, this is what tells you whether anything is left to win.
+
+Node exposes all of it on the stock release binary:
+
+```bash
+# the optimised machine code for one function, with the tier that produced it
+node --conditions=dist --print-opt-code --print-opt-code-filter=serializeElement \
+  src/profile.js vincle realworld 300
+```
+
+```bash
+# why a function fell back out of optimised code — reasons in plain words
+node --conditions=dist --trace-deopt src/profile.js vincle realworld 400
+```
+
+A handful of bailouts at start-up is warm-up. A reason that repeats is a
+function the engine keeps giving up on, and that costs more than any delta
+argued about here. Add `--no-turbo-inlining` when a function is small enough to
+be inlined into its caller and so never gets a code object of its own.
+
+Bun answers the other half. `BUN_JSC_<option>=1` passes any JSC option through,
+but the disassembler is not compiled into the binary, so what it gives is the
+tier ladder:
+
+```bash
+BUN_JSC_reportCompileTimes=1 bun --conditions=dist src/profile.js vincle realworld 400
+```
+
+Each line names a function and the tier it reached: LLInt → Baseline → DFG →
+FTL. Anything hot that stops below FTL is worth more than a rearrangement.
+
+One process per candidate when comparing two forms. Sharing a call site between
+them lets the first one run monomorphic and the rest not, which is larger than
+the difference being measured.
+
+Two things this has already settled:
+
+- Both engines take the whole render path to their top tier, with no repeating
+  deopt. What is left per element is the work, not a missed optimisation.
+- Under V8 a template literal emits a `ToString` call per substitution that `+`
+  does not; under JSC the two compile the same. Writing `serializeElement`'s two
+  literals as `+` measures +4% on V8 and −4% on JSC — a choice of engine, not a
+  gain.
+
 ## Both engines
 
 The bench runs under Bun (JSC) and under Node (V8) unmodified. An effect present
