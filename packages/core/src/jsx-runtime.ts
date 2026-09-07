@@ -219,14 +219,24 @@ export function jsxTemplate(
   let out = templates[0] ?? "";
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
-    if (isDeferredValue(v)) {
+    // `RawString` first: it is what the transform's own `jsxEscape` and
+    // `jsxAttr` hand back, so it is the shape almost every hole arrives as.
+    // Through the taxonomy below it reaches the same `.value` after ten tests —
+    // `isDeferredValue`'s five, two of them `Symbol` lookups, then
+    // `valueToText`'s guard and `renderLeaf`'s own order.
+    if (v instanceof RawString) {
+      out = appendHole(out, v.value);
+    } else if (v === null || v === undefined || typeof v === "boolean") {
+      // The empty string `renderLeaf` answers, without reaching it.
+      out = appendHole(out, "");
+    } else if (isDeferredValue(v)) {
       // Bail to the async path from the first asynchronous hole only:
       // everything before it is already final text, so the await covers the
       // suffix and nothing else.
-      const prefix = out;
-      return renderTemplateAsync(prefix, v, values, i + 1, templates);
+      return renderTemplateAsync(out, v, values, i + 1, templates);
+    } else {
+      out = appendHole(out, valueToText(v));
     }
-    out = appendHole(out, valueToText(v));
     out += templates[i + 1] ?? "";
   }
   return new RawString(out);
