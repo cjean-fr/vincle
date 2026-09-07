@@ -161,9 +161,35 @@ BUN_JSC_reportCompileTimes=1 bun --conditions=dist src/profile.js vincle realwor
 Each line names a function and the tier it reached: LLInt → Baseline → DFG →
 FTL. Anything hot that stops below FTL is worth more than a rearrangement.
 
+Size comes out of a second option. Its disassembly is the part that is missing,
+not its bookkeeping — every compiled function is announced with the address range
+its code occupies, and the size is the difference:
+
+```bash
+BUN_JSC_dumpDFGDisassembly=1 bun --conditions=dist src/profile.js vincle realworld 300 2>&1 \
+  | grep -A1 "JIT code for serializeStatic#"
+```
+
+```
+Generated DFG JIT code for serializeStatic#…, instructions size = 411:
+    Code at [0x7b57b2c9aea0, 0x7b57b2c9c5e0):   ← 6 976 bytes
+```
+
+That is the column to put next to V8's `Instructions (size = …)`, and the two do
+not have to agree. Moving a check from one function to another shrank both under
+V8 and grew the caller by half under JSC, because DFG inlines a callee's body
+where TurboFan kept the call. A change that reads as "less code" on one engine
+can be "more code" on the other.
+
 One process per candidate when comparing two forms. Sharing a call site between
 them lets the first one run monomorphic and the rest not, which is larger than
 the difference being measured.
+
+Measure in both directions before believing a delta. Record the baseline, measure
+the candidate, then record a baseline _on the candidate_ and measure the original
+against it. A real effect changes sign; drift does not. Five rows all leaning the
+same way survived one direction and vanished in the other, on a change that
+removes work — the machine had moved between the two recordings.
 
 Two things this has already settled:
 
