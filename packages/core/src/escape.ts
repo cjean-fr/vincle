@@ -285,12 +285,14 @@ export function isSafeScheme(url: string): boolean {
  * parameter would mean a closure allocated per text node.
  *
  * Callers own every *non*-leaf shape, because each has its own answer for it: the
- * walk renders a VNode, the fold declines it, `valueToText` refuses it.
+ * walk renders a VNode, the static path bails on it, `valueToText` refuses it.
  */
 export function renderLeaf(v: unknown, rawtextTag: string | undefined): string {
-  if (v === null || v === undefined || typeof v === "boolean") return "";
+  // Frequency order: a leaf is a string far more often than it is anything else,
+  // and none of the tests below can admit one.
   if (typeof v === "string")
     return rawtextTag === undefined ? escapeContent(v) : escapeRawTagContent(v, rawtextTag);
+  if (v === null || v === undefined || typeof v === "boolean") return "";
   if (typeof v === "number" || typeof v === "bigint") return String(v);
   if (v instanceof RawString) return v.value;
   // Inside rawtext the coercion is `String` under the tag's own escape: an entity
