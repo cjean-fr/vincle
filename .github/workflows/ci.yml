@@ -7,13 +7,12 @@ on:
     branches: [main]
 
 jobs:
-  # Pas de cache turbo restauré : `turbo run test` ne construit alors que les
-  # dépendances *déclarées*, et un test qui en attend d'autres échoue ici. Le job
-  # principal restaure le cache, donc il ne le verrait pas.
+  # No turbo cache restored: `turbo run test` then builds only the *declared*
+  # dependencies, so a test that expects any other one fails here. The main job
+  # restores the cache and would not see it.
   #
-  # Le lint passe en second : il construit `@vincle/eslint-plugin` et `core`, ce
-  # qui masquerait leurs deux cas (mesuré : 6 détections dans cet ordre, 4 dans
-  # l'autre).
+  # Lint runs second: it builds `@vincle/eslint-plugin` and `core`, which would
+  # mask their two cases (measured: 6 detections in this order, 4 in the other).
   cold-tree:
     name: Tests without prebuilt artefacts
     runs-on: ubuntu-latest
@@ -38,24 +37,24 @@ jobs:
       - name: Lint — builds the oxlint plugin it needs
         run: bun run lint
 
-  # `bun test` ne prouve rien sur Node, Deno ou workerd, et `@vincle/core` les
-  # revendique tous les quatre — jusque dans le message d'erreur de
-  # `SyncContextStore`. Ce job exécute la conformité contre `dist`, donc contre
-  # l'artefact publié et non contre les sources.
+  # `bun test` proves nothing about Node, Deno or workerd, and `@vincle/core`
+  # claims all four — down to `SyncContextStore`'s error message. This job runs
+  # conformance against `dist`, so against the published artefact rather than
+  # against the sources.
   conformance:
     name: Conformance — ${{ matrix.runtime }}
     runs-on: ubuntu-latest
     env:
       DO_NOT_TRACK: 1
     strategy:
-      # Sans ça, le premier runtime en échec masque les trois autres — or savoir
-      # si un seul lâche ou si tous lâchent est justement l'information qu'une
-      # matrice de conformité doit donner.
+      # Without this, the first failing runtime masks the other three — and
+      # whether one gives out or all of them do is exactly what a conformance
+      # matrix is there to say.
       fail-fast: false
       matrix:
-        # Chaque entrée déclare ce dont elle a besoin plutôt que de le déduire de
-        # son nom. `workerd` demande Node parce que `npx wrangler` le démarre :
-        # ce n'est pas évident, donc c'est écrit.
+        # Each entry declares what it needs rather than deriving it from its
+        # name. `workerd` asks for Node because `npx wrangler` starts it, which
+        # is not obvious, so it is written down.
         include:
           - runtime: bun
           - runtime: node
@@ -69,7 +68,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # Bun est requis partout : il construit le `dist` que les quatre chargent.
+      # Bun is required everywhere: it builds the `dist` all four load.
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -96,10 +95,9 @@ jobs:
       - name: Conformance — ${{ matrix.runtime }}
         run: bun run --filter=@vincle/core conformance:${{ matrix.runtime }}
 
-      # La taille se mesure sur `dist`, donc ici : c'est le seul job qui le
-      # construit à coup sûr. Une seule fois (bun) : l'artefact est le même pour
-      # les quatre runtimes. Ne bloque pas — au-dessus du budget, une annotation
-      # `::warning::` apparaît sur le run.
+      # Size is measured on `dist`, so here: this is the only job that builds it
+      # for certain. Once (bun): the artefact is the same for all four runtimes.
+      # Non-blocking — over budget, a `::warning::` annotation shows on the run.
       - name: Size report — @vincle/core
         if: matrix.runtime == 'bun'
         run: bun run --filter=@vincle/core size
@@ -129,15 +127,13 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-
 
-      # Le hook pre-commit ne suffit pas : `--no-verify` passe à côté.
+      # The pre-commit hook is not enough: `--no-verify` walks past it.
       - name: Lint
         run: bun run lint
 
-      # Même raison que le lint, et elle s'est vérifiée : six fichiers de
-      # production étaient non formatés alors que le hook existait — il ne
-      # lançait pas oxfmt. Un formatage manquant ne casse rien à l'exécution,
-      # il mélange fond et forme dans le prochain diff, ce qui coûte au seul
-      # relecteur du dépôt.
+      # Same reason as lint. Missing formatting breaks nothing at runtime; it
+      # mixes substance and form in the next diff, which costs the repository's
+      # only reviewer.
       - name: Format
         run: bunx oxfmt --check .
 
@@ -147,9 +143,8 @@ jobs:
       - name: Test
         run: bun run test
 
-      # La couverture reste ici : c'est la même suite avec `--coverage`, quelques
-      # secondes. La mutation, elle, est partie dans `mutation.yml` — dix minutes
-      # sur chaque PR ne se justifiaient pas.
+      # Coverage stays here: the same suite with `--coverage`, a few seconds.
+      # Mutation lives in `mutation.yml` — ten minutes on every PR did not pay.
       - name: Coverage
         run: bun run test:coverage
 
@@ -163,13 +158,10 @@ jobs:
             packages/*/badges/
           if-no-files-found: ignore
 
-      # Mesure, sans verdict. Trois formes de gate ont été essayées et aucune
-      # ne tenait : ratios contre React (confondus avec le moteur et la
-      # machine — 8 fausses régressions, aucune vraie), A/B contre un build
-      # figé dans un processus isolé (σ 3 % par paire, la régression connue de
-      # 3 % passait dessous), le même A/B dans le contexte complet (biais
-      # d'ordre de 10 %, le build lent mesuré 13 % plus rapide). Les chiffres
-      # restent lisibles sur le run ; c'est à la lecture que le coût se juge.
+      # Measurement, no verdict: at this sample size the noise swallows the
+      # deltas worth catching, and `apps/bench/README.md` records the three gate
+      # shapes that were measured. The numbers stay readable on the run; the
+      # cost is judged by reading them.
       - name: Benchmark
         shell: bash
         run: |

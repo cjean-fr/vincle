@@ -1,13 +1,10 @@
-# Séquentiel : les deux jobs invoquent `turbo` et font construire
-# `@vincle/core`, dont le build supprime ses sorties avant de les réécrire.
-# Deux `turbo` concurrents sur les mêmes répertoires, pour gagner 50 ms.
+# Sequential: both jobs invoke `turbo` and build `@vincle/core`, whose build
+# deletes its outputs before rewriting them. Running them in parallel races two
+# `turbo` processes over the same directories, to save 50 ms.
 pre-commit:
   parallel: false
   jobs:
-    # `lint-staged` était déclaré en devDependency *et* configuré dans le
-    # package.json racine, mais aucun hook ne l'appelait : rien n'a jamais
-    # formaté quoi que ce soit au commit. oxfmt directement sur les fichiers
-    # indexés fait le travail sans la dépendance intermédiaire.
+    # oxfmt straight on the staged files: no lint-staged layer in between.
     - name: format
       run: bunx oxfmt --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true

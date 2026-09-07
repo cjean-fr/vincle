@@ -5,9 +5,9 @@
     "command": "bun test src"
   },
   "commandRunner_comment": [
-    "`bun test src`, comme les autres paquets : la mutation tourne dans un bac à",
-    "sable — copie du seul paquet, sources instrumentées, cwd déplacé. Un test qui",
-    "dépend d'autre chose que du code muté y échoue et nulle part ailleurs."
+    "`bun test src`, like the other packages: mutation runs in a sandbox — a copy",
+    "of this package alone, instrumented sources, a moved cwd. A test that depends",
+    "on anything but the mutated code fails there and nowhere else."
   ],
   "mutate": ["src/**/*.ts", "!src/**/*.test.ts"],
   "mutator": {
@@ -23,11 +23,10 @@
     "break": 58
   },
   "thresholds_comment": [
-    "Mesuré le 2026-09-05, tous mutateurs actifs sauf BlockStatement : 63,70 %",
-    "(293 tués, 0 timeout, 167 survivants, 0 non couverts). Premier chiffre produit",
-    "pour ce paquet : 1 667 tests couvrent chaque ligne, et un tiers des mutations",
-    "passe quand même. Le plus faible est no-global-jsx-namespace (52,25 %).",
-    "`break` à 58 laisse ~5 points de marge, comme les autres paquets. C'est un",
-    "cliquet : quand le score monte, ce nombre monte avec lui."
+    "Measured 2026-09-05, every mutator but BlockStatement: 63.70% (293 killed,",
+    "0 timeouts, 167 survived, 0 uncovered). 1,667 tests cover every line and a",
+    "third of the mutations still survive; the weakest is no-global-jsx-namespace",
+    "(52.25%). `break` at 58 leaves ~5 points of slack, like the other packages.",
+    "It is a ratchet: when the score rises, this number rises with it."
   ]
 }

@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 #
-# Conformité sous workerd.
+# Conformance under workerd.
 #
-# Un Worker ne s'exécute pas en ligne de commande : il se sert. Ce script fait
-# donc ce qu'aucune ligne de `package.json` ne fait lisiblement — démarrer le
-# runtime, attendre qu'il réponde, l'interroger, l'arrêter quoi qu'il arrive.
+# A Worker does not run from the command line: it is served. So this script does
+# what no `package.json` line does legibly — start the runtime, wait for it to
+# answer, query it, stop it whatever happens.
 #
-# `--fail` est ce qui transporte le verdict : `worker.ts` répond 500 dès qu'un
-# cas échoue, et curl transforme ce 500 en code de sortie non nul.
+# `--fail` is what carries the verdict: `worker.ts` answers 500 as soon as a case
+# fails, and curl turns that 500 into a non-zero exit code.
 set -euo pipefail
 
 PORT="${PORT:-8799}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG="$(mktemp)"
 
-# Wrangler résout l'entrée depuis la racine de projet qu'il déduit, pas depuis
-# le répertoire courant : le chemin absolu n'est pas une précaution de style.
+# Wrangler resolves the entry from the project root it infers, not from the
+# current directory: the absolute path is not a matter of style.
 npx --yes wrangler@4 dev "$HERE/worker.ts" \
   --port "$PORT" \
   --compatibility-date 2026-08-16 \
@@ -30,12 +30,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Attente active plutôt qu'un `sleep` fixe : le premier démarrage télécharge
-# wrangler, les suivants non — l'écart va de quelques secondes à une minute.
+# Polling rather than a fixed `sleep`: the first start downloads wrangler and
+# later ones do not — the gap runs from a few seconds to a minute.
 for _ in $(seq 1 90); do
   if curl -fsS -m 5 -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null; then break; fi
   if ! kill -0 "$WRANGLER_PID" 2>/dev/null; then
-    echo "[conformance] wrangler s'est arrêté avant d'être prêt :" >&2
+    echo "[conformance] wrangler exited before it was ready:" >&2
     cat "$LOG" >&2
     exit 1
   fi
@@ -43,6 +43,6 @@ for _ in $(seq 1 90); do
 done
 
 if ! curl -fsS -m 30 "http://127.0.0.1:$PORT/"; then
-  echo "[conformance] échec sous workerd (voir le corps de la réponse ci-dessus)" >&2
+  echo "[conformance] failed under workerd (see the response body above)" >&2
   exit 1
 fi
