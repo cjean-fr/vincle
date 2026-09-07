@@ -4,6 +4,7 @@ import { jsx, jsxAttr, jsxEscape } from "@vincle/core/jsx-runtime";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { parseSync } from "oxc-parser";
 
 import precompileTransform from "./index.js";
 
@@ -256,6 +257,29 @@ describe("precompileTransform", () => {
       `import { jsxTemplate as tpl, jsxTemplate, jsxEscape } from "${RT}";`,
     );
     expect(result.code.match(new RegExp(RT, "g"))?.length).toBe(1);
+  });
+
+  it("merges into an import block that carries a brace of its own", () => {
+    // A string specifier or a comment inside the block holds the first `}` in
+    // source order. Locating the closing brace by scanning for one splices the
+    // helpers into the middle of that literal, and the file no longer parses.
+    const blocks = [
+      `import { "a}b" as x } from "${RT}";`,
+      `import {\n  jsx, // closes with }\n} from "${RT}";`,
+      `import { jsx /* } */ } from "${RT}";`,
+    ];
+    for (const block of blocks) {
+      const result = precompileTransform(`${block}\nconst a = <div>{name}</div>;`, "/src/app.tsx", {
+        runtimeSource: RT,
+      })!;
+      const reparsed = parseSync("/src/app.tsx", result.code, {
+        lang: "tsx",
+        sourceType: "unambiguous",
+      });
+      expect(reparsed.errors.filter((e) => e.severity === "Error")).toEqual([]);
+      expect(result.code).toContain("jsxTemplate");
+      expect(result.code).toContain("jsxEscape");
+    }
   });
 
   describe("sourcemaps", () => {
