@@ -12,9 +12,9 @@
  * 7 fresh processes, median of 25 × 200 iterations, ± 3 standard errors:
  *
  *                              Bun / JSC        Node / V8
- *   @vincle/core precompile   10.56 ± 0.19    13.94 ± 1.44 µs
- *   @kitajs/html safe         13.43 ± 1.19    18.05 ± 1.89 µs   → vincle 1.27× / 1.29×
- *   @kitajs/html default       9.85 ± 1.29    10.92 ± 2.15 µs   → output not escaped
+ *   @vincle/core precompile    9.19 ± 0.45    12.44 ± 0.20 µs
+ *   @kitajs/html safe         12.92 ± 1.56    18.06 ± 0.58 µs   → vincle 1.40× / 1.45×
+ *   @kitajs/html default       9.21 ± 1.28    11.09 ± 0.31 µs   → output not escaped
  *
  * Both engines, because a gap on one alone is an engine's own deoptimisation.
  *
