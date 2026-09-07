@@ -795,11 +795,16 @@ function injectRuntimeImport(
     const missing = helpers.filter((h) => !existing.has(h));
     if (missing.length === 0) return;
 
-    const declText = source.slice(decl.start, decl.end);
-    const braceStart = decl.start + declText.indexOf("{");
-    const braceEnd = decl.start + declText.indexOf("}");
+    // The specifier list, not the braces. Scanning the declaration text for `}`
+    // finds the first one in *source order*, which is not the closing brace when
+    // a specifier is a string (`import { "a}b" as x }`) or a comment inside the
+    // block carries one — and the import is then spliced into the middle of a
+    // literal. The specifier ranges name what is being extended, so nothing has
+    // to be located.
+    const first = named[0]!;
+    const last = named[named.length - 1]!;
     const specifierTexts = named.map((sp) => source.slice(sp.start, sp.end));
-    s.overwrite(braceStart, braceEnd + 1, `{ ${[...specifierTexts, ...missing].join(", ")} }`);
+    s.overwrite(first.start, last.end, [...specifierTexts, ...missing].join(", "));
     return;
   }
 
