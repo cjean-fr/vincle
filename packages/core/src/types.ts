@@ -14,8 +14,6 @@ export class VNode {
   readonly tag: string | ((props: any) => any);
   readonly attrs: Record<string, unknown>;
   readonly children: unknown;
-  /** Classified here so the walk writes the element without asking again. */
-  readonly isVoid: boolean;
 
   /**
    * Validates a string tag, because this class is exported as a value: the
@@ -32,9 +30,7 @@ export class VNode {
   ) {
     if (typeof tag === "string") {
       if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
-      this.isVoid = isVoidElement(tag, children);
-    } else {
-      this.isVoid = false;
+      isVoidElement(tag, children);
     }
     this.tag = tag;
     this.attrs = attrs;

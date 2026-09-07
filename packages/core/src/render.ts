@@ -9,6 +9,7 @@ import {
   valueToText,
 } from "./escape.js";
 import { serializeElement, serializeVoidElement } from "./serialize.js";
+import { VOID_ELEMENTS } from "./tag.js";
 import { RawString, VNode } from "./types.js";
 
 /**
@@ -53,6 +54,17 @@ export function renderToString(node: unknown): Promise<string> {
  *
  * @internal
  */
+/**
+ * An element with no children, which is the only shape a void tag can take by
+ * the time it reaches the walk. The vocabulary is consulted here and nowhere
+ * else on this path.
+ */
+function writeChildless(tag: string, attrStr: string): string {
+  return VOID_ELEMENTS.has(tag)
+    ? serializeVoidElement(tag, attrStr)
+    : serializeElement(tag, attrStr, "");
+}
+
 export function renderNode(vnode: unknown): string | Promise<string> {
   // Two tests, not a second copy of the leaf taxonomy: anything that is not an
   // object is a leaf by construction, and `RawString` is the one object the
@@ -98,7 +110,7 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     // The tag name is validated by the `VNode` constructor, which every string tag
     // reaching this walk goes through; re-checking here would charge every element
     // for the same answer twice.
-    const { tag, attrs, children, isVoid } = vnode;
+    const { tag, attrs, children } = vnode;
 
     const attrStr = buildAttrs(attrs);
     const childTag = isRawtextTag(tag) ? tag : undefined;
@@ -109,18 +121,14 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     // synchronous form below.
     if (typeof attrStr !== "string") {
       return attrStr.then(async (resolved) =>
-        isVoid
-          ? serializeVoidElement(tag, resolved)
-          : serializeElement(
-              tag,
-              resolved,
-              children === undefined ? "" : await renderChildrenAsync(children, childTag),
-            ),
+        children === undefined
+          ? writeChildless(tag, resolved)
+          : serializeElement(tag, resolved, await renderChildrenAsync(children, childTag)),
       );
     }
 
-    // A void element reaches neither branch below with children: the constructor
-    // refused that element rather than letting it render.
+    // Children rule out a void element — the constructor refused that one — so
+    // the branch that has them writes without asking the vocabulary anything.
     if (children !== undefined) {
       const content = renderChildrenAsync(children, childTag);
       if (content instanceof Promise) {
@@ -128,7 +136,7 @@ export function renderNode(vnode: unknown): string | Promise<string> {
       }
       return serializeElement(tag, attrStr, content);
     }
-    return isVoid ? serializeVoidElement(tag, attrStr) : serializeElement(tag, attrStr, "");
+    return writeChildless(tag, attrStr);
   }
   // Neither an array nor a VNode is ever an async iterable, and VNode is the
   // dominant case: only what is left pays for the protocol tests.
