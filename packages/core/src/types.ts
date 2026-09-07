@@ -1,7 +1,5 @@
 import type React from "react";
 
-import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
-
 // ── VNode ──────────────────────────────────────────────────────────────────
 //
 // Defined here, not in `jsx-runtime.ts`, because `render.ts` (which owns the
@@ -10,28 +8,23 @@ import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
 // walk. Living in `types.ts` — the module both already import — keeps that
 // dependency acyclic: `jsx-runtime` → `render` would otherwise be a cycle.
 
+/**
+ * One element of the tree: a tag, its props, its children.
+ *
+ * Pure representation — no judgment here. The tag is validated at the door
+ * (`jsx()`), and this class is not reachable as a value from outside the
+ * package, so the tree walk may trust what it finds without re-checking.
+ */
 export class VNode {
   readonly tag: string | ((props: any) => any);
   readonly attrs: Record<string, unknown>;
   readonly children: unknown;
 
-  /**
-   * Validates a string tag, because this class is exported as a value: the
-   * precompile contract needs `instanceof VNode`, and an exported class is a
-   * constructor whoever holds it may call. The tree walk does not re-check the
-   * tag, so a name that got in here unexamined would reach the document
-   * verbatim, closing tags and all. One call per element; static serialization, the
-   * other way out of `jsx()`, validates for itself.
-   */
   constructor(
     tag: string | ((props: any) => any),
     attrs: Record<string, unknown>,
     children: unknown,
   ) {
-    if (typeof tag === "string") {
-      if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
-      isVoidElement(tag, children);
-    }
     this.tag = tag;
     this.attrs = attrs;
     this.children = children;

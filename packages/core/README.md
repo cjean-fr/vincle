@@ -29,12 +29,13 @@ for the walk.
 `FromReact`, and the `JSX` namespace.
 
 `VNode` is a concrete class — one element (tag, attrs, children) — exported as
-a **value**, not just a type: the precompile contract (Deno/Preact) requires
-the runtime to test for it with `instanceof`. `jsx()` is how you should make
-one; building one by hand is supported rather than merely possible — the
-constructor validates the tag name, because the tree walk does not re-check it.
-`Renderable` is the separate, broader type: everything a component may return (a
-`VNode`, a string, a promise, an iterable of any of those, …).
+a **type only**, the name of what `jsx()` produces, for typing a component's
+return or a generator's yield. `jsx()` is the only way to make one,
+structurally: the class is not reachable as a value from the package, so the
+tag is validated at that single door — `jsx()` — because the tree walk does
+not re-check it. `Renderable` is the separate, broader type: everything a
+component may return (a `VNode`, a string, a promise, an iterable of any of
+those, …).
 
 ### Subpath exports
 

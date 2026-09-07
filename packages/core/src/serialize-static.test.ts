@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsx, VNode } from "./jsx-runtime.js";
+import { jsx } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
 import { serializeStatic, VOID_ELEMENTS, isValidTag } from "./serialize.js";
-import { RawString } from "./types.js";
+import { VNode, RawString } from "./types.js";
 
 /** A getter in props can re-enter `serializeStatic` while the outer call runs. */
 describe("static serialization re-entrancy", () => {

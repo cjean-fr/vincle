@@ -19,12 +19,12 @@
 import { buildAttrs } from "./attrs.js";
 import { isAsyncIterable, isIterable, isRawtextTag, renderLeaf } from "./escape.js";
 import { ownChildren } from "./props.js";
-import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
+import { isVoidElement } from "./tag.js";
 import { RawString, VNode } from "./types.js";
 
-// The tag-name vocabulary lives in `tag.ts` (a leaf module the `VNode`
-// constructor can import) and is re-exported here, where `./html` and the tests
-// already look for it.
+// The tag-name vocabulary lives in `tag.ts` (a leaf module the door,
+// `jsx-runtime.ts`, and this module both import) and is re-exported here, where
+// `./html` and the tests already look for it.
 export { VOID_ELEMENTS, isValidTag, invalidTagMessage } from "./tag.js";
 
 /**
@@ -58,10 +58,11 @@ export function serializeVoidElement(tag: string, attrStr: string): string {
  * Serialize `<tag …props>` to final HTML, or bail with `null` when a child is
  * dynamic.
  *
- * The tag name is validated here because this is one of the two ways an element
- * leaves `jsx()`: the other is a `VNode`, which validates in its constructor.
- * One check per element on either path, and no way past it: above the fork it
- * would be the same single check, but a hand-built `VNode` would go unguarded.
+ * The tag name arrives judged: `jsx()` is the one door in, and this function is
+ * not reachable from outside the package, so there is no second way an element
+ * gets here unexamined. The void check stays — this path never builds a `VNode`,
+ * so the door's check never runs for it — and its answer is needed anyway, to
+ * know whether the tag closes.
  *
  * What this deliberately does *not* do, because a second opinion on it is how
  * the static path and the tree walk drift apart:
@@ -80,8 +81,6 @@ export function serializeStatic(
   tag: string,
   props: Record<string, unknown>,
 ): RawString | Promise<RawString> | null {
-  if (!isValidTag(tag)) throw new TypeError(invalidTagMessage(tag));
-
   // `ownChildren` (props.ts) owns what an inherited `children` means; asking it
   // is what costs, at one call per element — 4% of a page of static markup — so
   // the condition that makes it worth asking is named and tested here.

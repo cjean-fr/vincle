@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsx, jsxAttr, Fragment, VNode } from "./jsx-runtime.js";
+import { jsx, jsxAttr, Fragment } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { RawString } from "./types.js";
+import { VNode, RawString } from "./types.js";
 
 // The hybrid model serializes fully-static subtrees to a RawString at jsx() time;
 // anything dynamic (component, dSIH, promise or function child) stays a VNode for

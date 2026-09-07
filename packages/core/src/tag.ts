@@ -1,10 +1,10 @@
 /**
  * Tag-name vocabulary: what a tag may be called, and which tags hold nothing.
  *
- * A leaf module on purpose — it imports nothing. `types.ts` validates a tag in
- * the `VNode` constructor, and `types.ts` is what `serialize.ts` imports, so
- * these three answers cannot live in `serialize.ts` without making that pair a
- * cycle.
+ * A leaf module on purpose — it imports nothing. `serialize.ts` needs these
+ * answers, and its other user is the door that validates with them,
+ * `jsx-runtime.ts` — which is what imports `serialize.ts`. The answers cannot
+ * live there without a cycle, so they live here, one leaf both import.
  *
  * @module
  */

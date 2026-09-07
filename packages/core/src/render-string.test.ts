@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsx, Fragment, VNode } from "./jsx-runtime.js";
+import { jsx, Fragment } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { raw } from "./types.js";
+import { VNode, raw } from "./types.js";
 
 describe("renderToString (async)", () => {
   test("sync tree renders correctly", async () => {

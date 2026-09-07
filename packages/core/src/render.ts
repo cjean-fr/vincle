@@ -107,9 +107,9 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     }
 
     // ── Regular element ──
-    // The tag name is validated by the `VNode` constructor, which every string tag
-    // reaching this walk goes through; re-checking here would charge every element
-    // for the same answer twice.
+    // The tag name was validated at the door (`jsx()`), the only way an element
+    // is built; re-checking here would charge every element for the same answer
+    // twice.
     const { tag, attrs, children } = vnode;
 
     const attrStr = buildAttrs(attrs);
