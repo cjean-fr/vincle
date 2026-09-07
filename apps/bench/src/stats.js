@@ -1,6 +1,6 @@
 /**
- * Repeated-run benchmark harness — N exécutions en processus frais, moyenne ±
- * écart-type, et delta exprimé en erreurs-types de la différence.
+ * Repeated-run benchmark harness — N runs in fresh processes, mean ± standard
+ * deviation, and a delta expressed in standard errors of the difference.
  *
  * Usage:
  *   bun run bench:stats                          # measure, print table
@@ -16,7 +16,7 @@ const REF = "@vincle/core";
 /** Below this many standard errors of the difference, a delta is not a finding. */
 const SIGNIFICANCE_SIGMAS = 3;
 
-/** Erreur-type de la différence : le test porte sur la moyenne, donc `sd/√n`. */
+/** Standard error of the difference: the test is on the mean, hence `sd/√n`. */
 function stdErrOfDiff(a, b) {
   return Math.sqrt(a.sd ** 2 / Math.max(1, a.n) + b.sd ** 2 / Math.max(1, b.n));
 }
@@ -30,23 +30,38 @@ function parseArgs(argv) {
     runs: Number(flag("runs") ?? 8),
     save: flag("save"),
     against: flag("against"),
+    engines: flag("engines") ?? "bun",
   };
 }
 
-// Ratios mesurés dans le même processus : c'est ce qui survit au changement de
-// machine, donc ce qui peut garder la CI. Ratio > 1 = vincle plus rapide.
+/**
+ * How each engine is asked to run the benchmark.
+ *
+ * Both, on demand rather than by default: an effect present under JSC **and** V8
+ * is structural, one present under a single engine is that engine's own
+ * deoptimisation — but the daily question is "did I break something", and paying
+ * two engines for it doubles the wait.
+ */
+const ENGINES = {
+  bun: (file) => ["bun", "--conditions=dist", "run", file, "--json"],
+  node: (file) => ["node", "--conditions=dist", file, "--json"],
+};
 
-async function measureOnce() {
-  const proc = Bun.spawn(
-    ["bun", "--conditions=dist", "run", `${import.meta.dir}/bench.js`, "--json"],
-    { env: { ...process.env, NODE_ENV: "production" }, stdout: "pipe", stderr: "pipe" },
-  );
+// Ratios measured in the same process: that is what survives a change of
+// machine, and what CI could keep. Ratio > 1 = vincle is faster.
+
+async function measureOnce(engine) {
+  const proc = Bun.spawn(ENGINES[engine](`${import.meta.dir}/bench.js`), {
+    env: { ...process.env, NODE_ENV: "production" },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
   const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
   if (exitCode !== 0) {
     const stderr = await new Response(proc.stderr).text();
-    throw new Error(`benchmark exited ${exitCode}\n${stderr}`);
+    throw new Error(`benchmark exited ${exitCode} under ${engine}\n${stderr}`);
   }
-  // The JSON line is last; mitata may have written a banner before it.
+  // The JSON is the last line; the runtime may print before it.
   const line = stdout.trimEnd().split("\n").at(-1);
   return JSON.parse(line);
 }
@@ -61,21 +76,42 @@ function stdev(xs) {
 
 /**
  * Aggregate raw runs into one entry per (case, name).
- * @returns {Map<string, {case: string, name: string, mean: number, sd: number, n: number}>}
+ *
+ * The ratio is taken INSIDE each process, then averaged: the machine's mood is
+ * common to both terms and divides out. A ratio of two aggregate means keeps the
+ * noise of both, and has no standard deviation of its own.
+ *
+ * @returns {Map<string, {engine: string, case: string, name: string, mean: number, sd: number, n: number, ratio?: number, ratioSd?: number}>}
  */
 function aggregate(runs) {
   const byKey = new Map();
-  for (const run of runs) {
-    for (const { case: kase, name, opsPerSec } of run) {
-      const key = `${kase}\0${name}`;
-      (byKey.get(key) ?? byKey.set(key, { case: kase, name, samples: [] }).get(key)).samples.push(
-        opsPerSec,
-      );
+  for (const { engine, rows } of runs) {
+    const refOf = new Map();
+    for (const { case: kase, name, opsPerSec } of rows) {
+      if (name === REF) refOf.set(kase, opsPerSec);
+    }
+    for (const { case: kase, name, opsPerSec } of rows) {
+      const key = `${engine}\0${kase}\0${name}`;
+      const entry =
+        byKey.get(key) ??
+        byKey.set(key, { engine, case: kase, name, samples: [], ratios: [] }).get(key);
+      entry.samples.push(opsPerSec);
+      const ref = refOf.get(kase);
+      if (name !== REF && ref !== undefined) entry.ratios.push(ref / opsPerSec);
     }
   }
   const out = new Map();
-  for (const [key, { case: kase, name, samples }] of byKey) {
-    out.set(key, { case: kase, name, mean: mean(samples), sd: stdev(samples), n: samples.length });
+  for (const [key, { engine, case: kase, name, samples, ratios }] of byKey) {
+    out.set(key, {
+      engine,
+      case: kase,
+      name,
+      mean: mean(samples),
+      sd: stdev(samples),
+      n: samples.length,
+      ratio: ratios.length === 0 ? undefined : mean(ratios),
+      ratioSd: ratios.length === 0 ? undefined : stdev(ratios),
+    });
   }
   return out;
 }
@@ -85,22 +121,31 @@ const num = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 function printTable(stats) {
   console.log(
     `\n${"case".padEnd(11)}${"implementation".padEnd(31)}${"mean ops/s".padStart(12)}` +
-      `${"± sd".padStart(9)}${"cv".padStart(7)}${"vs ref".padStart(9)}`,
+      `${"± sd".padStart(9)}${"cv".padStart(7)}${"vs ref".padStart(14)}`,
   );
-  console.log("─".repeat(79));
-  let refMean = 0;
+  console.log("─".repeat(84));
   let currentCase = "";
+  let currentEngine = "";
   for (const s of stats.values()) {
+    if (s.engine !== currentEngine) {
+      console.log(`${currentEngine === "" ? "" : "\n"}── ${s.engine} ──`);
+      currentEngine = s.engine;
+      currentCase = "";
+    }
     if (s.case !== currentCase) {
       if (currentCase) console.log();
       currentCase = s.case;
     }
-    if (s.name === REF) refMean = s.mean;
-    const ratio = s.name === REF ? "ref" : `×${(refMean / s.mean).toFixed(2)}`;
+    const ratio =
+      s.name === REF
+        ? "ref"
+        : s.ratio === undefined
+          ? "—"
+          : `×${s.ratio.toFixed(2)} ± ${s.ratioSd.toFixed(2)}`;
     console.log(
       `${(s.case === currentCase && s.name === REF ? s.case : "").padEnd(11)}` +
         `${s.name.padEnd(31)}${num(s.mean).padStart(12)}${num(s.sd).padStart(9)}` +
-        `${((s.sd / s.mean) * 100).toFixed(1).padStart(6)}%${ratio.padStart(9)}`,
+        `${((s.sd / s.mean) * 100).toFixed(1).padStart(6)}%${ratio.padStart(14)}`,
     );
   }
 }
@@ -111,7 +156,12 @@ function printComparison(now, before) {
       `${"after".padStart(11)}${"delta".padStart(9)}${"sigmas".padStart(8)}  verdict`,
   );
   console.log("─".repeat(92));
+  let currentEngine = "";
   for (const [key, s] of now) {
+    if (s.engine !== currentEngine) {
+      console.log(`${currentEngine === "" ? "" : "\n"}── ${s.engine} ──`);
+      currentEngine = s.engine;
+    }
     const b = before.get(key);
     if (b === undefined) {
       console.log(
@@ -145,6 +195,12 @@ if (!Number.isInteger(opts.runs) || opts.runs < 2) {
   process.exit(1);
 }
 
+const engines = opts.engines === "both" ? ["bun", "node"] : [opts.engines];
+if (engines.some((engine) => ENGINES[engine] === undefined)) {
+  console.error(`--engines must be one of: bun, node, both (got "${opts.engines}")`);
+  process.exit(1);
+}
+
 let before;
 if (opts.against !== undefined) {
   if (!existsSync(opts.against)) {
@@ -152,15 +208,18 @@ if (opts.against !== undefined) {
     process.exit(1);
   }
   const saved = JSON.parse(readFileSync(opts.against, "utf8"));
-  before = new Map(saved.entries.map((e) => [`${e.case}\0${e.name}`, e]));
+  // A baseline recorded before `--engines` existed carries no engine and was bun.
+  before = new Map(saved.entries.map((e) => [`${e.engine ?? "bun"}\0${e.case}\0${e.name}`, e]));
   console.log(`baseline: ${opts.against} (${saved.runs} runs, ${saved.recordedAt})`);
 }
 
-console.log(`measuring: ${opts.runs} runs in fresh processes…`);
+console.log(`measuring: ${opts.runs} runs in fresh processes, under ${engines.join(" and ")}…`);
 const runs = [];
-for (let i = 0; i < opts.runs; i++) {
-  runs.push(await measureOnce());
-  process.stdout.write(`\r  ${i + 1}/${opts.runs}`);
+for (const engine of engines) {
+  for (let i = 0; i < opts.runs; i++) {
+    runs.push({ engine, rows: await measureOnce(engine) });
+    process.stdout.write(`\r  ${engine} ${i + 1}/${opts.runs}`);
+  }
 }
 process.stdout.write("\r".padEnd(20) + "\r");
 

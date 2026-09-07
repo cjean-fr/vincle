@@ -1,12 +1,12 @@
 /**
- * Combien coûte la marche, séparément du fold ? Trois variantes du même document,
- * mêmes octets, même processus :
+ * What the walk costs, apart from the static path. Three variants of one document, same
+ * bytes, same process:
  *
- *   plat        — que des éléments, tout se plie à la construction. Le plancher.
- *   composants  — le fold s'arrête à chaque frontière. La forme réelle d'une page.
- *   kitajs      — la référence, sur les deux arbres.
+ *   flat        — elements only, all of it serialized at construction. The floor.
+ *   components  — the static path stops at every boundary. What a page really is.
+ *   kitajs      — the reference, on both trees.
  *
- * L'écart plat → composants est le prix des deux passes.
+ * The flat → components gap is the price of the two passes.
  */
 import { jsx as kjsx } from "@kitajs/html/jsx-runtime";
 import { jsx, renderToString } from "@vincle/core";
@@ -18,7 +18,7 @@ const ROWS = Array.from({ length: 1000 }, (_, i) => ({
   qty: i % 7,
 }));
 
-/** Un item, en éléments purs — foldable de bout en bout. */
+/** One item, elements only — serializable end to end. */
 const flatItem = (h, r) =>
   h("div", {
     class: "purchase purchase-card",
@@ -29,7 +29,7 @@ const flatItem = (h, r) =>
     ],
   });
 
-/** Le même item, derrière une frontière de composant. */
+/** The same item, behind a component boundary. */
 const makeComponentItem = (h) => {
   const Item = ({ row }) => flatItem(h, row);
   return (r) => h(Item, { row: r });
@@ -42,8 +42,8 @@ const componentPage = (h) => {
   return h("div", { class: "purchases", children: ROWS.map(item) });
 };
 
-// Équivalence avant mesure : trois documents identiques, sinon on compare des
-// charges de travail différentes — l'erreur qui a produit un faux 3,7× hier.
+// Equivalence before measurement: three identical documents, or what is compared
+// is two different workloads — the mistake that once produced a false 3.7×.
 const outs = await Promise.all([
   renderToString(flatPage(jsx)),
   renderToString(componentPage(jsx)),
@@ -51,16 +51,16 @@ const outs = await Promise.all([
   Promise.resolve(String(componentPage(kjsx))),
 ]);
 for (const o of outs.slice(1)) {
-  if (o !== outs[0]) throw new Error("les variantes ne rendent pas le même document");
+  if (o !== outs[0]) throw new Error("the variants do not render the same document");
 }
-console.error(`document : ${(outs[0].length / 1024).toFixed(1)} KB, ${ROWS.length} items\n`);
+console.error(`document: ${(outs[0].length / 1024).toFixed(1)} KB, ${ROWS.length} items\n`);
 
-group("arbre plat — que des éléments (le fold fait tout)", () => {
+group("flat tree — elements only (the static path does everything)", () => {
   bench("vincle", async () => await renderToString(flatPage(jsx)));
   bench("kitajs", () => String(flatPage(kjsx)));
 });
 
-group("arbre à composants — une frontière par item (le fold s'arrête)", () => {
+group("component tree — one boundary per item (the static path stops)", () => {
   bench("vincle", async () => await renderToString(componentPage(jsx)));
   bench("kitajs", () => String(componentPage(kjsx)));
 });

@@ -1,6 +1,6 @@
 /**
- * Profil CPU d'un seul cas, une seule implémentation : `bench.js` profilé, c'est
- * un profil de mitata. Les deux moteurs sont exigés avant tout ticket perf.
+ * CPU profile of one case, one implementation: profiling `bench.js` profiles
+ * mitata. Both engines are required before any perf ticket.
  *
  * Usage:
  *   node  --conditions=dist --cpu-prof --cpu-prof-name=v8.cpuprofile  src/profile.js vincle realworld
@@ -9,8 +9,8 @@
  * Args: <impl: vincle|kitajs> <case: realworld|text> [iterations]
  */
 
-// `render` rend déjà du HTML final : le réenvelopper l'échapperait, +28 % et une
-// fausse lenteur.
+// `render` already returns final HTML: wrapping it again would escape it — +28%
+// and a slowdown that is not there.
 import { NAME, generatePurchases } from "./realworld/data.js";
 import { render as realworldKita } from "./realworld/kitajs.js";
 import { render as realworldVincle } from "./realworld/vincle.js";
