@@ -114,11 +114,11 @@ transform](/integration/precompile) emits `jsxTemplate` calls the way kitajs
 emits concatenations. Measured on the same 100-row list, output verified
 identical byte for byte before timing, over 7 fresh processes on each engine:
 
-| Renderer                    |    Bun / JSC |    Node / V8 |                                               |
-| --------------------------- | -----------: | -----------: | --------------------------------------------- |
-| `@vincle/core` (precompile) | **10.56** µs | **13.94** µs | escapes                                       |
-| `@kitajs/html` (`safe`)     |     13.43 µs |     18.05 µs | escapes → Vincle **1.27×** / **1.29×** faster |
-| `@kitajs/html` (default)    |      9.85 µs |     10.92 µs | does not escape                               |
+| Renderer                    |   Bun / JSC |    Node / V8 |                                               |
+| --------------------------- | ----------: | -----------: | --------------------------------------------- |
+| `@vincle/core` (precompile) | **9.19** µs | **12.44** µs | escapes                                       |
+| `@kitajs/html` (`safe`)     |    12.92 µs |     18.06 µs | escapes → Vincle **1.40×** / **1.45×** faster |
+| `@kitajs/html` (default)    |     9.21 µs |     11.09 µs | does not escape                               |
 
 Both engines, because a gap on one of them alone is that engine's own
 deoptimisation rather than a property of the code.
@@ -178,9 +178,9 @@ live in [`@vincle/flow`](/integration/streaming), a separate install.
 - **You render to the DOM, not to a string.** Vincle has no client runtime, no
   hydration and no reconciler, and none is planned. Preact or React.
 - **You need every last microsecond and control your inputs.** `@kitajs/html`
-  without `safe` is faster than anything here, including Vincle's precompile
-  path, because it does less. With their TypeScript plugin wired into CI, that
-  is a defensible position.
+  without `safe` does less, and on Node it stays ahead of Vincle's precompile
+  path for it. On Bun the two are level, and Vincle is escaping. With their
+  TypeScript plugin wired into CI, either way is a defensible position.
 - **You are already inside a framework's rendering pipeline.** `hono/jsx` inside
   a Hono app costs you nothing to keep.
 
