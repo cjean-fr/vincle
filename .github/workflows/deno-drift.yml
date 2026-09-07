@@ -40,5 +40,5 @@ jobs:
           deno-version: v2.x
 
       - name: Compare the captured trace to what Deno emits now
-        working-directory: packages/vite-plugin-precompile
+        working-directory: packages/precompile
         run: bun run scripts/capture-deno-trace.mjs --check

@@ -1,10 +1,10 @@
 {
-  "name": "@vincle/vite-plugin-precompile",
+  "name": "@vincle/precompile",
   "version": "0.9.0",
-  "description": "Vite plugin for @vincle/core JSX precompile transform",
+  "description": "JSX precompile transform for @vincle/core, with Vite and Bun adapters",
   "keywords": [
+    "bun",
     "jsx",
-    "plugin",
     "precompile",
     "template-literals",
     "transform",
@@ -20,7 +20,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cjean-fr/vincle.git",
-    "directory": "packages/vite-plugin-precompile"
+    "directory": "packages/precompile"
   },
   "files": [
     "dist",
@@ -35,9 +35,13 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./transformer": {
-      "types": "./dist/transformer.d.ts",
-      "default": "./dist/transformer.js"
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
+    },
+    "./bun": {
+      "types": "./dist/bun.d.ts",
+      "default": "./dist/bun.js"
     }
   },
   "publishConfig": {
@@ -68,5 +72,10 @@
   },
   "peerDependencies": {
     "vite": "^5 || ^6 || ^7 || ^8"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
   }
 }
