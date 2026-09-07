@@ -378,7 +378,7 @@ function emitOpening(
       emitAttribute(attr, out, ctx);
     } else {
       throw new Error(
-        "[vincle/vite-plugin-precompile] internal invariant broken: a spread attribute reached emitOpening — " +
+        "[vincle/precompile] internal invariant broken: a spread attribute reached emitOpening — " +
           "isEligibleElement should have rejected this element. This is a bug in vincle, not in your " +
           "code or configuration — report it.",
       );
@@ -673,7 +673,7 @@ function unwrapSerialized(
   if (typeof result === "string") return result;
   if (result instanceof Promise) {
     throw new Error(
-      `[vincle/vite-plugin-precompile] ${helper} returned a Promise for the static value ${subject} — ` +
+      `[vincle/precompile] ${helper} returned a Promise for the static value ${subject} — ` +
         "a static value must serialize synchronously. This is a bug in the runtime that declared the " +
         '"vincle" precompile dialect.',
     );
@@ -681,7 +681,7 @@ function unwrapSerialized(
   const value: unknown = (result as { value?: unknown })?.value;
   if (typeof value === "string") return value;
   throw new Error(
-    `[vincle/vite-plugin-precompile] ${helper} returned neither a string nor a { value: string } ` +
+    `[vincle/precompile] ${helper} returned neither a string nor a { value: string } ` +
       `for the static value ${subject}, but ${result === null ? "null" : typeof result}. A runtime ` +
       'declaring the "vincle" precompile dialect must serialize to text.',
   );

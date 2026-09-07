@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner_comment": [
+    "The `command` runner, like core's. `stryker-mutator-bun-runner` reads",
+    "`testFiles` as its own option rather than Stryker's, so a top-level entry is",
+    "ignored in silence and its default `*.spec.*` patterns match nothing here —",
+    "Stryker then exits with `No tests were executed`."
+  ],
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "bun test src"
+  },
+  "commandRunner_comment": [
+    "`bun test src`, not `bun test`. Mutation runs in a sandbox: a copy of this",
+    "package alone, instrumented sources, a moved cwd. A test that depends on",
+    "anything but the mutated code — a neighbouring manifest, the repo layout,",
+    "the transpiler — fails there and nowhere else, so the run is restricted to",
+    "the tests that live next to the mutated code. Root tests still run under",
+    "`bun test` and in CI; they simply kill no mutant."
+  ],
+  "mutate": ["src/**/*.ts", "!src/**/*.test.ts"],
+  "excludedMutations_comment": [
+    "Aligned with core: only BlockStatement is excluded. ConditionalExpression,",
+    "EqualityOperator, LogicalOperator, BooleanLiteral and StringLiteral are",
+    "exactly the ones that ask whether a branch is really tested."
+  ],
+  "mutator": {
+    "excludedMutations": ["BlockStatement"]
+  },
+  "concurrency": 4,
+  "coverageAnalysis": "off",
+  "reporters": ["html", "clear-text", "progress"],
+  "timeoutMS": 30000,
+  "thresholds": {
+    "high": 85,
+    "low": 63,
+    "break": 63
+  },
+  "thresholds_comment": [
+    "Measured 2026-08-13, every mutator but BlockStatement: 68.63% (313 killed,",
+    "2 timeouts, 144 survived, 0 uncovered). `break` at 63 leaves ~5 points of",
+    "slack, like core's. It is a ratchet: when the score rises, this number rises",
+    "with it."
+  ]
+}

@@ -1,8 +1,16 @@
-# @vincle/vite-plugin-precompile
+# @vincle/precompile
 
-Vite plugin that precompiles lowercase (native HTML) JSX elements into Deno-style `jsxTemplate` tagged template literals.
+Precompiles lowercase (native HTML) JSX elements into Deno-style `jsxTemplate` tagged template literals.
 
-The underlying transformer is also exposed as `@vincle/vite-plugin-precompile/transformer` for programmatic use.
+Three entry points, one transform:
+
+| import                    | what it is                                     |
+| ------------------------- | ---------------------------------------------- |
+| `@vincle/precompile`      | the transform itself, for any pipeline         |
+| `@vincle/precompile/vite` | Vite plugin                                    |
+| `@vincle/precompile/bun`  | Bun plugin, for a server with no Vite in front |
+
+It pays per render repeated, which is the SSR shape: a statically generated page is rendered once and has nothing to amortise.
 
 ## Compatible runtimes
 
@@ -18,10 +26,10 @@ React does not export the `jsxTemplate` helper that the precompile transform rel
 ## Install
 
 ```sh
-npm install @vincle/vite-plugin-precompile -D
+npm install @vincle/precompile -D
 ```
 
-Requires `vite` >= 5 as a peer dependency.
+`vite` >= 5 is an optional peer dependency, needed only for the `/vite` entry point.
 
 ## Usage
 
@@ -29,7 +37,7 @@ Just add the plugin — no adapter file needed.
 
 ```ts
 // vite.config.ts
-import precompile from "@vincle/vite-plugin-precompile";
+import precompile from "@vincle/precompile/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -67,12 +75,30 @@ function vitePrecompile(config?: PluginConfig): Plugin;
 
 Returns a Vite plugin with `enforce: "pre"` — runs before esbuild/Vite's own transforms.
 
-## Standalone transformer
+## Bun
 
-The transform is also exposed for programmatic use — it is exactly what the Vite plugin calls internally:
+A server that imports its own modules never reaches a Vite plugin, whatever the config says. On Bun, load the transform from a preload script:
 
 ```ts
-import precompileTransform from "@vincle/vite-plugin-precompile/transformer";
+// preload.ts
+import { plugin } from "bun";
+import precompile from "@vincle/precompile/bun";
+
+plugin(precompile());
+```
+
+```sh
+bun --preload ./preload.ts server.ts
+```
+
+There is no virtual module here, so the helpers come from `runtimeSource` (`@vincle/core/jsx-runtime` unless you set another), and Bun has no end-of-build hook, so nothing warns when the plugin matches no file — a transformed module imports `jsxTemplate`, which is the direct check.
+
+## The transform alone
+
+Exposed for any other pipeline — it is exactly what both adapters call:
+
+```ts
+import precompileTransform from "@vincle/precompile";
 
 const result = precompileTransform(
   code, // source text

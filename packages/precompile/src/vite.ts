@@ -6,7 +6,7 @@ import precompileTransform, {
   type PluginConfig,
   type RenderAttr,
   type RenderEscape,
-} from "./transformer.js";
+} from "./index.js";
 
 export type { PluginConfig };
 
@@ -40,7 +40,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
           ? "undefined"
           : typeof config.runtimeSource;
     throw new Error(
-      `[vincle/vite-plugin-precompile] config: runtimeSource must be a non-empty string module ` +
+      `[vincle/precompile] config: runtimeSource must be a non-empty string module ` +
         `specifier, e.g. "@vincle/core/jsx-precompile-runtime", got ${got}.`,
     );
   }
@@ -82,11 +82,25 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
    */
   let resolvedRuntimeSource: string = RUNTIME_SOURCE;
 
+  /**
+   * What this build actually handed to the plugin.
+   *
+   * A precompiled module and a runtime-rendered one emit the same bytes, so a
+   * build where the transform never runs is indistinguishable from one where it
+   * did — except in speed, which nobody measures on their own page. These three
+   * counters are what turns that silence into a warning at `buildEnd`.
+   */
+  let modulesSeen = 0;
+  let jsxModulesSeen = 0;
+  let transformedCount = 0;
+  let isBuild = false;
+
   return {
-    name: "@vincle/vite-plugin-precompile",
+    name: "@vincle/precompile",
     enforce: "pre",
 
     configResolved(resolvedConfig: ResolvedConfig) {
+      isBuild = resolvedConfig.command === "build";
       if (config?.runtimeSource) {
         runtimeSourceForTransform = config.runtimeSource;
         explicitRuntimeSource = config.runtimeSource;
@@ -138,7 +152,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
           >;
         } catch (err) {
           this.error(
-            `[vincle/vite-plugin-precompile] failed to probe ${candidateFrameworkRuntime}: ${String(err)}. ` +
+            `[vincle/precompile] failed to probe ${candidateFrameworkRuntime}: ${String(err)}. ` +
               `The module for jsxImportSource "${candidateFrameworkRuntime.replace(FRAMEWORK_RUNTIME_SUFFIX, "")}" ` +
               "could not be imported — is it installed and resolvable from where Vite runs? " +
               "Or set an explicit runtimeSource.",
@@ -146,7 +160,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         }
         if (typeof mod["jsxTemplate"] !== "function") {
           this.error(
-            `[vincle/vite-plugin-precompile] jsxImportSource "${candidateFrameworkRuntime.replace(FRAMEWORK_RUNTIME_SUFFIX, "")}" ` +
+            `[vincle/precompile] jsxImportSource "${candidateFrameworkRuntime.replace(FRAMEWORK_RUNTIME_SUFFIX, "")}" ` +
               'does not support the precompile transform — its jsx-runtime has no "jsxTemplate" export. ' +
               "Use Preact, Hono, or @vincle/core, or set an explicit runtimeSource to a module that " +
               "exports jsxTemplate, jsxAttr and jsxEscape.",
@@ -175,7 +189,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         // an error — the generated code imports the helpers itself, and a
         // module Vite can resolve but this build cannot is a normal setup.
         this.warn(
-          `[vincle/vite-plugin-precompile] could not load "${source}" at build time ` +
+          `[vincle/precompile] could not load "${source}" at build time ` +
             `(${String(err)}), so the output follows Deno's precompile transform. Static ` +
             "attributes are inlined without URL or CSS filtering.",
         );
@@ -186,7 +200,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
       if (typeof mod.jsxAttr !== "function" || typeof mod.jsxEscape !== "function") {
         this.error(
-          `[vincle/vite-plugin-precompile] "${source}" declares the "vincle" precompile dialect ` +
+          `[vincle/precompile] "${source}" declares the "vincle" precompile dialect ` +
             "but does not export both jsxAttr and jsxEscape, so build-time sanitization cannot " +
             'run — a literal href="javascript:…" would reach the bundle verbatim. Re-export ' +
             "the runtime whole (`export * from`) rather than naming a subset.",
@@ -198,8 +212,10 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
     },
 
     transform(code: string, id: string) {
+      modulesSeen++;
       if (!id.endsWith(".tsx") && !id.endsWith(".jsx")) return;
       if (id.includes("node_modules")) return;
+      jsxModulesSeen++;
       if (!code.includes("<")) return;
 
       const result = precompileTransform(
@@ -211,7 +227,34 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       );
 
       if (!result || result.code === code) return;
+      transformedCount++;
       return { code: result.code, map: result.map };
+    },
+
+    /**
+     * Declared and never used is a real configuration, and a silent one: the
+     * transform is byte-for-byte equivalent to the runtime path, so a build that
+     * skipped it renders the same document, only slower. Whoever put the plugin
+     * in the config believes it is working.
+     *
+     * Build only. In dev this hook fires when the server closes, where a warning
+     * about the modules it did not see reads as an error at shutdown.
+     */
+    buildEnd() {
+      if (!isBuild || transformedCount > 0) return;
+
+      const detail =
+        jsxModulesSeen > 0
+          ? `${jsxModulesSeen} .jsx/.tsx module(s) passed through it, none carrying JSX to precompile`
+          : `no .jsx/.tsx module passed through it at all (${modulesSeen} module(s) seen)`;
+
+      this.warn(
+        `[vincle/precompile] nothing was precompiled in this build: ${detail}. ` +
+          "A page rendered by an SSG, or by a server that imports its own modules, never " +
+          "reaches a Vite plugin — and since the transform emits byte-identical output, speed " +
+          "is the only thing that would have told you. If this build is not the one that " +
+          "renders your JSX, drop the plugin from it.",
+      );
     },
   };
 }
