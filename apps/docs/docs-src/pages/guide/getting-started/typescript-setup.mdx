@@ -58,7 +58,7 @@ rewrites JSX into tagged template literals — less allocations, less GC
 pressure, faster rendering:
 
 ```ts
-import precompile from "@vincle/vite-plugin-precompile";
+import precompile from "@vincle/precompile/vite";
 
 export default defineConfig({
   esbuild: { jsx: "automatic", jsxImportSource: "@vincle/core" },

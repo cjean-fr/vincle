@@ -72,7 +72,7 @@ Real examples:
 ```
 
 The prefix is stable and greppable (`[vincle/core]`, `[vincle/flow]`,
-`[vincle/vite-plugin]`, `[vincle/vite-plugin-precompile]`), so you can filter
+`[vincle/vite-plugin]`, `[vincle/precompile]`), so you can filter
 vincle errors out of a log or match them in CI.
 
 Config errors fail **fast**, at the entry point that receives the config —
@@ -84,7 +84,7 @@ before a single byte is rendered or a build starts:
   `defaultTimeout`, `onError`, `signal`, and per-fragment `timeout`.
 - `@vincle/vite-plugin`: `setVite` checks `base`; `loadViteManifest` names the
   file when it is unreadable, not JSON, or not a manifest.
-- `@vincle/vite-plugin-precompile`: `runtimeSource` is checked when the plugin is
+- `@vincle/precompile`: `runtimeSource` is checked when the plugin is
   created; a runtime declaring the `"vincle"` precompile dialect without the
   helpers to back it fails the build, and an unreadable runtime module warns and
   falls back to Deno's output.
