@@ -2,50 +2,50 @@ import { describe, expect, test } from "bun:test";
 
 import { jsx, VNode } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { tryRenderStatic, VOID_ELEMENTS, isValidTag } from "./serialize.js";
+import { serializeStatic, VOID_ELEMENTS, isValidTag } from "./serialize.js";
 import { RawString } from "./types.js";
 
-/** A getter in props can re-enter `tryRenderStatic` while the outer fold runs. */
-describe("fold re-entrancy", () => {
-  test("getter calls tryRenderStatic on a static tree → outer fold unaffected", () => {
+/** A getter in props can re-enter `serializeStatic` while the outer call runs. */
+describe("static serialization re-entrancy", () => {
+  test("getter calls serializeStatic on a static tree → outer call unaffected", () => {
     const props = {
       get ["data-x"]() {
-        // Inner tryRenderStatic, static tree.
-        const inner = tryRenderStatic("span", { children: "inner" });
+        // Inner call, static tree.
+        const inner = serializeStatic("span", { children: "inner" });
         expect(inner).toBeInstanceOf(RawString);
         return "x";
       },
       children: "hello",
     };
 
-    const result = tryRenderStatic("div", props);
+    const result = serializeStatic("div", props);
     expect(result).toBeInstanceOf(RawString);
   });
 
-  test("getter calls tryRenderStatic with a VNode → outer fold unaffected", () => {
-    // The inner call declines, and the outer one must still fold its own
+  test("getter calls serializeStatic with a VNode → outer call unaffected", () => {
+    // The inner call bails, and the outer one must still serialize its own
     // children: nothing carries the inner answer out.
     const props = {
       get ["data-x"]() {
-        const inner = tryRenderStatic("div", { children: new VNode("span", {}, null) });
+        const inner = serializeStatic("div", { children: new VNode("span", {}, null) });
         expect(inner).toBeNull();
         return "x";
       },
       children: "hello",
     };
 
-    const result = tryRenderStatic("div", props);
+    const result = serializeStatic("div", props);
     // Outer call: children "hello" is static, getter returns static "x" —
-    // the fold must succeed and return a RawString.
+    // the outer call must succeed and return a RawString.
     expect(result).toBeInstanceOf(RawString);
   });
 
   test("static tree", () => {
-    expect(tryRenderStatic("div", { children: "hello" })).toBeInstanceOf(RawString);
+    expect(serializeStatic("div", { children: "hello" })).toBeInstanceOf(RawString);
   });
 
   test("dynamic tree (VNode child)", () => {
-    expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBeNull();
+    expect(serializeStatic("div", { children: new VNode("span", {}, null) })).toBeNull();
   });
 });
 
@@ -54,7 +54,7 @@ describe("fold re-entrancy", () => {
  *
  * The rule being pinned has not changed: a name carrying a space or a quote closes
  * the start tag, and everything after it becomes markup. What changed is where it
- * is enforced. The fold checked the name, and so did each tree walk — three checks
+ * is enforced. The static path checked the name, and so did each tree walk — three checks
  * for one answer, two of them unreachable through the public API, since a string
  * tag only ever enters the engine through `jsx()`. An unreachable
  * branch does not stay neutral, it drifts; and the price was paid on every element
@@ -62,7 +62,7 @@ describe("fold re-entrancy", () => {
  *
  * So the check sits at the gate, and fires at construction: the earliest moment
  * at which the stack still points at the element the developer wrote. Both shapes
- * are exercised below — the one that would fold, and the one that would reach the
+ * are exercised below — the one that would serialize, and the one that would reach the
  * tree walk — because the guarantee is that *neither* gets through.
  */
 describe("tag validation — jsx() is the single gate", () => {
@@ -81,7 +81,7 @@ describe("tag validation — jsx() is the single gate", () => {
 
   for (const tag of INVALID) {
     test(`rejects ${JSON.stringify(tag)}`, () => {
-      // Static children — the shape that would have been folded to raw HTML.
+      // Static children — the shape that would have been serialized to raw HTML.
       expect(() => jsx(tag, { children: "hello" })).toThrow(/\[vincle\/core\] Invalid tag name/);
       // Dynamic children — the shape that would have reached the tree walk.
       expect(() => jsx(tag, { children: Promise.resolve("hello") })).toThrow(
@@ -94,7 +94,7 @@ describe("tag validation — jsx() is the single gate", () => {
     expect(() => jsx("div onload=x", {})).toThrow('Invalid tag name "div onload=x"');
   });
 
-  test("legitimate names still fold", () => {
+  test("legitimate names still serialize", () => {
     for (const tag of ["div", "my-element", "svg:rect", "h1", "data-x"]) {
       expect(jsx(tag, { children: "ok" })).toBeInstanceOf(RawString);
     }
@@ -115,7 +115,7 @@ describe("tag validation — jsx() is the single gate", () => {
 // `viewBox` because it has uppercase but no React mapping).
 
 describe("SVG foreign elements render with closing tags (not void)", () => {
-  test("<path /> folds and renders with closing tag", async () => {
+  test("<path /> serializes and renders with closing tag", async () => {
     const node = jsx("path", { d: "M0 0h10v10z" });
     expect(node).toBeInstanceOf(RawString);
     expect(await renderToString(node)).toBe('<path d="M0 0h10v10z"></path>');
@@ -163,12 +163,12 @@ describe("SVG foreign elements render with closing tags (not void)", () => {
 
 describe("sequential calls isolation", () => {
   test("dynamic then static", () => {
-    expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBeNull();
-    expect(tryRenderStatic("div", { children: "hello" })).toBeInstanceOf(RawString);
+    expect(serializeStatic("div", { children: new VNode("span", {}, null) })).toBeNull();
+    expect(serializeStatic("div", { children: "hello" })).toBeInstanceOf(RawString);
   });
 
   test("static then dynamic", () => {
-    expect(tryRenderStatic("div", { children: "hello" })).toBeInstanceOf(RawString);
-    expect(tryRenderStatic("div", { children: new VNode("span", {}, null) })).toBeNull();
+    expect(serializeStatic("div", { children: "hello" })).toBeInstanceOf(RawString);
+    expect(serializeStatic("div", { children: new VNode("span", {}, null) })).toBeNull();
   });
 });

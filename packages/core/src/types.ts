@@ -20,7 +20,7 @@ export class VNode {
    * precompile contract needs `instanceof VNode`, and an exported class is a
    * constructor whoever holds it may call. The tree walk does not re-check the
    * tag, so a name that got in here unexamined would reach the document
-   * verbatim, closing tags and all. One call per element; the static fold, the
+   * verbatim, closing tags and all. One call per element; static serialization, the
    * other way out of `jsx()`, validates for itself.
    */
   constructor(

@@ -14,7 +14,7 @@ import { raw } from "./types.js";
 // ── serializeAttr: the value taxonomy, pinned once ─────────────────────────
 //
 // The single dispatch every attribute path shares: `buildAttrs` keeps its own
-// inline copy (delegation costs the fold 13–16%), and
+// inline copy (delegation costs the static path 13–16%), and
 // `jsxAttr` delegates directly. The values below are the contract — written by
 // hand, not derived from another serializer, or the test would only prove a
 // serializer equals itself.
@@ -455,13 +455,13 @@ describe("buildAttrs — the props object is read, not its prototype", () => {
 });
 
 // Same gadget, the three reads the attribute loops don't cover. `children` and
-// `dangerouslySetInnerHTML` are read by key, once in `jsx()` and once in the
-// fold — and `dangerouslySetInnerHTML` bypasses the escaping chain, so it is
-// the one that turns the primitive into injected markup rather than a stray
-// attribute. Both paths are asserted: the fold owns the static case, which is
-// the common one, and only `jsx()` sees `dangerouslySetInnerHTML`.
+// `dangerouslySetInnerHTML` are read by key, once in `jsx()` and once on the
+// static path — and `dangerouslySetInnerHTML` bypasses the escaping chain, so it
+// is the one that turns the primitive into injected markup rather than a stray
+// attribute. Both paths are asserted: the static path owns the static case, which
+// is the common one, and only `jsx()` sees `dangerouslySetInnerHTML`.
 describe("the children are read from the props object, not its prototype", () => {
-  test("an inherited `children` is not content — static fold", async () => {
+  test("an inherited `children` is not content — static path", async () => {
     const html = await polluted("children", "POLLUTED", () =>
       renderToString(jsx("div", { class: "ok" })),
     );
@@ -473,7 +473,7 @@ describe("the children are read from the props object, not its prototype", () =>
     expect(html).toBe("<br>");
   });
 
-  test("…nor through the tree walk, which the fold declines to", async () => {
+  test("…nor through the tree walk, which the static path declines to", async () => {
     const html = await polluted("children", "POLLUTED", () =>
       renderToString(jsx("div", { title: Promise.resolve("t") })),
     );

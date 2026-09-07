@@ -142,7 +142,7 @@ describe("promised attribute values are awaited", () => {
     );
   });
 
-  test("on an element with static children — the subtree still folds", async () => {
+  test("on an element with static children — the subtree still serializes", async () => {
     const node = jsx("a", { href: Promise.resolve("/p"), children: "click" });
     expect(node).toBeInstanceOf(Promise);
     expect(await renderToString(node)).toBe('<a href="/p">click</a>');
@@ -219,7 +219,7 @@ describe("dangerouslySetInnerHTML", () => {
 describe("renderToString never throws synchronously", () => {
   // The signature says `Promise<string>`; a synchronous throw walks straight past
   // `.catch()`. `buildAttrs` is the one that throws during the walk, and only for
-  // an element the fold declined — hence the promised child.
+  // an element the static path declined — hence the promised child.
   test("an unserializable attribute rejects instead of throwing", async () => {
     let threw = false;
     let promise: Promise<string> | undefined;
@@ -336,15 +336,15 @@ describe("Error annotation", () => {
 //
 // Two branches of the element walk are no longer reachable through `jsx()`: an
 // element with `children === undefined`, and an element whose children are a
-// single string. For a string tag the fold only declines when a *child* is
-// dynamic — a promised attribute no longer sends the element down this path, the
-// fold awaits it — so both shapes now always fold.
+// single string. For a string tag the static path only bails when a *child* is
+// dynamic — a promised attribute no longer sends the element down the walk, the
+// static path awaits it — so both shapes now always serialize.
 //
 // They are kept, and tested here on hand-built nodes, because they are not
 // speculation: they carry the void-element rule (`<br>`, not `<br></br>`) and the
 // rawtext rule (`<script>` content is not escaped like text). If either shape ever
 // reaches the walk again, dropping them would be a silent divergence from the
-// fold — so what is pinned below is the *contract*, not a path a document takes
+// static path — so what is pinned below is the *contract*, not a route a document takes
 // today. The differential fuzzers are what would notice the day it changes.
 
 describe("element walk contract (guard branches)", () => {
@@ -452,14 +452,14 @@ describe("rawtext content survives every child shape", () => {
   // The last shape the rule missed: a leaf that is neither a string nor any of
   // the containers above — an object with a `toString`, a boxed primitive. It
   // went through `valueToText`, which HTML-escapes, so `<` reached the
-  // JavaScript engine as `&lt;`. Both paths are asserted because the fold and
+  // JavaScript engine as `&lt;`. Both paths are asserted because the static path and
   // the walk coerce it in different functions.
   test("an object leaf is coerced, not entity-escaped", async () => {
     const code = { toString: () => 'if (a < b) x = "</script>";' };
     const expected = '<script>if (a < b) x = "\\u003c/script>";</script>';
 
     expect(await script(code)).toBe(expected); // walk
-    expect(await renderToString(jsx("script", { children: code }))).toBe(expected); // fold
+    expect(await renderToString(jsx("script", { children: code }))).toBe(expected); // static
     expect(
       await renderToString(jsx("style", { children: { toString: () => "a{}</style>" } })),
     ).toBe("<style>a{}<\\/style></style>");
