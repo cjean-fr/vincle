@@ -101,6 +101,15 @@ for (const [tag, { pattern, escape }] of Object.entries(RAWTEXT_LANG)) {
 // escaped too as defense-in-depth for XML/email clients that don't follow spec.
 const RE_ESCAPE_ATTR = /[&<"]/;
 
+// Attribute values repeat: the same `class` / `title` literal is re-escaped on
+// every render of every element that carries it. `search` under V8 and the
+// splice loop below re-pay that per call, so the answer is memoized like
+// `attrMeta` in `attrs.ts` — same function, same value, same bytes. Values can
+// come from a caller-controlled `{...spread}`, so the cache is capped; past the
+// cap escaping still happens, just uncached.
+const ESCAPED_ATTR = new Map<string, string>();
+const ESCAPED_ATTR_MAX = 1024;
+
 /**
  * Escape a string for a double-quoted attribute value — `&`, `<`, `"`.
  *
@@ -112,27 +121,35 @@ const RE_ESCAPE_ATTR = /[&<"]/;
  * ```
  */
 export function escapeAttr(str: string): string {
-  const first = str.search(RE_ESCAPE_ATTR);
-  if (first === -1) return str;
+  const cached = ESCAPED_ATTR.get(str);
+  if (cached !== undefined) return cached;
 
-  let out = str.slice(0, first);
-  let start = first;
-  for (let i = first; i < str.length; i++) {
-    const c = str.charCodeAt(i);
-    if (c === 38) {
-      out += str.slice(start, i) + "&amp;";
-      start = i + 1;
-    } // &
-    else if (c === 34) {
-      out += str.slice(start, i) + "&quot;";
-      start = i + 1;
-    } // "
-    else if (c === 60) {
-      out += str.slice(start, i) + "&lt;";
-      start = i + 1;
-    } // <
+  const first = str.search(RE_ESCAPE_ATTR);
+  let out: string;
+  if (first === -1) {
+    out = str;
+  } else {
+    out = str.slice(0, first);
+    let start = first;
+    for (let i = first; i < str.length; i++) {
+      const c = str.charCodeAt(i);
+      if (c === 38) {
+        out += str.slice(start, i) + "&amp;";
+        start = i + 1;
+      } // &
+      else if (c === 34) {
+        out += str.slice(start, i) + "&quot;";
+        start = i + 1;
+      } // "
+      else if (c === 60) {
+        out += str.slice(start, i) + "&lt;";
+        start = i + 1;
+      } // <
+    }
+    out += str.slice(start);
   }
-  return out + str.slice(start);
+  if (ESCAPED_ATTR.size < ESCAPED_ATTR_MAX) ESCAPED_ATTR.set(str, out);
+  return out;
 }
 
 /**
