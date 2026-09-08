@@ -40,7 +40,10 @@ bun run bench:stats -- --runs 8 --against results/baseline.json
 ```
 
 Options: `--runs <n>` (default 8, minimum 2), `--save <file>`,
-`--against <file>`, `--engines bun|node|both` (default `bun`).
+`--against <file>`, `--engines bun|node|both` (default `bun`), and
+`--ab <A> <B>` for pre-built package roots. The everyday way to ask "is this
+revision faster than that one" is `bun run compare [a] [b]` — see
+[A/B](#ab--is-this-build-faster-than-that-one).
 
 A delta under **3σ** is reported as `noise — not a finding`. That is a verdict:
 either raise `--runs` until it settles, or accept that the change is not
@@ -104,6 +107,66 @@ uncertainty of the number: over four runs the ratio against kitajs on
 `realworld` moved between 0.53 and 0.64 while every run printed ±0.02, and
 kitajs's own throughput moved 42% — which no commit here can cause. What decides
 is the comparison above, on one machine.
+
+## A/B — is this build faster than that one?
+
+`bench:stats` answers "did the current code change". `compare` answers a
+different question — "is build A faster than build B" — and the two are not the
+same measurement. The daily path records a baseline in one session and the
+candidate in another, and the drift between the two sessions is part of the
+noise (it has cost a verdict: five rows leaning the wrong way, the machine
+having moved between the two recordings). A/B removes it: A and B are measured
+interleaved in one session, in adjacent processes.
+
+```bash
+# the plain invocation: the working tree (your change) against main
+bun run compare
+
+# any two revisions — branches, tags, hashes, origin/main … ("." = working tree)
+bun run compare f96edaa 3580cb7
+```
+
+Each side is built by a **mini CI**, never taken from the local dist: the two
+source folders the build needs — `packages/core` and `packages/typescript-config`,
+the tsconfig base its `tsconfig.json` extends — are copied _without_
+`node_modules` into a throwaway workspace, then `bun install` and
+`bun run build`, the way CI builds them. What is measured is what a clean
+checkout of that revision would publish, whatever the local `node_modules` has
+drifted into. Nothing in the workspace is touched, and the bench itself runs
+each build from a throwaway sandbox where `@vincle/core` resolves to that
+build and the competitors to the workspace.
+
+`bench:stats -- --ab <A> <B>` is the same crossover with two **pre-built
+package roots** (package.json + dist/) instead of revisions — for the days the
+builds already exist and the git dance is not what you want.
+
+What the number is: per pair — two adjacent fresh processes, the order
+alternating A-then-B / B-then-A — the ratio of vincle to a **control** is
+taken _inside each process_ (the geometric mean of the competitors;
+`--control <name>` for one of them, `--control none` for none), then A is
+divided by B. The machine's mood divides out inside the process; the
+alternation keeps a position bias — warm CPU, ramping governor — from being
+confounded with the build; the verdict is a bootstrap 95% CI on the
+**median of the paired ratios**, which excludes 1 or it does not.
+
+The control is what the frozen-build A/B above lacked, and it shows: on
+`realworld` the per-pair noise fell from about 3% to 1.3%. Before the pairs,
+`--calibrate` A/A pairs (default 3) measure that noise floor (σ_pair), and the
+`resolvable` column is the smallest delta 3σ can separate at `--runs` pairs —
+it falls as 1/√n, so a delta under it is either measured with more pairs or
+accepted as not measurable. The `precompile` case has no competitor, so no
+control: its rows are marked `(raw)` and are a glance, not a verdict.
+
+Cost: two mini CIs (a `bun install` and a build each, about a minute the first
+time, less once the bun cache is warm), then two warm-up runs plus
+(calibrate + runs) × 2 processes — about three minutes at the defaults.
+`--save` keeps the paired ratios, so the verdict can be re-read without
+re-measuring. A/B runs under the bun engine only.
+
+What it does **not** divide out: if build B changes the engine's state, the
+control — measured in the same process, _after_ vincle — partly follows it,
+and the verdict is pulled toward 1. Second order at the sizes measured here;
+for a change that restructures the hot path, read it with that caution.
 
 ## Locating a cost
 
