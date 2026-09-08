@@ -98,7 +98,12 @@ bun run build --filter=@vincle/core && bun run bench:stats -- --runs 8
 git checkout HEAD -- packages/core/src   # then rebuild
 ```
 
-CI measures and archives. It does not decide.
+CI does not measure. Eight processes inside one runner job share a VM for its
+whole duration, so the spread they print is jitter inside that VM and not the
+uncertainty of the number: over four runs the ratio against kitajs on
+`realworld` moved between 0.53 and 0.64 while every run printed ±0.02, and
+kitajs's own throughput moved 42% — which no commit here can cause. What decides
+is the comparison above, on one machine.
 
 ## Locating a cost
 

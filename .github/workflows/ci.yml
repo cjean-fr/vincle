@@ -158,20 +158,13 @@ jobs:
             packages/*/badges/
           if-no-files-found: ignore
 
-      # Measurement, no verdict: at this sample size the noise swallows the
-      # deltas worth catching, and `apps/bench/README.md` records the three gate
-      # shapes that were measured. The numbers stay readable on the run; the
-      # cost is judged by reading them.
-      - name: Benchmark
-        shell: bash
-        run: |
-          mkdir -p apps/bench/results
-          bun run --filter=@vincle/bench bench:stats -- --runs 8 | tee apps/bench/results/bench.txt
-
-      - name: Upload Benchmark Results
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: benchmark-results
-          path: apps/bench/results/
-          if-no-files-found: ignore
+      # The benchmark does not run here, and the artefact is not kept. The eight
+      # processes share one runner VM for the whole job, so the spread they
+      # report is jitter inside that VM and not the uncertainty of the number:
+      # measured across four runs, the ratio against kitajs on `realworld` moved
+      # between 0.53 and 0.64 while every run printed ±0.02, and kitajs's own
+      # throughput moved 42% — which no commit here can cause.
+      #
+      # An archive nobody can compare across runs answers no question, and it
+      # invites the comparison it cannot support. `bench:stats -- --against`
+      # on one machine is what decides; `apps/bench/README.md` has the protocol.

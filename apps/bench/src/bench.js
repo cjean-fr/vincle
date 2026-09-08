@@ -273,17 +273,21 @@ const BENCHES = [
 // `measure()` warms the case up, then samples until it holds both `min_samples`
 // samples and `min_cpu_time` of accumulated time.
 //
-// mitata's defaults — 642 ms per case, and a single warm-up call as soon as that
-// call runs past 0.5 ms, which most cases here do — buy a precision internal to
-// the process that the protocol makes nothing of: what decides is the spread
-// between processes, and `stats.js` is what aggregates it. Measured over 8 runs,
-// 250 ms and 16 warm-up calls give a between-run cv of 2.0% (median) where the
-// defaults give 3.1%, for 4.5 s per run instead of 16.5.
-const MEASURE = {
-  min_cpu_time: 250e6,
-  warmup_samples: 16,
-  warmup_threshold: 100e6,
-};
+// mitata's defaults, unmodified: 642 ms per case and a warm-up that stops at the
+// first call running past 0.5 ms, which most cases here do.
+//
+// Neither can be chosen on the spread, which is what the protocol decides on.
+// Three batches of 25 runs at one warm-up setting give a between-run cv of 2.1%,
+// 3.1% and 9.2% — at that sample size a single unlucky process triples a standard
+// deviation, so the estimate moves further than the settings do. The
+// interquartile range is no steadier. A tuned budget therefore has nothing to
+// show for itself, and the default is the value nobody has to defend.
+//
+// What the short warm-up costs is measured, and accepted: a case is sampled
+// before the JIT has settled. On `realworld` the ratio against kitajs reads 0.67
+// at mitata's default and 0.71 at 64 warm-up calls (n=15, ratios taken inside one
+// process, 3 standard errors apart). The published ratio understates Vincle by
+// about 6% for it.
 
 // mitata's `run()` is not used: its four empty calibrations cost 3.5 s per
 // process and feed only its own display, of which `--json` keeps nothing.
@@ -301,7 +305,7 @@ const MEASURE = {
 
 const results = [];
 for (const [kase, name, fn] of BENCHES) {
-  const { avg } = await measure(fn, { ...MEASURE });
+  const { avg } = await measure(fn);
   results.push({ case: kase, name, opsPerSec: 1e9 / avg });
 }
 
