@@ -7,11 +7,19 @@
  *   bun run bench:stats -- --save base.json      # measure and save
  *   bun run bench:stats -- --against base.json   # measure and compare
  *   bun run bench:stats -- --runs 12
+ *
+ *   bun run bench:stats -- --ab <A> <B>         # is build A faster than build B?
+ *
+ * `--ab` runs the crossover A/B of `ab.js`: pairs of fresh processes, the
+ * build order alternating, each ratio taken inside the process against a
+ * competitor control, and the verdict on the paired ratio. A and B are two
+ * package roots (package.json + dist/), built once each. For comparing git
+ * revisions without building them by hand, `compare.ts` does that part.
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
-const REF = "@vincle/core";
+import { abMain, REF } from "./ab.js";
 
 /** Below this many standard errors of the difference, a delta is not a finding. */
 const SIGNIFICANCE_SIGMAS = 3;
@@ -26,11 +34,19 @@ function parseArgs(argv) {
     const i = argv.indexOf(`--${name}`);
     return i === -1 ? undefined : argv[i + 1];
   };
+  const abAt = argv.indexOf("--ab");
   return {
     runs: Number(flag("runs") ?? 8),
     save: flag("save"),
     against: flag("against"),
     engines: flag("engines") ?? "bun",
+    // `--ab A B`: two package roots to pit against each other.
+    ab: abAt === -1 ? undefined : [argv[abAt + 1], argv[abAt + 2]],
+    // What divides the machine out of each pair: `all` (geometric mean of the
+    // competitors), `none` (raw), or a single competitor's name.
+    control: flag("control") ?? "all",
+    // How many A/A pairs to run first to measure the design's own noise floor.
+    calibrate: Number(flag("calibrate") ?? 3),
   };
 }
 
@@ -199,6 +215,19 @@ const engines = opts.engines === "both" ? ["bun", "node"] : [opts.engines];
 if (engines.some((engine) => ENGINES[engine] === undefined)) {
   console.error(`--engines must be one of: bun, node, both (got "${opts.engines}")`);
   process.exit(1);
+}
+
+if (opts.ab !== undefined) {
+  if (opts.ab.length !== 2 || opts.ab.some((v) => v === undefined)) {
+    console.error("--ab takes two package roots: --ab <A> <B>");
+    process.exit(1);
+  }
+  if (opts.engines !== "bun") {
+    console.error("--ab runs under the bun engine only — it spawns a bun process per run");
+    process.exit(1);
+  }
+  await abMain(opts.ab[0], opts.ab[1], opts.control, opts.runs, opts.calibrate, opts.save);
+  process.exit(0);
 }
 
 let before;
