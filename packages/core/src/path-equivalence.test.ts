@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import { jsx, Fragment } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
+import { isVoidElement, voidChildrenMessage } from "./serialize.js";
+import { invalidTagMessage, isValidTag } from "./tag.js";
 import { VNode, raw } from "./types.js";
 
 /**
@@ -42,7 +43,9 @@ function vnodeOf(tag: any, attributes: Record<string, unknown> | null): unknown 
     | { __html: string | null | undefined }
     | undefined;
   const children = dsih !== undefined ? trustedInnerHTML(dsih.__html) : props["children"];
-  if (typeof tag === "string") isVoidElement(tag, children);
+  if (typeof tag === "string" && isVoidElement(tag) && children !== undefined) {
+    throw new TypeError(voidChildrenMessage(tag));
+  }
   return new VNode(tag, props, children);
 }
 

@@ -8,7 +8,7 @@
  * @module
  */
 
-export { VOID_ELEMENTS, isValidTag } from "./serialize.js";
+export { isVoidElement, isValidTag } from "./serialize.js";
 
 export {
   RAWTEXT_TAGS,

@@ -8,8 +8,7 @@ import {
   renderLeaf,
   valueToText,
 } from "./escape.js";
-import { serializeElement, serializeVoidElement } from "./serialize.js";
-import { VOID_ELEMENTS } from "./tag.js";
+import { isVoidElement, serializeElement, serializeVoidElement } from "./serialize.js";
 import { RawString, VNode } from "./types.js";
 
 /**
@@ -60,7 +59,7 @@ export function renderToString(node: unknown): Promise<string> {
  * else on this path.
  */
 function writeChildless(tag: string, attrStr: string): string {
-  return VOID_ELEMENTS.has(tag)
+  return isVoidElement(tag)
     ? serializeVoidElement(tag, attrStr)
     : serializeElement(tag, attrStr, "");
 }

@@ -10,7 +10,6 @@ import {
   hasSpreadOrInnerHTML,
   remapAttrName,
   RUNTIME_SOURCE,
-  VOID_ELEMENTS,
   URL_ATTRIBUTES,
   resolveAttrName,
 } from "./index.js";
@@ -181,12 +180,12 @@ describe("precompile-core", () => {
   });
 
   describe("shared primitives (imported from @vincle/core/html)", () => {
-    it("VOID_ELEMENTS matches expected HTML void elements", () => {
-      expect(VOID_ELEMENTS.has("br")).toBe(true);
-      expect(VOID_ELEMENTS.has("img")).toBe(true);
-      expect(VOID_ELEMENTS.has("input")).toBe(true);
-      expect(VOID_ELEMENTS.has("div")).toBe(false);
-      expect(VOID_ELEMENTS.has("span")).toBe(false);
+    it("isVoidElement matches expected HTML void elements", () => {
+      expect(isVoidElement("br")).toBe(true);
+      expect(isVoidElement("img")).toBe(true);
+      expect(isVoidElement("input")).toBe(true);
+      expect(isVoidElement("div")).toBe(false);
+      expect(isVoidElement("span")).toBe(false);
     });
 
     it("URL_ATTRIBUTES matches expected URL-bearing attributes", () => {
@@ -228,7 +227,7 @@ describe("precompile-core", () => {
     // named export is actually wired up.
     it("the published html-primitives barrel exports every symbol (not undefined)", async () => {
       const barrel = await import("@vincle/core/html");
-      expect(barrel.VOID_ELEMENTS).toBeInstanceOf(Set);
+      expect(typeof barrel.isVoidElement).toBe("function");
       expect(barrel.URL_ATTRIBUTES).toBeInstanceOf(Set);
       expect(typeof barrel.resolveAttrName).toBe("function");
       expect(typeof barrel.escapeAttr).toBe("function");
