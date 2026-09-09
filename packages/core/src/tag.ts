@@ -1,37 +1,13 @@
 /**
- * Tag-name vocabulary: what a tag may be called, and which tags hold nothing.
+ * Tag-name vocabulary: what a tag may be called.
  *
- * A leaf module on purpose — it imports nothing. `serialize.ts` needs these
- * answers, and its other user is the door that validates with them,
- * `jsx-runtime.ts` — which is what imports `serialize.ts`. The answers cannot
- * live there without a cycle, so they live here, one leaf both import.
+ * A leaf module on purpose — it imports nothing. The door, `jsx-runtime.ts`,
+ * validates with these answers, and `serialize.ts` re-exports them for the
+ * `./html` barrel — which is what imports `serialize.ts`. The answers cannot
+ * live in the door without a cycle, so they live here, one leaf both import.
  *
  * @module
  */
-
-/**
- * HTML void elements. Rendered **without** a closing tag and **without** a
- * trailing slash (`<br>`, not `<br/>`) — canonical HTML5, email-safe, one byte
- * smaller.
- *
- * @see https://html.spec.whatwg.org/multipage/syntax.html#void-elements
- */
-export const VOID_ELEMENTS = new Set([
-  "area",
-  "base",
-  "br",
-  "col",
-  "embed",
-  "hr",
-  "img",
-  "input",
-  "link",
-  "meta",
-  "param",
-  "source",
-  "track",
-  "wbr",
-]);
 
 // `\p{C}` under `/u` drags in Unicode tables, so valid names are memoised in a
 // `Set` — cheaper per hit than a `Map` on this hot path, and there's no value to
@@ -69,37 +45,4 @@ export function invalidTagMessage(tag: string): string {
     'start with "!" or "?", or contain whitespace, control characters, or any of " \' < > / = ` \\ . ' +
     'If the tag is computed, check the expression that produced it — it must be a plain tag name like "div", not a component or an undefined value.'
   );
-}
-
-/**
- * A void element was given children. One message for both paths, and
- * for whichever of the two the caller happens to hit first.
- */
-export function voidChildrenMessage(tag: string): string {
-  return (
-    `[vincle/core] <${tag}> is a void element and cannot have children. ` +
-    "An HTML parser drops the closing tag and reparents the content, so the document would not be the one written. " +
-    `Move the content next to <${tag}> rather than inside it.`
-  );
-}
-
-/**
- * Whether `tag` closes no tag — refusing it when children were written into it.
- *
- * A `children` key is the element having been written with content; whether that
- * content turns out empty is a property of this render's data, not of the code.
- * Refusing only the non-empty render makes `<img>{caption}</img>` fail the first
- * time a caption is set, which is production rather than the first page load.
- *
- * The answer comes back rather than being discarded: an element is classified
- * once, when it is constructed, and the serializer is told instead of asking
- * again. One function, so the two ways of constructing an element cannot arrive
- * at two different answers — they once asked separately, `!!children` against
- * `children !== undefined`, and diverged on every falsy child until a
- * differential fuzzer found it.
- */
-export function isVoidElement(tag: string, children: unknown): boolean {
-  if (!VOID_ELEMENTS.has(tag)) return false;
-  if (children !== undefined) throw new TypeError(voidChildrenMessage(tag));
-  return true;
 }

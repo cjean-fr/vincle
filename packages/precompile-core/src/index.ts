@@ -1,5 +1,4 @@
 import {
-  VOID_ELEMENTS,
   URL_ATTRIBUTES,
   RAWTEXT_TAGS,
   isRawtextTag,
@@ -12,8 +11,11 @@ import {
 } from "@vincle/core/html";
 import { decodeHTMLStrict } from "entities";
 
+// One source of truth for what closes nothing: the transform and the runtime
+// ask the same question, answered once in `@vincle/core`.
+export { isVoidElement } from "@vincle/core/html";
+
 export {
-  VOID_ELEMENTS,
   URL_ATTRIBUTES,
   RAWTEXT_TAGS,
   isRawtextTag,
@@ -93,10 +95,6 @@ export function hasSpreadOrInnerHTML(attrs: Iterable<AttrBrief>): boolean {
     if (a.name === "dangerouslySetInnerHTML") return true;
   }
   return false;
-}
-
-export function isVoidElement(tag: string): boolean {
-  return VOID_ELEMENTS.has(tag);
 }
 
 /**

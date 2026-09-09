@@ -4,8 +4,8 @@ import { serializeAttr } from "./attrs.js";
 import { isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { ownChildren } from "./props.js";
 import { collectAsyncIterable, renderNode, sequenceFrom } from "./render.js";
-import { serializeStatic } from "./serialize.js";
-import { invalidTagMessage, isValidTag, isVoidElement } from "./tag.js";
+import { isVoidElement, serializeStatic, voidChildrenMessage } from "./serialize.js";
+import { invalidTagMessage, isValidTag } from "./tag.js";
 import { VNode, raw, RawString } from "./types.js";
 
 // ── jsx — hybrid: static trees serialized in one pass, VNode for dynamic ──
@@ -63,7 +63,9 @@ function jsx(
   // read `children` separately: a props getter is free to answer `undefined` to
   // the first read and content to the second, and this is the read the `VNode`
   // keeps. `dsih` is the one exit the static path never sees at all.
-  if (typeof tag === "string") isVoidElement(tag, children);
+  if (typeof tag === "string" && isVoidElement(tag) && children !== undefined) {
+    throw new TypeError(voidChildrenMessage(tag));
+  }
 
   return new VNode(tag, props, children);
 }
