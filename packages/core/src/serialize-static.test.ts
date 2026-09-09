@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { jsx } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { serializeStatic, VOID_ELEMENTS, isValidTag } from "./serialize.js";
+import { isVoidElement, serializeStatic, isValidTag } from "./serialize.js";
 import { VNode, RawString } from "./types.js";
 
 /** A getter in props can re-enter `serializeStatic` while the outer call runs. */
@@ -151,11 +151,11 @@ describe("SVG foreign elements render with closing tags (not void)", () => {
     expect(html).toContain("</svg>");
   });
 
-  test("SVG elements are NOT in VOID_ELEMENTS", () => {
+  test("SVG elements are NOT void elements", () => {
     // path, circle, use, line, rect, ellipse, polyline, polygon, stop
     // are all emptyable but NOT void — they accept <desc>/<animate> children.
     for (const tag of ["path", "circle", "use", "line", "rect", "ellipse", "polygon", "stop"]) {
-      expect(VOID_ELEMENTS.has(tag)).toBe(false);
+      expect(isVoidElement(tag)).toBe(false);
       expect(isValidTag(tag)).toBe(true);
     }
   });
