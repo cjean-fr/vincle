@@ -3,7 +3,7 @@ import { describe, it, expect } from "bun:test";
 import type { ShellContext } from "./adapters/shared.js";
 
 import { createAdapter, NativeAdapter, TurboAdapter } from "./adapters/index.js";
-import { renderToStream, Template } from "./index.js";
+import { renderToStream, Defer } from "./index.js";
 import { collect } from "./test-utils.js";
 import { composeShell, injectIntoHead } from "./utils.js";
 
@@ -83,9 +83,9 @@ describe("composeShell", () => {
           <html>
             <head></head>
             <body>
-              <Template target="d">
+              <Defer target="d">
                 <span>d</span>
-              </Template>
+              </Defer>
             </body>
           </html>
         ),

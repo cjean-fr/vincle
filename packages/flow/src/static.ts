@@ -96,7 +96,7 @@ function createStaticContext(
 }
 
 /**
- * Static generation for pure-static sites (no lazy `<Template>` content).
+ * Static generation for pure-static sites (no lazy `<Defer>` content).
  * Call without options — the handler receives a `PureStaticContext`
  * without `emitFragments`.
  */

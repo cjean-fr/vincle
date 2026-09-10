@@ -265,7 +265,7 @@ describe("entry-point fail-fast", () => {
     expect(() =>
       store.register("frag", { content: "<p>x</p>", merge: "replace", timeout: -5 }),
     ).toThrow(
-      '[vincle/flow] <Template target="frag">: timeout must be a number of milliseconds >= 0, got -5',
+      '[vincle/flow] <Defer target="frag">: timeout must be a number of milliseconds >= 0, got -5',
     );
   });
 });

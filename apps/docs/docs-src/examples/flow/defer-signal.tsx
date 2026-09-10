@@ -1,4 +1,4 @@
-import { Template } from "@vincle/flow";
+import { Defer } from "@vincle/flow";
 
 async function HeavyDashboard() {
   const data = await fetch("https://api.example.com/dashboard");
@@ -7,6 +7,6 @@ async function HeavyDashboard() {
 }
 
 // fallback is shown in the shell immediately.
-<Template target="dashboard" fallback={<p>Loading dashboard…</p>}>
+<Defer target="dashboard" fallback={<p>Loading dashboard…</p>}>
   <HeavyDashboard />
-</Template>;
+</Defer>;

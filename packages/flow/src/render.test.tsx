@@ -7,7 +7,7 @@ import type { FlowEvent } from "./types.js";
 
 import { NativeAdapter, TurboAdapter } from "./adapters/index.js";
 import { Style } from "./components/assets.js";
-import { renderToStream, Template } from "./index.js";
+import { renderToStream, Defer } from "./index.js";
 import { renderToFlowEvents, renderShell, runSequence } from "./render.js";
 import { collectEvents, collect, type FragmentEvent } from "./test-utils.js";
 
@@ -38,9 +38,9 @@ describe("renderToFlowEvents", () => {
         () => (
           <html>
             <body>
-              <Template target="content">
+              <Defer target="content">
                 <span>content</span>
-              </Template>
+              </Defer>
             </body>
           </html>
         ),
@@ -50,14 +50,14 @@ describe("renderToFlowEvents", () => {
     expect(events.map((e) => e.type)).toEqual(["shell", "fragment", "close"]);
   });
 
-  it("streams a synchronously-nested Template after its parent", async () => {
+  it("streams a synchronously-nested Defer after its parent", async () => {
     const InnerContent = async () => <span>INNER-SYNC</span>;
     const Outer = async () => {
       await Promise.resolve();
       return (
         <section>
           OUTER
-          <Template target="inner">{InnerContent()}</Template>
+          <Defer target="inner">{InnerContent()}</Defer>
         </section>
       );
     };
@@ -66,7 +66,7 @@ describe("renderToFlowEvents", () => {
         () => (
           <html>
             <body>
-              <Template target="outer">{Outer()}</Template>
+              <Defer target="outer">{Outer()}</Defer>
             </body>
           </html>
         ),
@@ -110,9 +110,9 @@ describe("renderToFlowEvents", () => {
         <html>
           <body>
             <ul id="feed" />
-            <Template target="feed" merge="append">
+            <Defer target="feed" merge="append">
               {items()}
-            </Template>
+            </Defer>
           </body>
         </html>
       ),
@@ -237,9 +237,9 @@ describe("renderToStream", () => {
           <html>
             <head></head>
             <body>
-              <Template target="x">
+              <Defer target="x">
                 <span>x</span>
-              </Template>
+              </Defer>
             </body>
           </html>
         ),
@@ -257,9 +257,9 @@ describe("renderToStream", () => {
           () => (
             <html>
               <body>
-                <Template target="content">
+                <Defer target="content">
                   <span>content</span>
-                </Template>
+                </Defer>
               </body>
             </html>
           ),
@@ -270,7 +270,7 @@ describe("renderToStream", () => {
     expect(chunks.indexOf("turbo-stream")).toBeLessThan(chunks.indexOf("</html>"));
   });
 
-  it("streams a Template nested behind an await", async () => {
+  it("streams a Defer nested behind an await", async () => {
     const InnerContent = async () => {
       await Promise.resolve();
       return <span>INNER-ASYNC</span>;
@@ -280,7 +280,7 @@ describe("renderToStream", () => {
       return (
         <section>
           OUTER
-          <Template target="inner">{InnerContent()}</Template>
+          <Defer target="inner">{InnerContent()}</Defer>
         </section>
       );
     };
@@ -289,7 +289,7 @@ describe("renderToStream", () => {
         () => (
           <html>
             <body>
-              <Template target="outer">{Inner()}</Template>
+              <Defer target="outer">{Inner()}</Defer>
             </body>
           </html>
         ),
@@ -312,12 +312,12 @@ describe("renderToStream", () => {
       () => (
         <html>
           <body>
-            <Template target="a">
+            <Defer target="a">
               <span>A</span>
-            </Template>
-            <Template target="b">
+            </Defer>
+            <Defer target="b">
               <span>B</span>
-            </Template>
+            </Defer>
           </body>
         </html>
       ),
@@ -363,9 +363,9 @@ describe("edge cases — render pipeline", () => {
             <head></head>
             <body>
               <p>hi</p>
-              <Template target="d">
+              <Defer target="d">
                 <span>d</span>
-              </Template>
+              </Defer>
             </body>
           </html>
         ),
@@ -384,12 +384,12 @@ describe("edge cases — render pipeline", () => {
         () => (
           <html>
             <body>
-              <Template target="d">
+              <Defer target="d">
                 <span>d</span>
-              </Template>
-              <Template target="feed" merge="append">
+              </Defer>
+              <Defer target="feed" merge="append">
                 {g()}
-              </Template>
+              </Defer>
             </body>
           </html>
         ),
@@ -550,9 +550,9 @@ describe("shell buffering", () => {
             <head></head>
             <body>
               <Slow />
-              <Template target="d">
+              <Defer target="d">
                 <span>d</span>
-              </Template>
+              </Defer>
             </body>
           </html>
         ),

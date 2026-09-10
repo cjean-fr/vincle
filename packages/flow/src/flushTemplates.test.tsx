@@ -7,7 +7,7 @@ import type { FlowEvent } from "./types.js";
 
 import { TurboAdapter } from "./adapters/index.js";
 import { flushTemplates } from "./flushTemplates.js";
-import { renderToStream, Template } from "./index.js";
+import { renderToStream, Defer } from "./index.js";
 import { renderToFlowEvents } from "./render.js";
 import { createTemplateStore, type TemplateStore } from "./template-store.js";
 import { collect, collectEvents, type FragmentEvent } from "./test-utils.js";
@@ -120,9 +120,9 @@ describe("edge cases — streaming", () => {
         <html>
           <body>
             <ul id="feed" />
-            <Template target="feed" merge="append">
+            <Defer target="feed" merge="append">
               {inf()}
-            </Template>
+            </Defer>
           </body>
         </html>
       ),
@@ -151,9 +151,9 @@ describe("edge cases — streaming", () => {
         <html>
           <body>
             <div id="out" />
-            <Template target="out" merge="append">
+            <Defer target="out" merge="append">
               {many()}
-            </Template>
+            </Defer>
           </body>
         </html>
       ),
@@ -188,10 +188,10 @@ describe("edge cases — streaming", () => {
           return (
             <html>
               <body>
-                <Template target="crash">{content as any}</Template>
-                <Template target="ok">
+                <Defer target="crash">{content as any}</Defer>
+                <Defer target="ok">
                   <span>ok</span>
-                </Template>
+                </Defer>
               </body>
             </html>
           );
@@ -217,9 +217,9 @@ describe("edge cases — streaming", () => {
           <html>
             <body>
               <div id="out" />
-              <Template target="out" merge="append">
+              <Defer target="out" merge="append">
                 {g()}
-              </Template>
+              </Defer>
             </body>
           </html>
         ),

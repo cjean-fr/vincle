@@ -1,6 +1,7 @@
 import type { TemplateStore } from "./template-store.js";
 import type { FlowEvent, FlowOptions } from "./types.js";
 
+import { DeferCoordinator } from "./coordinator.js";
 import { runFragment } from "./fragment-runner.js";
 
 /**
@@ -26,7 +27,7 @@ async function settleOrThrow(promises: Promise<void>[]): Promise<void> {
  *   one never blocks the rest;
  * - anything else is a **one-shot** patch, rendered once.
  *
- * One-shots drain generation by generation, so a nested `<Template>` registered
+ * One-shots drain generation by generation, so a nested `<Defer>` registered
  * while its parent renders is picked up and emitted after its parent — the
  * order the client patch mechanism needs. The loop continues until full
  * quiescence: streams may register new work while they run, so it only exits
@@ -45,6 +46,7 @@ export async function flushTemplates(
 ): Promise<void> {
   const processed = new Set<string>();
   const live: Promise<void>[] = [];
+  const coordinator = new DeferCoordinator(ctx.templateStore, emit);
 
   while (!opts.signal?.aborted) {
     const wave = ctx.templateStore.outstanding(processed);
@@ -52,16 +54,21 @@ export async function flushTemplates(
       const oneShots: Promise<void>[] = [];
       for (const [id, entry] of wave) {
         processed.add(id);
-        const { isStreaming, done } = runFragment(id, entry, emit, opts);
-        (isStreaming ? live : oneShots).push(done);
+        const fragmentEmit = coordinator.createEmit(id);
+        const { isStreaming, done } = runFragment(id, entry, fragmentEmit, opts);
+        const trackedDone = done.finally(() => coordinator.handleSettled(id));
+        (isStreaming ? live : oneShots).push(trackedDone);
       }
       await settleOrThrow(oneShots);
+      await coordinator.tryFlush();
       continue;
     }
     if (live.length === 0) break;
     await settleOrThrow(live);
     live.length = 0;
+    await coordinator.tryFlush();
     if (!ctx.templateStore.hasOutstanding(processed)) break;
   }
   if (live.length > 0) await settleOrThrow(live);
+  await coordinator.tryFlush();
 }

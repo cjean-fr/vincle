@@ -54,7 +54,7 @@ function mergeHeaders(
  * `negotiateHtmx`, or your own) to extract per-request hints and headers.
  * Without it, the full page is rendered — the client library extracts its own
  * target. `mode: "fragment"` (shell suppressed) is an explicit opt-in; it only
- * produces output when the targeted content is expressed as `<Template>` fragments.
+ * produces output when the targeted content is expressed as `<Defer>` fragments.
  */
 export async function serve(
   req: Request,

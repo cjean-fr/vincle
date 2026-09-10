@@ -3,7 +3,7 @@ import { describe, it, expect } from "bun:test";
 
 import { NativeAdapter } from "./adapters/index.js";
 import { Style, Script } from "./components/index.js";
-import { renderToStream, renderToStatic, Template } from "./index.js";
+import { renderToStream, renderToStatic, Defer } from "./index.js";
 import { collect } from "./test-utils.js";
 
 describe("Style/Script — render pipeline integration", () => {
@@ -183,12 +183,12 @@ describe("Style/Script — render pipeline integration", () => {
               <Style name="shared">{"body { color: red }"}</Style>
             </head>
             <body>
-              <Template target="frag1">
+              <Defer target="frag1">
                 <div>
                   <Style name="shared">{"body { color: red }"}</Style>
                   <span>from fragment</span>
                 </div>
-              </Template>
+              </Defer>
             </body>
           </html>
         ),
@@ -211,12 +211,12 @@ describe("Style/Script — render pipeline integration", () => {
           <html>
             <head></head>
             <body>
-              <Template target="frag1">
+              <Defer target="frag1">
                 <div>
                   <Style name="inline">{" .inline { }"}</Style>
                   <span>from fragment</span>
                 </div>
-              </Template>
+              </Defer>
             </body>
           </html>
         ),
@@ -294,12 +294,12 @@ describe("Style/Script — SSG (renderToStatic)", () => {
         await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="content">
+              <Defer target="content">
                 <div>
                   <Style name="frag-only">{".frag { }"}</Style>
                   <span>real</span>
                 </div>
-              </Template>
+              </Defer>
             </body>
           </html>
         ));

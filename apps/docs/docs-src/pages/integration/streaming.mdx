@@ -69,8 +69,8 @@ negotiation (HTMX).
 ## Async iterables — streaming sequences
 
 An `AsyncIterable` returned by the factory streams one patch per yielded item.
-Each `yield` produces a patch; every patch from a single `<Template>` carries
-that template's `merge` type:
+Each `yield` produces a patch; every patch from a single `<Defer>` carries
+that fragment's `merge` type:
 
 <CodeExample src="flow/stream-iterable.tsx" />
 
@@ -101,6 +101,6 @@ either fires, instead of leaking it for the life of the emitter.
 | `"before"`  | Content inserted as previous sibling      |
 | `"after"`   | Content inserted as next sibling          |
 
-A template's `merge` applies to the whole streaming sequence — every patch from
-a single `<Template>` carries the same merge type. For a different merge per
-chunk, target separate `<Template>`s.
+A `<Defer>`'s `merge` applies to the whole streaming sequence — every patch from
+a single `<Defer>` carries the same merge type. For a different merge per
+chunk, target separate `<Defer>`s.
