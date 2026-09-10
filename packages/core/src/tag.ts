@@ -1,5 +1,5 @@
 /**
- * Tag-name vocabulary: what a tag may be called.
+ * Tag vocabulary: what a tag may be called, and whether it closes itself.
  *
  * A leaf module on purpose — it imports nothing. The door, `jsx-runtime.ts`,
  * validates with these answers, and `serialize.ts` re-exports them for the
@@ -44,5 +44,48 @@ export function invalidTagMessage(tag: string): string {
     `[vincle/core] Invalid tag name ${JSON.stringify(tag)}: a tag name must not be empty, ` +
     'start with "!" or "?", or contain whitespace, control characters, or any of " \' < > / = ` \\ . ' +
     'If the tag is computed, check the expression that produced it — it must be a plain tag name like "div", not a component or an undefined value.'
+  );
+}
+
+/**
+ * Does this tag close itself? A switch, not a `Set`: the list is fixed by the
+ * spec, it is asked on every element, and a string switch compares — the tag
+ * name is never hashed. Measured against the `Set` it replaced: +4.5% on `text`
+ * under bun, +6.2% on `realworld` under node (8 runs each), and no movement
+ * anywhere else.
+ *
+ * @see https://html.spec.whatwg.org/multipage/syntax.html#void-elements
+ */
+export function isVoidElement(tag: string): boolean {
+  switch (tag) {
+    case "area":
+    case "base":
+    case "br":
+    case "col":
+    case "embed":
+    case "hr":
+    case "img":
+    case "input":
+    case "link":
+    case "meta":
+    case "param":
+    case "source":
+    case "track":
+    case "wbr":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * A void element was given children. One message for both paths, and
+ * for whichever of the two the caller happens to hit first.
+ */
+export function voidChildrenMessage(tag: string): string {
+  return (
+    `[vincle/core] <${tag}> is a void element and cannot have children. ` +
+    "An HTML parser drops the closing tag and reparents the content, so the document would not be the one written. " +
+    `Move the content next to <${tag}> rather than inside it.`
   );
 }

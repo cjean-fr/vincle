@@ -1,3 +1,4 @@
+import { ERR_VNODE_AS_TEXT, vincleError } from "./errors.js";
 import { RawString, VNode } from "./types.js";
 
 const RE_ESCAPE_HTML = /[&<>]/;
@@ -325,10 +326,11 @@ export function valueToText(v: unknown): string {
   // can act on: `valueToText` and `renderNode` are internal, and sending someone
   // looking for a symbol they cannot import is worse than saying less.
   if (v instanceof VNode) {
-    throw new Error(
+    throw vincleError(
       "[vincle/core] A VNode reached a text position: a component renders through the tree walk, " +
         "not as a text value. Check that it is used as JSX (<Comp />) rather than interpolated as " +
         "{comp}, and that the tree is rendered with renderToString().",
+      ERR_VNODE_AS_TEXT,
     );
   }
   return renderLeaf(v, undefined);
