@@ -30,6 +30,15 @@ import {
 } from "@vincle/core";
 import { readFile, access } from "node:fs/promises";
 
+import {
+  ERR_VITE_CONFIG,
+  ERR_VITE_MANIFEST_PARSE,
+  ERR_VITE_MANIFEST_READ,
+  ERR_VITE_MANIFEST_SHAPE,
+  ERR_VITE_MISSING_ENTRY,
+  vincleError,
+} from "./errors.js";
+
 /** A single chunk in a Vite manifest. Mirrors `vite.ManifestChunk`. */
 export interface ViteManifestChunk {
   file: string;
@@ -77,9 +86,10 @@ export async function loadViteManifest(path: string): Promise<ViteManifest | nul
     text = await readFile(path, "utf-8");
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    throw new Error(
+    throw vincleError(
       `[vincle/vite-plugin] loadViteManifest: could not read the manifest at "${path}" — ${reason}. ` +
         "Check the path points at the file `vite build` wrote (.vite/manifest.json by default).",
+      ERR_VITE_MANIFEST_READ,
       { cause: err },
     );
   }
@@ -88,17 +98,19 @@ export async function loadViteManifest(path: string): Promise<ViteManifest | nul
     parsed = JSON.parse(text);
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    throw new Error(
+    throw vincleError(
       `[vincle/vite-plugin] loadViteManifest: the manifest at "${path}" is not valid JSON — ${reason}. ` +
         "Re-run `vite build`; the file may be stale or truncated.",
+      ERR_VITE_MANIFEST_PARSE,
       { cause: err },
     );
   }
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(
+    throw vincleError(
       `[vincle/vite-plugin] loadViteManifest: the manifest at "${path}" must be a JSON object ` +
         `mapping source entries to chunks, got ${Array.isArray(parsed) ? "an array" : JSON.stringify(parsed)}. ` +
         "Re-run `vite build`; the file may be stale or truncated.",
+      ERR_VITE_MANIFEST_SHAPE,
     );
   }
   return parsed as ViteManifest;
@@ -110,9 +122,10 @@ export async function loadViteManifest(path: string): Promise<ViteManifest | nul
  */
 export function setVite(manifest: ViteManifest | null, options?: { base?: string }): void {
   if (options?.base !== undefined && typeof options.base !== "string") {
-    throw new Error(
+    throw vincleError(
       `[vincle/vite-plugin] setVite: base must be a string URL prefix, e.g. { base: "/cdn/" }, ` +
         `got ${typeof options.base}. Omit it to use the default "/".`,
+      ERR_VITE_CONFIG,
     );
   }
   setContext(ViteContext, {
@@ -203,7 +216,7 @@ function resolveUrl(scope: ViteScope, entry: string): string {
   if (scope.manifest === null) return `${scope.base}${entry}`;
   const chunk = scope.manifest[entry];
   if (!chunk) {
-    throw new Error(missingEntryMessage(entry, scope.manifest));
+    throw vincleError(missingEntryMessage(entry, scope.manifest), ERR_VITE_MISSING_ENTRY);
   }
   return `${scope.base}${chunk.file}`;
 }
@@ -247,7 +260,7 @@ function resolveProd(scope: ViteScope, entry: string): JSX.Element {
   const manifest = scope.manifest!;
   const chunk = manifest[entry];
   if (!chunk) {
-    throw new Error(missingEntryMessage(entry, manifest));
+    throw vincleError(missingEntryMessage(entry, manifest), ERR_VITE_MISSING_ENTRY);
   }
 
   const out: JSX.Element[] = [];

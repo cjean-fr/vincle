@@ -3,6 +3,7 @@ import { schemeOf } from "@vincle/core/html";
 
 import { PREFIX } from "../config.js";
 import { Flow, renderPlaceholder } from "../context.js";
+import { ERR_FLOW_FORBIDDEN_SCHEME, vincleError } from "../errors.js";
 
 // Include fetches an HTML fragment, so its `src` is a strict whitelist:
 // http(s) or a relative path only.
@@ -52,11 +53,12 @@ export function Include<const S extends string>(props: IncludeProps<S>): JSX.Ele
 
   if (!isAllowedUrl(props.src)) {
     const scheme = schemeOf(props.src);
-    throw new Error(
+    throw vincleError(
       `${PREFIX} <Include src="${props.src}">: forbidden scheme${
         scheme !== undefined ? ` ${JSON.stringify(scheme)}` : ""
       } — only http(s): or relative paths are allowed. ` +
         'Use an absolute http(s) URL or a path relative to the page, e.g. src="/fragments/hero.html".',
+      ERR_FLOW_FORBIDDEN_SCHEME,
     );
   }
 

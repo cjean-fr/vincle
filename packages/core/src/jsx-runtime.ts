@@ -1,6 +1,12 @@
 import type { Renderable } from "./types.js";
 
 import { serializeAttr } from "./attrs.js";
+import {
+  ERR_DANGEROUS_HTML,
+  ERR_INVALID_TAG,
+  ERR_VOID_CHILDREN,
+  vincleTypeError,
+} from "./errors.js";
 import { isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { ownChildren } from "./props.js";
 import { collectAsyncIterable, renderNode, sequenceFrom } from "./render.js";
@@ -22,7 +28,7 @@ function jsx(
   // `VNode` constructor, which was a second door while the class was exported
   // as a value; it is not anymore, so the fork no longer has to cover it.
   if (typeof tag === "string" && !isValidTag(tag)) {
-    throw new TypeError(invalidTagMessage(tag));
+    throw vincleTypeError(invalidTagMessage(tag), ERR_INVALID_TAG);
   }
 
   // Read first, `hasOwn` only if the read finds something: an absent
@@ -49,9 +55,10 @@ function jsx(
     if (typeof html === "string") children = raw(html);
     else if (html === null || html === undefined) children = raw("");
     else
-      throw new TypeError(
+      throw vincleTypeError(
         `[vincle/core] dangerouslySetInnerHTML.__html must be a string (or null/undefined to clear), got ${typeof html}. ` +
           'Pass markup as a string: { __html: "<b>hi</b>" }.',
+        ERR_DANGEROUS_HTML,
       );
   }
 
@@ -64,7 +71,7 @@ function jsx(
   // the first read and content to the second, and this is the read the `VNode`
   // keeps. `dsih` is the one exit the static path never sees at all.
   if (typeof tag === "string" && isVoidElement(tag) && children !== undefined) {
-    throw new TypeError(voidChildrenMessage(tag));
+    throw vincleTypeError(voidChildrenMessage(tag), ERR_VOID_CHILDREN);
   }
 
   return new VNode(tag, props, children);

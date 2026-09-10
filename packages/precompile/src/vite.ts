@@ -2,6 +2,7 @@ import type { Plugin, ResolvedConfig } from "vite";
 
 import { RUNTIME_SOURCE } from "@vincle/precompile-core";
 
+import { ERR_PRECOMPILE_CONFIG, vincleError } from "./errors.js";
 import precompileTransform, {
   type PluginConfig,
   type RenderAttr,
@@ -39,9 +40,10 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         : typeof config.runtimeSource === "undefined"
           ? "undefined"
           : typeof config.runtimeSource;
-    throw new Error(
+    throw vincleError(
       `[vincle/precompile] config: runtimeSource must be a non-empty string module ` +
         `specifier, e.g. "@vincle/core/jsx-precompile-runtime", got ${got}.`,
+      ERR_PRECOMPILE_CONFIG,
     );
   }
 

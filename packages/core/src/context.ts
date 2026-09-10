@@ -1,5 +1,15 @@
 import type { Awaitable } from "./types.js";
 
+import {
+  ERR_CONTEXT_KEY,
+  ERR_CONTEXT_LIMIT,
+  ERR_CONTEXT_UNSET,
+  ERR_NO_SCOPE,
+  ERR_NO_STORE,
+  ERR_SCOPE_COLLISION,
+  vincleError,
+} from "./errors.js";
+
 declare const __brand: unique symbol;
 
 /**
@@ -51,12 +61,13 @@ export class SyncContextStore implements ContextStore {
 
   run<T>(ctx: ContextMap, fn: () => T): T {
     if (this.#pending) {
-      throw new Error(
+      throw vincleError(
         "[vincle/core] withScope() was entered while another scope was still awaiting, " +
           "and this runtime has no AsyncLocalStorage to tell the two apart. " +
           "Enable it (Node ≥12.17, Bun, Deno ≥1.11, or Cloudflare Workers with " +
           "`nodejs_compat`) — concurrent renders cannot share a synchronous scope. " +
           "See https://vincle.cjean.fr/api/core/context",
+        ERR_SCOPE_COLLISION,
       );
     }
 
@@ -139,7 +150,10 @@ function warnSyncFallback(): void {
 
 function getStore(): ContextStore {
   if (!contextStore)
-    throw new Error("[vincle/core] context store not initialized — call withScope first.");
+    throw vincleError(
+      "[vincle/core] context store not initialized — call withScope first.",
+      ERR_NO_STORE,
+    );
   return contextStore;
 }
 
@@ -167,9 +181,10 @@ export function resetNamedContexts(): void {
 function scopeContext(caller: string): ContextMap {
   const ctx = contextStore?.getStore();
   if (!ctx) {
-    throw new Error(
+    throw vincleError(
       `[vincle/core] ${caller}: no active context scope — context calls must run inside withScope(). ` +
         "Wrap the render in one: const html = await withScope(() => renderToString(<Page />));",
+      ERR_NO_SCOPE,
     );
   }
   return ctx;
@@ -205,19 +220,21 @@ const NAMED_CONTEXTS_MAX = 10_000;
  */
 export function context<T>(globalKey: string): ContextKey<T> {
   if (typeof globalKey !== "string" || globalKey.length === 0) {
-    throw new Error(
+    throw vincleError(
       `[vincle/core] context(): a non-empty string key is required, got ${JSON.stringify(globalKey as unknown)}. ` +
         'Declare the key once at module level: const Theme = context("app:theme");',
+      ERR_CONTEXT_KEY,
     );
   }
   let sym = namedContexts.get(globalKey);
   if (!sym) {
     if (namedContexts.size >= NAMED_CONTEXTS_MAX) {
-      throw new Error(
+      throw vincleError(
         `[vincle/core] context(): ${NAMED_CONTEXTS_MAX} distinct keys have been created. ` +
           "Context keys are module-level constants, and the table that keeps " +
           "context(k) === context(k) never releases them — building a key per request " +
           "leaks. Declare the key once and pass the per-request value through setContext().",
+        ERR_CONTEXT_LIMIT,
       );
     }
     sym = Symbol(globalKey);
@@ -256,10 +273,11 @@ export function setContext<T>(key: ContextKey<T>, value: T): void {
 export function useContext<T>(key: ContextKey<T>): T {
   const ctx = scopeContext("useContext");
   if (!ctx.has(key)) {
-    throw new Error(
+    throw vincleError(
       `[vincle/core] useContext(${describeKey(key)}): the value was never set in the current scope. ` +
         "Set it above the reader with setContext(key, value) inside the same withScope() — " +
         "or check that the render actually runs in the scope that sets it.",
+      ERR_CONTEXT_UNSET,
     );
   }
   return ctx.get(key) as T;
