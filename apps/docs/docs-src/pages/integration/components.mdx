@@ -7,13 +7,13 @@ title: Components
 Two primitives handle declaring a placeholder and deferring content into it —
 plus a third for fetching a fragment from a separate URL entirely:
 
-- **`<Template>`** — defers content into a placeholder, sync or lazy; renders
+- **`<Defer>`** — defers content into a placeholder, sync or lazy; renders
   its own placeholder, so it's self-sufficient
-- **`<Slot>`** — a named hole, standing in for a `<Template>` that renders
+- **`<Slot>`** — a named hole, standing in for a `<Defer>` that renders
   elsewhere in the tree
 - **`<Include>`** — client-side fetch placeholder
 
-## `<Template>` — defer content (sync or lazy)
+## `<Defer>` — defer content (sync or lazy)
 
 Registers content — plain JSX or a lazy factory — under a `target` id, and
 renders a placeholder in its own place showing `fallback` until that content
@@ -33,9 +33,9 @@ synchronous and deferred content. The behaviour depends on `children`:
 `children` is deferred automatically — plain JSX works:
 
 ```tsx
-<Template target="page">
+<Defer target="page">
   <h1>Hello</h1>
-</Template>
+</Defer>
 ```
 
 ### Lazy — with placeholder
@@ -44,11 +44,11 @@ Declares a deferred region with a placeholder in the shell. The `fallback` prop
 defines the content shown immediately:
 
 ```tsx
-import { Template } from "@vincle/flow";
+import { Defer } from "@vincle/flow";
 
-<Template target="dashboard" fallback={<p>Loading dashboard…</p>}>
+<Defer target="dashboard" fallback={<p>Loading dashboard…</p>}>
   <HeavyDashboard />
-</Template>;
+</Defer>;
 ```
 
 Pass a factory when you need the `AbortSignal` — it fires when the client
@@ -56,9 +56,9 @@ disconnects, or when the fragment's `timeout` elapses. Forward it to your own
 cancelable work (e.g. `fetch(url, { signal })`) so that work stops early:
 
 ```tsx
-<Template target="dashboard" fallback={<p>Loading dashboard…</p>}>
+<Defer target="dashboard" fallback={<p>Loading dashboard…</p>}>
   {(signal) => <HeavyDashboard signal={signal} />}
-</Template>
+</Defer>
 ```
 
 The signal firing doesn't cut the render itself short — Vincle still renders
@@ -88,11 +88,11 @@ at registration with a clear error.
 
 ## `<Slot>` — named insertion point
 
-Declares a named hole in the shell, standing in for a `<Template>` that
+Declares a named hole in the shell, standing in for a `<Defer>` that
 renders **elsewhere** in the tree — typically a layout reserving a spot by
 name, filled later by a page-specific component that has no other way to
 reach into that layout. Its `children` are rendered **immediately** as
-placeholder content — visible until the matching `<Template>` patches them.
+placeholder content — visible until the matching `<Defer>` patches them.
 An empty slot renders an empty placeholder.
 
 ```tsx
@@ -107,14 +107,14 @@ A `Slot` registers nothing in the pending store — it is purely a passive
 hole. `name` is **required**.
 
 If the placeholder and the deferred content are declared in the same spot,
-skip `Slot` — `Template` alone, with its own `fallback`, is simpler and does
+skip `Slot` — `Defer` alone, with its own `fallback`, is simpler and does
 the same job (see above). Reach for `Slot` only for the decoupled case.
 
 **Ordering matters when pairing them.** Every adapter renders a placeholder
 as an element (or marker) carrying the target's id, and every adapter's
 patch resolves to the _first_ match in the document — the same rule HTML
 `id` uniqueness and `getElementById` already impose. So `<Slot>` must come
-before the matching `<Template>`, and that `<Template>` should skip its own
+before the matching `<Defer>`, and that `<Defer>` should skip its own
 `fallback` — passing one renders a second, dead placeholder with the same id
 right next to `Slot`'s live one:
 
@@ -125,9 +125,9 @@ right next to `Slot`'s live one:
 </Slot>
 
 // CommentsPage.tsx — fills it; has no idea where it renders
-<Template target="comments">
+<Defer target="comments">
   <LiveComments />
-</Template>
+</Defer>
 ```
 
 ## `<Include>` — client-side fetch
@@ -139,7 +139,7 @@ required — works with any static file server.
 
 ## Return types
 
-`Template` children accept the full `TemplateContent` type — a renderable JSX
+`Defer` children accept the full `DeferContent` type — a renderable JSX
 node, a string, or an async iterable, each optionally produced by a factory
 that receives the `AbortSignal`:
 
@@ -159,9 +159,9 @@ never need to call `.then()` or `for await` yourself.
 | Prop       | Applies to | Meaning                                                      |
 | ---------- | ---------- | ------------------------------------------------------------ |
 | `name`     | `Slot`     | id of the placeholder (required)                             |
-| `target`   | `Template` | id the placeholder (and its later patch) is registered under |
-| `fallback` | `Template` | placeholder content shown in the shell (lazy only)           |
-| `merge`    | `Template` | how content applies to its target (default `"replace"`)      |
-| `timeout`  | `Template` | per-fragment render timeout in ms                            |
-| `onError`  | `Template` | per-fragment error handler, overriding the renderer's one    |
+| `target`   | `Defer`    | id the placeholder (and its later patch) is registered under |
+| `fallback` | `Defer`    | placeholder content shown in the shell (lazy only)           |
+| `merge`    | `Defer`    | how content applies to its target (default `"replace"`)      |
+| `timeout`  | `Defer`    | per-fragment render timeout in ms                            |
+| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's one    |
 | `src`      | `Include`  | URL the browser fetches for the fragment content             |

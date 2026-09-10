@@ -36,12 +36,14 @@ export interface AdapterCapabilities {
  *   work early
  * - `AsyncIterable<JSX.Element>` — streaming (each yielded element is flushed)
  */
-export type TemplateContent =
+export type DeferContent =
   | JSX.Element
   | string
   | ((signal: AbortSignal) => JSX.Element)
   | AsyncIterable<JSX.Element>
   | ((signal: AbortSignal) => AsyncIterable<JSX.Element>);
+
+export type TemplateContent = DeferContent;
 
 export interface Shell {
   type: "shell";
@@ -92,3 +94,22 @@ export type Negotiate = (req: Request) => Negotiation;
 export type StreamingAdapter = Adapter & {
   capabilities: { streaming: true };
 };
+
+export interface DeferItemFragment {
+  kind: "fragment";
+  id: string;
+}
+
+export interface DeferItemGroup {
+  kind: "group";
+  group: DeferGroup;
+}
+
+export type DeferItem = DeferItemFragment | DeferItemGroup;
+
+export interface DeferGroup {
+  id: string;
+  together: boolean;
+  parentId?: string;
+  items: DeferItem[];
+}

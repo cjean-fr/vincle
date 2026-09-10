@@ -90,7 +90,7 @@ child, a component's return value, an array element, an attribute _value_,
 **Components execute in document order.** A sibling starts once the one to its left
 is done, so what renders before you in the markup ran before you — and the rendered
 document never depends on how long any component took. To overlap independent I/O,
-either `await Promise.all` inside one component (below), or use `<Template>` /
+either `await Promise.all` inside one component (below), or use `<Defer>` /
 `<Slot>` from `@vincle/flow`, which puts the boundary in the markup.
 
 ```tsx

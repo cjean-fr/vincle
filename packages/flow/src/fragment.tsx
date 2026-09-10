@@ -1,7 +1,7 @@
 import type { Adapter } from "./adapters/index.js";
-import type { OnError, TemplateContent } from "./types.js";
+import type { DeferContent, OnError } from "./types.js";
 
-import { Template } from "./components/Template.js";
+import { Defer } from "./components/Defer.js";
 import { assertAdapter, assertFlowOptions, PREFIX } from "./config.js";
 import { ERR_FLOW_NO_ADAPTER, ERR_FLOW_NO_FRAGMENT, vincleError } from "./errors.js";
 import { renderToStatic } from "./static.js";
@@ -15,7 +15,7 @@ export interface RenderFragmentOptions {
    * Default: `(id) => \`/fragments/${id}.html\``.
    */
   generatePath?: (id: string) => string;
-  /** Per-render timeout in ms, forwarded to the underlying `<Template>`. */
+  /** Per-render timeout in ms, forwarded to the underlying `<Defer>`. */
   timeout?: number;
   onError?: OnError;
 }
@@ -32,7 +32,7 @@ export interface RenderFragmentOptions {
  */
 export async function renderFragment(
   id: string,
-  content: TemplateContent,
+  content: DeferContent,
   opts: RenderFragmentOptions,
 ): Promise<{ url: string; html: string }> {
   // Fail fast on the options, before a single byte is rendered.
@@ -51,9 +51,9 @@ export async function renderFragment(
   await renderToStatic(
     async (ctx) => {
       await ctx.renderPage(() => (
-        <Template target={id} timeout={opts.timeout} onError={opts.onError}>
+        <Defer target={id} timeout={opts.timeout} onError={opts.onError}>
           {content}
-        </Template>
+        </Defer>
       ));
       await ctx.emitFragments((fragmentId, url, html) => {
         if (fragmentId === id) result = { url, html };
@@ -66,7 +66,7 @@ export async function renderFragment(
     throw vincleError(
       `${PREFIX} renderFragment("${id}"): produced no output for this id. ` +
         "The fragment was never registered or rendered — its content may have thrown or timed out " +
-        "(check the onError/console log), or the id differs from the <Template target> that was " +
+        "(check the onError/console log), or the id differs from the <Defer target> that was " +
         "rendered. Verify the id matches and that the content renders.",
       ERR_FLOW_NO_FRAGMENT,
     );

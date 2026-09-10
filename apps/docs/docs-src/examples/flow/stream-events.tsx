@@ -1,4 +1,4 @@
-import { Template } from "@vincle/flow";
+import { Defer } from "@vincle/flow";
 import { on, type EventEmitter } from "node:events";
 
 declare const priceFeed: EventEmitter; // emits "price" with { symbol, value }
@@ -7,7 +7,7 @@ declare const priceFeed: EventEmitter; // emits "price" with { symbol, value }
 // the connection does, not until some fixed dataset is exhausted.
 function LivePrice() {
   return (
-    <Template target="price">
+    <Defer target="price">
       {async function* (signal) {
         for await (const [price] of on(priceFeed, "price", { signal })) {
           yield (
@@ -17,6 +17,6 @@ function LivePrice() {
           );
         }
       }}
-    </Template>
+    </Defer>
   );
 }

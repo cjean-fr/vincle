@@ -58,7 +58,7 @@ each one was, at some point, quietly untrue.
 - **Components execute in document order.** What renders before you in the
   markup ran before you, so a document that reads mutated context does not depend
   on how long each sibling took. Overlapping I/O is available where the markup
-  shows it: `<Template>` / `<Slot>` in `@vincle/flow`. See
+  shows it: `<Defer>` / `<Slot>` in `@vincle/flow`. See
   `src/execution-order.test.ts`.
 
 - **The static path and the walk emit the same bytes.** A static subtree serialized at

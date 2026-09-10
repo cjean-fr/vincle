@@ -21,7 +21,7 @@ describe("renderFragment", () => {
     expect(url).toBe("/f/price-AAPL.html");
   });
 
-  it("accepts a lazy factory, same as <Template>", async () => {
+  it("accepts a lazy factory, same as <Defer>", async () => {
     const { html } = await renderFragment("price-AAPL", () => <span>182.30</span>, {
       adapter: NativeAdapter,
     });

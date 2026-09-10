@@ -9,7 +9,7 @@ title: Overview
 Traditional SSR holds the entire response until every `await` resolves — the
 slowest query sets your time-to-first-byte. Integration breaks that coupling.
 
-You mark slow subtrees with `<Template>`. The page shell ships
+You mark slow subtrees with `<Defer>`. The page shell ships
 immediately. Fragments arrive later, each as soon as it resolves. No JavaScript
 framework. No hydration. Just HTML in chunks.
 

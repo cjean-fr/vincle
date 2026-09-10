@@ -16,7 +16,7 @@ import { renderFragment } from "@vincle/flow";
 
 function renderFragment(
   id: string,
-  content: TemplateContent,
+  content: DeferContent,
   options: RenderFragmentOptions,
 ): Promise<{ url: string; html: string }>;
 ```
@@ -27,8 +27,8 @@ function renderFragment(
 | -------------- | -------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------ |
 | `adapter`      | `Adapter`                                                      | — (required)                         | Wire-format adapter — the same one the full build uses |
 | `generatePath` | `(id: string) => string`                                       | ``(id) => `/fragments/${id}.html` `` | Must match the full build's convention                 |
-| `timeout`      | `number`                                                       | —                                    | Forwarded to the underlying `<Template>`               |
-| `onError`      | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | —                                    | Forwarded to the underlying `<Template>`               |
+| `timeout`      | `number`                                                       | —                                    | Forwarded to the underlying `<Defer>`                  |
+| `onError`      | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | —                                    | Forwarded to the underlying `<Defer>`                  |
 
 **Options are validated up front** — `adapter` is required, and `timeout` /
 `onError` must be well-formed. A misconfiguration fails at the call with a
@@ -49,7 +49,7 @@ The page that includes the fragment (`<Include src={url}>` or an adapter's
 `Frame`) is untouched — it already points at `url`, and that URL's content
 just changed. Nothing else in the site needs rebuilding.
 
-`content` accepts anything `<Template>` does, including an `AsyncIterable` —
+`content` accepts anything `<Defer>` does, including an `AsyncIterable` —
 but `renderFragment` resolves once, to the last value produced, then
 returns. It is not a substitute for [streaming](/integration/streaming): an
 `AsyncIterable` that never completes never resolves, and this call has

@@ -25,7 +25,7 @@ describe("TemplateStore", () => {
           content: "<p>hello</p>",
           merge: "replace",
         }),
-      ).toThrow("Template requires an adapter");
+      ).toThrow("Defer requires an adapter");
     });
 
     it("throws when merge type is not supported by adapter", () => {
@@ -47,7 +47,7 @@ describe("TemplateStore", () => {
       const cfg = adaptCfg();
       const store = createTemplateStore(cfg);
       expect(() => store.register("", { content: "x", merge: "replace" })).toThrow(
-        'Template: "" is not a valid fragment id',
+        'Defer: "" is not a valid fragment id',
       );
       expect(() => store.register("123abc", { content: "x", merge: "replace" })).toThrow();
     });

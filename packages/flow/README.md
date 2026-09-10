@@ -43,14 +43,14 @@ bun add @vincle/flow
 
 ## Components
 
-@vincle/flow provides three declarative primitives for deferred content — a unified family built around **Slot** (the hole) and **Template** (the content that fills it). Each works with any adapter, in both streaming and static generation.
+@vincle/flow provides three declarative primitives for deferred content — a unified family built around **Slot** (the hole) and **Defer** (the deferred content that fills it). Each works with any adapter, in both streaming and static generation.
 
 ### `<Slot>` — a named insertion point with fallback content
 
-Declares a named insertion point in the shell. Its `children` are rendered immediately as placeholder content — visible in the initial HTML until a `<Template target="…">` overrides them.
+Declares a named insertion point in the shell. Its `children` are rendered immediately as placeholder content — visible in the initial HTML until a `<Defer target="…">` overrides them.
 
 ```tsx
-import { Slot, Template } from "@vincle/flow";
+import { Slot, Defer } from "@vincle/flow";
 
 function Layout() {
   return (
@@ -69,15 +69,15 @@ function Layout() {
 
 // Elsewhere in the tree (or a different component):
 function PageContent() {
-  return <Template target="page">{() => <h1>Hello</h1>}</Template>;
+  return <Defer target="page">{() => <h1>Hello</h1>}</Defer>;
 }
 ```
 
-`Slot` registers nothing in the pending store — it is purely a passive hole. The `children` are the initial fallback, visible until a `<Template>` pushes deferred content that patches the placeholder.
+`Slot` registers nothing in the pending store — it is purely a passive hole. The `children` are the initial fallback, visible until a `<Defer>` pushes deferred content that patches the placeholder.
 
-### `<Template>` — fill a slot (sync or lazy)
+### `<Defer>` — deferred fragment (sync or lazy)
 
-Pushes content into a target slot by name. **Unified** — one component for both synchronous and deferred content. The behaviour depends on `children`:
+Defines deferred content targeting a DOM element by id. **Unified** — one component for both synchronous and deferred content. The behaviour depends on `children`:
 
 | `children` type     | `fallback` | Behaviour                                         |
 | ------------------- | ---------- | ------------------------------------------------- |
@@ -89,43 +89,43 @@ Pushes content into a target slot by name. **Unified** — one component for bot
 **Sync** — plain JSX:
 
 ```tsx
-import { Template } from "@vincle/flow";
+import { Defer } from "@vincle/flow";
 
-<Template target="page"><h1>Hello</h1></Template>
-<Template target="comments"><Comments /></Template>
+<Defer target="page"><h1>Hello</h1></Defer>
+<Defer target="comments"><Comments /></Defer>
 ```
 
 **Lazy with placeholder** — factory + fallback:
 
 ```tsx
-<Template target="comments" fallback={<p>Loading…</p>}>
+<Defer target="comments" fallback={<p>Loading…</p>}>
   {() => <Comments />}
-</Template>
+</Defer>
 ```
 
 **Cancellable** — factory receives `AbortSignal` (request lifetime + per-fragment timeout):
 
 ```tsx
 // One-shot
-<Template target="page">{() => <h1>Hello</h1>}</Template>
+<Defer target="page">{() => <h1>Hello</h1>}</Defer>
 
 // Async
-<Template target="comments">{() => <Comments />}</Template>
+<Defer target="comments">{() => <Comments />}</Defer>
 
 // Stream — each yield is a separate patch
-<Template target="feed" merge="append">
+<Defer target="feed" merge="append">
   {() => liveRows()}
-</Template>
+</Defer>
 
 // With timeout — receives AbortSignal
-<Template target="dashboard" timeout={2000}>
+<Defer target="dashboard" timeout={2000}>
   {(signal) => <Dashboard signal={signal} />}
-</Template>
+</Defer>
 ```
 
 The factory is invoked lazily — only when the fragment is about to render. It receives an `AbortSignal` for cancellation and must return a renderable JSX node (or a `Promise` / `AsyncIterable` thereof — the runtime unwraps these automatically).
 
-`Template` always renders a placeholder at its position in the shell — `fallback` is that placeholder's content (empty if none given) — and the deferred content replaces it when it resolves. Rendering a `Template` without any adapter throws at registration: there is no placeholder to emit and nothing to patch into.
+`Defer` always renders a placeholder at its position in the shell — `fallback` is that placeholder's content (empty if none given) — and the deferred content replaces it when it resolves. Rendering a `Defer` without any adapter throws at registration: there is no placeholder to emit and nothing to patch into.
 
 ### `<Include>` — client-side fetch only
 
@@ -145,9 +145,51 @@ import { Include } from "@vincle/flow";
 
 Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/issues/2791) and ESI `<esi:include>` — short, standard, self-explanatory.
 
+### `<Defer.Group>` — coordinate streaming reveal order
+
+Coordinates when sibling deferred fragments (`<Defer>`) are revealed to the browser. Eliminates layout jumping ("popcorn" streaming) where independent fragments pop in out-of-order.
+
+Async operations and JSX rendering still execute **100% in parallel on the server** — only patch delivery onto the wire is orchestrated.
+
+```tsx
+import { Defer } from "@vincle/flow";
+
+// Sequential (default): reveals in DOM order; later items wait for earlier ones
+<Defer.Group>
+  <Defer target="profile" fallback={<ProfileSkeleton />}>
+    {() => <Profile />}
+  </Defer>
+  <Defer target="feed" fallback={<FeedSkeleton />}>
+    {() => <Feed />}
+  </Defer>
+  <Defer target="comments" fallback={<CommentsSkeleton />}>
+    {() => <Comments />}
+  </Defer>
+</Defer.Group>
+
+// Together: holds all patches until every fragment in the group is ready
+<Defer.Group together>
+  <Defer target="stats">{() => <Stats />}</Defer>
+  <Defer target="chart">{() => <Chart />}</Defer>
+</Defer.Group>
+
+// Nesting: group together items inside a sequential list
+<Defer.Group>
+  <Defer target="hero">{() => <Hero />}</Defer>
+  <Defer.Group together>
+    <Defer target="col-a">{() => <ColA />}</Defer>
+    <Defer target="col-b">{() => <ColB />}</Defer>
+  </Defer.Group>
+</Defer.Group>
+```
+
+| Prop       | Type      | Default | Meaning                                                                      |
+| ---------- | --------- | ------- | ---------------------------------------------------------------------------- |
+| `together` | `boolean` | `false` | When true, waits for all fragments in the group before revealing any of them |
+
 ### Content forms
 
-`Template` accepts content in either form:
+`Defer` accepts content in either form:
 
 | Child                        | Behaviour                                                             |
 | ---------------------------- | --------------------------------------------------------------------- |
@@ -161,11 +203,11 @@ Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/
 | Prop       | Applies to | Meaning                                                             |
 | ---------- | ---------- | ------------------------------------------------------------------- |
 | `name`     | `Slot`     | id of the placeholder (required)                                    |
-| `target`   | `Template` | target slot id to push content into                                 |
-| `fallback` | `Template` | placeholder content shown in the shell (only for lazy factories)    |
-| `merge`    | `Template` | how content applies to its target (default `"replace"`) — see below |
-| `timeout`  | `Template` | per-fragment render timeout in ms                                   |
-| `onError`  | `Template` | per-fragment error handler, overriding the renderer's `onError`     |
+| `target`   | `Defer`    | target DOM id to push content into                                  |
+| `fallback` | `Defer`    | placeholder content shown in the shell (only for lazy factories)    |
+| `merge`    | `Defer`    | how content applies to its target (default `"replace"`) — see below |
+| `timeout`  | `Defer`    | per-fragment render timeout in ms                                   |
+| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's `onError`     |
 | `src`      | `Include`  | URL the browser fetches for the fragment content                    |
 
 ### Merge types
@@ -199,7 +241,7 @@ Each adapter implements `Placeholder`/`Patch`/`Frame` (JSX), optional `transform
 
 - **`Patch`** — fragment delivered inline in the same HTTP response as the shell.
 - **`Frame`** — fragment served as a standalone file fetched by the client (SSG).
-- `NativeAdapter` injects a ~550 B polyfill for DOM patching. Pass `WebPlatformAdapter` for zero-JS output, or `EsiAdapter` for CDN-level composition without client JS. An adapter is **required**: `renderToStream` takes it as its second argument, and a `Template` without one throws at registration.
+- `NativeAdapter` injects a ~550 B polyfill for DOM patching. Pass `WebPlatformAdapter` for zero-JS output, or `EsiAdapter` for CDN-level composition without client JS. An adapter is **required**: `renderToStream` takes it as its second argument, and a `Defer` without one throws at registration.
 
 ### Capabilities
 
@@ -245,17 +287,17 @@ Pure WICG spec — no JS at all. Requires `chrome://flags/#enable-experimental-w
 For **SSG with a CDN ESI processor** (Varnish, Fastly, nginx ESI module). The shell contains `<esi:include src="…">` tags; the CDN fetches each fragment independently, applies separate TTLs, and assembles the final response before it reaches the browser. `"replace"` only; no client-side JS.
 
 ```tsx
-// Template with ESI — placeholder becomes esi:include, content renders the fragment
-<Template target="nav" fallback={<span>Loading nav…</span>}>
+// Defer with ESI — placeholder becomes esi:include, content renders the fragment
+<Defer target="nav" fallback={<span>Loading nav…</span>}>
   {(signal) => <Nav signal={signal} />}
-</Template>
-<Template target="feed" fallback={<span>Loading feed…</span>}>
+</Defer>
+<Defer target="feed" fallback={<span>Loading feed…</span>}>
   {(signal) => <Feed signal={signal} />}
-</Template>
+</Defer>
 // Plain JSX also works when no signal is needed:
-<Template target="footer" fallback={<span>Loading…</span>}>
+<Defer target="footer" fallback={<span>Loading…</span>}>
   <Footer />
-</Template>
+</Defer>
 ```
 
 ## Usage
@@ -263,7 +305,7 @@ For **SSG with a CDN ESI processor** (Varnish, Fastly, nginx ESI module). The sh
 ### Streaming (server pushes fragments)
 
 ```tsx
-import { renderToStream, Template } from "@vincle/flow";
+import { renderToStream, Defer } from "@vincle/flow";
 import { NativeAdapter } from "@vincle/flow/adapters";
 
 const stream = renderToStream(
@@ -271,9 +313,9 @@ const stream = renderToStream(
     <html>
       <body>
         <header>Fast</header>
-        <Template target="dashboard" fallback={<p>Loading…</p>}>
+        <Defer target="dashboard" fallback={<p>Loading…</p>}>
           <HeavyDashboard />
-        </Template>
+        </Defer>
       </body>
     </html>
   ),
@@ -296,7 +338,7 @@ await renderToStatic(async (ctx) => {
 });
 ```
 
-No adapter required — @vincle/flow stays invisible for pure-static rendering, as long as no `<Template>` is rendered. A `Template` without an adapter throws at registration.
+No adapter required — @vincle/flow stays invisible for pure-static rendering, as long as no `<Defer>` is rendered. A `Defer` without an adapter throws at registration.
 
 ### Static generation with deferred fragments
 
@@ -380,13 +422,14 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 ### Components
 
-| Export     | Import path               | Description                                                                  |
-| ---------- | ------------------------- | ---------------------------------------------------------------------------- |
-| `Slot`     | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder |
-| `Template` | `@vincle/flow`            | Push content into a slot — sync (plain JSX) or lazy (factory)                |
-| `Include`  | `@vincle/flow`            | Client-side fetch placeholder — no server deferral                           |
-| `Style`    | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                            |
-| `Script`   | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                           |
+| Export        | Import path               | Description                                                                     |
+| ------------- | ------------------------- | ------------------------------------------------------------------------------- |
+| `Slot`        | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder    |
+| `Defer`       | `@vincle/flow`            | Push deferred content into a target DOM id — sync (plain JSX) or lazy (factory) |
+| `Defer.Group` | `@vincle/flow`            | Coordinate reveal order (sequential or together) for child Defer fragments      |
+| `Include`     | `@vincle/flow`            | Client-side fetch placeholder — no server deferral                              |
+| `Style`       | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                               |
+| `Script`      | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                              |
 
 ### Renderers
 
@@ -431,7 +474,8 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `MergeType`           | `@vincle/flow`          | `"replace" \| "append" \| "prepend" \| "before" \| "after" \| "morph"`                                                                                   |
 | `FlowEvent`           | `@vincle/flow`          | `{ type: "shell" \| "fragment" \| "close", … }`                                                                                                          |
 | `Negotiation`         | `@vincle/flow`          | `{ headers?, mode?, target? }`                                                                                                                           |
-| `TemplateContent`     | `@vincle/flow`          | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` |
+| `DeferContent`        | `@vincle/flow`          | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` |
+| `DeferGroup`          | `@vincle/flow`          | `{ id: string; together: boolean; parentId?: string; items: DeferItem[] }`                                                                               |
 
 ### Utilities
 
