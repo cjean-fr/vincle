@@ -11,6 +11,7 @@ import type { FlowConfig } from "./types.js";
 
 import { createAssetState, createSuppressedAssetState, type AssetState } from "./assets.js";
 import { assertFlowConfig, PREFIX } from "./config.js";
+import { ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
 import { createTemplateStore, type TemplateEntry, type TemplateStore } from "./template-store.js";
 
 export type { FlowConfig } from "./types.js";
@@ -51,10 +52,11 @@ export function renderPlaceholder(
 ): JSX.Element {
   const { config } = useContext(Flow);
   if (!config.adapter) {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} renderPlaceholder("${id}"): no adapter configured — a placeholder needs an adapter ` +
         "to emit its deferred-fragment markup. Pass { adapter: ... } to renderToStatic, " +
         "or render through renderToStream() with an adapter.",
+      ERR_FLOW_NO_ADAPTER,
     );
   }
   const resolvedSrc = src ?? (config.mode === "static" ? config.generatePath(id) : null);

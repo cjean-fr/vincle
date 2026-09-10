@@ -1,15 +1,17 @@
 import type { ShellContext } from "./adapters/shared.js";
 
 import { PREFIX } from "./config.js";
+import { ERR_FLOW_FRAGMENT_ID, vincleError } from "./errors.js";
 
 const REGEX_FRAGMENT_ID = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
 
 export function assertFragmentId(id: string, label: string): void {
   if (!REGEX_FRAGMENT_ID.test(id)) {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${label}: "${id}" is not a valid fragment id — ids must start with a letter and ` +
         'contain only letters, digits, hyphens and underscores (e.g. "price-aapl"). ' +
         "Fragment ids become DOM ids and URL segments.",
+      ERR_FLOW_FRAGMENT_ID,
     );
   }
 }

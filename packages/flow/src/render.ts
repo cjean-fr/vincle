@@ -7,6 +7,7 @@ import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
 import { assertAdapter, assertFlowOptions } from "./config.js";
 import { withFlow } from "./context.js";
 import { createStream } from "./create-stream.js";
+import { ERR_FLOW_NO_STREAMING, vincleError } from "./errors.js";
 import { flushTemplates } from "./flushTemplates.js";
 
 /**
@@ -185,10 +186,11 @@ export function renderToStream(
 ): ReadableStream<string> {
   assertStreamInput("renderToStream", adapter, opts);
   if (adapter.capabilities.streaming !== true) {
-    throw new Error(
+    throw vincleError(
       "[vincle/flow] renderToStream(): this adapter does not stream — capabilities.streaming is false, " +
         "so it can only produce static output. Use renderToStatic() with this adapter, or pass a " +
         "streaming adapter (TurboAdapter, NativeAdapter, HtmxAdapter, WebPlatformAdapter).",
+      ERR_FLOW_NO_STREAMING,
     );
   }
   return renderToFlowEvents(node, adapter, opts).pipeThrough(encodeWith(adapter));

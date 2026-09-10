@@ -73,7 +73,69 @@ Real examples:
 
 The prefix is stable and greppable (`[vincle/core]`, `[vincle/flow]`,
 `[vincle/vite-plugin]`, `[vincle/precompile]`), so you can filter
-vincle errors out of a log or match them in CI.
+vincle errors out of a log or match them in CI. To tell them apart _in code_,
+read `error.code` rather than the message — see below.
+
+## Error codes
+
+Every error vincle throws carries a `code`, following Node's
+convention. `TypeError` is also what a component throws when it has a bug of its
+own, so the type alone cannot say whether the refusal came from vincle:
+
+```ts
+try {
+  html = await renderToString(<Page />);
+} catch (error) {
+  if (error.code === "ERR_VINCLE_VOID_CHILDREN") {
+    // the markup is wrong, not the data
+  }
+}
+```
+
+| Code                         | Raised when                                               |
+| ---------------------------- | --------------------------------------------------------- |
+| `ERR_VINCLE_INVALID_TAG`     | a tag name that cannot be written as HTML                 |
+| `ERR_VINCLE_VOID_CHILDREN`   | content inside a void element (`<br>`, `<img>`, …)        |
+| `ERR_VINCLE_DANGEROUS_HTML`  | `dangerouslySetInnerHTML.__html` is not a string          |
+| `ERR_VINCLE_FUNCTION_ATTR`   | a function passed as an attribute value                   |
+| `ERR_VINCLE_VNODE_AS_TEXT`   | a component interpolated where text belongs               |
+| `ERR_VINCLE_SCOPE_COLLISION` | overlapping `withScope()` with no `AsyncLocalStorage`     |
+| `ERR_VINCLE_NO_STORE`        | the context store was read before `withScope()` ran       |
+| `ERR_VINCLE_NO_SCOPE`        | a context call outside any `withScope()`                  |
+| `ERR_VINCLE_CONTEXT_KEY`     | `context()` given something other than a non-empty string |
+| `ERR_VINCLE_CONTEXT_LIMIT`   | more distinct context keys than the table holds           |
+| `ERR_VINCLE_CONTEXT_UNSET`   | `useContext()` read a value never set in this scope       |
+
+The first three are `TypeError`s — an argument that is not what it has to be.
+Every other code in this page, here and below, is a plain `Error`.
+
+### `@vincle/flow`
+
+| Code                                | Raised when                                          |
+| ----------------------------------- | ---------------------------------------------------- |
+| `ERR_VINCLE_FLOW_CONFIG`            | an option rejected at the entry point that took it   |
+| `ERR_VINCLE_FLOW_NO_ADAPTER`        | a placeholder or fragment with no adapter configured |
+| `ERR_VINCLE_FLOW_MERGE_UNSUPPORTED` | a `merge` the adapter cannot express                 |
+| `ERR_VINCLE_FLOW_FRAGMENT_ID`       | a fragment id that cannot be a DOM id or URL segment |
+| `ERR_VINCLE_FLOW_NO_FRAGMENT`       | `renderFragment` produced nothing for that id        |
+| `ERR_VINCLE_FLOW_NO_STREAMING`      | `renderToStream` given an adapter that cannot stream |
+| `ERR_VINCLE_FLOW_FORBIDDEN_SCHEME`  | an `<Include src>` scheme outside the whitelist      |
+
+### `@vincle/vite-plugin` and `@vincle/precompile`
+
+| Code                             | Raised when                                                |
+| -------------------------------- | ---------------------------------------------------------- |
+| `ERR_VINCLE_VITE_MANIFEST_READ`  | the Vite manifest could not be read                        |
+| `ERR_VINCLE_VITE_MANIFEST_PARSE` | the manifest is not JSON                                   |
+| `ERR_VINCLE_VITE_MANIFEST_SHAPE` | the file parsed but is not a manifest                      |
+| `ERR_VINCLE_VITE_CONFIG`         | `setVite` given an option it cannot use                    |
+| `ERR_VINCLE_VITE_MISSING_ENTRY`  | an entry the manifest does not list                        |
+| `ERR_VINCLE_PRECOMPILE_CONFIG`   | `runtimeSource` is not a module specifier                  |
+| `ERR_VINCLE_PRECOMPILE_HELPER`   | a runtime helper answered a shape the transform cannot use |
+| `ERR_VINCLE_PRECOMPILE_INTERNAL` | an invariant of the transform broke — a bug to report      |
+
+The codes are not exported: compare against the string, as you would an
+`ENOENT`. The set may grow; an existing code will not be renamed or reused.
 
 Config errors fail **fast**, at the entry point that receives the config —
 before a single byte is rendered or a build starts:

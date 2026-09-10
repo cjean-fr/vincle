@@ -26,6 +26,8 @@ import {
 import MagicString from "magic-string";
 import { parseSync, visitorKeys } from "oxc-parser";
 
+import { ERR_PRECOMPILE_HELPER, ERR_PRECOMPILE_INTERNAL, vincleError } from "./errors.js";
+
 export interface PluginConfig {
   runtimeSource?: string;
 }
@@ -377,10 +379,11 @@ function emitOpening(
       if (html !== name && written.has(html)) continue;
       emitAttribute(attr, out, ctx);
     } else {
-      throw new Error(
+      throw vincleError(
         "[vincle/precompile] internal invariant broken: a spread attribute reached emitOpening — " +
           "isEligibleElement should have rejected this element. This is a bug in vincle, not in your " +
           "code or configuration — report it.",
+        ERR_PRECOMPILE_INTERNAL,
       );
     }
   }
@@ -672,18 +675,20 @@ function unwrapSerialized(
 ): string {
   if (typeof result === "string") return result;
   if (result instanceof Promise) {
-    throw new Error(
+    throw vincleError(
       `[vincle/precompile] ${helper} returned a Promise for the static value ${subject} — ` +
         "a static value must serialize synchronously. This is a bug in the runtime that declared the " +
         '"vincle" precompile dialect.',
+      ERR_PRECOMPILE_HELPER,
     );
   }
   const value: unknown = (result as { value?: unknown })?.value;
   if (typeof value === "string") return value;
-  throw new Error(
+  throw vincleError(
     `[vincle/precompile] ${helper} returned neither a string nor a { value: string } ` +
       `for the static value ${subject}, but ${result === null ? "null" : typeof result}. A runtime ` +
       'declaring the "vincle" precompile dialect must serialize to text.',
+    ERR_PRECOMPILE_HELPER,
   );
 }
 

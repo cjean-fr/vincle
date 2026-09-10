@@ -4,6 +4,7 @@ import type { Adapter } from "./adapters/index.js";
 
 import { assertAdapter, PREFIX, describeValue } from "./config.js";
 import { withFlow, initFlowAssets, suppressFlowAssets, type FlowContext } from "./context.js";
+import { ERR_FLOW_CONFIG, ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
 import { flushTemplates } from "./flushTemplates.js";
 
 const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
@@ -61,10 +62,11 @@ function createStaticContext(
 
     emitFragments: async (cb) => {
       if (!adapter) {
-        throw new Error(
+        throw vincleError(
           `${PREFIX} emitFragments(): emitFragments requires an adapter — fragments cannot ` +
             "be framed into standalone files without one. Pass { adapter: ... } to renderToStatic. " +
             "Example: renderToStatic(handler, { adapter: NativeAdapter })",
+          ERR_FLOW_NO_ADAPTER,
         );
       }
       // Standalone fragment files carry no assets — the shell including them
@@ -120,9 +122,10 @@ export async function renderToStatic<T>(
   // Fail fast on the options, before a single page renders.
   assertAdapter(adapter, "renderToStatic");
   if (options?.generatePath !== undefined && typeof options.generatePath !== "function") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} renderToStatic: generatePath must be a function (id) => string, ` +
         `got ${describeValue(options.generatePath)}. Example: (id) => \`/fragments/\${id}.html\`.`,
+      ERR_FLOW_CONFIG,
     );
   }
 

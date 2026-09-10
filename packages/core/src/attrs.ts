@@ -1,3 +1,4 @@
+import { ERR_FUNCTION_ATTR, vincleError } from "./errors.js";
 import { escapeAttr, URL_ATTRIBUTES, isSafeScheme } from "./escape.js";
 import { raw, RawString } from "./types.js";
 
@@ -388,7 +389,7 @@ function attrFragment(key: string, meta: AttrMeta, value: unknown, prefix: strin
   // A function can't be serialized; discouraging it is
   // `no-unsafe-event-handlers`'s job, not a per-render console.warn here.
   if (type === "function") {
-    throw new Error(functionAttrMessage(key));
+    throw vincleError(functionAttrMessage(key), ERR_FUNCTION_ATTR);
   }
 
   // Checked before style/class: a RawString is an object, so testing it after

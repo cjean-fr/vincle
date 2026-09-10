@@ -1,3 +1,4 @@
+import { ERR_FLOW_CONFIG, vincleError } from "./errors.js";
 import { ALL_MERGES, type FlowOptions } from "./types.js";
 
 export const PREFIX = "[vincle/flow]";
@@ -49,30 +50,34 @@ function isAbortSignal(value: unknown): value is AbortSignal {
 export function assertFlowOptions(opts: FlowOptions | undefined, source: string): void {
   if (opts === undefined || opts === null) return;
   if (typeof opts !== "object") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: options must be an object, got ${describeValue(opts)}. ` +
         "Example: { defaultTimeout: 5000, onError, signal }",
+      ERR_FLOW_CONFIG,
     );
   }
   if (
     opts.defaultTimeout !== undefined &&
     (!Number.isFinite(opts.defaultTimeout) || opts.defaultTimeout < 0)
   ) {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: defaultTimeout must be a number of milliseconds >= 0, ` +
         `got ${describeValue(opts.defaultTimeout)}. Pass e.g. defaultTimeout: 5000, or omit it for no limit.`,
+      ERR_FLOW_CONFIG,
     );
   }
   if (opts.onError !== undefined && typeof opts.onError !== "function") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: onError must be a function (error, { id, kind }) => JSX.Element | void, ` +
         `got ${describeValue(opts.onError)}. Omit it to log errors to the console instead.`,
+      ERR_FLOW_CONFIG,
     );
   }
   if (opts.signal !== undefined && !isAbortSignal(opts.signal)) {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: signal must be an AbortSignal, got ${describeValue(opts.signal)}. ` +
         "Example: const controller = new AbortController(); … { signal: controller.signal }",
+      ERR_FLOW_CONFIG,
     );
   }
 }
@@ -87,30 +92,34 @@ const ADAPTER_SLOTS = ["Placeholder", "Patch", "Frame"] as const;
 export function assertAdapter(adapter: unknown, source: string): void {
   if (adapter === undefined) return;
   if (adapter === null || typeof adapter !== "object") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: adapter must be an adapter object, got ${describeValue(adapter)}. ` +
         "Use a built-in (TurboAdapter, NativeAdapter, HtmxAdapter, WebPlatformAdapter, EsiAdapter) or createAdapter().",
+      ERR_FLOW_CONFIG,
     );
   }
   const record = adapter as Record<string, unknown>;
   const missing = ADAPTER_SLOTS.filter((slot) => typeof record[slot] !== "function");
   if (missing.length > 0) {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: the adapter is missing ${missing.map((slot) => `"${slot}"`).join(", ")} — ` +
         "an adapter needs Placeholder, Patch and Frame. Use createAdapter() or a built-in adapter.",
+      ERR_FLOW_CONFIG,
     );
   }
   const caps = record["capabilities"] as { streaming?: unknown; merges?: unknown } | null;
   if (caps === null || typeof caps !== "object") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: the adapter is missing capabilities — declare ` +
         "{ streaming: boolean, merges: MergeType[] } (see createAdapter()).",
+      ERR_FLOW_CONFIG,
     );
   }
   if (typeof caps.streaming !== "boolean") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: adapter.capabilities.streaming must be a boolean, ` +
         `got ${describeValue(caps.streaming)}.`,
+      ERR_FLOW_CONFIG,
     );
   }
   const merges = caps.merges;
@@ -120,15 +129,17 @@ export function assertAdapter(adapter: unknown, source: string): void {
       (merge) => typeof merge === "string" && (ALL_MERGES as readonly string[]).includes(merge),
     );
   if (!validMerges) {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: adapter.capabilities.merges must be an array of merge types ` +
         `(${ALL_MERGES.join(", ")}), got ${describeValue(merges)}.`,
+      ERR_FLOW_CONFIG,
     );
   }
   if (record["transformShell"] !== undefined && typeof record["transformShell"] !== "function") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${source}: adapter.transformShell must be a function (shell, ctx) => string, ` +
         `got ${describeValue(record["transformShell"])}.`,
+      ERR_FLOW_CONFIG,
     );
   }
 }
@@ -140,9 +151,10 @@ export function assertAdapter(adapter: unknown, source: string): void {
  */
 export function assertFlowConfig(config: unknown): void {
   if (config === null || typeof config !== "object") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} FlowConfig: the flow config must be an object, got ${describeValue(config)}. ` +
         'Example: { adapter: TurboAdapter, mode: "streaming" }',
+      ERR_FLOW_CONFIG,
     );
   }
   // Read through `unknown`: a wrong value at runtime is exactly the case being
@@ -151,35 +163,40 @@ export function assertFlowConfig(config: unknown): void {
   const raw = config as Record<string, unknown>;
   const mode = raw["mode"];
   if (mode !== "streaming" && mode !== "static") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} FlowConfig.mode must be "streaming" or "static", got ${describeValue(mode)}.`,
+      ERR_FLOW_CONFIG,
     );
   }
   const idPrefix = raw["idPrefix"];
   if (idPrefix !== undefined && typeof idPrefix !== "string") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} FlowConfig.idPrefix must be a string, got ${describeValue(idPrefix)}. ` +
         'Default: "fragment-".',
+      ERR_FLOW_CONFIG,
     );
   }
   const generatePath = raw["generatePath"];
   if (generatePath !== undefined && typeof generatePath !== "function") {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} FlowConfig.generatePath must be a function (id) => string, ` +
         `got ${describeValue(generatePath)}. Example: (id) => \`/fragments/\${id}.html\`.`,
+      ERR_FLOW_CONFIG,
     );
   }
   if (mode === "static") {
     if (generatePath === undefined) {
-      throw new Error(
+      throw vincleError(
         `${PREFIX} FlowConfig: static mode requires generatePath: (id) => string. ` +
           "Example: generatePath: (id) => `/fragments/${id}.html`.",
+        ERR_FLOW_CONFIG,
       );
     }
   } else if (generatePath !== undefined) {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} FlowConfig: generatePath is only used in static mode (renderToStatic) — ` +
         'remove it from the streaming config, or drop mode: "streaming" if you meant static generation.',
+      ERR_FLOW_CONFIG,
     );
   }
   assertAdapter(raw["adapter"], "FlowConfig");
@@ -188,9 +205,10 @@ export function assertFlowConfig(config: unknown): void {
 /** Validate a per-fragment timeout, at registration. */
 export function assertTimeout(timeout: number | undefined, label: string): void {
   if (timeout !== undefined && (!Number.isFinite(timeout) || timeout < 0)) {
-    throw new Error(
+    throw vincleError(
       `${PREFIX} ${label}: timeout must be a number of milliseconds >= 0, ` +
         `got ${describeValue(timeout)}. Pass e.g. timeout={5000}, or omit it to use defaultTimeout.`,
+      ERR_FLOW_CONFIG,
     );
   }
 }
