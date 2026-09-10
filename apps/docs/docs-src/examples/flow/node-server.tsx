@@ -1,4 +1,4 @@
-import { Slot, Template, renderToStream } from "@vincle/flow";
+import { Slot, Defer, renderToStream } from "@vincle/flow";
 import { NativeAdapter } from "@vincle/flow/adapters";
 import http from "node:http";
 
@@ -24,7 +24,7 @@ function Page() {
         <Slot name="comments">
           <p>Loading comments…</p>
         </Slot>
-        <Template target="comments">{() => <Comments />}</Template>
+        <Defer target="comments">{() => <Comments />}</Defer>
       </body>
     </html>
   );

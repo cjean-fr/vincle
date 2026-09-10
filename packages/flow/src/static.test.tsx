@@ -3,7 +3,7 @@ import type { VNode } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
 import { TurboAdapter, NativeAdapter, EsiAdapter } from "./adapters/index.js";
-import { renderToStatic, Template } from "./index.js";
+import { renderToStatic, Defer } from "./index.js";
 
 describe("renderToStatic", () => {
   it("works without options for pure-static rendering", async () => {
@@ -29,7 +29,7 @@ describe("renderToStatic", () => {
         const html = await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="content">{AsyncContent()}</Template>
+              <Defer target="content">{AsyncContent()}</Defer>
             </body>
           </html>
         ));
@@ -53,7 +53,7 @@ describe("renderToStatic", () => {
           <html>
             <head></head>
             <body>
-              <Template target="x">{AsyncContent()}</Template>
+              <Defer target="x">{AsyncContent()}</Defer>
             </body>
           </html>
         )),
@@ -70,9 +70,9 @@ describe("renderToStatic", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Template target="content">
+                <Defer target="content">
                   <span>real</span>
-                </Template>
+                </Defer>
               </body>
             </html>
           ));
@@ -94,9 +94,9 @@ describe("renderToStatic", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Template target="content">
+                <Defer target="content">
                   <span>real</span>
-                </Template>
+                </Defer>
               </body>
             </html>
           ));
@@ -107,19 +107,19 @@ describe("renderToStatic", () => {
       expect(urls).toEqual(["/f/content.html"]);
     });
 
-    it("throws a clear error when <Template> is used without an adapter", async () => {
+    it("throws a clear error when <Defer> is used without an adapter", async () => {
       const AsyncContent = async () => (<span>x</span>) as VNode;
       const result = renderToStatic(async (ctx: any) => {
         await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="x">{AsyncContent()}</Template>
+              <Defer target="x">{AsyncContent()}</Defer>
             </body>
           </html>
         ));
         await ctx.emitFragments(() => {});
       });
-      await expect(result).rejects.toThrow("Template requires an adapter");
+      await expect(result).rejects.toThrow("Defer requires an adapter");
     });
 
     it("wraps each fragment in adapter.Frame when adapter is configured", async () => {
@@ -129,9 +129,9 @@ describe("renderToStatic", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Template target="content">
+                <Defer target="content">
                   <span>real</span>
-                </Template>
+                </Defer>
               </body>
             </html>
           ));
@@ -154,7 +154,7 @@ describe("renderToStatic", () => {
         const page = await ctx.renderPage(() => (
           <html>
             <body>
-              <Template target="content">{AsyncContent()}</Template>
+              <Defer target="content">{AsyncContent()}</Defer>
             </body>
           </html>
         ));
@@ -207,7 +207,7 @@ describe("renderToStatic", () => {
                 <html>
                   <body>
                     <p>page-{i}</p>
-                    <Template target={`frag-${i}`}>{AsyncContent()}</Template>
+                    <Defer target={`frag-${i}`}>{AsyncContent()}</Defer>
                   </body>
                 </html>
               ));
@@ -256,7 +256,7 @@ describe("renderToStatic", () => {
                     <html>
                       <body>
                         <p>page-{i}</p>
-                        <Template target={`t-${i}`}>{AsyncContent()}</Template>
+                        <Defer target={`t-${i}`}>{AsyncContent()}</Defer>
                       </body>
                     </html>
                   ));
@@ -282,7 +282,7 @@ describe("renderToStatic", () => {
     });
   });
 
-  it("<Template> with async content uses NativeAdapter when explicitly passed", async () => {
+  it("<Defer> with async content uses NativeAdapter when explicitly passed", async () => {
     const AsyncContent = async () => (<span>real</span>) as VNode;
     const html = await renderToStatic(
       async (ctx) =>
@@ -290,7 +290,7 @@ describe("renderToStatic", () => {
           <html>
             <head></head>
             <body>
-              <Template target="content">{AsyncContent()}</Template>
+              <Defer target="content">{AsyncContent()}</Defer>
             </body>
           </html>
         )),
@@ -317,12 +317,12 @@ describe("emitFragments across pages", () => {
           await ctx.renderPage(() => (
             <html>
               <body>
-                <Template target={page}>
+                <Defer target={page}>
                   {() => {
                     factoryCalls++;
                     return <b>{page}</b>;
                   }}
-                </Template>
+                </Defer>
               </body>
             </html>
           ));

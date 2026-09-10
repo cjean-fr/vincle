@@ -1,4 +1,4 @@
-import { Slot, Template, renderToStream } from "@vincle/flow";
+import { Slot, Defer, renderToStream } from "@vincle/flow";
 import { NativeAdapter } from "@vincle/flow/adapters";
 
 declare function fetchComments(): Promise<{ text: string }[]>;
@@ -15,7 +15,7 @@ async function Comments() {
 }
 
 // <Slot> declares the placeholder with fallback content in the shell.
-// <Template> pushes the real content, which replaces it when resolved.
+// <Defer> pushes the real content, which replaces it when resolved.
 function Page() {
   return (
     <html>
@@ -24,7 +24,7 @@ function Page() {
         <Slot name="comments">
           <p>Loading comments…</p>
         </Slot>
-        <Template target="comments">{() => <Comments />}</Template>
+        <Defer target="comments">{() => <Comments />}</Defer>
       </body>
     </html>
   );

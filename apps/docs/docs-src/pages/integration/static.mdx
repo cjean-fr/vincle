@@ -5,7 +5,7 @@ title: Static generation
 # Static generation
 
 Build HTML files at compile time. `renderToStatic` gives you a context to
-render all your pages, then emit fragment files if any page uses `<Template>` with a lazy factory.
+render all your pages, then emit fragment files if any page uses `<Defer>` with a lazy factory.
 Fragments are fetched by the browser after the shell page loads — no streaming
 connection required.
 
@@ -23,7 +23,7 @@ If you need fragments to arrive in the same HTTP response as the shell, use
 
 ## Pure static
 
-No lazy `<Template>` in your pages? Call `renderToStatic` without an adapter.
+No lazy `<Defer>` in your pages? Call `renderToStatic` without an adapter.
 `ctx.renderPage` applies any configured shell transforms and returns the full
 HTML string — ready to write to a file.
 

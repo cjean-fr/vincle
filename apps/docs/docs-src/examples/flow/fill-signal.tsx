@@ -1,4 +1,4 @@
-import { Slot, Template } from "@vincle/flow";
+import { Slot, Defer } from "@vincle/flow";
 
 async function LiveComments() {
   const res = await fetch("https://api.example.com/comments");
@@ -20,9 +20,9 @@ function Page() {
           <p>Loading comments…</p>
         </Slot>
 
-        <Template target="comments" timeout={5000}>
+        <Defer target="comments" timeout={5000}>
           <LiveComments />
-        </Template>
+        </Defer>
       </body>
     </html>
   );

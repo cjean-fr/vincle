@@ -74,7 +74,7 @@ is still written as a single chunk.
 
 Async siblings resolve in document order rather than concurrently, because the
 bytes have to come out in that order anyway. When you want independent regions
-to render in parallel, that is what [`<Template>` and `<Slot>`](/api/flow/components)
+to render in parallel, that is what [`<Defer>` and `<Slot>`](/api/flow/components)
 are for — they render out of order and patch into place as they land.
 
 > **`transformShell` does not change this.** The shell is always buffered —

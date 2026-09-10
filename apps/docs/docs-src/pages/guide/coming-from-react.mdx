@@ -112,13 +112,13 @@ Suspense-shaped tradeoff instead — ship the shell immediately, patch
 `Comments` in once it resolves — that's opt-in via `@vincle/flow`:
 
 ```tsx
-import { Template } from "@vincle/flow";
+import { Defer } from "@vincle/flow";
 
 function Page() {
   return (
-    <Template target="comments" fallback={<Spinner />} timeout={5000}>
+    <Defer target="comments" fallback={<Spinner />} timeout={5000}>
       <Comments />
-    </Template>
+    </Defer>
   );
 }
 ```
@@ -235,11 +235,11 @@ plain attribute, not a closure — minus the auto-escaping.)
 
 In Vincle, a plain attribute is live the instant the browser parses it —
 first response or streamed in later, no reconciliation, no re-hydration
-pass. `@vincle/flow`'s `<Template>` — the same component from the async
+pass. `@vincle/flow`'s `<Defer>` — the same component from the async
 section above — leans on exactly this:
 
 ```tsx
-import { Template } from "@vincle/flow";
+import { Defer } from "@vincle/flow";
 
 async function CommentForm() {
   return (
@@ -252,15 +252,15 @@ async function CommentForm() {
 
 function Page() {
   return (
-    <Template target="comment-form" fallback={<p>Loading…</p>} timeout={5000}>
+    <Defer target="comment-form" fallback={<p>Loading…</p>} timeout={5000}>
       <CommentForm />
-    </Template>
+    </Defer>
   );
 }
 ```
 
 Whether `CommentForm` renders in the first response or streams in seconds
-later as a `<Template>` patch, HTMX picks up `hx-post` the moment the
+later as a `<Defer>` patch, HTMX picks up `hx-post` the moment the
 fragment lands — the behavior never depended on a render pass to begin
 with. For updates pushed from the server rather than triggered by a click,
 flow's `HtmxAdapter` speaks HTMX's own out-of-band swap format directly,
@@ -336,7 +336,7 @@ optimize away in the first place, compiler or not.
 | `useContext`                       | `useContext` (same name, scoped instead of provider-based)                          |
 | `createContext`                    | `context(key)` — typed, scoped, no provider component                               |
 | `React.memo`                       | Not needed — every render is a fresh call                                           |
-| `Suspense`                         | Async component + `<Template>` from `@vincle/flow`                                  |
+| `Suspense`                         | Async component + `<Defer>` from `@vincle/flow`                                     |
 | `ErrorBoundary`                    | No equivalent — try/catch at top level, `onError` in `@vincle/flow` for streaming   |
 | `dangerouslySetInnerHTML`          | Same API — also `raw(html)` as child                                                |
 | `onClick={() => fn()}`             | HTML `<form>`, `hx-*`/`data-action`/`x-on:click`, or `onclick="fn()"` (global `fn`) |

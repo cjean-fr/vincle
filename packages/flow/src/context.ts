@@ -7,7 +7,7 @@ import {
   type JSX,
 } from "@vincle/core";
 
-import type { FlowConfig } from "./types.js";
+import type { DeferGroup, FlowConfig } from "./types.js";
 
 import { createAssetState, createSuppressedAssetState, type AssetState } from "./assets.js";
 import { assertFlowConfig, PREFIX } from "./config.js";
@@ -33,14 +33,31 @@ export interface FlowContext {
 
 export const Flow: ContextKey<FlowContext> = context<FlowContext>("@vincle/flow:flow");
 
+export interface DeferScope {
+  group: DeferGroup;
+  claimChild(target: string): void;
+}
+
+export const DeferContext: ContextKey<DeferScope | null> = context<DeferScope | null>(
+  "@vincle/flow:defer",
+);
+
+export function useDeferScope(): DeferScope | null {
+  try {
+    return useContext(DeferContext);
+  } catch {
+    return null;
+  }
+}
+
 /**
- * The single adapter negotiation for deferred-fragment placeholders. Template,
+ * The single adapter negotiation for deferred-fragment placeholders. Defer,
  * Slot and Include all end in `adapter.Placeholder({ id, src, children })`;
  * only their *policies* differ (what to register, which URL to allow, whether
  * a missing adapter is an error). Everything about the negotiation lives here:
  *
  * - a missing adapter is an error (callers that want to tolerate it, e.g.
- *   Template in pure-static mode, check `config.adapter` themselves first);
+ *   Defer in pure-static mode, check `config.adapter` themselves first);
  * - in static mode `src` defaults to `generatePath(id)`; callers that carry
  *   their own URL (Include) pass it explicitly;
  * - children are normalized to `null`.
@@ -69,6 +86,7 @@ export function initFlow(config: FlowConfig): void {
   let counter = 0;
   const store = createTemplateStore(config);
   const assets = createAssetState();
+  setContext(DeferContext, null);
   setContext(Flow, {
     config,
     templateStore: store,

@@ -18,7 +18,7 @@ import { renderToString } from "./render.js";
  *
  * The rule replaces all of that with something a developer can hold in their head:
  * **what runs before you in the document ran before you.** Overlapping I/O is
- * still available where it can be seen in the markup — `<Template>` / `<Slot>` in
+ * still available where it can be seen in the markup — `<Defer>` / `<Slot>` in
  * `@vincle/flow`.
  */
 

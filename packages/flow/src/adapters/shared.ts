@@ -14,7 +14,7 @@ type Child = JSX.Element | RawString | string | null;
  * handed the context that owns them.
  */
 export interface ShellContext {
-  /** Pending `<Template>`/`<Slot>` fragments, after the shell has rendered. */
+  /** Pending `<Defer>`/`<Slot>` fragments, after the shell has rendered. */
   readonly templateStore: { readonly size: number };
 }
 

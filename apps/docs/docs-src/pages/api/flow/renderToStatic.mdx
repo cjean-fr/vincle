@@ -4,7 +4,7 @@ title: renderToStatic
 
 # renderToStatic
 
-Build HTML files at compile time. Gives you a context to render all your pages, then emit fragment files if any page uses lazy `Template`.
+Build HTML files at compile time. Gives you a context to render all your pages, then emit fragment files if any page uses lazy `Defer`.
 
 ## Signature
 
@@ -47,7 +47,7 @@ value, and the fix. See [Error handling](/api/core/error-handling).
 
 ## Pure static
 
-No lazy `Template` in your pages? Call `renderToStatic` without options (just the handler). The handler receives a `PureStaticContext` — `emitFragments` does not exist, so the type system prevents accidental use.
+No lazy `Defer` in your pages? Call `renderToStatic` without options (just the handler). The handler receives a `PureStaticContext` — `emitFragments` does not exist, so the type system prevents accidental use.
 
 <CodeExample src="flow/pure-static.tsx" />
 

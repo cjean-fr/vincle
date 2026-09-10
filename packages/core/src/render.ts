@@ -175,7 +175,7 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
  * before awaiting any (`Promise.all`) would overlap their I/O and make the
  * document depend on which one finished first — a real race, since `context.ts`
  * is a mutable execution stack overlapping siblings would share. Deliberate
- * concurrency instead goes through `<Template>` / `<Slot>` in `@vincle/flow`,
+ * concurrency instead goes through `<Defer>` / `<Slot>` in `@vincle/flow`,
  * visible in the markup.
  */
 async function renderChildrenFrom(
