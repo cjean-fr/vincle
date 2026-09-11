@@ -32,7 +32,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Test — nothing built, nothing cached
-        run: bun run test
+        run: bun run test --parallel
 
       - name: Lint — builds the oxlint plugin it needs
         run: bun run lint
