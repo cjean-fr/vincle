@@ -163,19 +163,23 @@ async function main(): Promise<void> {
         return;
       }
 
-      let filePath = join(DIST, url.pathname === "/" ? "index.html" : url.pathname);
-      if (!existsSync(filePath)) {
-        const alt = join(DIST, url.pathname + ".html");
-        if (existsSync(alt)) filePath = alt;
+      const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
+      const filePath = resolve(DIST, "." + pathname);
+      if (filePath !== DIST && !filePath.startsWith(DIST + "/"))
+        return new Response("Forbidden", { status: 403 });
+      let target = filePath;
+      if (!existsSync(target)) {
+        const alt = target + ".html";
+        if (existsSync(alt)) target = alt;
         else {
           const fallback = join(DIST, "404.html");
-          if (existsSync(fallback)) filePath = fallback;
+          if (existsSync(fallback)) target = fallback;
           else return new Response("Not Found", { status: 404 });
         }
       }
 
-      return readFile(filePath).then((content) => {
-        const ext = extname(filePath);
+      return readFile(target).then((content) => {
+        const ext = extname(target);
         const mime = mimeTypes[ext] || "application/octet-stream";
         let body: string | Uint8Array = content;
         if (ext === ".html") body = injectLiveReload(content.toString("utf-8"));
