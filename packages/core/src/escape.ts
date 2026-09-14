@@ -44,10 +44,10 @@ export function escapeContent(str: string): string {
 /**
  * Does this tag hold rawtext (`<script>` / `<style>`)?
  *
- * Two literal comparisons rather than `RAWTEXT_TAGS.has(tag)`. The set has two
- * members, tag names arrive interned from the JSX transform, and this runs once
- * per element — a per-element `Set.has` is worth the same order of magnitude as
- * the tag-name validation on the same path, which is what pays for keeping both.
+ * Two literal comparisons rather than a `Set.has` lookup. Tag names arrive
+ * interned from the JSX transform, and this runs once per element — a
+ * per-element hash is worth the same order of magnitude as the tag-name
+ * validation on the same path, which is what pays for keeping both.
  * `RAWTEXT_LANG` remains the source of truth for everything else.
  */
 export function isRawtextTag(tag: string): boolean {
@@ -76,9 +76,6 @@ const RAWTEXT_LANG = {
   script: { pattern: "</?script", escape: "\\u003c" },
   style: { pattern: "</style", escape: "<\\" },
 } as const;
-
-/** The rawtext tags, derived from the language table so the two cannot drift apart. */
-export const RAWTEXT_TAGS: ReadonlySet<string> = new Set(Object.keys(RAWTEXT_LANG));
 
 // Per tag: a non-global matcher for the no-match fast path, and a global one to
 // iterate matches once one is found — avoids a lowercased copy of the body just
@@ -196,7 +193,7 @@ export function escapeRawTagContent(str: string, tag: string): string {
 
 const REGEX_IMAGE_DATA_URI = /^data:image\/(?:png|jpeg|gif|webp|avif)(?:[;+]|$)/i;
 
-export const URL_ATTRIBUTES = new Set([
+export const URL_ATTRIBUTES: ReadonlySet<string> = new Set([
   "href",
   "src",
   "action",
@@ -211,6 +208,10 @@ export const URL_ATTRIBUTES = new Set([
 const RE_URL_TAB_NEWLINE = /[\t\n\r]/g;
 
 /**
+ * @internal Shared with vincle's own tooling (`@vincle/eslint-plugin`,
+ * `@vincle/precompile-core`, `@vincle/flow`) via `@vincle/core/html` — not
+ * app-level API.
+ *
  * The scheme a WHATWG URL parser would read, or `undefined` when the input
  * carries none — in which case it is a relative reference and there is no
  * scheme to judge.
@@ -327,9 +328,7 @@ export function valueToText(v: unknown): string {
   // looking for a symbol they cannot import is worse than saying less.
   if (v instanceof VNode) {
     throw vincleError(
-      "[vincle/core] A VNode reached a text position: a component renders through the tree walk, " +
-        "not as a text value. Check that it is used as JSX (<Comp />) rather than interpolated as " +
-        "{comp}, and that the tree is rendered with renderToString().",
+      "[vincle/core] A VNode reached a text position — use it as JSX (<Comp />), not interpolated as {comp}.",
       ERR_VNODE_AS_TEXT,
     );
   }

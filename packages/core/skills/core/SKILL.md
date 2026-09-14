@@ -15,12 +15,11 @@ Async-first JSX-to-HTML renderer with built-in XSS protection and concurrent-saf
 npm install @vincle/core
 ```
 
-`@types/react` is an optional, type-only peer dependency: install it and every HTML
-and SVG attribute is typed per element, so `<dvi clas="x">` is a compile error.
-Without it, JSX still compiles and renders, with attributes unchecked. Nothing is
-imported from React at runtime.
+Element attributes are typed per element out of the box (the table ships in
+`@vincle/core`, generated from `@types/react` + `csstype`), so `<dvi clas="x">`
+is a compile error. Nothing is imported from React at runtime.
 
-Attribute names use React's camelCase spelling (`className`, `tabIndex`,
+Attribute names use camelCase spelling (`className`, `tabIndex`,
 `strokeWidth`); the engine maps each one to its HTML name (`class`, `tabindex`,
 `stroke-width`). Hyphenated and namespaced names (`data-*`, `aria-*`,
 `http-equiv`, `xlink:href`) can be written directly.

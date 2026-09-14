@@ -50,7 +50,7 @@ jobs:
       - name: Setup Node (for OIDC support)
         uses: actions/setup-node@v5
         with:
-          node-version: 26
+          node-version: 22
           registry-url: "https://registry.npmjs.org"
 
       # `bun pm pack`, not `npm pack`: only bun resolves the `workspace:` protocol

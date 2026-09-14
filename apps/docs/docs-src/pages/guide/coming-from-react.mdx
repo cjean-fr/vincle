@@ -342,7 +342,7 @@ optimize away in the first place, compiler or not.
 | `onClick={() => fn()}`             | HTML `<form>`, `hx-*`/`data-action`/`x-on:click`, or `onclick="fn()"` (global `fn`) |
 | `className` / `class`              | Both work — HTML name wins if both present, no merge                                |
 | `htmlFor` → `for`                  | `htmlFor` remapped to `for`; `for` wins if both present                             |
-| `@types/react`                     | Optional — install it for attribute autocomplete                                    |
+| `@types/react`                     | Built into `@vincle/core` — per-element attribute types, nothing to install         |
 | `defaultValue` / `defaultChecked`  | `value` / `checked` — nothing rehydrates, so there is no "initial" value            |
 | `ref` / `suppressHydrationWarning` | Not typed — no reconciler to talk to (`@vincle/no-refs` flags them)                 |
 | `<img>{caption}</img>`             | Refused — no valid HTML form; use `alt`, or a `<figure>`                            |

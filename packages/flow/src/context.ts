@@ -7,7 +7,7 @@ import {
   type JSX,
 } from "@vincle/core";
 
-import type { DeferGroup, FlowConfig } from "./types.js";
+import type { DeferGroupData, FlowConfig } from "./types.js";
 
 import { createAssetState, createSuppressedAssetState, type AssetState } from "./assets.js";
 import { assertFlowConfig, PREFIX } from "./config.js";
@@ -34,7 +34,7 @@ export interface FlowContext {
 export const Flow: ContextKey<FlowContext> = context<FlowContext>("@vincle/flow:flow");
 
 export interface DeferScope {
-  group: DeferGroup;
+  group: DeferGroupData;
   claimChild(target: string): void;
 }
 

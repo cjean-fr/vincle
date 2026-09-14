@@ -1,5 +1,5 @@
 import type { TemplateStore } from "./template-store.js";
-import type { DeferGroup, DeferItem, FlowEvent } from "./types.js";
+import type { DeferGroupData, DeferItem, FlowEvent } from "./types.js";
 
 type Emit = (ev: FlowEvent) => Promise<void>;
 
@@ -14,7 +14,7 @@ interface FragmentState {
 }
 
 interface GroupState {
-  group: DeferGroup;
+  group: DeferGroupData;
   frontierIndex: number;
   flushed: boolean;
 }
@@ -47,7 +47,7 @@ export class DeferCoordinator {
     return state;
   }
 
-  private getOrCreateGroupState(group: DeferGroup): GroupState {
+  private getOrCreateGroupState(group: DeferGroupData): GroupState {
     let state = this.groupStates.get(group.id);
     if (!state) {
       state = { group, frontierIndex: 0, flushed: false };
@@ -56,13 +56,13 @@ export class DeferCoordinator {
     return state;
   }
 
-  private getGroupForFragment(id: string): DeferGroup | undefined {
+  private getGroupForFragment(id: string): DeferGroupData | undefined {
     const entry = this.store.get(id);
     if (!entry?.deferGroupId) return undefined;
     return this.store.getDeferGroup(entry.deferGroupId);
   }
 
-  private getRootGroup(group: DeferGroup): DeferGroup {
+  private getRootGroup(group: DeferGroupData): DeferGroupData {
     let curr = group;
     while (curr.parentId) {
       const parent = this.store.getDeferGroup(curr.parentId);
@@ -133,8 +133,8 @@ export class DeferCoordinator {
     await this.emitTail;
   }
 
-  private findRootGroups(): DeferGroup[] {
-    const roots: DeferGroup[] = [];
+  private findRootGroups(): DeferGroupData[] {
+    const roots: DeferGroupData[] = [];
     const seen = new Set<string>();
 
     for (const [, state] of this.fragmentStates) {
@@ -162,7 +162,7 @@ export class DeferCoordinator {
     }
   }
 
-  private async flushGroup(group: DeferGroup): Promise<void> {
+  private async flushGroup(group: DeferGroupData): Promise<void> {
     const gState = this.getOrCreateGroupState(group);
     if (gState.flushed) return;
 

@@ -71,24 +71,11 @@ export default defineConfig({
 they ever reach the bundle. See [Precompile transform → Build-time
 sanitization](/integration/precompile#build-time-sanitization).
 
-## Optional: attribute autocomplete
+## Attribute types
 
-Installing `@types/react` (without React itself) gives you per-element attribute
-types: `src` on `<img>`, `href` on `<a>`, `colSpan` on `<td>`, and so on. It is
-optional in the sense that the library compiles and renders without it — but
-without it, attributes are unchecked, so `<div clas="card">` passes silently.
-Install it. Nothing is imported from React at runtime.
-
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core",
-    "types": ["@types/react"]
-  }
-}
-```
+Every HTML and SVG element is typed per element — `src` on `<img>`, `href` on
+`<a>`, `colSpan` on `<td>`. The types ship inside `@vincle/core`, so a typo is
+a compile error: `<div clas="card">` never passes silently.
 
 ## Where to next
 

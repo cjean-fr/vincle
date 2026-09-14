@@ -18,7 +18,7 @@ Uppercase tags are treated as **components** (functions).
 
 ### Content in a void element is refused
 
-`<img>{caption}</img>` type-checks — `@types/react` does not forbid children on
+`<img>{caption}</img>` type-checks — the element types do not forbid children on
 a void tag — but it has no valid HTML form: a parser drops the closing tag and
 reparents the content, so the document stops being the one you wrote. Vincle
 throws instead:

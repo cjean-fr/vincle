@@ -30,13 +30,11 @@ explicit import:
 
 <CodeExample src="guide/getting-started/tsconfig.json" meta="tsconfig.json" />
 
-## Optional: @types/react
+## Attribute types
 
-Installing `@types/react` gives you per-element attribute autocomplete (e.g.
-`src` on `<img>`, `href` on `<a>`). It is not required — `@vincle/core` works
-without it.
-
-<CodeExample src="guide/getting-started/tsconfig-with-react.json" />
+Every HTML and SVG element is typed per element — `src` on `<img>`, `href` on
+`<a>`. The types are part of `@vincle/core`: nothing to install, and a typo is
+a compile error.
 
 ## What you get
 
@@ -60,14 +58,13 @@ without it.
 | `VNode`         | The engine's element representation — a class, exported as a value |
 | `RawString`     | Branded type for pre-escaped HTML                                  |
 | `Awaitable<T>`  | `T` or a promise of `T`                                            |
-| `CSSProperties` | Type for inline `style` objects                                    |
 | `ClassValue`    | What a `class` attribute accepts                                   |
-| `FromReact<T>`  | React props → Vincle attribute props                               |
 | `JSX`           | The JSX namespace                                                  |
 | `ContextKey<T>` | Branded context key type                                           |
 | `ContextMap`    | Raw context map type                                               |
 
-Element attributes are typed per element, from `@types/react` — see
+Element attributes are typed per element, by the table generated into
+`@vincle/core` — see
 [JSX types](/api/core/jsx-types).
 
 Everything else is internal. There is no plugin registry, no provider tree, no

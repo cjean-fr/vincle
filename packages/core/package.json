@@ -78,7 +78,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && bun scripts/codegen.ts --check",
     "coverage": "bun test --coverage --coverage-reporter=lcov",
     "format": "oxfmt",
     "mutation": "stryker run",
@@ -89,22 +89,20 @@
     "conformance:bun": "bun --conditions=dist run conformance/run.ts",
     "conformance:node": "node conformance/run.ts",
     "conformance:deno": "deno run --allow-read --allow-env conformance/run.ts",
-    "conformance:workerd": "./conformance/run-workerd.sh"
+    "conformance:workerd": "./conformance/run-workerd.sh",
+    "codegen": "bun scripts/codegen.ts",
+    "codegen:check": "bun scripts/codegen.ts --check"
   },
   "devDependencies": {
     "@stryker-mutator/core": "^9.6.1",
     "@types/bun": "catalog:",
     "@types/react": "catalog:",
-    "tsdown": "catalog:"
+    "csstype": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@types/react": "^19",
     "typescript": ">=5.5"
-  },
-  "peerDependenciesMeta": {
-    "@types/react": {
-      "optional": true
-    }
   },
   "engines": {
     "node": ">=22.0.0"

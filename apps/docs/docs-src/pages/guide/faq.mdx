@@ -20,7 +20,7 @@ title: FAQ
         name: "How is Vincle different from React?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "React ships a virtual DOM, a reconciler, and a hydration contract — none of which help when the only output is a string. Vincle is built exclusively for server-side HTML generation: zero dependencies (under 10 KB gzip), no virtual DOM, async-native rendering, security by default, and no client runtime.",
+          text: "React ships a virtual DOM, a reconciler, and a hydration contract — none of which help when the only output is a string. Vincle is built exclusively for server-side HTML generation: one package with zero dependencies, no virtual DOM, async-native rendering, security by default, and no client runtime.",
         },
       },
       {
@@ -36,7 +36,7 @@ title: FAQ
         name: "Does Vincle work with TypeScript?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes. Vincle is written in TypeScript and provides full type inference. Set jsxImportSource to '@vincle/core' in your tsconfig.json and JSX expressions are fully typed. For per-element attribute autocomplete, install @types/react as an optional dev dependency.",
+          text: "Yes. Vincle is written in TypeScript and provides full type inference. Set jsxImportSource to '@vincle/core' in your tsconfig.json and JSX expressions are fully typed, per element — every HTML and SVG attribute is checked, so a typo is a compile error.",
         },
       },
       {
@@ -76,7 +76,7 @@ title: FAQ
         name: "What is the bundle size of Vincle?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "@vincle/core is under 10 KB gzipped with zero runtime dependencies — that is the whole package, every entry point included. For comparison, react-dom/server is around 140 KB. The @vincle/flow package for streaming and fragments adds under 7 KB on top of it.",
+          text: "@vincle/core is one package with zero dependencies, under 100 KB to download, and it carries the complete per-element attribute table: every HTML and SVG element, every CSS property. csstype alone — one of the two packages React needs just to type a style prop — is 138 KB, and @types/react another 78 KB on top. The @vincle/flow package for streaming and fragments adds under 30 KB.",
         },
       },
       {
@@ -123,7 +123,6 @@ contract. Vincle is built exclusively for server-side HTML generation:
 
 |                | Vincle                              | react-dom/server |
 | -------------- | ----------------------------------- | ---------------- |
-| Bundle size    | < 10 KB gzip                        | ~140 KB          |
 | Dependencies   | 0                                   | React runtime    |
 | Async          | Native `await`                      | Suspense-only    |
 | Virtual DOM    | None                                | Full             |
@@ -245,10 +244,14 @@ See the [Error handling API](/api/core/error-handling) page for details.
 
 ## What is the bundle size?
 
-| Package        | Size (gzip) | Dependencies        |
-| -------------- | ----------- | ------------------- |
-| `@vincle/core` | < 10 KB     | 0                   |
-| `@vincle/flow` | < 7 KB      | 0 (depends on core) |
+| Package        | Download (gzip) | Dependencies        |
+| -------------- | --------------- | ------------------- |
+| `@vincle/core` | < 100 KB        | 0                   |
+| `@vincle/flow` | < 30 KB         | 0 (depends on core) |
+
+That is the whole install: runtime, and types for every HTML and SVG element and
+every CSS property. `csstype` alone — one of the two packages React needs just
+to type a `style` prop — is 138 KB, and `@types/react` another 78 KB on top.
 
 No hidden dependencies, no runtime you don't need. Every byte is accounted
 for.

@@ -12,12 +12,13 @@ Every HTML and SVG element is typed per element, so a typo is a compile error:
 ```tsx
 <dvi clas="card" />
 //^ error: 'dvi' does not exist
-//     ^ error: 'clas' does not exist on <div>. Did you mean 'class'?
+//  ^ error: 'clas' does not exist on <div>. Did you mean 'class'?
 ```
 
-That typing comes from `@types/react`, which Vincle uses as an **optional,
-type-only** peer dependency — nothing is imported from React at runtime. Without
-it, JSX still compiles and renders; attributes are simply unchecked.
+That typing ships inside `@vincle/core` itself. The table is generated from
+`@types/react` and `csstype` at build time, so the attribute names and value
+unions match what you already know from React — nothing from either is bundled
+or imported at runtime. Every tag and attribute is type-checked, always.
 
 ## Renderable
 
@@ -157,8 +158,9 @@ You rarely touch these directly — they are wired by the `jsxImportSource` in y
 
 ### Custom elements
 
-Any name containing a hyphen is a custom element and stays open, because no type
-can know what it accepts:
+Any name containing a hyphen is a custom element and stays open: it accepts any
+attribute, and its children are checked as `Renderable`. No type can know what a
+custom element accepts, so it is deliberately loose:
 
 ```tsx
 <my-widget theme="dark" data-id="7">
@@ -166,32 +168,36 @@ can know what it accepts:
 </my-widget>
 ```
 
-To type one properly, augment `React.JSX.IntrinsicElements` — Vincle derives its
-own list from it, so the declaration flows through. This is how `@vincle/flow`
-registers `<turbo-frame>`:
+To type one properly, augment Vincle's own `JSX.IntrinsicElements` — the same
+interface every element is listed in:
 
 ```tsx
-declare global {
-  namespace React.JSX {
+import type { Renderable } from "@vincle/core";
+
+declare module "@vincle/core/jsx-runtime" {
+  namespace JSX {
     interface IntrinsicElements {
-      "turbo-frame": { src?: string; target?: string; children?: unknown };
+      "turbo-frame": { src?: string; target?: string; children?: Renderable };
     }
   }
 }
 ```
 
-## FromReact\<T\>
+`children` is `Renderable`, not `unknown`: a custom element's children are
+checked, and `Renderable` is what the renderers actually accept. This is how
+`@vincle/flow`'s Turbo elements type-check.
 
-The transformation applied to React's props to obtain Vincle's: React-only props
-removed, `on*` handlers turned into strings, and every value widened to accept a
-`RawString` or a promise. Exported for library authors who need to derive
-attribute types the same way Vincle does.
+One constraint: the props must be a **type literal**, not a named `interface` —
+an interface cannot satisfy the custom-element index signature (error TS2411).
 
 ## CSSProperties
 
-Style objects use camelCase properties, converted to kebab-case on output:
+Style objects use camelCase properties, converted to kebab-case on output. The
+type is exported from `@vincle/core`:
 
 ```tsx
+import type { CSSProperties } from "@vincle/core";
+
 const styles = {
   backgroundColor: "#fff",
   fontSize: "14px",
@@ -215,10 +221,9 @@ are dropped — so no helper is needed for a conditional class.
 
 ## When to use each type
 
-| Type            | Use case                                               |
-| --------------- | ------------------------------------------------------ |
-| `Renderable`    | A `children` prop, or the return type of a helper      |
-| `VNode`         | A value that specifically holds an element             |
-| `CSSProperties` | Typing an inline `style` object                        |
-| `ClassValue`    | Typing a `class` prop you forward                      |
-| `FromReact<T>`  | Deriving attribute types for your own element wrappers |
+| Type            | Use case                                          |
+| --------------- | ------------------------------------------------- |
+| `Renderable`    | A `children` prop, or the return type of a helper |
+| `VNode`         | A value that specifically holds an element        |
+| `CSSProperties` | Typing an inline `style` object                   |
+| `ClassValue`    | Typing a `class` prop you forward                 |

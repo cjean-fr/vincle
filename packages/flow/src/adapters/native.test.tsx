@@ -139,3 +139,75 @@ describe("merge capabilities: the pure spec and the polyfill diverge", () => {
     }
   });
 });
+
+/**
+ * The polyfill turns `data-src` into `fetch(src)` + `innerHTML` — a client-side
+ * sink outside `@vincle/core`'s output-encoding model. The gate below mirrors
+ * the server policy (`<Include>` allows http(s) or relative only): anything
+ * that does not resolve to http(s) is dropped, fail-closed, before `fetch`.
+ */
+describe("native polyfill data-src URL gate", () => {
+  const runPolyfillWithSrc = async (src: string | null): Promise<string[]> => {
+    const fetched: string[] = [];
+    const template = {
+      nodeName: "TEMPLATE",
+      getAttribute: (key: string) => {
+        if (key === "for") return "frag-1";
+        if (key === "data-src") return src;
+        return null;
+      },
+      remove: () => {},
+    };
+    const g = globalThis as Record<string, unknown>;
+    const prev = {
+      document: g["document"],
+      MutationObserver: g["MutationObserver"],
+      fetch: g["fetch"],
+    };
+    g["document"] = {
+      body: null,
+      documentElement: {},
+      baseURI: "https://app.example/page",
+      createNodeIterator: () => ({ nextNode: () => null }),
+      createElement: () => ({ innerHTML: "", content: {} }),
+      querySelectorAll: () => (src === null ? [] : [template]),
+    };
+    g["MutationObserver"] = class {
+      observe() {}
+    };
+    g["fetch"] = async (url: string) => {
+      fetched.push(String(url));
+      return { text: async () => "<p>fragment</p>" };
+    };
+    try {
+      // eslint-disable-next-line no-eval -- the polyfill is intentionally eval'd into the sandboxed globals
+      eval(NATIVE_POLYFILL);
+      await new Promise((r) => setTimeout(r, 10));
+    } finally {
+      g["document"] = prev.document;
+      g["MutationObserver"] = prev.MutationObserver;
+      g["fetch"] = prev.fetch;
+    }
+    return fetched;
+  };
+
+  it("fetches relative and https: fragments", async () => {
+    expect(await runPolyfillWithSrc("/fragments/hero")).toEqual(["/fragments/hero"]);
+    expect(await runPolyfillWithSrc("https://cdn.example/frag.html")).toEqual([
+      "https://cdn.example/frag.html",
+    ]);
+  });
+
+  it("never fetches javascript:/data:/blob:/vbscript: sources", async () => {
+    for (const src of [
+      "javascript:alert(1)",
+      "   javascript:alert(1)",
+      "JaVaScRiPt:alert(1)",
+      "data:text/html,<img src=x onerror=alert(1)>",
+      "blob:https://app.example/uuid",
+      "vbscript:msgbox(1)",
+    ]) {
+      expect(await runPolyfillWithSrc(src)).toEqual([]);
+    }
+  });
+});

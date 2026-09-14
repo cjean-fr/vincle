@@ -41,9 +41,9 @@ export type { RawString } from "./src/types.js";
 // export here also satisfies an explicit `import { type JSX } from "@vincle/core"`
 // (used by `@vincle/flow`).
 
-export type { JSX } from "./src/jsx-namespace.js";
+export type { CSSProperties, JSX } from "./src/jsx-namespace.js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type { CSSProperties, ClassValue, FromReact } from "./src/types.js";
+export type { ClassValue } from "./src/types.js";
 export type { Awaitable, Renderable } from "./src/types.js";

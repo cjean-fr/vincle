@@ -47,13 +47,6 @@ export function renderToString(node: unknown): Promise<string> {
 }
 
 /**
- * Recursive tree walk. Exported for the precompile helpers, so every path emits
- * the same bytes. Rawtext escaping is local to `renderChildrenAsync`, not
- * inherited.
- *
- * @internal
- */
-/**
  * An element with no children, which is the only shape a void tag can take by
  * the time it reaches the walk. The vocabulary is consulted here and nowhere
  * else on this path.

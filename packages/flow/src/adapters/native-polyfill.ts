@@ -8,7 +8,7 @@ if(!s)return;var c=s.nextSibling;while(c&&c!==e){var x=c.nextSibling;c.remove();
 function run(t){
 var name=t.getAttribute("for");if(!name)return;
 var src=t.getAttribute("data-src");
-if(src!=null){fetch(src).then(function(r){return r.text();}).then(function(h){var x=document.createElement("template");x.innerHTML=h;fill(name,x.content);});t.remove();return;}
+if(src!=null&&src!==""){try{var p=new URL(src,document.baseURI||location.href).protocol;if(p!=="http:"&&p!=="https:"){t.remove();return;}}catch(e){t.remove();return;}fetch(src).then(function(r){return r.text();}).then(function(h){var x=document.createElement("template");x.innerHTML=h;fill(name,x.content);});t.remove();return;}
 var merge=t.getAttribute("data-merge");
 if(merge&&merge!=="replace"){var el=document.getElementById(name);if(el)el.insertAdjacentHTML(ADJ[merge],t.innerHTML);t.remove();return;}
 fill(name,t.content.cloneNode(true));t.remove();

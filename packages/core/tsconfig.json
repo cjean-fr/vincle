@@ -21,5 +21,6 @@
   // here, and rewrites under `tsc` whenever the two run at once (`TS6053`, on
   // files that exist). `tmp/` holds the SKILL.md examples `skill-contract.test.ts`
   // extracts and type-checks under their own tsconfig.
+  "include": ["./**/*"],
   "exclude": ["tmp", "dist", "coverage", "badges", ".turbo"]
 }

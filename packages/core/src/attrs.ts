@@ -18,8 +18,8 @@ const camelToKebab = (name: string): string =>
 // the lookup.
 
 /**
- * SVG attributes that are hyphenated in the spec, listed under the camelCase name
- * `@types/react` declares. The values are derived, not typed out, so the table
+ * SVG attributes that are hyphenated in the spec, listed under the camelCase
+ * name `@types/react` declares. The values are derived, not typed out, so the table
  * cannot contain a mistyped target — `attrs.test.ts` checks a sample against the
  * spec by hand, which is the part a derivation cannot verify about itself.
  */
@@ -98,12 +98,6 @@ const SVG_HYPHENATED: ReadonlyMap<string, string> = new Map(
     "xHeight",
   ].map((key) => [key, camelToKebab(key)]),
 );
-
-/**
- * SVG attributes that are camelCase *in the spec*. Foreign-content parsing
- * preserves case, so lowercasing `viewBox` to `viewbox` breaks it exactly the way
- * lowercasing `strokeWidth` does.
- */
 const SVG_CASE_SENSITIVE: ReadonlySet<string> = new Set([
   "allowReorder",
   "attributeName",
@@ -282,6 +276,9 @@ const ATTR_META = new Map<string, AttrMeta>();
 const ATTR_META_MAX = 1024;
 
 /**
+ * @internal Shared with vincle's own tooling (`@vincle/precompile-core`,
+ * `@vincle/eslint-plugin`) via `@vincle/core/html` — not app-level API.
+ *
  * Everything about an attribute *name*, memoized.
  *
  * Shared with `jsxAttr`: `resolveAttrName`, `isValidAttrName` and
@@ -309,11 +306,7 @@ export function attrMeta(key: string): AttrMeta {
  * attribute means and how to fix it.
  */
 function functionAttrMessage(key: string): string {
-  return (
-    `[vincle/core] Attribute "${key}" received a function as value — functions are not serializable to HTML. ` +
-    "If this is an event handler, note that vincle renders on the server: handlers cannot ship in markup. " +
-    "Pass a string, call the function first, or drop the attribute."
-  );
+  return `[vincle/core] Attribute "${key}" got a function — not serializable to HTML. Pass a string, or drop it.`;
 }
 
 /**
@@ -330,23 +323,6 @@ function rawAttrValue(value: string): string {
   return value.includes('"') ? value.replaceAll('"', "&quot;") : value;
 }
 
-/**
- * Serialize one attribute value to a `name="value"` fragment, with no leading
- * space. Synchronous: a promised value is the caller's policy, not part of the
- * value taxonomy.
- *
- * @example
- * ```ts
- * serializeAttr("className", "card").value;      // 'class="card"'
- * serializeAttr("disabled", true).value;         // 'disabled'
- * serializeAttr("href", "javascript:x").value;   // '' — scheme refused
- * serializeAttr("children", x).value;            // '' — reserved key
- * ```
- *
- * @returns `raw("")` when the attribute must not be emitted, so a caller with no
- *   loop has nothing to filter.
- * @throws on a function value — a function cannot be serialized to HTML.
- */
 /**
  * The attribute *value* taxonomy: one value, already past its caller's gates, to
  * the text that carries it into a start tag. `prefix` is the separator the

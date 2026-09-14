@@ -1,24 +1,25 @@
 // Register the Turbo (Hotwire) custom elements used by `TurboAdapter` so they
-// type-check against vincle's JSX. Vincle derives its intrinsic elements from
-// `React.JSX.IntrinsicElements`, so augmenting it here flows through
-// automatically (see @vincle/core's `src/types.ts` and `src/jsx-namespace.ts`).
-//
-// We augment via `declare global` (not `declare module "react"`) because the
-// latter breaks TypeScript 6's module resolution for `export =` modules.
+// type-check against vincle's JSX. The generated table in `@vincle/core`
+// covers standard HTML/SVG only, so custom elements are declared here, as type
+// literals — a named `interface` cannot satisfy the custom-element index
+// signature (TS2411).
 
-import type * as React from "react";
+import type { Awaitable, Renderable } from "@vincle/core";
 
-declare global {
-  namespace React.JSX {
+declare module "@vincle/core/jsx-runtime" {
+  namespace JSX {
     interface IntrinsicElements {
-      "turbo-frame": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        src?: string;
-        target?: string;
+      "turbo-frame": {
+        id?: Awaitable<string | number> | undefined;
+        src?: Awaitable<string> | undefined;
+        target?: Awaitable<string> | undefined;
+        children?: Renderable;
       };
-      "turbo-stream": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        action?: string;
-        target?: string;
-        method?: string;
+      "turbo-stream": {
+        action?: Awaitable<string> | undefined;
+        method?: Awaitable<string> | undefined;
+        target?: Awaitable<string> | undefined;
+        children?: Renderable;
       };
     }
   }
