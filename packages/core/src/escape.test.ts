@@ -4,7 +4,7 @@ import {
   escapeContent,
   escapeAttr,
   escapeRawTagContent,
-  RAWTEXT_TAGS,
+  isRawtextTag,
   isSafeScheme,
   URL_ATTRIBUTES,
   valueToText,
@@ -137,22 +137,18 @@ describe("escapeRawTagContent", () => {
   });
 });
 
-// ── RAWTEXT_TAGS ──────────────────────────────────────────────────────────
+// ── isRawtextTag ─────────────────────────────────────────────────────────
 
-describe("RAWTEXT_TAGS", () => {
-  test("contains script and style", () => {
-    expect(RAWTEXT_TAGS.has("script")).toBe(true);
-    expect(RAWTEXT_TAGS.has("style")).toBe(true);
+describe("isRawtextTag", () => {
+  test("matches script and style", () => {
+    expect(isRawtextTag("script")).toBe(true);
+    expect(isRawtextTag("style")).toBe(true);
   });
 
-  test("does not contain non-rawtext tags", () => {
-    expect(RAWTEXT_TAGS.has("div")).toBe(false);
-    expect(RAWTEXT_TAGS.has("span")).toBe(false);
-    expect(RAWTEXT_TAGS.has("template")).toBe(false);
-  });
-
-  test("has exactly 2 entries", () => {
-    expect(RAWTEXT_TAGS.size).toBe(2);
+  test("rejects non-rawtext tags", () => {
+    for (const tag of ["div", "span", "template", "a", "p"]) {
+      expect(isRawtextTag(tag)).toBe(false);
+    }
   });
 });
 
@@ -505,6 +501,6 @@ describe("one leaf taxonomy, three entry points", () => {
   });
 
   test("a VNode is not a text value — valueToText throws", () => {
-    expect(() => valueToText(new VNode("div", {}, null))).toThrow(/tree walk/);
+    expect(() => valueToText(new VNode("div", {}, null))).toThrow(/reached a text position/);
   });
 });

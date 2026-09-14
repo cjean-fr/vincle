@@ -1,9 +1,0 @@
-{
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core"
-  },
-  "devDependencies": {
-    "@types/react": "^19"
-  }
-}

@@ -11,7 +11,6 @@
 export { isVoidElement, isValidTag } from "./serialize.js";
 
 export {
-  RAWTEXT_TAGS,
   isRawtextTag,
   escapeContent,
   escapeAttr,
