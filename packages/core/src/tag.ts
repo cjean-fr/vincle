@@ -41,9 +41,8 @@ export function isValidTag(tag: string): boolean {
 
 export function invalidTagMessage(tag: string): string {
   return (
-    `[vincle/core] Invalid tag name ${JSON.stringify(tag)}: a tag name must not be empty, ` +
-    'start with "!" or "?", or contain whitespace, control characters, or any of " \' < > / = ` \\ . ' +
-    'If the tag is computed, check the expression that produced it — it must be a plain tag name like "div", not a component or an undefined value.'
+    `[vincle/core] Invalid tag name ${JSON.stringify(tag)}: must be a plain name like "div" — ` +
+    "not empty, and no leading ! or ?, whitespace, control characters, or \" ' < > / = ` \\ ."
   );
 }
 
@@ -83,9 +82,5 @@ export function isVoidElement(tag: string): boolean {
  * for whichever of the two the caller happens to hit first.
  */
 export function voidChildrenMessage(tag: string): string {
-  return (
-    `[vincle/core] <${tag}> is a void element and cannot have children. ` +
-    "An HTML parser drops the closing tag and reparents the content, so the document would not be the one written. " +
-    `Move the content next to <${tag}> rather than inside it.`
-  );
+  return `[vincle/core] <${tag}> is a void element and cannot have children — move the content next to it, not inside.`;
 }

@@ -1,8 +1,10 @@
 # @vincle/core
 
-The JSX → HTML engine. No runtime dependencies, under 10 KB gzip for the whole
-package — every entry point and shared chunk in `dist`. `bun run size` measures
-it against that budget and CI reports the figure on every build; it warns rather
+The JSX → HTML engine. One package, no dependencies, under 100 KB to download —
+runtime and the per-element attribute table together, every HTML and SVG
+element, every CSS property. `csstype` alone, one of the two packages React
+needs just to type a `style` prop, is 138 KB. `bun run size` breaks the package
+down by kind and measures it against that budget on every build; it warns rather
 than fails, since growth is a judgement call.
 
 One renderer, one tree walk: `renderToString` for a document. Static subtrees
@@ -25,8 +27,8 @@ for the walk.
 
 ### Types
 
-`VNode`, `RawString`, `Awaitable`, `Renderable`, `CSSProperties`, `ClassValue`,
-`FromReact`, and the `JSX` namespace.
+`VNode`, `RawString`, `Awaitable`, `Renderable`, `ClassValue`, and the `JSX`
+namespace.
 
 `VNode` is a concrete class — one element (tag, attrs, children) — exported as
 a **type only**, the name of what `jsx()` produces, for typing a component's
@@ -81,7 +83,7 @@ each one was, at some point, quietly untrue.
   Nothing serializes as `[object Promise]`.
 
 - **The output is the tree, or an error.** A void element given content
-  (`<img>{caption}</img>` — which type-checks, since `@types/react` allows
+  (`<img>{caption}</img>` — which type-checks, since the element types allow
   children there) has no valid HTML form: a parser drops the closing tag and
   reparents the content. Both paths refuse it rather than emit it. A child that
   renders to nothing is not content, so a conditional child still renders the
@@ -99,21 +101,24 @@ each one was, at some point, quietly untrue.
   parser, so obfuscation with tabs or control characters does not get through — and
   a relative URL is not mistaken for a scheme.
 
-- **Attributes are typed per element.** `JSX.IntrinsicElements` is derived from
-  `@types/react`, so `<dvi clas="x">` is a compile error. Custom elements (any
-  hyphenated name) stay open. Attribute names use React's camelCase spelling,
+- **Attributes are typed per element.** `JSX.IntrinsicElements` is filled in by
+  a table generated from `@types/react` (see `scripts/codegen.ts`), so
+  `<dvi clas="x">` is a compile error. Custom elements (any
+  hyphenated name) stay open. Attribute names use camelCase spelling,
   which the engine maps to the HTML one — including the SVG presentation
   attributes (`strokeWidth` → `stroke-width`).
 
-## `@types/react`
+## Intrinsic element types
 
-An **optional, type-only** peer dependency. Nothing is imported at runtime. With
-it, every HTML and SVG attribute is typed per element; without it, JSX still
-compiles and renders, with attributes unchecked.
-
-DOM typings are currently generated from `@types/react` and adapted for
-Vincle. This may be replaced by a standards-based source if a sufficiently
-complete and maintainable one becomes available.
+The per-element attribute table ships inside the package — nothing to install.
+It is generated from `@types/react` and `csstype` (so the names, value unions
+and CSS properties match what you already know) by `scripts/codegen.ts`, which
+rewrites the marked regions of `src/jsx-namespace.ts`; CI fails if the committed
+file drifts (`bun run codegen` to regenerate). Both are dev-time inputs only:
+the CSS types are expanded inline, so the generated file is self-contained —
+nothing external is referenced, not even type-only. The table keeps
+`JSX.IntrinsicElements` an open interface: custom elements and user extensions
+merge into it (e.g. `hx-*` attributes, Turbo's `turbo-frame`).
 
 ## Error model
 

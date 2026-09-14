@@ -1,6 +1,5 @@
 import {
   URL_ATTRIBUTES,
-  RAWTEXT_TAGS,
   isRawtextTag,
   resolveAttrName,
   escapeContent,
@@ -17,7 +16,6 @@ export { isVoidElement } from "@vincle/core/html";
 
 export {
   URL_ATTRIBUTES,
-  RAWTEXT_TAGS,
   isRawtextTag,
   resolveAttrName,
   escapeContent,

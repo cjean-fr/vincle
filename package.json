@@ -15,9 +15,9 @@
       "@vincle/eslint-plugin": "workspace:*",
       "@iconify-icons/tabler": "^1.2",
       "@tailwindcss/vite": "^4.3.3",
-      "@types/bun": "^1.4.1",
-      "@types/node": "^22.20.1",
-      "@types/react": "^19.2.18",
+      "@types/bun": "^1.4.2",
+      "@types/node": "^26.5.1",
+      "@types/react": "^19.3.0",
       "bun": "^1.4.2",
       "eslint": "^10.10.0",
       "gray-matter": "^4.0.3",
@@ -25,13 +25,14 @@
       "shiki": "^4",
       "tailwindcss": "^4.3.3",
       "typescript": "^6.0.3",
-      "@typescript-eslint/parser": "^8.69.0",
+      "@typescript-eslint/parser": "^8.70.0",
       "@typescript-eslint/utils": "^8.69.0",
-      "@typescript-eslint/rule-tester": "^8.69.0",
+      "@typescript-eslint/rule-tester": "^8.70.0",
       "unified": "^11",
-      "vite": "^8.2.2",
+      "vite": "^8.3.0",
       "vite-plugin-dts": "^5",
-      "zod": "^4"
+      "zod": "^4",
+      "csstype": "^3.2.3"
     }
   },
   "type": "module",
@@ -45,18 +46,18 @@
     "test:coverage": "turbo run coverage"
   },
   "devDependencies": {
-    "@oxc-project/types": "^0.139.0",
     "bun": "^1.4.2",
-    "lefthook": "^2.1.12",
-    "oxc-parser": "^0.139.0",
-    "oxc-transform": "^0.139.0",
+    "lefthook": "^2.1.14",
     "oxfmt": "^0.58.0",
-    "oxlint": "^1.81.0",
+    "oxlint": "^1.83.0",
     "tailwindcss": "^4.3.3",
-    "turbo": "^2.10.12"
+    "turbo": "^2.10.13"
   },
   "peerDependencies": {
     "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "@types/node": "^26.4.1"
   },
   "packageManager": "bun@1.4.0"
 }

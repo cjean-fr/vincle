@@ -5,12 +5,12 @@ import { renderToString, type JSX } from "@vincle/core";
 import { isAsyncIterable } from "@vincle/core/html";
 
 import type { TemplateEntry } from "./template-store.js";
-import type { FlowEvent, FlowOptions, MergeType, TemplateContent } from "./types.js";
+import type { DeferContent, FlowEvent, FlowOptions, MergeType } from "./types.js";
 
 import { createTimeoutSignal } from "./timeout.js";
 
 const isLazyFactory = (
-  c: TemplateContent,
+  c: DeferContent,
 ): c is
   | ((signal: AbortSignal) => JSX.Element)
   | ((signal: AbortSignal) => AsyncIterable<JSX.Element>) => typeof c === "function";

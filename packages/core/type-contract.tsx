@@ -82,8 +82,8 @@ export const rejected2 = <BadSymbol />;
 export const rejected3 = <BadMap />;
 
 // `JSX.IntrinsicElements` used to accept any attribute on any element — this
-// block locks the opposite, both ways: refusing `class={[…]}` would be just
-// as wrong as accepting `<dvi>`.
+// block locks the opposite, both ways: `<dvi>` is not an element, and
+// `<div clas="x">` is not an attribute.
 
 // Must compile: what the engine actually serializes.
 declare const isActive: boolean;

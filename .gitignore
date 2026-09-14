@@ -6,6 +6,8 @@ tmp
 # IA
 .agent
 .claude
+opencode.json
+repomix-output.xml
 
 # output
 dist

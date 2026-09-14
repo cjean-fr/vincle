@@ -2,19 +2,11 @@ import type { JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 
-// What the adapters imposed on the API: the five positions come from Turbo and
-// HTMX, `morph` from the diffing swap both grew (Turbo 8, htmx 4), and
-// `capabilities` from what ESI refuses. `morph` is the one entry that says
-// *how* rather than *where*, so an adapter with no diffing client on the other
-// end rejects it instead of falling back to a plain replace.
+// Merge positions from Turbo/HTMX, plus `morph` (a *how*, not a *where*). An adapter
+// with no diffing client rejects `morph` rather than falling back to a plain replace.
 export const ALL_MERGES = ["replace", "append", "prepend", "before", "after", "morph"] as const;
 
-/**
- * The list is the single declaration; the type derives from it. `assertAdapter`
- * validates against the same array, so the runtime check and the compile-time
- * type cannot drift apart, and `Record<MergeType, …>` in an adapter stops
- * compiling the moment the list changes.
- */
+/** Derived from `ALL_MERGES`, the single declaration `assertAdapter` also validates — runtime and type can't drift. */
 export type MergeType = (typeof ALL_MERGES)[number];
 
 export interface AdapterCapabilities {
@@ -23,18 +15,11 @@ export interface AdapterCapabilities {
 }
 
 /**
- * Content that can be rendered as a template fragment.
- *
+ * Content renderable as a deferred fragment:
  * - `JSX.Element` — one-shot sync/async render
- * - `string` — **text**, escaped like any other child. It is stored verbatim
- *   and escaped when rendered, so `"<b>hi</b>"` reaches the page as visible
- *   `<b>hi</b>` characters, not as markup. For content that really is HTML —
- *   a cache entry, a CMS body — wrap it: `raw(html)` from `@vincle/core`.
- * - `(signal) => JSX.Element` — lazy factory; `signal` combines the request's
- *   own abort signal with the fragment's `timeout`, so a factory can forward
- *   it to its own async work (e.g. `fetch(url, { signal })`) to cancel that
- *   work early
- * - `AsyncIterable<JSX.Element>` — streaming (each yielded element is flushed)
+ * - `string` — **escaped text**; for real HTML, wrap with `raw()`
+ * - `(signal) => JSX.Element` — lazy factory; `signal` = request abort + fragment timeout
+ * - `AsyncIterable<JSX.Element>` — streaming
  */
 export type DeferContent =
   | JSX.Element
@@ -42,8 +27,6 @@ export type DeferContent =
   | ((signal: AbortSignal) => JSX.Element)
   | AsyncIterable<JSX.Element>
   | ((signal: AbortSignal) => AsyncIterable<JSX.Element>);
-
-export type TemplateContent = DeferContent;
 
 export interface Shell {
   type: "shell";
@@ -102,12 +85,12 @@ export interface DeferItemFragment {
 
 export interface DeferItemGroup {
   kind: "group";
-  group: DeferGroup;
+  group: DeferGroupData;
 }
 
 export type DeferItem = DeferItemFragment | DeferItemGroup;
 
-export interface DeferGroup {
+export interface DeferGroupData {
   id: string;
   together: boolean;
   parentId?: string;

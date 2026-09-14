@@ -9,7 +9,7 @@ import {
   type Renderable,
 } from "@vincle/core";
 
-import type { DeferContent, DeferGroup as DeferGroupType, MergeType, OnError } from "../types.js";
+import type { DeferContent, DeferGroupData, MergeType, OnError } from "../types.js";
 
 import {
   DeferContext,
@@ -40,7 +40,7 @@ export async function DeferGroup(props: DeferGroupProps): Promise<JSX.Element> {
   const together = props.together ?? false;
   const id = nextId();
 
-  const group: DeferGroupType = {
+  const group: DeferGroupData = {
     id,
     together,
     parentId: parentScope?.group.id,

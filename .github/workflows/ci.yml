@@ -78,7 +78,7 @@ jobs:
         if: matrix.needs_node
         uses: actions/setup-node@v5
         with:
-          node-version: 24
+          node-version: 22
 
       - name: Setup Deno
         if: matrix.needs_deno

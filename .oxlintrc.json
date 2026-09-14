@@ -34,7 +34,7 @@
       }
     },
     {
-      "files": ["packages/core/type-contract.tsx"],
+      "files": ["packages/core/type-contract.tsx", "packages/core/jsx-contract.tsx"],
       "rules": {
         "@vincle/no-unsafe-event-handlers": "off",
         "@vincle/no-refs": "off"

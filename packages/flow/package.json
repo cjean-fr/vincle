@@ -73,20 +73,13 @@
   "devDependencies": {
     "@stryker-mutator/core": "^9.6.1",
     "@types/bun": "catalog:",
-    "@types/react": "^19.2.17",
     "@vincle/core": "workspace:*",
     "oxc-parser": "^0.139.0",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@types/react": "^19",
     "@vincle/core": "^0.9.0"
-  },
-  "peerDependenciesMeta": {
-    "@types/react": {
-      "optional": true
-    }
   },
   "engines": {
     "node": ">=22.0.0"

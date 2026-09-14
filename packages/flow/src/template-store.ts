@@ -1,6 +1,6 @@
 import type { JSX } from "@vincle/core";
 
-import type { DeferContent, DeferGroup, FlowConfig, MergeType, OnError } from "./types.js";
+import type { DeferContent, DeferGroupData, FlowConfig, MergeType, OnError } from "./types.js";
 
 import { PREFIX, assertTimeout } from "./config.js";
 import { ERR_FLOW_MERGE_UNSUPPORTED, ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
@@ -45,14 +45,14 @@ export type TemplateStore = {
   /** Purge all entries to eagerly release closures and references. */
   clear(): void;
   /** Register a DeferGroup */
-  addDeferGroup(group: DeferGroup): void;
+  addDeferGroup(group: DeferGroupData): void;
   /** Retrieve a DeferGroup by id */
-  getDeferGroup(id: string): DeferGroup | undefined;
+  getDeferGroup(id: string): DeferGroupData | undefined;
 };
 
 export function createTemplateStore(config: FlowConfig): TemplateStore {
   const map = new Map<string, TemplateEntry>();
-  const deferGroups = new Map<string, DeferGroup>();
+  const deferGroups = new Map<string, DeferGroupData>();
   const merges: readonly string[] = config.adapter?.capabilities.merges ?? [];
   const store: TemplateStore = {
     register(id, entry) {
