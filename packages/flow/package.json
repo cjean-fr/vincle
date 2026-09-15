@@ -74,7 +74,7 @@
     "@stryker-mutator/core": "^9.6.1",
     "@types/bun": "catalog:",
     "@vincle/core": "workspace:*",
-    "oxc-parser": "^0.139.0",
+    "oxc-parser": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
   },
