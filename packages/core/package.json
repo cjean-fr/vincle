@@ -1,6 +1,6 @@
 {
   "name": "@vincle/core",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "JSX to HTML strings. Escapes by default, zero dependencies.",
   "keywords": [
     "escape",

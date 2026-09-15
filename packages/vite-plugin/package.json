@@ -1,6 +1,6 @@
 {
   "name": "@vincle/vite-plugin",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "Vite asset integration for @vincle/core",
   "keywords": [
     "asset",
@@ -52,7 +52,7 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@vincle/core": "^0.9.0"
+    "@vincle/core": "^1.0.0"
   },
   "engines": {
     "node": ">=22.0.0"

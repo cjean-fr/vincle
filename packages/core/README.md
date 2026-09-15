@@ -13,7 +13,7 @@ for the walk.
 
 ## Status
 
-`0.9.0` — private, not published.
+`1.0.0` — first public release.
 
 ## API
 
