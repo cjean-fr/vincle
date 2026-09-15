@@ -104,6 +104,30 @@
 .docs-hero-example .docs-code-block + .docs-code-block {
   margin-top: 0.5rem;
 }
+/* Keep the complete example readable even on narrow screens. */
+.docs-hero-example .expressive-code pre,
+.docs-hero-example .expressive-code pre code,
+.docs-hero-example .expressive-code .ec-line .code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A single rendering cue: the HTML appears after its source, without looping. */
+@media (prefers-reduced-motion: no-preference) {
+  .docs-hero-example .docs-code-block + .docs-code-block pre code {
+    animation: docs-html-reveal 900ms steps(24, end) 350ms both;
+  }
+}
+
+@keyframes docs-html-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
 .docs-example-note {
   padding: 0.85rem 0.65rem 0.35rem;
   font-size: 0.75rem;
