@@ -19,8 +19,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      # `id-token` alone: npm provenance needs it. Nothing writes to the
-      # repository — no tag, no release.
+      # `contents: read` for checkout, `id-token: write` for npm provenance.
+      # Nothing writes to the repository — no tag, no release.
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v6
