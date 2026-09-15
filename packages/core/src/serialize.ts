@@ -18,7 +18,13 @@
 
 import { buildAttrs } from "./attrs.js";
 import { ERR_VOID_CHILDREN, vincleTypeError } from "./errors.js";
-import { isAsyncIterable, isIterable, isRawtextTag, renderLeaf } from "./escape.js";
+import {
+  isAsyncIterable,
+  isIterable,
+  isRawtextTag,
+  joinRawTagContent,
+  renderLeaf,
+} from "./escape.js";
 import { ownChildren } from "./props.js";
 import { isVoidElement, voidChildrenMessage } from "./tag.js";
 import { RawString, VNode } from "./types.js";
@@ -123,10 +129,19 @@ export function serializeStatic(
 function serializeContent(children: unknown, rawtextTag: string | undefined): string | null {
   if (!Array.isArray(children)) return serializeChild(children, rawtextTag);
   let out = "";
+  if (rawtextTag === undefined) {
+    for (let i = 0; i < children.length; i++) {
+      const part = serializeChild(children[i], undefined);
+      if (part === null) return null;
+      out += part;
+    }
+    return out;
+  }
+
   for (let i = 0; i < children.length; i++) {
     const part = serializeChild(children[i], rawtextTag);
     if (part === null) return null;
-    out += part;
+    out = joinRawTagContent(out, part, rawtextTag);
   }
   return out;
 }

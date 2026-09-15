@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { context, setContext, useContext, withScope } from "./context.js";
-import { jsx } from "./jsx-runtime.js";
+import { jsx, jsxEscape, jsxTemplate } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
 
 /**
@@ -162,4 +162,86 @@ describe("setContext is visible to whatever renders after it", () => {
       "<p>c</p>",
     ]);
   });
+});
+
+const orderedPaths: [string, (children: unknown[]) => unknown][] = [
+  ["tree walk", (children) => jsx("p", { children })],
+  [
+    "precompiled holes",
+    (children) => jsxTemplate(["<p>", ...children.slice(1).map(() => ""), "</p>"], ...children),
+  ],
+  ["precompiled array", (children) => jsxTemplate(["<p>", "</p>"], jsxEscape(children))],
+  ["rawtext tree walk", (children) => jsx("script", { children })],
+];
+
+for (const [name, build] of orderedPaths) {
+  describe(`${name}: sequential async tail`, () => {
+    test("later components start after awaited context writes", async () => {
+      const calls: string[] = [];
+      const Writer = (value: string) => async () => {
+        calls.push(`${value}:start`);
+        await Promise.resolve();
+        setContext(KEY, value);
+        calls.push(`${value}:end`);
+        return value;
+      };
+      const Reader = () => {
+        calls.push("read");
+        return useContext(KEY);
+      };
+      const html = await withScope(() =>
+        renderToString(
+          build([
+            "prefix",
+            jsx(Writer("first"), {}),
+            jsx(Writer("second"), {}),
+            jsx(Reader, {}),
+            "suffix",
+          ]),
+        ),
+      );
+      const tag = name === "rawtext tree walk" ? "script" : "p";
+      expect(html).toBe(`<${tag}>prefixfirstsecondsecondsuffix</${tag}>`);
+      expect(calls).toEqual(["first:start", "first:end", "second:start", "second:end", "read"]);
+    });
+
+    for (const inTail of [false, true]) {
+      for (const asynchronous of [false, true]) {
+        test(`${inTail ? "tail" : "first"} failure (${asynchronous ? "async" : "sync"}) stops later components`, async () => {
+          let reached = false;
+          const error = new Error("stop");
+          const Boom = () => {
+            if (asynchronous) return Promise.reject(error);
+            throw error;
+          };
+          const After = () => {
+            reached = true;
+            return "after";
+          };
+          const children = [jsx(Boom, {}), jsx(After, {})];
+          if (inTail) children.unshift(jsx(async () => "first", {}));
+          await expect(renderToString(build(children))).rejects.toBe(error);
+          expect(reached).toBe(false);
+        });
+      }
+    }
+  });
+}
+
+test("precompiled async tails remove only absent attribute separators", async () => {
+  expect(
+    await renderToString(
+      jsxTemplate(["<input ", " ", " ", ">"], Promise.resolve(null), null, Promise.resolve(null)),
+    ),
+  ).toBe("<input>");
+  expect(
+    await renderToString(
+      jsxTemplate(
+        ['<div title="a ', " ", '">a ', " b</div>"],
+        Promise.resolve(null),
+        null,
+        Promise.resolve(null),
+      ),
+    ),
+  ).toBe('<div title="a  ">a  b</div>');
 });

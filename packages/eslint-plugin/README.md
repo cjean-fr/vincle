@@ -34,7 +34,7 @@ export default [
 | -------------------------- | ----------------------------------------------------------------------------------------------- | ------- |
 | `no-react-imports`         | Disallow React and React-DOM imports.                                                           | `error` |
 | `no-react-hooks`           | Disallow React hooks usage (useState, useEffect, etc).                                          | `error` |
-| `no-unsafe-event-handlers` | Warn about event handlers which might be unsafely handled.                                      | `warn`  |
+| `no-unsafe-event-handlers` | Warn about inline handler strings and function-valued HTML attributes.                          | `warn`  |
 | `no-javascript-urls`       | Disallow `javascript:` URLs in href attributes.                                                 | `error` |
 | `no-context`               | Disallow React Context usage.                                                                   | `error` |
 | `no-refs`                  | Disallow React refs usage.                                                                      | `error` |

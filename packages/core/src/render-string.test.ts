@@ -416,6 +416,56 @@ describe("rawtext content survives every child shape", () => {
     expect(await script(chunks())).toBe("<script>if (a < b) { go() }</script>");
   });
 
+  test("a closing tag split across child boundaries is neutralised", async () => {
+    expect(await renderToString(jsx("script", { children: ["</scr", "ipt><img src=x>"] }))).toBe(
+      "<script>\\u003c/script><img src=x></script>",
+    );
+    expect(
+      await renderToString(
+        jsx("script", { children: ["</scr", Promise.resolve("ipt><img src=x>")] }),
+      ),
+    ).toBe("<script>\\u003c/script><img src=x></script>");
+    expect(await script(["</scr", "ipt><img src=x onerror=alert(1)>"])).toBe(
+      "<script>\\u003c/script><img src=x onerror=alert(1)></script>",
+    );
+    expect(await script([Promise.resolve("</scr"), "ipt><img>"])).toBe(
+      "<script>\\u003c/script><img></script>",
+    );
+
+    async function* hostileChunks(): AsyncGenerator<string> {
+      yield "</sty";
+      yield "le><img>";
+    }
+    expect(await renderToString(new VNode("style", {}, hostileChunks()))).toBe(
+      "<style><\\/style><img></style>",
+    );
+  });
+
+  test("every split point in rawtext control sequences stays inside its element", async () => {
+    const cases = [
+      { tag: "script", body: "<!--<script>*/</script><img>" },
+      { tag: "style", body: "</style><img>" },
+    ];
+
+    for (const { tag, body } of cases) {
+      for (let split = 1; split < body.length; split++) {
+        const html = await renderToString(
+          new VNode(tag, {}, [body.slice(0, split), body.slice(split)]),
+        );
+        const seen: string[] = [];
+        await new HTMLRewriter()
+          .on("*", {
+            element(element) {
+              seen.push(element.tagName);
+            },
+          })
+          .transform(new Response(html))
+          .text();
+        expect(seen).toEqual([tag]);
+      }
+    }
+  });
+
   test("a component awaiting its content produces working code", async () => {
     const Code = async (): Promise<string> => {
       await Promise.resolve();

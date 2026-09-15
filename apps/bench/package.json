@@ -16,14 +16,14 @@
   },
   "devDependencies": {
     "@types/bun": "catalog:",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "hono": "^4",
-    "mitata": "^1",
-    "preact": "^10",
-    "preact-render-to-string": "^6",
-    "react": "^19",
-    "react-dom": "^19",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "hono": "^4.13.8",
+    "mitata": "^1.0.34",
+    "preact": "^10.29.8",
+    "preact-render-to-string": "^6.7.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "typescript": "catalog:"
   }
 }

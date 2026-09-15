@@ -84,6 +84,7 @@ interface RawtextRule {
   readonly detect: RegExp;
   readonly scan: RegExp;
   readonly escape: string;
+  readonly maxMatchLength: number;
 }
 
 const RAWTEXT_RULES = new Map<string, RawtextRule>();
@@ -92,6 +93,8 @@ for (const [tag, { pattern, escape }] of Object.entries(RAWTEXT_LANG)) {
     detect: new RegExp(pattern, "i"),
     scan: new RegExp(pattern, "gi"),
     escape,
+    // `script` also matches the one-character-longer `</script` form.
+    maxMatchLength: tag === "script" ? 8 : 7,
   });
 }
 
@@ -187,6 +190,49 @@ export function escapeRawTagContent(str: string, tag: string): string {
     scan.lastIndex = last;
   }
   return out + str.slice(last);
+}
+
+/**
+ * Join two already-escaped rawtext fragments without allowing their boundary
+ * to assemble a closing sequence. Each fragment is safe in isolation, but
+ * `"</scr" + "ipt>"` is not safe after concatenation.
+ *
+ * Only the small window in which a match can cross the join is scanned. This
+ * also leaves a complete trusted sequence from `raw()` alone; `raw()` remains
+ * the explicit escape hatch, while untrusted sibling fragments cannot combine
+ * into a new sequence at their boundary.
+ *
+ * @internal
+ */
+export function joinRawTagContent(left: string, right: string, tag: string): string {
+  if (left === "" || right === "") return left + right;
+  const rule = RAWTEXT_RULES.get(tag);
+  if (rule === undefined) return left + right;
+
+  const overlap = rule.maxMatchLength - 1;
+  const leftStart = Math.max(0, left.length - overlap);
+  const rightEnd = Math.min(right.length, overlap);
+  const window = left.slice(leftStart) + right.slice(0, rightEnd);
+  const boundary = left.length - leftStart;
+
+  const { scan, escape } = rule;
+  scan.lastIndex = 0;
+  let out = "";
+  let last = 0;
+  let changed = false;
+  let match: RegExpExecArray | null;
+  while ((match = scan.exec(window)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+    if (start < boundary && end > boundary) {
+      out += window.slice(last, start) + escape + window.slice(start + 1, end);
+      last = end;
+      changed = true;
+    }
+  }
+  if (!changed) return left + right;
+  out += window.slice(last);
+  return left.slice(0, leftStart) + out + right.slice(rightEnd);
 }
 
 // ── URL scheme validation ────────────────────────────────────────────────
