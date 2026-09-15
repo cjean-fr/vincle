@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   # No turbo cache restored: `turbo run test` then builds only the *declared*
   # dependencies, so a test that expects any other one fails here. The main job

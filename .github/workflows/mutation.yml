@@ -23,6 +23,9 @@ on:
           - "@vincle/precompile"
           - "@vincle/eslint-plugin"
 
+permissions:
+  contents: read
+
 jobs:
   mutation:
     name: Mutation testing — ${{ inputs.package }}

@@ -15,6 +15,9 @@ name: Deno drift
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   drift:
     name: Fixture against current Deno
