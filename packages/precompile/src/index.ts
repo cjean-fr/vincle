@@ -8,7 +8,7 @@ import type {
   JSXFragment,
   JSXIdentifier,
   Program,
-} from "@oxc-project/types";
+} from "oxc-parser";
 
 import {
   collapseJsxWhitespace,
