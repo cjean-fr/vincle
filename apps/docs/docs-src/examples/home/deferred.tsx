@@ -7,7 +7,7 @@ function Page() {
   return (
     <main>
       <h1>Search results</h1>
-      <Defer target="results" fallback={<p>Loading results…</p>}>
+      <Defer fallback={<p>Loading results…</p>}>
         <Results />
       </Defer>
     </main>

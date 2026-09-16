@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@vincle/core": "workspace:^",
-    "entities": "^8.0.0"
+    "entities": "^8.1.0"
   },
   "devDependencies": {
     "@stryker-mutator/core": "^9.6.1",

@@ -60,21 +60,23 @@ See [`renderToString`](/api/core/renderToString) for the rendering contract.
 
 The same 100-row list rendered both ways in one process — `jsx()` per element
 against what the transform emits — with the two documents asserted byte-identical
-before anything is timed, over 8 runs in fresh processes:
+before anything is timed, over 8 runs in fresh processes (Bun 1.4.2,
+16 September 2026):
 
 | path                       |          ops/s |
 | -------------------------- | -------------: |
-| tree walk (`jsx()`)        | 58,939 ± 1,918 |
-| precompile (`jsxTemplate`) | 76,206 ± 3,551 |
+| tree walk (`jsx()`)        | 55,922 ± 1,961 |
+| precompile (`jsxTemplate`) | 83,628 ± 1,970 |
 
-**1.29× ± 0.03**, on a row that mixes what a template really carries: literal
+**About 1.50×**, on a row that mixes what a template really carries: literal
 markup (`<li class="item">`) and holes for what the transform cannot know — an
 attribute and the text.
 
 What it saves is exactly what it can inline. On the same list with nothing
-literal, every attribute a hole, the two paths are level — 3%. With the class
-literal instead, 35%. A page is mostly literal markup, so it sits at the high
-end; a table where every value comes from the data sits at the low one.
+literal, every attribute a hole, the two paths were level — 3% in a separate
+measurement. With the class literal, the current measurement is about 50%
+faster. A page with mostly literal markup should benefit more than a table
+where every value comes from data.
 
 It pays **per render repeated**. A statically generated page is rendered once,
 and there is nothing to amortise — precompile is for a server answering

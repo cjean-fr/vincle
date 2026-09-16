@@ -20,18 +20,42 @@ handles both sync and lazy content. `Defer` renders its own placeholder —
 This is the common case: placeholder and deferred content declared together,
 in one place, nothing else required. Reach for `Slot` only when the
 placeholder's position needs to be declared somewhere `Defer` can't reach
-directly — see below.
+directly — see below. `target` is optional: when omitted, Vincle generates
+the placeholder id. See the [named slot example](/integration/components)
+for an explicit `target` paired with its destination.
 
 **Props:**
 
-| Prop       | Type                                                                                                                                                     | Default     | Description                                                  |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------ |
-| `target`   | `string`                                                                                                                                                 | —           | Id the placeholder (and its later patch) is registered under |
-| `fallback` | `VNode`                                                                                                                                                  | —           | Content rendered in the placeholder                          |
-| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | —           | Content — plain JSX, a factory, or an async iterable         |
-| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"`                                                                                              | `"replace"` | How content applies to the target                            |
-| `timeout`  | `number`                                                                                                                                                 | —           | Per-fragment render timeout in ms                            |
-| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void`                                                                                           | —           | Per-fragment error handler                                   |
+| Prop       | Type                                                                                                                                                     | Default      | Description                                             |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------- |
+| `target`   | `string`                                                                                                                                                 | Generated id | Optional placeholder id; match a `Slot` name to fill it |
+| `fallback` | `VNode`                                                                                                                                                  | —            | Content rendered in the placeholder                     |
+| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | —            | Content — plain JSX, a factory, or an async iterable    |
+| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"`                                                                                              | `"replace"`  | How content applies to the target                       |
+| `timeout`  | `number`                                                                                                                                                 | —            | Per-fragment render timeout in ms                       |
+| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void`                                                                                           | —            | Per-fragment error handler                              |
+
+## Defer.Group
+
+Coordinates delivery of descendant Defer fragments during streaming.
+Access it through `Defer.Group` after importing `Defer` from `@vincle/flow`.
+
+| Prop       | Type         | Default | Description                                             |
+| ---------- | ------------ | ------- | ------------------------------------------------------- |
+| `children` | `Renderable` | —       | Content containing deferred fragments or nested groups  |
+| `together` | `boolean`    | `false` | Hold patches until every group item is ready or settled |
+
+With `together={false}`, patches are released in document order.
+With `together`, ready patches are held until the group can be released, then
+sent in document order. This coordinates delivery, not an atomic DOM update.
+Sibling deferred work can still run concurrently.
+
+Groups add no HTML wrapper. Nested groups participate as an item in their
+parent's ordering. A failed fragment settles its place so later items can proceed;
+its Defer `onError` controls replacement content.
+
+See [Control reveal order](/integration/streaming#control-reveal-order-with-defer-group)
+for examples and the latency trade-off.
 
 ## Slot
 
