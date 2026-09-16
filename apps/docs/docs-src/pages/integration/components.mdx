@@ -12,11 +12,12 @@ plus a third for fetching a fragment from a separate URL entirely:
 - **`<Slot>`** — a named hole, standing in for a `<Defer>` that renders
   elsewhere in the tree
 - **`<Include>`** — client-side fetch placeholder
+- **`<Defer.Group>`** — coordinates when deferred fragments are delivered
 
 ## `<Defer>` — defer content (sync or lazy)
 
-Registers content — plain JSX or a lazy factory — under a `target` id, and
-renders a placeholder in its own place showing `fallback` until that content
+Registers content — plain JSX or a lazy factory — under an automatically
+generated id (or an explicit `target`), and renders a placeholder in its own place showing `fallback` until that content
 is ready. No `<Slot>` required: for the common case, placeholder and content
 live together, in the same spot. **Unified** — one component for both
 synchronous and deferred content. The behaviour depends on `children`:
@@ -28,12 +29,15 @@ synchronous and deferred content. The behaviour depends on `children`:
 | `(signal) => …` | —          | Lazy content; placeholder rendered (empty)       |
 | `(signal) => …` | provided   | Lazy content; placeholder shows `fallback`       |
 
+`target` is optional. Omit it when `Defer` renders its own placeholder;
+provide it to match a named `Slot`, as shown below.
+
 ### Sync — push content
 
 `children` is deferred automatically — plain JSX works:
 
 ```tsx
-<Defer target="page">
+<Defer>
   <h1>Hello</h1>
 </Defer>
 ```
@@ -46,7 +50,7 @@ defines the content shown immediately:
 ```tsx
 import { Defer } from "@vincle/flow";
 
-<Defer target="dashboard" fallback={<p>Loading dashboard…</p>}>
+<Defer fallback={<p>Loading dashboard…</p>}>
   <HeavyDashboard />
 </Defer>;
 ```
@@ -56,9 +60,7 @@ disconnects, or when the fragment's `timeout` elapses. Forward it to your own
 cancelable work (e.g. `fetch(url, { signal })`) so that work stops early:
 
 ```tsx
-<Defer target="dashboard" fallback={<p>Loading dashboard…</p>}>
-  {(signal) => <HeavyDashboard signal={signal} />}
-</Defer>
+<Defer fallback={<p>Loading dashboard…</p>}>{(signal) => <HeavyDashboard signal={signal} />}</Defer>
 ```
 
 The signal firing doesn't cut the render itself short — Vincle still renders
@@ -119,16 +121,29 @@ before the matching `<Defer>`, and that `<Defer>` should skip its own
 right next to `Slot`'s live one:
 
 ```tsx
-// Layout.tsx — reserves the spot; has no idea what fills it
-<Slot name="comments">
-  <p>Loading comments…</p>
-</Slot>
+import { Defer, Slot } from "@vincle/flow";
+import { Results } from "./results";
 
-// CommentsPage.tsx — fills it; has no idea where it renders
-<Defer target="comments">
-  <LiveComments />
-</Defer>
+function SearchPage() {
+  return (
+    <>
+      <main>
+        <h1>Search results</h1>
+        <Slot name="results">
+          <p>Loading results…</p>
+        </Slot>
+      </main>
+      <Defer target="results">
+        <Results />
+      </Defer>
+    </>
+  );
+}
 ```
+
+Here, `target="results"` points to `Slot name="results"` inside `main`.
+The slot owns the loading message; `Defer` supplies the results from outside
+`main`, without a separate `fallback`.
 
 ## `<Include>` — client-side fetch
 
@@ -136,6 +151,16 @@ Browser fetches the fragment from a URL after the shell lands. No server-push
 required — works with any static file server.
 
 <CodeExample src="flow/deferred-src.tsx" />
+
+## `<Defer.Group>` — control reveal order
+
+Wrap related Defer components in a group to release their patches in document
+order. Add `together` to wait until the group is ready before releasing its
+patches. Deferred work can still run concurrently; the group coordinates delivery.
+
+See [Streaming](/integration/streaming#control-reveal-order-with-defer-group)
+for sequential, together, and nested groups, and the
+[API reference](/api/flow/components#defer-group) for props.
 
 ## Return types
 
@@ -156,12 +181,12 @@ never need to call `.then()` or `for await` yourself.
 
 ## Common props
 
-| Prop       | Applies to | Meaning                                                      |
-| ---------- | ---------- | ------------------------------------------------------------ |
-| `name`     | `Slot`     | id of the placeholder (required)                             |
-| `target`   | `Defer`    | id the placeholder (and its later patch) is registered under |
-| `fallback` | `Defer`    | placeholder content shown in the shell (lazy only)           |
-| `merge`    | `Defer`    | how content applies to its target (default `"replace"`)      |
-| `timeout`  | `Defer`    | per-fragment render timeout in ms                            |
-| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's one    |
-| `src`      | `Include`  | URL the browser fetches for the fragment content             |
+| Prop       | Applies to | Meaning                                                       |
+| ---------- | ---------- | ------------------------------------------------------------- |
+| `name`     | `Slot`     | id of the placeholder (required)                              |
+| `target`   | `Defer`    | optional placeholder id; generated automatically when omitted |
+| `fallback` | `Defer`    | placeholder content shown in the shell (lazy only)            |
+| `merge`    | `Defer`    | how content applies to its target (default `"replace"`)       |
+| `timeout`  | `Defer`    | per-fragment render timeout in ms                             |
+| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's one     |
+| `src`      | `Include`  | URL the browser fetches for the fragment content              |

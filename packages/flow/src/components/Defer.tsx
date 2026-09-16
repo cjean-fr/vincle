@@ -20,7 +20,7 @@ import {
 } from "../context.js";
 
 export interface DeferProps {
-  target: string;
+  target?: string;
   children: DeferContent;
   merge?: MergeType;
   timeout?: number;
@@ -71,9 +71,10 @@ export async function DeferGroup(props: DeferGroupProps): Promise<JSX.Element> {
 }
 
 export function Defer(props: DeferProps): JSX.Element {
-  const { registerTemplate } = useContext(Flow);
+  const { registerTemplate, nextId } = useContext(Flow);
   const defer = useDeferScope();
-  const { target, children, merge, timeout, onError, fallback } = props;
+  const { children, merge, timeout, onError, fallback } = props;
+  const target = props.target ?? nextId();
 
   if (defer) {
     defer.claimChild(target);

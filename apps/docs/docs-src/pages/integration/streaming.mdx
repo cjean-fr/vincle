@@ -34,6 +34,61 @@ chunk. Fragments stream in as they resolve, each written as soon as it is
 available. The response `Content-Type` is `text/html` with `chunked` transfer
 encoding.
 
+## Control reveal order with Defer.Group
+
+Deferred components can finish in a different order on each request.
+Use `Defer.Group` when the page should reveal its sections in a predictable
+sequence, or when related sections should wait for each other.
+
+The group controls **fragment delivery**, not the order in which sibling
+deferred components start their work. Their rendering can run concurrently.
+Fallbacks remain part of the initial shell, and the group adds no HTML wrapper.
+
+### Reveal in document order
+
+By default, a group delivers fragments in document order. If the results finish
+before the summary, their patch waits until the summary can be delivered.
+
+<CodeExample src="flow/defer-group.tsx" />
+
+Supply your own implementations of loadSummary and loadResults, then render
+SearchPage with renderToStream and a streaming adapter, as above.
+Async components work directly inside Defer; no function child is required.
+
+### Wait for related sections
+
+Add `together` to hold the group's patches until all its items are ready
+(or have settled after an error). This is useful when a summary and its results
+should be delivered as a group.
+
+<CodeExample src="flow/defer-group-together.tsx" />
+
+For these one-shot components, suppose the summary is ready at 80 ms and the
+results at 20 ms. These illustrative times describe delivery after the shell:
+
+| Mode                 | At 20 ms            | At 80 ms                                |
+| -------------------- | ------------------- | --------------------------------------- |
+| No group             | Results patch sent  | Summary patch sent                      |
+| Defer.Group          | Results patch waits | Summary, then results patches sent      |
+| Defer.Group together | Results patch waits | Both patches released in document order |
+
+If the summary finishes first, the default group sends it immediately;
+`together` still waits for the results. Grouping trades earlier delivery of
+some ready content for controlled reveal order. It does not guarantee a single
+atomic browser paint: the adapter still applies individual patches.
+
+### Nest groups
+
+Groups can be nested. For example, an outer sequential group can reveal a
+heading first, then an inner `<Defer.Group together>` containing two related
+sections, then a final fragment. The inner group must release before the outer
+group advances to its next item.
+
+A failed fragment settles its position instead of blocking later items forever.
+Use Defer's `onError` to provide replacement content.
+
+See the [component reference](/api/flow/components#defer-group) for props.
+
 ## Node HTTP server
 
 Pipe the stream into any Node.js `http.ServerResponse` with `for await`. Each

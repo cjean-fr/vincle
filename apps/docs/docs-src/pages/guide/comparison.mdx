@@ -5,12 +5,29 @@ description: How @vincle/core compares to kitajs/html, preact-render-to-string, 
 
 # Comparison
 
-Every number on this page comes from a benchmark in this repository, and every
-behaviour is a rendered output you can reproduce in one command. Where Vincle
-loses, it says so.
+Every performance number on this page comes from a benchmark in this
+repository. The behavior checks have executable tests alongside the benchmark.
 
-Measured against `@kitajs/html` 5.0.0-next.1, `preact-render-to-string` 6.7.0,
-`react-dom` 19.2.8 and `hono` 4.12.32.
+The tree-rendering performance snapshot below was recorded on 16 September
+2026 on Linux with an AMD Ryzen 7 PRO 8840HS and Bun 1.4.2,
+`@kitajs/html` 5.0.0-next.1,
+`preact-render-to-string` 6.7.0, `react-dom` 19.3.0 and `hono` 4.13.8.
+
+## Where Vincle fits
+
+Vincle is a strong fit for server-rendered HTML when you want escaped output by
+default, components that can directly await data, and no client-side runtime.
+The measurements below put its tree renderer ahead of Preact, React and Hono on
+three page shapes, but behind kitajs. Precompilation changes that comparison
+when both sides escape the same content.
+
+Choose Preact or React when components must hydrate in the browser or use their
+existing component ecosystems. Choose Hono's JSX when rendering is already part
+of a Hono application. Kita is a good fit when immediate string assembly is the
+priority and you manage escaping explicitly. The checks and measurements below
+show what each of those choices costs or provides. There is no useful single
+score across speed, security defaults, API features and ecosystem fit; the
+right choice depends on which of these your application needs.
 
 ## Escaping is not a setting
 
@@ -77,23 +94,47 @@ shipped as components — is camelCase throughout.
 
 ## Performance
 
-Ratios, not milliseconds. Each competitor is measured in the same process as
-Vincle, so the machine's mood is common to both terms and divides out — which is
-what lets the number survive a change of hardware. It does not make it exact:
-each ratio below is the mean over 8 fresh processes, and the spread is printed
-next to it because it is the size of the effects people usually argue about.
+Each competitor is measured in the same process as Vincle, so the machine's
+mood is common to both terms and partly divides out. Each ratio below is the
+mean of 8 within-process throughput ratios; ± is their sample standard
+deviation, not a confidence interval. The values describe this workload and
+harness, not every application.
+
+`text` renders 1,000 repeated text blocks, `stack` renders ten trees 1,000
+elements deep, and `realworld` renders a full page with 1,000 purchases. Each
+measurement includes element creation and HTML rendering; the purchase data is
+created before timing.
 
 **Higher is better for Vincle. Below 1 means Vincle is slower.**
 
 | Case        | vs `@kitajs/html` |  vs `preact` |   vs `react` | vs `hono/jsx` |
 | ----------- | ----------------: | -----------: | -----------: | ------------: |
-| `text`      |      0.62× ± 0.01 | 1.67× ± 0.05 | 6.18× ± 0.54 |  7.51× ± 0.50 |
-| `stack`     |      0.48× ± 0.01 | 2.47× ± 0.04 | 2.30× ± 0.06 |  4.37× ± 0.07 |
-| `realworld` |      0.65× ± 0.02 | 1.56× ± 0.06 | 1.92× ± 0.10 |  3.29× ± 0.13 |
+| `text`      |      0.60× ± 0.09 | 1.82× ± 0.07 | 6.44× ± 0.62 |  7.78× ± 0.41 |
+| `stack`     |      0.48× ± 0.01 | 2.67× ± 0.07 | 2.45× ± 0.07 |  4.47× ± 0.09 |
+| `realworld` |      0.73× ± 0.01 | 1.83× ± 0.06 | 2.17× ± 0.06 |  3.79× ± 0.08 |
 
-Against React, Preact and Hono the comparison is like-for-like: all three escape
-by default, all three build a tree, and the outputs match. Vincle is between
-1.6× and 7.5× faster.
+Against React, Preact and Hono the comparison covers similar work: all three
+escape by default and build a tree from the same page shapes. Vincle is between
+1.8× and 7.8× faster on these three cases.
+
+### Throughput and time per page
+
+The `realworld` case gives the scale behind those ratios. Throughput is the mean
+of 8 fresh-process results in pages per second; ± is the sample standard
+deviation. Time per page is `1,000 ÷ throughput` in milliseconds, so it is
+derived from the mean throughput rather than independently timed.
+
+| Renderer                   |    Pages/s | Time/page |
+| -------------------------- | ---------: | --------: |
+| `@kitajs/html`             | 2,503 ± 38 |  0.400 ms |
+| `@vincle/core` (tree walk) | 1,834 ± 39 |  0.545 ms |
+| `preact-render-to-string`  | 1,004 ± 30 |  0.996 ms |
+| `react-dom/server`         |   844 ± 18 |  1.185 ms |
+| `hono/jsx`                 |   484 ± 12 |  2.066 ms |
+
+These are in-process rendering costs, not HTTP request latency. Absolute times
+depend on hardware and the benchmark harness; the ratios above are the more
+useful comparison across machines.
 
 ### Reading the kitajs column
 
@@ -101,7 +142,7 @@ Two differences compound in that column, and neither is an implementation
 detail.
 
 **It renders a different string.** `realworld` happens to contain no character
-needing an escape, so there the comparison is fair — 0.65× is a real number for
+needing an escape, so there the comparison is fair — 0.73× is a real number for
 a real page. On any input carrying `&` or `<`, the two produce different bytes,
 and Vincle is doing work kitajs is not.
 
@@ -127,19 +168,27 @@ So: on the tree-walking path Vincle is slower than kitajs, and on the
 comparable path it is faster. Both are true, and neither on its own is the
 whole picture.
 
-## Feature surface
+## Capabilities and runtime cost
 
-|                                       | vincle  | kitajs  |  preact  |   hono   |  react   |
-| ------------------------------------- | :-----: | :-----: | :------: | :------: | :------: |
-| Escapes text children by default      |   yes   | **no**  |   yes    |   yes    |   yes    |
-| A component may return a `Promise`    | **yes** | **yes** |    no    |    no    |    no    |
-| Context API                           | scoped  | **no**  | provider | provider | provider |
-| Also renders to the DOM (hydration)   |   no    |   no    |   yes    |   yes    |   yes    |
-| Compile-time transform                |   yes   |    —    |    —     |    —     |    —     |
-| Dependencies of the rendering package |    0    |    1    |    0¹    |    0     |    1²    |
+| Criterion                                         |    Vincle    | Kita |  Preact  |   Hono   |  React   |
+| ------------------------------------------------- | :----------: | :--: | :------: | :------: | :------: |
+| Escapes a text child by default                   |     yes      |  no  |   yes    |   yes    |   yes    |
+| Neutralizes `javascript:` in `href`               |     yes      |  no  |    no    |    no    |   yes    |
+| Component returning a `Promise` in the string API |     yes      | yes  |    no    |    no    |    no    |
+| Context API                                       | render scope | none | provider | provider | provider |
+| Client DOM rendering / hydration                  |      no      |  no  |   yes    |   yes    |   yes    |
+| Direct dependencies of SSR package                |      0       |  1   |    0¹    |    0     |    1²    |
 
-Every row was checked by running it. Rendering `<div><Async /></div>` where
-`Async` returns `Promise.resolve("hello")`:
+The first three rows are behavior checks on specific inputs, not a general
+security or API certification. For the URL row, the input is
+`<a href="javascript:alert(1)">x</a>`: Vincle emits `href="#blocked"`;
+React substitutes a URL that throws; Kita, Preact and Hono emit the supplied
+URL. Text escaping is checked with an HTML tag passed as a text child. The
+dependency row comes from the installed package manifests; it counts direct
+dependencies, not package size or the transitive install tree.
+
+For the async row, rendering `<div><Async /></div>` where
+`Async` returns `Promise.resolve("hello")` gives:
 
 ```text
 @vincle/core     <div>hello</div>
@@ -155,8 +204,9 @@ both support async rendering through their streaming entry points
 (`renderToReadableStream`, `hono/jsx/streaming`) — the row is about the plain
 string API.
 
-¹ `preact-render-to-string` declares no dependency but requires `preact`.
-² `react-dom`, on `scheduler`.
+¹ `preact-render-to-string` declares no direct dependency but requires `preact`
+as a peer, so SSR uses two packages.
+² `react-dom` depends on `scheduler` and requires `react` as a peer.
 
 The context row is a difference in kind, not a checkbox. Preact, Hono and React
 scope a value to a **position in the tree**: a `<Provider>` wraps the subtree
@@ -170,8 +220,13 @@ component to place, and no subtree to wrap. See [`context`](/api/core/context).
 `@kitajs/html` documents [why it has no context
 API](https://github.com/kitajs/html#why-there-is-no-context-api).
 
-Streaming, deferred fragments and DOM patching are not in `@vincle/core`; they
-live in [`@vincle/flow`](/integration/streaming), a separate install.
+Streaming, deferred fragments and DOM patching live in
+[`@vincle/flow`](/integration/streaming), a separate install. Kita also supports
+Suspense streaming; React and Hono have streaming entry points too, each with a
+different component contract. The
+[`@vincle/precompile` transform](/integration/precompile) works with Vincle,
+Preact and Hono; React lacks the `jsxTemplate` helper it needs. These are
+separate capabilities from the plain string-rendering API measured above.
 
 ## When to choose something else
 
@@ -190,10 +245,10 @@ live in [`@vincle/flow`](/integration/streaming), a separate install.
 bun run --filter=@vincle/bench bench:stats -- --runs 8
 ```
 
-It prints the table above: one row per implementation, over 8 fresh processes,
-each ratio computed inside a process and then averaged. Two series of 8 differ
-by about the spread printed next to each ratio, which is why it is printed. A
-single run is not a measurement — the protocol, and what counts as a real delta,
-are in `apps/bench/README.md`. The like-for-like kitajs measurement is
+It prints the throughput and ratio tables above: one row per implementation,
+over 8 fresh processes, each ratio computed inside a process and then averaged.
+The time-per-page column is derived from throughput. A single run is not a
+measurement — the protocol, and what counts as a real delta, are in
+`apps/bench/README.md`. The like-for-like kitajs measurement is
 `apps/bench/src/ab-precompile-kita.js`; it refuses to report a number if the two
 outputs differ by a single byte.
