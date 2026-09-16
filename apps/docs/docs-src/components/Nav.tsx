@@ -8,7 +8,7 @@ export function Nav() {
   return (
     <nav
       id="docs-nav"
-      class="docs-nav pointer-events-none fixed inset-y-0 left-0 z-40 w-full max-w-xs overflow-y-auto border-r border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] md:pointer-events-auto md:sticky md:top-12 md:h-[calc(100vh-3rem)] md:w-56 md:max-w-none md:shrink-0 md:overflow-y-auto md:border-0 md:bg-transparent md:pt-6 md:pr-6"
+      class="docs-nav pointer-events-none fixed inset-y-0 left-0 z-40 w-full max-w-xs overflow-y-auto border-r border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] md:pointer-events-auto md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-56 md:max-w-none md:shrink-0 md:overflow-y-auto md:border-0 md:bg-transparent md:pt-6 md:pr-6"
       aria-label="Primary navigation"
       tabIndex={-1}
     >
@@ -60,9 +60,7 @@ function renderNavItem(item: ResolvedSidebarItem, depth: number) {
   if (item.kind === "category") {
     return (
       <div key={item.label} class={`docs-nav-category ${depth === 0 ? "mt-6 first:mt-0" : ""}`}>
-        <div class="py-1.5 text-xs font-semibold tracking-wider text-[var(--docs-color-text-secondary)] uppercase">
-          {item.label}
-        </div>
+        <div class="py-2 text-xs font-semibold text-[var(--docs-color-text)]">{item.label}</div>
         <div class="mt-1">{item.items.map((child) => renderNavItem(child, depth + 1))}</div>
       </div>
     );

@@ -3,6 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @import "./tokens.css";
+@import "./home.css";
 @import "./prose.css" layer(components);
 
 /* === Global focus styles === */
@@ -91,6 +92,7 @@ html {
 }
 
 .docs-body {
+  font-family: var(--docs-font-body);
   transition:
     background-color var(--docs-transition-slow),
     color var(--docs-transition-slow);
@@ -399,110 +401,6 @@ html {
   transform: scale(0.95);
 }
 
-/* === Feature cards === */
-.docs-feature-card {
-  transition:
-    border-color var(--docs-transition-fast),
-    box-shadow var(--docs-transition-fast);
-}
-
-/* === Home page gradient text === */
-.docs-home .bg-gradient-to-r {
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-
-/* === Card glow effect === */
-.docs-card-glow {
-  transition: opacity var(--docs-transition-slow);
-}
-
-/* === Home page stats === */
-.docs-home .stat-value {
-  font-variant-numeric: tabular-nums;
-}
-
-/* === Home page hero badges === */
-.docs-home .badge-icon {
-  display: inline-flex;
-  align-items: center;
-}
-
-/* === Home page hero glow === */
-.docs-home-hero {
-  position: relative;
-}
-
-.docs-home-hero::before {
-  content: "";
-  position: absolute;
-  inset: -40% -20% -20% -20%;
-  background: radial-gradient(
-    ellipse 70% 50% at 50% 0%,
-    color-mix(in srgb, var(--docs-color-accent) 12%, transparent) 0%,
-    color-mix(in srgb, var(--docs-color-accent) 5%, transparent) 40%,
-    transparent 70%
-  );
-  pointer-events: none;
-  z-index: 0;
-}
-
-.docs-home-hero > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* === Home page section divider === */
-.docs-section-accent {
-  display: inline-block;
-  width: 1.5rem;
-  height: 3px;
-  border-radius: 9999px;
-  background: var(--docs-color-accent);
-  margin-bottom: 0.5rem;
-}
-
-/* === Feature card hover lift === */
-.docs-feature-card {
-  transition:
-    border-color var(--docs-transition-fast),
-    box-shadow var(--docs-transition-fast),
-    transform var(--docs-transition-fast);
-}
-
-.docs-feature-card:hover {
-  transform: translateY(-2px);
-}
-
-.docs-feature-card:hover .docs-feature-card-icon {
-  background: color-mix(in srgb, var(--docs-color-accent) 15%, transparent);
-}
-
-/* === Use case card hover === */
-.docs-usecase-card {
-  transition:
-    border-color var(--docs-transition-fast),
-    box-shadow var(--docs-transition-fast),
-    transform var(--docs-transition-fast);
-}
-
-.docs-usecase-card:hover {
-  box-shadow: 0 8px 30px color-mix(in srgb, var(--docs-color-accent) 12%, transparent);
-}
-
-/* === Stat card hover === */
-.docs-stat-card {
-  transition:
-    border-color var(--docs-transition-fast),
-    box-shadow var(--docs-transition-fast),
-    transform var(--docs-transition-fast);
-}
-
-.docs-stat-card:hover {
-  border-color: color-mix(in srgb, var(--docs-color-accent) 40%, transparent);
-  transform: translateY(-1px);
-}
-
 /* === MDX content tabs (state driven by aria-selected, toggled in tabs/client.ts) === */
 .docs-tab {
   margin-bottom: -1px;
@@ -639,4 +537,47 @@ html {
 }
 .docs-search-dialog.closing::backdrop {
   opacity: 0;
+}
+
+/* Shared documentation shell. */
+.docs-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-right: 1.5rem;
+  font-size: 1.2rem;
+}
+.docs-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.5rem;
+  background: var(--docs-color-text);
+  color: var(--docs-color-bg);
+  font-weight: 700;
+  padding-bottom: 0.15rem;
+}
+.docs-nav-link {
+  margin-block: 0.125rem;
+}
+.docs-nav-link-current {
+  background: var(--docs-color-accent-soft);
+}
+.docs-article {
+  border-left: 1px solid var(--docs-color-border);
+}
+.docs-page-nav a {
+  max-width: 48%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--docs-color-surface);
+}
+@media (max-width: 767px) {
+  .docs-article {
+    border-left: 0;
+  }
+  .docs-brand {
+    margin-right: 0;
+  }
 }

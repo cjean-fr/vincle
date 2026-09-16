@@ -39,6 +39,23 @@ compiled here run on any runtime holding it, and Deno's own templates run on
 which knows it is inside a start tag: the precompiled page matches the runtime
 path byte for byte, where the reference implementation renders `<input >`.
 
+## Async rendering order
+
+With `@vincle/core`, template holes containing components are rendered from
+left to right. Each component finishes before the next one is invoked, and a
+failure stops the remaining components in that sequence. Arrays containing
+components follow the same rule. JavaScript still evaluates helper arguments
+before calling the helper, so already-created promises can run concurrently.
+
+Internally, the tree walk and the asynchronous tails of `jsxEscape` and
+`jsxTemplate` share `sequenceFrom`. Its callback receives the accumulated
+HTML and returns the next value, allowing template assembly to remove an
+absent attribute's separator even after an asynchronous hole. It is an
+internal helper, not a public export. Async iterables retain a separate pull
+loop so the next item is requested only after the current one is rendered.
+
+See [`renderToString`](/api/core/renderToString) for the rendering contract.
+
 ## What it buys
 
 The same 100-row list rendered both ways in one process — `jsx()` per element

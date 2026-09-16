@@ -1,20 +1,20 @@
 :root {
   color-scheme: light;
 
-  --docs-color-bg: #ffffff;
-  --docs-color-text: #111827;
-  --docs-color-text-body: #4b5563;
-  --docs-color-text-secondary: #6b7280;
-  --docs-color-code-inline-bg: #f3f4f6;
-  --docs-color-accent: #6366f1;
-  --docs-color-accent-hover: #4f46e5;
-  --docs-color-accent-soft: #eef2ff;
-  --docs-color-border: #e5e7eb;
-  --docs-color-surface: #f9fafb;
+  --docs-color-bg: #fcfdff;
+  --docs-color-text: #152b47;
+  --docs-color-text-body: #465970;
+  --docs-color-text-secondary: #586a80;
+  --docs-color-code-inline-bg: #edf2f8;
+  --docs-color-accent: #245bd6;
+  --docs-color-accent-hover: #1945a8;
+  --docs-color-accent-soft: #eaf0fd;
+  --docs-color-border: #dce4ef;
+  --docs-color-surface: #f2f6fb;
 
   --docs-code-bg: #030712;
-  --docs-code-text: #f3f4f6;
-  --docs-code-border: #1f2937;
+  --docs-code-text: #edf2f8;
+  --docs-code-border: #293b53;
 
   --docs-font-body:
     "Satoshi", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
@@ -25,7 +25,7 @@
 
   --docs-shell-max-width: 80rem;
   --docs-sidebar-width: 16rem;
-  --docs-header-height: 3rem;
+  --docs-header-height: 4rem;
   --docs-content-padding: 1.5rem;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -39,17 +39,17 @@
 .dark {
   color-scheme: dark;
 
-  --docs-color-bg: #0b0d14;
-  --docs-color-text: #f3f4f6;
-  --docs-color-text-body: #9ca3af;
-  --docs-color-text-secondary: #9ca3af;
-  --docs-color-code-inline-bg: #1f2937;
-  --docs-color-accent: #818cf8;
-  --docs-color-accent-hover: #a5b4fc;
-  --docs-color-accent-soft: #1e1b4b;
-  --docs-color-border: #1f2937;
-  --docs-color-surface: #111827;
+  --docs-color-bg: #101b2b;
+  --docs-color-text: #edf2f8;
+  --docs-color-text-body: #a5b5ca;
+  --docs-color-text-secondary: #a5b5ca;
+  --docs-color-code-inline-bg: #293b53;
+  --docs-color-accent: #8db5ff;
+  --docs-color-accent-hover: #bad2ff;
+  --docs-color-accent-soft: #1b3357;
+  --docs-color-border: #293b53;
+  --docs-color-surface: #152b47;
 
-  --docs-code-bg: #111827;
-  --docs-code-border: #1f2937;
+  --docs-code-bg: #152b47;
+  --docs-code-border: #293b53;
 }
