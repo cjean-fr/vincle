@@ -5,7 +5,7 @@ import { CodeExample } from "../components/CodeExample.js";
 export const meta: PageMeta = {
   title: "JSX for the server",
   description:
-    "Typed, async-native JSX rendering for email templates, API responses, and static sites.",
+    "Compose typed JSX views in your existing server. Add progressive HTML fragments when your page needs them.",
 };
 
 const features = [
@@ -36,25 +36,25 @@ export default function HomePage() {
             <span aria-hidden="true">&lt;/&gt;</span> Server-side JSX renderer
           </div>
           <h1 id="home-title">
-            Render JSX.
+            Your views in JSX.
             <br />
-            Return HTML.
+            Your app in HTML.
           </h1>
           <p class="docs-hero-description">
-            Typed, async-native JSX for the server. Turn components into HTML for emails, API
-            responses, and static sites.
+            Compose typed, async components in your existing server. Start with an HTML response,
+            then let slower parts of the page arrive when they are ready.
           </p>
           <div class="docs-home-actions">
-            <a class="docs-button docs-button-primary" href="/guide/introduction">
-              Get started
+            <a class="docs-button docs-button-primary" href="/guide/getting-started/installation">
+              Render your first view
             </a>
-            <a class="docs-button docs-button-secondary" href="/api/core/renderToString">
-              Explore the API
+            <a class="docs-button docs-button-secondary" href="/integration/streaming">
+              Explore streaming
             </a>
           </div>
           <div class="docs-install">
             <span aria-hidden="true">$</span>
-            <code>bun add @vincle/core</code>
+            <code>npm install @vincle/core</code>
           </div>
         </div>
         <div class="docs-hero-example">
@@ -83,43 +83,75 @@ export default function HomePage() {
       <section class="docs-home-section" aria-labelledby="use-cases-title">
         <div class="docs-section-heading">
           <h2 id="use-cases-title">
-            HTML for emails,
+            Start with one view.
             <br />
-            responses, and pages.
+            Grow with your page.
           </h2>
-          <p>Use JSX wherever you need HTML. Keep the tools and server you already know.</p>
+          <p>Keep your server and routing. Choose how much rendering behavior each page needs.</p>
         </div>
         <div class="docs-use-cases">
           <article>
             <span class="docs-use-case-symbol" aria-hidden="true">
-              @
+              1
             </span>
-            <h3>Email templates</h3>
+            <h3>Compose a view</h3>
+            <p>Use functions, typed props, and async data to build reusable HTML components.</p>
+            <a class="docs-text-link" href="/guide/getting-started/first-render">
+              Write your first component
+            </a>
+          </article>
+          <article>
+            <span class="docs-use-case-symbol" aria-hidden="true">
+              2
+            </span>
+            <h3>Return it from a route</h3>
+            <p>Render with @vincle/core and send the HTML from your existing HTTP handler.</p>
+            <a class="docs-text-link" href="/guide/views">
+              Connect a view to your server
+            </a>
+          </article>
+          <article>
+            <span class="docs-use-case-symbol" aria-hidden="true">
+              3
+            </span>
+            <h3>Defer the slow parts</h3>
             <p>
-              Compose typed, reusable templates. Render the HTML and pass it to your email provider.
+              Add @vincle/flow to send the page shell first, then deliver deferred HTML fragments.
             </p>
+            <a class="docs-text-link" href="/integration/streaming">
+              Stream a fragment
+            </a>
           </article>
-          <article>
-            <span class="docs-use-case-symbol" aria-hidden="true">
-              &lt;/&gt;
-            </span>
-            <h3>API responses</h3>
-            <p>Fetch your data with async components and return HTML straight from your server.</p>
-          </article>
-          <article>
-            <span class="docs-use-case-symbol" aria-hidden="true">
-              #
-            </span>
-            <h3>Static sites</h3>
-            <p>Generate pages at build time. Ship HTML with no client-side rendering runtime.</p>
-          </article>
+        </div>
+      </section>
+
+      <section class="docs-home-section docs-foundations" aria-labelledby="streaming-title">
+        <div>
+          <h2 id="streaming-title">The page can arrive before the results.</h2>
+          <p>
+            Keep the heading visible while an async component loads. With flow, a fallback fills the
+            space until its HTML is ready.
+          </p>
+          <p>
+            Choose an adapter for delivery, including HTMX or Turbo. Browser updates use the chosen
+            adapter’s client mechanism.
+          </p>
+          <a class="docs-text-link" href="/guide/views">
+            Follow the complete example
+          </a>
+        </div>
+        <div class="docs-hero-example">
+          <CodeExample src="home/deferred.tsx" meta='title="results-page.tsx"' />
+          <p class="docs-example-note">
+            The Results component stays the same. The page opts into deferred rendering.
+          </p>
         </div>
       </section>
 
       <section class="docs-home-section docs-foundations" aria-labelledby="features-title">
         <div>
           <h2 id="features-title">Built into the renderer.</h2>
-          <p>A focused core with the essentials built in.</p>
+          <p>Typed views, predictable rendering, and explicit HTML boundaries.</p>
           <a class="docs-text-link" href="https://github.com/cjean-fr/vincle">
             View source on GitHub
           </a>

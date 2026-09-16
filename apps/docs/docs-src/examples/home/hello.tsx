@@ -1,7 +1,10 @@
 import { renderToString } from "@vincle/core";
 
-const App = ({ name }: { name: string }) => <h1>Hello, {name}!</h1>;
+function App({ name }: { name: string }) {
+  return <h1>Hello, {name}!</h1>;
+}
 
-const html = await renderToString(<App name="world" />);
+const page = <App name="world" />;
+const html = await renderToString(page);
 
 export const output = html;
