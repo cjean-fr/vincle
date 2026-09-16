@@ -36,7 +36,27 @@ describe("escaping a text child — comparison page, first table", () => {
   });
 });
 
-describe("a component returning a promise — comparison page, feature table", () => {
+describe("javascript: in href — comparison page, capability table", () => {
+  const url = "javascript:alert(1)";
+
+  it("Vincle and React neutralize the URL", async () => {
+    expect(await renderToString(jsx("a", { href: url, children: "x" }))).toBe(
+      '<a href="#blocked">x</a>',
+    );
+    expect(renderToStaticMarkup(createElement("a", { href: url }, "x"))).not.toContain(
+      'href="javascript:alert(1)"',
+    );
+  });
+
+  it("Kita, Preact and Hono emit the supplied URL", () => {
+    const expected = '<a href="javascript:alert(1)">x</a>';
+    expect(String(kita("a", { href: url }, "x"))).toBe(expected);
+    expect(preactRender(h("a", { href: url }, "x"))).toBe(expected);
+    expect(String(honoJsx("a", { href: url }, "x"))).toBe(expected);
+  });
+});
+
+describe("a component returning a promise — comparison page, capability table", () => {
   const Async = () => Promise.resolve("hello");
 
   it("@vincle/core and @kitajs/html render it", async () => {

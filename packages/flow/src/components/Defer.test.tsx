@@ -14,6 +14,26 @@ import { collect, collectEvents } from "../test-utils.js";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe("Defer — deferred content (placeholder always)", () => {
+  it("generates distinct targets and patches each matching placeholder", async () => {
+    const html = await collect(
+      renderToStream(
+        () => (
+          <>
+            <Defer fallback={<p>Loading first…</p>}>
+              <p>First result</p>
+            </Defer>
+            <Defer fallback={<p>Loading second…</p>}>{async () => <p>Second result</p>}</Defer>
+          </>
+        ),
+        TurboAdapter,
+      ),
+    );
+    expect(html).toContain('<turbo-frame id="fragment-1"><p>Loading first…</p>');
+    expect(html).toContain('<turbo-frame id="fragment-2"><p>Loading second…</p>');
+    expect(html).toContain('target="fragment-1"><template><p>First result</p>');
+    expect(html).toContain('target="fragment-2"><template><p>Second result</p>');
+  });
+
   it("renders a placeholder, then patches in sync content with the given merge", async () => {
     const html = await collect(
       renderToStream(

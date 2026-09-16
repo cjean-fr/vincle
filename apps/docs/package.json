@@ -17,11 +17,11 @@
     "@vincle/core": "workspace:*",
     "@vincle/flow": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
-    "gray-matter": "^4",
-    "hast-util-to-html": "^9",
-    "satteri": "^0.9.1",
-    "satteri-expressive-code": "^0.1.17",
-    "vite-plugin-satteri": "^0.2.11"
+    "gray-matter": "^4.0.3",
+    "hast-util-to-html": "^9.0.5",
+    "satteri": "^0.9.5",
+    "satteri-expressive-code": "^0.1.24",
+    "vite-plugin-satteri": "^0.2.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
