@@ -5,6 +5,7 @@ import {
   isAsyncIterable,
   isIterable,
   isRawtextTag,
+  joinRawTagContent,
   renderLeaf,
   valueToText,
 } from "./escape.js";
@@ -149,12 +150,22 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
   // intermediate array costs 35% of the time on `realworld` (V8 profile), GC
   // included.
   let out = "";
+  if (rawtextTag === undefined) {
+    for (let i = 0; i < children.length; i++) {
+      const part = renderChild(children[i], undefined);
+      if (typeof part !== "string")
+        return renderChildrenFrom(out, part, children, i + 1, undefined);
+      out += part;
+    }
+    return out;
+  }
+
   for (let i = 0; i < children.length; i++) {
     const part = renderChild(children[i], rawtextTag);
     // First child that suspends: the rest is finished by the sequential tail.
     // What is already rendered stays a plain string, never an array element.
     if (typeof part !== "string") return renderChildrenFrom(out, part, children, i + 1, rawtextTag);
-    out += part;
+    out = joinRawTagContent(out, part, rawtextTag);
   }
   return out;
 }
@@ -178,18 +189,28 @@ async function renderChildrenFrom(
   from: number,
   rawtextTag: string | undefined,
 ): Promise<string> {
-  return sequenceFrom(prefix + (await pending), children, from, (child) =>
-    renderChild(child, rawtextTag),
-  );
+  const first = await pending;
+  const initial =
+    rawtextTag === undefined ? prefix + first : joinRawTagContent(prefix, first, rawtextTag);
+  return sequenceFrom(initial, children, from, (out, child) => {
+    const part = renderChild(child, rawtextTag);
+    const append = (text: string) =>
+      rawtextTag === undefined ? out + text : joinRawTagContent(out, text, rawtextTag);
+    return typeof part === "string" ? append(part) : part.then(append);
+  });
 }
 
 /**
- * The sequencing rule, as a primitive.
+ * Finish an array in document order: each step starts after the previous one
+ * completes, and a rejection stops the remaining steps. Synchronous steps do
+ * not introduce an await.
  *
- * One item at a time, in order, each started only once its left sibling is
- * done — never `Promise.all`. `jsx-runtime`'s precompile queues
- * (`escapeArrayFrom`, `renderTemplateAsync`) are the same loop; they call this
- * instead of re-implementing it, so a fix to the rule lands once.
+ * The callback receives the accumulated text and returns its replacement.
+ * This lets the tree walk join rawtext safely and the precompile runtime
+ * remove a dropped attribute's separator, rather than only concatenate.
+ * `renderChildrenFrom`, `escapeArrayFrom` and `renderTemplateAsync` share this
+ * rule. Pull-based async iterables and attribute-object resolution have their
+ * own loops; they do not assemble an indexed list of rendered strings.
  *
  * @internal
  */
@@ -197,13 +218,13 @@ export async function sequenceFrom<T>(
   prefix: string,
   items: readonly T[],
   from: number,
-  render: (item: T, index: number) => string | Promise<string>,
+  step: (out: string, item: T, index: number) => string | Promise<string>,
 ): Promise<string> {
   let out = prefix;
   for (let i = from; i < items.length; i++) {
     // Bounded by the loop condition; `noUncheckedIndexedAccess` cannot see it.
-    const part = render(items[i]!, i);
-    out += typeof part === "string" ? part : await part;
+    const next = step(out, items[i]!, i);
+    out = typeof next === "string" ? next : await next;
   }
   return out;
 }
@@ -271,7 +292,11 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
   }
   if (Array.isArray(child)) return renderChildrenAsync(child, rawtextTag);
   if (isAsyncIterable(child)) {
-    return collectAsyncIterable(child, (chunk) => renderRawtextChild(chunk, rawtextTag));
+    return collectAsyncIterable(
+      child,
+      (chunk) => renderRawtextChild(chunk, rawtextTag),
+      rawtextTag,
+    );
   }
   if (isIterable(child)) return renderChildrenAsync(Array.from(child), rawtextTag);
   return renderLeaf(child, rawtextTag);
@@ -288,11 +313,21 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
 export async function collectAsyncIterable(
   iterable: AsyncIterable<unknown>,
   map: (chunk: unknown) => string | Promise<string>,
+  rawtextTag?: string,
 ): Promise<string> {
   let out = "";
+  if (rawtextTag === undefined) {
+    for await (const chunk of iterable) {
+      const rendered = map(chunk);
+      out += rendered instanceof Promise ? await rendered : rendered;
+    }
+    return out;
+  }
+
   for await (const chunk of iterable) {
     const rendered = map(chunk);
-    out += rendered instanceof Promise ? await rendered : rendered;
+    const part = rendered instanceof Promise ? await rendered : rendered;
+    out = joinRawTagContent(out, part, rawtextTag);
   }
   return out;
 }

@@ -182,17 +182,21 @@ fetches it.
 
 ## How does security work in Vincle?
 
-Security is the default, not an opt-in. Every value embedded in JSX is
-automatically sanitised:
+Security is the default, not an opt-in. Vincle applies context-aware HTML
+encoding and URL filtering:
 
 - **Text content** — `&`, `<`, `>` escaped
 - **Attribute values** — `&`, `<`, `"` escaped (`>` isn't needed — it can't end a double-quoted value)
 - **URL attributes** — `javascript:` and `vbscript:` blocked; `data:` is blocked too, except image data URIs (`data:image/png`, `/jpeg`, `/gif`, `/webp`, `/avif`)
-- **Event handlers** — a function value throws; handler strings are escaped
 - **CSS values** — HTML-escaped, but not validated: a style _value_ can still carry arbitrary declarations (`color: red; position: fixed`). Only property _names_ are checked. Don't pass untrusted data into `style`.
 
 The only escape hatch is `raw()`, which is explicit and opt-in. See the
 [Security model](/guide/security) for the full details.
+
+Inline event handlers are outside this security model. An `on*` string is
+serialized like any other attribute; Vincle does not inspect or sanitize the
+JavaScript inside it. Function-valued attributes throw because functions have
+no HTML representation and Vincle has no client runtime to attach them to.
 
 ## Can I use Vincle for streaming HTML?
 

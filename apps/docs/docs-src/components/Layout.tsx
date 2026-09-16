@@ -81,8 +81,8 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="color-scheme" content="light dark" />
-        <meta name="theme-color" content="#6366f1" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#0b0d14" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#fcfdff" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#101b2b" media="(prefers-color-scheme: dark)" />
         {is404 && <meta name="robots" content="noindex" />}
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         <meta http-equiv="Content-Security-Policy" content={csp} />
@@ -129,15 +129,18 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
         </a>
 
         {/* Sticky top header: logo + nav links + search + theme + mobile menu */}
-        <header class="sticky top-0 z-40 bg-[var(--docs-color-bg)]/80 [box-shadow:inset_0_-1px_0_var(--docs-color-border)] backdrop-blur-xl">
-          <div class="mx-auto flex h-12 max-w-7xl items-center gap-1 px-4 md:px-6">
+        <header class="docs-header sticky top-0 z-40 bg-[var(--docs-color-bg)]/80 [box-shadow:inset_0_-1px_0_var(--docs-color-border)] backdrop-blur-xl">
+          <div class="mx-auto flex h-16 max-w-7xl items-center gap-1 px-4 md:px-6">
             <a
               href="/"
-              class="shrink-0 text-base font-bold tracking-tight text-[var(--docs-color-text)]"
+              class="docs-brand shrink-0 text-base font-bold tracking-tight text-[var(--docs-color-text)]"
             >
+              <span class="docs-brand-mark" aria-hidden="true">
+                v.
+              </span>
               {config.title}
             </a>
-            {!isHome && <Tabs />}
+            <Tabs />
             <div class="ml-auto flex shrink-0 items-center gap-2">
               <SearchDialog />
               <ThemeToggle />
@@ -152,18 +155,18 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
           class="docs-nav-backdrop fixed inset-0 z-30 bg-black/50 opacity-0 backdrop-blur-sm data-open:opacity-100 md:hidden"
         />
 
-        <div class="docs-shell mx-auto flex min-h-[calc(100vh-3rem)] max-w-7xl px-4 md:px-6">
+        <div class="docs-shell mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl px-4 md:px-6">
           {!isHome && <Nav />}
           <div
-            class={`flex min-w-0 flex-1 flex-col ${isHome ? "mx-auto max-w-5xl" : "px-6 md:px-8 lg:px-12"}`}
+            class={`flex min-w-0 flex-1 flex-col ${isHome ? "mx-auto w-full max-w-6xl" : "docs-article px-1 sm:px-6 md:px-8 lg:px-12"}`}
           >
-            <main id="docs-main" class="docs-main flex-1 scroll-mt-12 py-8" tabIndex={-1}>
+            <main id="docs-main" class="docs-main flex-1 scroll-mt-16 py-10" tabIndex={-1}>
               {children}
               <PageFooter />
             </main>
           </div>
           {!isHome && (
-            <div class="docs-toc-column sticky top-12 hidden h-[calc(100vh-3rem)] w-56 shrink-0 overflow-y-auto py-8 xl:block">
+            <div class="docs-toc-column sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 overflow-y-auto py-8 xl:block">
               <TableOfContents />
             </div>
           )}

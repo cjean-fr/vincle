@@ -165,7 +165,12 @@ async function escapeArrayFrom(
   arr: unknown[],
   from: number,
 ): Promise<RawString> {
-  return new RawString(await sequenceFrom(prefix + (await pending), arr, from, renderValue));
+  return new RawString(
+    await sequenceFrom(prefix + (await pending), arr, from, (out, value) => {
+      const part = renderValue(value);
+      return typeof part === "string" ? out + part : part.then((text) => out + text);
+    }),
+  );
 }
 
 /**
@@ -302,16 +307,12 @@ async function renderTemplateAsync(
   from: number,
   templates: ArrayLike<string>,
 ): Promise<RawString> {
-  // Sequential, like `sequenceFrom` in `render.ts` and for the same reason:
-  // `Promise.all` would overlap holes that mutate the context. The loop is here
-  // rather than in that helper because `appendHole` takes bytes back off `out`,
-  // which a concatenating callback cannot express — and both paths must space a
-  // template identically, whether or not a hole happened to be a promise.
-  let out = appendHole(prefix, await renderValue(first)) + (templates[from] ?? "");
-  for (let i = from; i < values.length; i++) {
-    out = appendHole(out, await renderValue(values[i]));
-    out += templates[i + 1] ?? "";
-  }
+  const initial = appendHole(prefix, await renderValue(first)) + (templates[from] ?? "");
+  const out = await sequenceFrom(initial, values, from, (acc, value, i) => {
+    const part = renderValue(value);
+    const append = (text: string) => appendHole(acc, text) + (templates[i + 1] ?? "");
+    return typeof part === "string" ? append(part) : part.then(append);
+  });
   return new RawString(out);
 }
 

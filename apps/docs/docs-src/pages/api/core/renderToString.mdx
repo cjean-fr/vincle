@@ -47,6 +47,16 @@ parallel. A sibling never starts before the one before it has finished, so two
 branches that both touch context (`setContext`/`useContext`) can never race.
 The returned `Promise<string>` resolves once every branch has rendered.
 
+This order also applies to components in arrays, iterables, and precompiled
+`@vincle/core` templates. If a component throws or rejects, later components
+in that sequence are not invoked. The synchronous prefix is kept; rendering
+resumes after each awaited component without restarting earlier siblings.
+
+The guarantee concerns component invocation by the renderer. A promise you
+create before rendering has already started its work; the renderer cannot
+postpone it. For explicit concurrent rendering, use
+[`Defer` and `Slot`](/integration/components) from `@vincle/flow`.
+
 ## Concurrent renders
 
 Multiple concurrent calls to `renderToString` are safe, even when components

@@ -16,7 +16,7 @@
       "@iconify-icons/tabler": "^1.2",
       "@tailwindcss/vite": "^4.3.3",
       "@types/bun": "^1.4.2",
-      "@types/node": "^26.5.1",
+      "@types/node": "^26.6.0",
       "@types/react": "^19.3.0",
       "bun": "^1.4.2",
       "eslint": "^10.10.0",
