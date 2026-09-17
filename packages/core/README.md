@@ -17,13 +17,14 @@ for the walk.
 
 ## API
 
-| Export                                                             | Purpose                               |
-| ------------------------------------------------------------------ | ------------------------------------- |
-| `renderToString`                                                   | Render a JSX tree to an HTML string   |
-| `jsx` / `jsxs`                                                     | JSX runtime (auto-wired via tsconfig) |
-| `Fragment`                                                         | `<>…</>` support                      |
-| `raw`                                                              | Mark trusted HTML — no escaping       |
-| `context` / `withScope` / `setContext` / `useContext` / `snapshot` | Per-request scoped context            |
+| Export                         | Purpose                               |
+| ------------------------------ | ------------------------------------- |
+| `renderToString`               | Render a JSX tree to an HTML string   |
+| `jsx` / `jsxs`                 | JSX runtime (auto-wired via tsconfig) |
+| `Fragment`                     | `<>…</>` support                      |
+| `raw`                          | Mark trusted HTML — no escaping       |
+| `createContext` / `useContext` | Tree-scoped Provider values           |
+| `ExecutionContext`             | Per-execution mutable state           |
 
 ### Types
 

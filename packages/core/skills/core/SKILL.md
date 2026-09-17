@@ -52,12 +52,13 @@ esbuild: {
 
 If the request is unclear, ask one clarifying question.
 
-| Need                                                  | Use                                                           |
-| ----------------------------------------------------- | ------------------------------------------------------------- |
-| HTML strings only                                     | `renderToString()`                                            |
-| Component itself must await data before returning JSX | async components                                              |
-| Shared state in the render tree                       | `context()` + `withScope()` + `setContext()` / `useContext()` |
-| DOM streaming, islands, or browser patching           | `@vincle/flow`                                                |
+| Need                                                  | Use                                                       |
+| ----------------------------------------------------- | --------------------------------------------------------- |
+| HTML strings only                                     | `renderToString()`                                        |
+| Component itself must await data before returning JSX | async components                                          |
+| Shared state in the render tree                       | `createContext()` + `<Context.Provider>` + `useContext()` |
+| Mutable state for one async execution                 | `ExecutionContext`                                        |
+| DOM streaming, islands, or browser patching           | `@vincle/flow`                                            |
 
 If the user wants browser DOM updates, hydration, hooks, event handlers, or client-side interactivity, do not use this package for that task; explain that `@vincle/core` is for HTML-string generation and server-side rendering only.
 
@@ -78,7 +79,7 @@ const sameThing = await renderToString(
 );
 ```
 
-> **`withScope` is optional.** Only wrap renders in `withScope()` when you need `context()` / `setContext()` / `useContext()`. For pure rendering, call `renderToString()` directly. Concurrent renders (`Promise.all`) work fine without it.
+> **Tree Providers need no outer scope.** Use `ExecutionContext.withScope()` only for execution-scoped mutable state. Concurrent Provider renders remain isolated.
 
 ## Async Patterns
 
@@ -120,71 +121,75 @@ const notHtml = renderToString(<AsyncComponent />); // missing await
 
 ## Context API
 
-Typed, isolated scope for sharing data across the render tree without prop drilling. Backed by `AsyncLocalStorage` — concurrent requests never bleed into each other.
+Create a typed tree Context once. The nearest Provider supplies a value to its
+descendants; outside one, `useContext` returns the declared default. Concurrent
+renders stay isolated across `await`.
 
 ```ts
-// Define a typed token — once, in its own module. Convention: "<scope>:<purpose>".
-// Same key always resolves to the same Symbol within a given @vincle/core instance.
-export const AuthContext = context<{ user: string; locale: string }>("my-app:auth");
+export const AuthContext = createContext({ user: "Guest", locale: "en" });
 ```
 
 ```tsx
-// Read it anywhere in the tree
+// Read it under a Provider
 const Header = () => {
   const { user, locale } = useContext(AuthContext);
   return <header lang={locale}>Hello {user}</header>;
 };
 
-// Wrap your render in an isolated scope
-const html = await withScope(async () => {
-  setContext(AuthContext, { user: "Alice", locale: "fr" });
-  return renderToString(<Header />);
-});
+const html = await renderToString(
+  <AuthContext.Provider value={{ user: "Alice", locale: "fr" }}>
+    <Header />
+  </AuthContext.Provider>,
+);
 ```
 
-`useContext` throws immediately if called outside a `withScope` or if the value was never set — no silent `undefined`.
+Use `ExecutionContext` for mutable per-request data that a plain helper or a
+later sibling must read. Its `get` throws if no scope or value is present.
 
 ### Sub-scopes with snapshot
 
 ```ts
-await withScope(async () => {
-  setContext(AuthContext, { user: "Alice", locale: "fr" });
+const Request = ExecutionContext.key<{ user: string }>("app:request");
+await ExecutionContext.withScope(async () => {
+  ExecutionContext.set(Request, { user: "Alice" });
 
   // Child scope inherits parent data via snapshot(), passed as-is —
   // the second argument IS the ContextMap, not an options object.
-  await withScope(async () => {
-    useContext(AuthContext).user; // ✅ "Alice"
-    setContext(AuthContext, { user: "Child", locale: "en" }); // local only
-  }, snapshot());
+  await ExecutionContext.withScope(async () => {
+    ExecutionContext.get(Request).user; // ✅ "Alice"
+    ExecutionContext.set(Request, { user: "Child" }); // local only
+  }, ExecutionContext.snapshot());
 
-  useContext(AuthContext).user; // ✅ still "Alice"
+  ExecutionContext.get(Request).user; // ✅ still "Alice"
 });
 ```
 
 ### Multiple context tokens
 
-Each feature declares its own typed token — no shared global object to pollute.
+Each feature declares its own tree Context.
 
 ```tsx
-export const AuthContext = context<{ userId: string }>("my-app:auth");
-export const ThemeContext = context<{ dark: boolean }>("my-app:theme");
+export const AuthContext = createContext({ userId: "anonymous" });
+export const ThemeContext = createContext({ dark: false });
 
-await withScope(async () => {
-  setContext(AuthContext, { userId: "42" });
-  setContext(ThemeContext, { dark: true });
-  return renderToString(<App />);
-});
+await renderToString(
+  <AuthContext.Provider value={{ userId: "42" }}>
+    <ThemeContext.Provider value={{ dark: true }}>
+      <App />
+    </ThemeContext.Provider>
+  </AuthContext.Provider>,
+);
 ```
 
 ## Migration from React
 
-| React pattern                  | @vincle/core equivalent                            |
-| ------------------------------ | -------------------------------------------------- |
-| `useState`, `useEffect`        | Fetch data before render, pass as props            |
-| `createContext` / `<Provider>` | `context<T>(key)` + `withScope()` + `setContext()` |
-| Event handler functions        | String values only (`onClick="alert(1)"`)          |
-| `ref`                          | Not supported                                      |
-| `className`                    | Both `class` and `className` accepted              |
+| React pattern                  | @vincle/core equivalent                              |
+| ------------------------------ | ---------------------------------------------------- |
+| `useState`, `useEffect`        | Fetch data before render, pass as props              |
+| `createContext` / `<Provider>` | `createContext(defaultValue)` + `<Context.Provider>` |
+| Event handler functions        | String values only (`onClick="alert(1)"`)            |
+| `ref`                          | Not supported                                        |
+| `className`                    | Both `class` and `className` accepted                |
 
 <!-- skip-typecheck: React, not vincle -->
 
@@ -329,9 +334,7 @@ Rules included: `no-react-hooks`, `no-react-imports`, `no-context` (React contex
 import { describe, it, expect } from "bun:test";
 import {
   renderToString,
-  withScope,
-  context,
-  setContext,
+  createContext,
   useContext,
 } from "@vincle/core";
 
@@ -347,13 +350,12 @@ describe("Component", () => {
   });
 
   it("renders with context", async () => {
-    const Ctx = context<{ user: string }>("test:user");
+    const Ctx = createContext({ user: "Guest" });
     const Greeting = () => <span>{useContext(Ctx).user}</span>;
 
-    const html = await withScope(async () => {
-      setContext(Ctx, { user: "Alice" });
-      return renderToString(<Greeting />);
-    });
+    const html = await renderToString(
+      <Ctx.Provider value={{ user: "Alice" }}><Greeting /></Ctx.Provider>,
+    );
     expect(html).toBe("<span>Alice</span>");
   });
 });
@@ -365,7 +367,7 @@ describe("Component", () => {
 | ---------------------------------- | ----------------------------------------------------------------------------------- |
 | TypeScript errors on JSX           | Check `tsconfig.json` has `"jsxImportSource": "@vincle/core"`                       |
 | `[object Promise]` in output       | Missing `await` on `renderToString()`                                               |
-| `useContext` throws                | Call it inside a `withScope()` after `setContext()`                                 |
+| `ExecutionContext.get` throws      | Enter `ExecutionContext.withScope()` and set the key first                          |
 | Style not applied                  | Use camelCase: `borderTopColor`, not `border-top-color`                             |
 | `class` not working                | Both `class` and `className` are accepted                                           |
 | JSX in test file not resolved      | Add `// @jsxImportSource @vincle/core` at top of `.tsx` test file                   |

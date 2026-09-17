@@ -79,11 +79,9 @@ declare global {
   // example is free to import them instead; the import simply shadows these.
   const renderToString: typeof Vincle.renderToString;
   const raw: typeof Vincle.raw;
-  const context: typeof Vincle.context;
-  const setContext: typeof Vincle.setContext;
+  const createContext: typeof Vincle.createContext;
   const useContext: typeof Vincle.useContext;
-  const withScope: typeof Vincle.withScope;
-  const snapshot: typeof Vincle.snapshot;
+  const ExecutionContext: typeof Vincle.ExecutionContext;
 
   const fetchUser: (id: string) => Promise<{ name: string }>;
   const fetchPosts: (id: string) => Promise<unknown[]>;
@@ -102,8 +100,8 @@ declare global {
   const user: { name: string };
   // Declared in one example and used in the next: the blocks are separate
   // files here, but a reader's project is one program.
-  const AuthContext: Vincle.ContextKey<{ user: string; locale: string }>;
-  const ThemeContext: Vincle.ContextKey<{ dark: boolean }>;
+  const AuthContext: Vincle.Context<{ user: string; locale: string }>;
+  const ThemeContext: Vincle.Context<{ dark: boolean }>;
   const useState: <T>(initial: T) => [T, (next: T) => void];
   const useEffect: (fn: () => void, deps: unknown[]) => void;
 }

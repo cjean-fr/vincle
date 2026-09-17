@@ -11,8 +11,8 @@
  */
 
 import { createElement as kita } from "@kitajs/html";
-import { renderToString } from "@vincle/core";
-import { jsxAttr, jsxEscape, jsxTemplate } from "@vincle/core/jsx-precompile-runtime";
+import * as Vincle from "@vincle/core";
+import * as PrecompileRuntime from "@vincle/core/jsx-precompile-runtime";
 import { jsx } from "@vincle/core/jsx-runtime";
 import { jsx as honoJsx } from "hono/jsx";
 import { measure } from "mitata";
@@ -27,6 +27,10 @@ import { render as realworldKita } from "./realworld/kitajs.js";
 import { render as realworldPreact } from "./realworld/preact.js";
 import { render as realworldReact } from "./realworld/react.js";
 import { render as realworldVincle } from "./realworld/vincle.js";
+
+const { createContext, renderToString, useContext } = Vincle;
+const { jsxAttr, jsxEscape, jsxEscapeDeferred, jsxTemplate, jsxTemplateDeferred } =
+  PrecompileRuntime;
 
 // Data
 
@@ -199,6 +203,70 @@ const precompileData = Array.from({ length: PRECOMPILE_ROWS }, (_, i) => ({
   text: `Item ${i} — a & b < c`,
 }));
 
+// Provider fixtures: one source with ten literal paragraphs and one with many
+// readers. Both paths perform the same work outside what the JSX transform
+// itself can eliminate; a runtime map versus precomputed literals would not.
+const Locale = createContext?.("fr");
+const staticRows =
+  '<p class="row">Static 0</p><p class="row">Static 1</p><p class="row">Static 2</p>' +
+  '<p class="row">Static 3</p><p class="row">Static 4</p><p class="row">Static 5</p>' +
+  '<p class="row">Static 6</p><p class="row">Static 7</p><p class="row">Static 8</p>' +
+  '<p class="row">Static 9</p>';
+const translatedRows = Array.from({ length: 100 }, (_, i) => i);
+const LocaleReader = ({ index }) => jsx("li", { children: `${useContext(Locale)}:${index}` });
+// The transform emits these two direct helpers for a template-literal text
+// hole. Precompile the reader as well as the outer <ul>, as a real build does.
+const PrecompiledLocaleReader = ({ index }) =>
+  jsxTemplate(["<li>", "</li>"], jsxEscape(`${useContext(Locale)}:${index}`));
+const StaticReader = () => jsx("b", { children: useContext(Locale) });
+const PrecompiledStaticReader = () =>
+  jsxTemplateDeferred(["<b>", "</b>"], jsxEscapeDeferred(useContext(Locale)));
+
+function providerStaticRuntime() {
+  return jsx(Locale.Provider, {
+    value: "en",
+    children: jsx("main", {
+      children: [
+        jsx("p", { class: "row", children: "Static 0" }),
+        jsx("p", { class: "row", children: "Static 1" }),
+        jsx("p", { class: "row", children: "Static 2" }),
+        jsx("p", { class: "row", children: "Static 3" }),
+        jsx("p", { class: "row", children: "Static 4" }),
+        jsx("p", { class: "row", children: "Static 5" }),
+        jsx("p", { class: "row", children: "Static 6" }),
+        jsx("p", { class: "row", children: "Static 7" }),
+        jsx("p", { class: "row", children: "Static 8" }),
+        jsx("p", { class: "row", children: "Static 9" }),
+        jsx(StaticReader, {}),
+      ],
+    }),
+  });
+}
+function providerStaticPrecompile() {
+  return jsx(Locale.Provider, {
+    value: "en",
+    children: jsxTemplateDeferred(
+      [`<main>${staticRows}`, "</main>"],
+      jsx(PrecompiledStaticReader, {}),
+    ),
+  });
+}
+function providerTranslationsRuntime() {
+  return jsx(Locale.Provider, {
+    value: "en",
+    children: jsx("ul", { children: translatedRows.map((index) => jsx(LocaleReader, { index })) }),
+  });
+}
+function providerTranslationsPrecompile() {
+  return jsx(Locale.Provider, {
+    value: "en",
+    children: jsxTemplateDeferred(
+      ["<ul>", "</ul>"],
+      translatedRows.map((index) => jsx(PrecompiledLocaleReader, { index })),
+    ),
+  });
+}
+
 /** What the transform emits. */
 function precompileList() {
   const rows = [];
@@ -231,6 +299,8 @@ const CASES = {
   stack: `stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
   realworld: `realworld — full page, ${PURCHASES.length} purchases (kitajs port)`,
   precompile: `precompile — ${PRECOMPILE_ROWS}-row list, tree walk vs jsxTemplate (vincle only)`,
+  "provider-static": "provider-static — root Provider, mostly literal markup",
+  "provider-translations": "provider-translations — root Provider, 100 readers",
 };
 
 // Build the pages outside the bench so that only the render is measured
@@ -267,6 +337,22 @@ const BENCHES = [
   ["precompile", "@vincle/core", () => renderToString(runtimeList())],
   ["precompile", "@vincle/core (precompile)", () => renderToString(precompileList())],
 ];
+if (Locale) {
+  BENCHES.push(
+    ["provider-static", "@vincle/core", () => renderToString(providerStaticRuntime())],
+    [
+      "provider-static",
+      "@vincle/core (precompile)",
+      () => renderToString(providerStaticPrecompile()),
+    ],
+    ["provider-translations", "@vincle/core", () => renderToString(providerTranslationsRuntime())],
+    [
+      "provider-translations",
+      "@vincle/core (precompile)",
+      () => renderToString(providerTranslationsPrecompile()),
+    ],
+  );
+}
 
 // Measurement budget
 //
@@ -307,6 +393,16 @@ const results = [];
 for (const [kase, name, fn] of BENCHES) {
   const { avg } = await measure(fn);
   results.push({ case: kase, name, opsPerSec: 1e9 / avg });
+}
+if (Locale) {
+  for (const [runtime, precompiled] of [
+    [providerStaticRuntime, providerStaticPrecompile],
+    [providerTranslationsRuntime, providerTranslationsPrecompile],
+  ]) {
+    if ((await renderToString(runtime())) !== (await renderToString(precompiled()))) {
+      throw new Error("Provider paths rendered different markup");
+    }
+  }
 }
 
 // `--json` emits one machine-readable line and nothing else: a single run of

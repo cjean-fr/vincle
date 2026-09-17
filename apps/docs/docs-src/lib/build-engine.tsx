@@ -2,7 +2,7 @@ import type { ViteManifest } from "@vincle/vite-plugin";
 
 import { loadViteManifest, setVite } from "@vincle/vite-plugin";
 import { existsSync } from "node:fs";
-import { writeFile, mkdir, rm, readdir, copyFile } from "node:fs/promises";
+import { writeFile, mkdir, rm, cp } from "node:fs/promises";
 import { availableParallelism, cpus } from "node:os";
 import path from "node:path";
 
@@ -12,7 +12,15 @@ import config from "../../docs.config.js";
 import { setDocs } from "../context.js";
 import { buildMinimatchIndex } from "../search/minimatch-build.js";
 import { buildSitemap } from "./build-sitemap.js";
-import { generateLlmsTxt, generateLlmsFullTxt, updateRobotsTxt } from "./build-static-assets.js";
+import {
+  generateAgentSkillsIndex,
+  generateAiCatalog,
+  generateLlmsTxt,
+  generateLlmsFullTxt,
+  generateMarkdownAlternates,
+  generateNetlifyHeaders,
+  updateRobotsTxt,
+} from "./build-static-assets.js";
 import { injectHeadingAnchors } from "./heading-anchors.js";
 import { htmlToText } from "./html-text.js";
 import { COMPILED_DIR } from "./mdx-cache.js";
@@ -198,9 +206,14 @@ async function postBuild(
   await generateLlmsTxt(pageData, config, config.out);
   await generateLlmsFullTxt(textPages, config, config.out);
 
+  await copyStaticAssets();
+  await generateMarkdownAlternates(pages, config.out);
+  await generateNetlifyHeaders(config.out);
+  await generateAgentSkillsIndex(config.out);
+  await generateAiCatalog(config.out, config);
+
   await renderError(404, "Page Not Found", "Page not found.");
   await renderError(500, "Server Error", "Server error. Something went wrong.");
-  await copyPublicAssets();
 }
 
 async function renderError(status: number, title: string, message: string): Promise<void> {
@@ -236,15 +249,15 @@ async function renderError(status: number, title: string, message: string): Prom
   await writeFile(path.join(config.out, `${status}.html`), "<!DOCTYPE html>\n" + html, "utf-8");
 }
 
-async function copyPublicAssets(): Promise<void> {
+async function copyStaticAssets(): Promise<void> {
+  const outDir = path.resolve(config.out);
+  // `public/` is Vite's: it also lands in `dist/assets/`, so it stays limited
+  // to browser assets. The agent-facing files (auth.md, .well-known/) come
+  // from `agent/` and only exist at the site root.
   const publicDir = path.resolve(config.pages, "../../public");
-  if (!existsSync(publicDir)) return;
-  const entries = await readdir(publicDir, { withFileTypes: true });
-  await Promise.all(
-    entries
-      .filter((e) => e.isFile())
-      .map((e) => copyFile(path.join(publicDir, e.name), path.join(config.out, e.name))),
-  );
+  if (existsSync(publicDir)) await cp(publicDir, outDir, { recursive: true });
+  const agentDir = path.resolve(config.pages, "../../agent");
+  if (existsSync(agentDir)) await cp(agentDir, outDir, { recursive: true });
 }
 
 export function getAllPages(): Page[] {

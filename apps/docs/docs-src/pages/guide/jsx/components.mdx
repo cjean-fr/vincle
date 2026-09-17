@@ -60,7 +60,7 @@ Sibling async branches run in document order, one at a time — `renderToString`
 
 - **State** — there is no re-rendering. State lives outside the render (database, request context).
 - **Effects** — no client lifecycle. Render once, produce a string, done.
-- **Context providers** — Vincle uses scoped context via `withScope`, not wrapper components.
+- **Client context updates** — a Provider supplies values during server rendering; Vincle does not re-render in the browser.
 - **`React.memo`** — every render is a fresh call. Memoization is meaningless.
 
 ## Where to next

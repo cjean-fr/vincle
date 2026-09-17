@@ -1,6 +1,7 @@
 import type { VNode } from "@vincle/core";
 
-import { raw, renderToString, withScope } from "@vincle/core";
+import { ExecutionContext } from "@vincle/core";
+import { raw, renderToString } from "@vincle/core";
 import { describe, expect, it } from "bun:test";
 
 import type { FlowEvent } from "../types.js";
@@ -178,7 +179,7 @@ describe("Defer — deferred content (placeholder always)", () => {
   });
 
   it("generates a src in static mode", async () => {
-    await withScope(async () => {
+    await ExecutionContext.withScope(async () => {
       initFlow({
         adapter: TurboAdapter,
         mode: "static",

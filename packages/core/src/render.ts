@@ -10,7 +10,9 @@ import {
   valueToText,
 } from "./escape.js";
 import { isVoidElement, serializeElement, serializeVoidElement } from "./serialize.js";
+import { providerMarker, renderProvider, type Context } from "./tree-context.js";
 import { RawString, VNode } from "./types.js";
+import { TemplateNode } from "./types.js";
 
 /**
  * Render a JSX tree to an HTML string. Text is escaped; only `raw()` is not.
@@ -77,6 +79,10 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     // ── Component ──
     if (typeof vnode.tag === "function") {
       const comp = vnode.tag;
+      const context = (comp as unknown as { [providerMarker]?: Context<unknown> })[providerMarker];
+      if (context) {
+        return renderProvider(context, vnode.attrs["value"], () => renderNode(vnode.children));
+      }
       let result: unknown;
       try {
         result = comp(vnode.attrs);
@@ -130,6 +136,10 @@ export function renderNode(vnode: unknown): string | Promise<string> {
       return serializeElement(tag, attrStr, content);
     }
     return writeChildless(tag, attrStr);
+  }
+  if (vnode instanceof TemplateNode) {
+    const result = vnode.render();
+    return result instanceof Promise ? result.then((value) => value.value) : result.value;
   }
   // Neither an array nor a VNode is ever an async iterable, and VNode is the
   // dominant case: only what is left pays for the protocol tests.
@@ -261,6 +271,7 @@ const isElementNode = (v: unknown): boolean => v instanceof VNode && typeof v.ta
  */
 function renderRawtextChild(child: unknown, rawtextTag: string): string | Promise<string> {
   if (child instanceof Promise) return child.then((r) => renderRawtextChild(r, rawtextTag));
+  if (child instanceof TemplateNode) return renderNode(child);
   // A component: invoked here rather than in `renderNode`, so that whatever it
   // returns comes back through this function and keeps the rule. The promise and
   // async-iterable shapes it may return are already handled above and below —
@@ -274,6 +285,12 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
     // the problem.
     if (typeof child.tag === "string") return renderNode(child);
     const comp = child.tag as (props: Record<string, unknown>) => unknown;
+    const context = (comp as unknown as { [providerMarker]?: Context<unknown> })[providerMarker];
+    if (context) {
+      return renderProvider(context, child.attrs["value"], () =>
+        renderRawtextChild(child.children, rawtextTag),
+      );
+    }
     let result: unknown;
     try {
       result = comp(child.attrs);

@@ -42,8 +42,15 @@ describe("precompileTransform", () => {
 
   it("wraps dynamic children in jsxEscape", () => {
     const out = transform(`const a = <div>{name}</div>;`);
-    expect(out).toContain(`import { jsxTemplate, jsxEscape } from "${RT}";`);
+    expect(out).toContain(`import { jsxEscape, jsxTemplate } from "${RT}";`);
     expect(out).toContain("${jsxEscape(name)}");
+  });
+
+  it("keeps a template-literal text hole on the direct path", () => {
+    const out = transformVincle("const Reader = ({ name }) => <li>{`Hello ${name}`}</li>;");
+    expect(out).toContain("jsxTemplate`<li>${jsxEscape(`Hello ${name}`)}</li>`");
+    expect(out).not.toContain("jsxTemplateDeferred");
+    expect(out).not.toContain("jsxEscapeDeferred");
   });
 
   it("serializes dynamic attributes with jsxAttr", () => {
@@ -254,7 +261,7 @@ describe("precompileTransform", () => {
       runtimeSource: RT,
     })!;
     expect(result.code).toContain(
-      `import { jsxTemplate as tpl, jsxTemplate, jsxEscape } from "${RT}";`,
+      `import { jsxTemplate as tpl, jsxEscape, jsxTemplate } from "${RT}";`,
     );
     expect(result.code.match(new RegExp(RT, "g"))?.length).toBe(1);
   });
@@ -502,19 +509,11 @@ describe("precompileTransform", () => {
       cases: { label: string; jsx: string; trace: string[] }[];
     };
 
-    /**
-     * Cases where the two transforms still differ, and why.
-     *
-     * Deno turns what it cannot template into a `jsx()` call; this transform
-     * hands the element back as JSX for the compiler that follows. Same holes,
-     * different way of filling them — and emitting `jsx()` would mean a fourth
-     * helper, outside the three the precompile contract has.
-     */
-    const KNOWN_DIVERGENCES = new Set(["component", "spread", "innerHTML"]);
-
-    it("emits the same trace, apart from the shapes it hands back as JSX", async () => {
+    it("emits the same helper call trace as Deno, including Providers", async () => {
       const id = Math.random().toString(36).slice(2);
-      const spyPath = join(TMP, `spy-${id}.ts`);
+      const spyDir = join(TMP, `spy-${id}`);
+      mkdirSync(spyDir, { recursive: true });
+      const spyPath = join(spyDir, "jsx-runtime.ts");
       writeFileSync(
         spyPath,
         [
@@ -539,6 +538,10 @@ describe("precompileTransform", () => {
           `export const Fragment = "F";`,
         ].join("\n"),
       );
+      writeFileSync(
+        join(spyDir, "jsx-dev-runtime.ts"),
+        'export { Fragment, jsx, jsx as jsxDEV } from "./jsx-runtime.ts";\n',
+      );
 
       const source = [
         `import { mark } from "${spyPath}";`,
@@ -554,7 +557,7 @@ describe("precompileTransform", () => {
       const outputPath = join(TMP, `deno-conf-${id}.tsx`);
       writeFileSync(
         outputPath,
-        `/** @jsxImportSource @vincle/core */\n${result!.code}\nexport { seen } from "${spyPath}";\n`,
+        `/** @jsxImportSource ${spyDir} */\n${result!.code}\nexport { seen } from "${spyPath}";\n`,
       );
       const { seen } = (await import(outputPath)) as { seen: string[] };
 
@@ -576,7 +579,7 @@ describe("precompileTransform", () => {
         if (JSON.stringify(ours) !== JSON.stringify(c.trace)) diverged.push(c.label);
       });
 
-      expect(new Set(diverged)).toEqual(KNOWN_DIVERGENCES);
+      expect(diverged).toEqual([]);
     });
   });
 
@@ -964,6 +967,44 @@ describe("precompileTransform", () => {
       );
     });
 
+    it("defers a precompiled descendant until its Provider renders", async () => {
+      const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
+      const code = [
+        `/** @jsxImportSource @vincle/core */`,
+        `import { createContext, useContext } from "@vincle/core";`,
+        `export const Locale = createContext("fr");`,
+        `export const Reader = () => <b>{useContext(Locale)}</b>;`,
+        `export const Page = () => <Locale.Provider value="en"><section><i>static</i><Reader /></section></Locale.Provider>;`,
+        `export const ListPage = () => <Locale.Provider value="de"><ul>{[0, 1].map(() => <Reader />)}</ul></Locale.Provider>;`,
+      ].join("\n");
+      const result = precompileTransform(
+        code,
+        "/src/app.tsx",
+        { runtimeSource: RT },
+        jsxAttr,
+        jsxEscape,
+      );
+      expect(result!.code).toContain("jsxTemplateDeferred`<section><i>static</i>");
+      expect(result!.code).toContain("[0, 1].map(() => <Reader />)");
+      expect(result!.code).not.toContain("jsxEscapeDeferred([0, 1].map");
+      writeFileSync(outputPath, result!.code);
+      const mod = (await import(outputPath)) as {
+        Locale: { Provider: (props: any) => unknown };
+        Reader: () => unknown;
+        Page: () => unknown;
+        ListPage: () => unknown;
+      };
+      const ordinary = jsx(mod.Locale.Provider, {
+        value: "en",
+        children: jsx("section", {
+          children: [jsx("i", { children: "static" }), jsx(mod.Reader, {})],
+        }),
+      });
+      expect(await renderToString(mod.Page())).toBe(await renderToString(ordinary));
+      expect(await renderToString(mod.Page())).toBe("<section><i>static</i><b>en</b></section>");
+      expect(await renderToString(mod.ListPage())).toBe("<ul><b>de</b><b>de</b></ul>");
+    });
+
     it("component holes keep document order under async rendering", async () => {
       // Sibling component holes must render sequentially: a setContext in the
       // left sibling must be visible to the right one. Rendering them with
@@ -973,11 +1014,11 @@ describe("precompileTransform", () => {
       const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
       const code = [
         `/** @jsxImportSource @vincle/core */`,
-        `import { context, setContext, useContext } from "@vincle/core";`,
-        `const KEY = context<string>("e2e:order");`,
+        `import { ExecutionContext } from "@vincle/core";`,
+        `const KEY = ExecutionContext.key<string>("e2e:order");`,
         `const later = <T,>(v: T, ms: number): Promise<T> => new Promise((r) => setTimeout(() => r(v), ms));`,
-        `const Writer = async () => { await later(null, 5); setContext(KEY, "written"); return "w"; };`,
-        `const Reader = async () => { await later(null, 1); return useContext(KEY); };`,
+        `const Writer = async () => { await later(null, 5); ExecutionContext.set(KEY, "written"); return "w"; };`,
+        `const Reader = async () => { await later(null, 1); return ExecutionContext.get(KEY); };`,
         `export const build = () => <div><Writer /><Reader /></div>;`,
       ].join("\n");
       const result = precompileTransform(code, "/src/app.tsx", {
@@ -985,13 +1026,13 @@ describe("precompileTransform", () => {
       });
       writeFileSync(outputPath, result!.code);
       const mod = (await import(outputPath)) as { build: () => unknown };
-      const { context, setContext, withScope } = await import("@vincle/core");
-      const KEY = context<string>("e2e:order");
+      const { ExecutionContext } = await import("@vincle/core");
+      const KEY = ExecutionContext.key<string>("e2e:order");
       const results = new Set<string>();
       for (let i = 0; i < 5; i++) {
         results.add(
-          await withScope(async () => {
-            setContext(KEY, "initial");
+          await ExecutionContext.withScope(async () => {
+            ExecutionContext.set(KEY, "initial");
             return String(await renderToString(mod.build()));
           }),
         );
@@ -1090,7 +1131,7 @@ describe("precompileTransform", () => {
 
       expect(out!.code).not.toContain("jsxEscape(css)");
       expect(out!.code).toContain("<style>{css}</style>");
-      expect(importedHelpers(out!.code)).toEqual(["jsxTemplate"]);
+      expect(importedHelpers(out!.code)).toEqual(["jsxTemplateDeferred"]);
     });
   });
 
@@ -1199,10 +1240,13 @@ describe("precompileTransform", () => {
             code,
             "/src/app.tsx",
             { runtimeSource: RT, compatibility },
-            jsxAttr,
+            compatibility ? undefined : jsxAttr,
           );
           if (!out) continue;
-          const outside = importedHelpers(out.code).filter((h) => !CONTRACT.has(h));
+          const allowed = compatibility
+            ? CONTRACT
+            : new Set([...CONTRACT, "jsxTemplateDeferred", "jsxEscapeDeferred"]);
+          const outside = importedHelpers(out.code).filter((h) => !allowed.has(h));
           expect(outside, `compatibility: ${compatibility}`).toEqual([]);
         }
       });

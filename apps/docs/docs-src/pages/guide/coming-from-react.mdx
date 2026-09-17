@@ -128,17 +128,16 @@ Swap in `WebPlatformAdapter` to use the same
 [WICG declarative partial updates](https://github.com/WICG/declarative-partial-updates)
 proposal with no polyfill at all — on browsers that implement it natively.
 
-### Context is scoped, not provider-based
+### Context and Provider
 
 React's `useContext` is a hook: it only works inside a component, and that
 component must render as a descendant of the provider in the JSX tree. A
 plain helper function can't call it, even one invoked during the same
 render.
 
-Vincle's `useContext` reads from the active `AsyncLocalStorage` scope, not
-from a tree position. Anything that runs inside `withScope` can call it —
-a component, a helper function, a logger — with no provider ancestor
-required.
+Vincle's `useContext` also reads the nearest Provider in the rendered JSX
+tree. A root Provider works without an outer scope. For mutable request state
+that a plain helper must read, use the separate `ExecutionContext` API.
 
 ```tsx
 // React — useContext only works inside a component in the provider's
@@ -164,23 +163,33 @@ function logAction(action: string) {
   console.log(`${user.name}: ${action}`);
 }
 
-// Vincle — useContext reads the active scope, so plain functions can
-// call it too, as long as they run inside withScope
-const Auth = context<{ user: { name: string } }>("Auth");
+// Vincle — descendants read the nearest Provider.
+const Auth = createContext({ user: { name: "Guest" } });
+function Page() {
+  return <li>{useContext(Auth).user.name}</li>;
+}
+await renderToString(
+  <Auth.Provider value={{ user }}>
+    <Page />
+  </Auth.Provider>,
+);
+
+// Mutable execution state is a separate interface, usable in plain helpers.
+const Audit = ExecutionContext.key<{ user: { name: string } }>("app:audit");
 function logAction(action: string) {
-  const { user } = useContext(Auth); // works — no component, no provider needed
+  const { user } = ExecutionContext.get(Audit);
   console.log(`${user.name}: ${action}`);
 }
 
-await withScope(() => {
-  setContext(Auth, { user });
+await ExecutionContext.withScope(() => {
+  ExecutionContext.set(Audit, { user });
   logAction("viewed dashboard");
   return renderToString(<Page />);
 });
 ```
 
-Each `withScope` is fully isolated — concurrent renders never leak or
-interfere, even when they set different context values.
+Each Provider render and each execution scope is isolated across concurrent
+renders.
 
 ### Event handlers are strings, not closures
 
@@ -333,8 +342,8 @@ optimize away in the first place, compiler or not.
 | `useEffect`                        | Not needed — no client lifecycle                                                    |
 | `useRef`                           | Not needed — no DOM access                                                          |
 | `useMemo` / `useCallback`          | Not needed — no re-renders                                                          |
-| `useContext`                       | `useContext` (same name, scoped instead of provider-based)                          |
-| `createContext`                    | `context(key)` — typed, scoped, no provider component                               |
+| `useContext`                       | `useContext` reads the nearest Provider, or its default                             |
+| `createContext`                    | `createContext(defaultValue)` with `<Context.Provider value={...}>`                 |
 | `React.memo`                       | Not needed — every render is a fresh call                                           |
 | `Suspense`                         | Async component + `<Defer>` from `@vincle/flow`                                     |
 | `ErrorBoundary`                    | No equivalent — try/catch at top level, `onError` in `@vincle/flow` for streaming   |
@@ -363,7 +372,7 @@ optimize away in the first place, compiler or not.
 - **8–14× faster** than `react-dom/server` in rendering
 - **Security by default** — URL scheme blocking and context-aware content and
   attribute escaping — no opt-in required
-- **Scoped context** — per-request isolation without provider components
+- **Tree context and execution scopes** — Provider ancestry and per-request isolation
 - **Any runtime** — Node, Bun, Deno, Cloudflare Workers — no DOM shim needed
 
 ## Next steps

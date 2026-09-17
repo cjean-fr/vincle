@@ -19,22 +19,24 @@ ruleTester.run("no-context", noContext, {
     "const Foo = createSomethingElse();",
     "const Foo = React.createSomethingElse();",
     "const ToastProvider = {}; <ToastProvider.Provider />;",
+    'import { createContext } from "@vincle/core"; const Foo = createContext("x"); <Foo.Provider value="y" />;',
+    'const Foo = createContext("x"); <Foo.Provider value="y" />;',
   ],
   invalid: [
     {
-      code: "const Foo = createContext(); <Foo.Provider />;",
+      code: 'import { createContext } from "react"; const Foo = createContext(); <Foo.Provider />;',
       errors: [{ messageId: "noContext" }, { messageId: "noContext" }],
     },
     {
-      code: "const Foo = React.createContext(); <Foo.Provider />;",
+      code: 'import React from "react"; const Foo = React.createContext(); <Foo.Provider />;',
       errors: [{ messageId: "noContext" }, { messageId: "noContext" }],
     },
     {
-      code: "createContext();",
+      code: 'import { createContext } from "react"; createContext();',
       errors: [{ messageId: "noContext" }],
     },
     {
-      code: "React.createContext();",
+      code: 'import * as React from "react"; React.createContext();',
       errors: [{ messageId: "noContext" }],
     },
   ],

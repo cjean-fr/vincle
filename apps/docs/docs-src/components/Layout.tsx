@@ -73,6 +73,7 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
   const canonical = config.site ? config.site + currentPage : null;
   const csp = meta.csp ?? (await defaultCsp());
   const is404 = currentPage === "/404";
+  const isErrorPage = is404 || currentPage === "/500";
   const isHome = currentPage === "/";
 
   return (
@@ -107,6 +108,8 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
         {description && <meta name="description" content={description} />}
         {canonical && <link rel="canonical" href={canonical} />}
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+        {/* Markdown twin of this page, for agents (RSS-style alternate). */}
+        {!isErrorPage && <link rel="alternate" type="text/markdown" href={currentPage + ".md"} />}
         <meta property="og:type" content="website" />
         <meta property="og:title" content={title} />
         <meta property="og:locale" content="en_US" />
