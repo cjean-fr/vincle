@@ -1,4 +1,5 @@
-import { renderToString, withScope } from "@vincle/core";
+import { ExecutionContext } from "@vincle/core";
+import { renderToString } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
 import { TurboAdapter } from "../adapters/index.js";
@@ -16,7 +17,7 @@ describe("Include", () => {
   });
 
   it("still accepts a dynamic string src (checked at runtime, not compile time)", async () => {
-    await withScope(async () => {
+    await ExecutionContext.withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       const dynamic: string = "/api/" + Math.random().toString(36).slice(2);
       const html = await renderToString(<Include src={dynamic} />);
@@ -25,7 +26,7 @@ describe("Include", () => {
   });
 
   it("throws at runtime for invalid dynamic strings", async () => {
-    await withScope(async () => {
+    await ExecutionContext.withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       await expect(
         renderToString(<Include src={"javascript:alert(1)" as string} />),
@@ -37,7 +38,7 @@ describe("Include", () => {
   // re-implementation got wrong before it delegated.
   describe("scheme detection follows the WHATWG parser", () => {
     const check = (src: string): Promise<string> =>
-      withScope(async () => {
+      ExecutionContext.withScope(async () => {
         initFlow({ adapter: TurboAdapter, mode: "streaming" });
         return renderToString(<Include src={src as string} />);
       });

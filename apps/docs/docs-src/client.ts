@@ -8,3 +8,4 @@ import "./styles/main.css";
 import "./tabs/client.js";
 import "./theme/client.js";
 import "./toc/client.js";
+import "./webmcp/client.js";

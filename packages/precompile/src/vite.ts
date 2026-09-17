@@ -128,10 +128,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
     load(id: string) {
       if (id === RESOLVED_VIRTUAL_ID) {
-        return [
-          "export { jsxTemplate, jsxAttr, jsxEscape }",
-          `  from "${resolvedRuntimeSource}";`,
-        ].join("\n");
+        return `export * from "${resolvedRuntimeSource}";`;
       }
       return null;
     },

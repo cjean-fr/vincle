@@ -1,4 +1,4 @@
-import { withScope } from "@vincle/core";
+import { ExecutionContext } from "@vincle/core";
 import { describe, expect, it } from "bun:test";
 
 import type { FlowConfig } from "./types.js";
@@ -249,7 +249,7 @@ describe("entry-point fail-fast", () => {
   });
 
   it("initFlow rejects a bad config at setup, inside a scope", async () => {
-    await withScope(async () => {
+    await ExecutionContext.withScope(async () => {
       expect(() =>
         initFlow({
           adapter: TurboAdapter,

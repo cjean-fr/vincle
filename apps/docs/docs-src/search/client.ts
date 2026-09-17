@@ -1,10 +1,10 @@
-interface SearchDocument {
+export interface SearchDocument {
   url: string;
   title: string;
   text: string;
 }
 
-interface SearchHit {
+export interface SearchHit {
   document: SearchDocument;
   score: number;
 }
@@ -17,7 +17,7 @@ interface Segment {
 
 let index: SearchDocument[] | null = null;
 
-async function loadIndex(): Promise<SearchDocument[]> {
+export async function loadIndex(): Promise<SearchDocument[]> {
   if (index) return index;
   const res = await fetch("/search-index.json");
   if (!res.ok) throw new Error(`Failed to load search index: ${res.status}`);
@@ -230,7 +230,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-function search(docs: SearchDocument[], query: string): SearchHit[] {
+export function search(docs: SearchDocument[], query: string): SearchHit[] {
   const terms = query.trim().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [];
 

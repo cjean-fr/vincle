@@ -1,4 +1,5 @@
-import { renderToString, withScope, type Awaitable, type Renderable } from "@vincle/core";
+import { ExecutionContext } from "@vincle/core";
+import { renderToString, type Awaitable, type Renderable } from "@vincle/core";
 
 /** A post-render HTML transform: receives the assembled document, returns the next. */
 export type Transform = (html: string) => string;
@@ -19,7 +20,7 @@ export function renderDocument(
   node: () => Awaitable<Renderable>,
   options: { transforms?: Transform[] } = {},
 ): Promise<string> {
-  return withScope(async () => {
+  return ExecutionContext.withScope(async () => {
     const html = await renderToString(node());
     return composeTransforms(...(options.transforms ?? []))(html);
   });

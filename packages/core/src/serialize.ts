@@ -27,7 +27,7 @@ import {
 } from "./escape.js";
 import { ownChildren } from "./props.js";
 import { isVoidElement, voidChildrenMessage } from "./tag.js";
-import { RawString, VNode } from "./types.js";
+import { RawString, TemplateNode, VNode } from "./types.js";
 
 // The tag-name vocabulary lives in `tag.ts` (a leaf module the door,
 // `jsx-runtime.ts`, and this module both import) and is re-exported here, where
@@ -165,6 +165,7 @@ function serializeChild(child: unknown, rawtextTag: string | undefined): string 
   // serialized now.
   if (
     child instanceof VNode ||
+    child instanceof TemplateNode ||
     child instanceof Promise ||
     isIterable(child) ||
     isAsyncIterable(child)

@@ -13,6 +13,8 @@ import { assertFragmentId } from "./utils.js";
  */
 export type TemplateEntry = {
   content: DeferContent;
+  /** Tree context at the point where the fragment was registered. */
+  treeScope?: <T>(render: () => T) => T;
   merge: MergeType;
   /** Per-fragment render timeout in ms. Falls back to FlowOptions.defaultTimeout. */
   timeout?: number;

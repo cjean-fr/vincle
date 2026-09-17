@@ -1,5 +1,4 @@
-import type { VNode } from "@vincle/core";
-
+import { createContext, useContext, type VNode } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
 import type { ShellContext } from "./adapters/shared.js";
@@ -16,6 +15,46 @@ import { collectEvents, collect, type FragmentEvent } from "./test-utils.js";
 const FAKE_CTX: ShellContext = { templateStore: { size: 0 } };
 
 describe("renderToFlowEvents", () => {
+  it("keeps Provider values in deferred fragments across concurrent streams", async () => {
+    const Locale = createContext("default");
+    const Read = async () => {
+      await Promise.resolve();
+      return <b>{useContext(Locale)}</b>;
+    };
+    async function* stream() {
+      yield <Read />;
+      await Promise.resolve();
+      yield <Read />;
+    }
+    const render = (locale: string) =>
+      collectEvents(
+        renderToFlowEvents(
+          () => (
+            <Locale.Provider value={locale}>
+              <Defer target="outer">{stream()}</Defer>
+              <Locale.Provider value={`${locale}-nested`}>
+                <Defer target="inner">
+                  <Read />
+                </Defer>
+              </Locale.Provider>
+            </Locale.Provider>
+          ),
+          TurboAdapter,
+        ),
+      );
+    const [a, b] = await Promise.all([render("a"), render("b")]);
+    for (const [events, locale] of [
+      [a, "a"],
+      [b, "b"],
+    ] as const) {
+      const fragments = events.filter((event): event is FragmentEvent => event.type === "fragment");
+      expect(fragments.filter((event) => event.id === "outer").map((event) => event.html)).toEqual([
+        `<b>${locale}</b>`,
+        `<b>${locale}</b>`,
+      ]);
+      expect(fragments.find((event) => event.id === "inner")?.html).toBe(`<b>${locale}-nested</b>`);
+    }
+  });
   it("emits shell + close when there is nothing deferred", async () => {
     const events = await collectEvents(
       renderToFlowEvents(

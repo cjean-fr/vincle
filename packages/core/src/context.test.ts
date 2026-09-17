@@ -11,28 +11,37 @@ import {
   resetContextStorage,
   resetNamedContexts,
   SyncContextStore,
+  ExecutionContext,
 } from "./context.js";
 
 const UserToken = context<{ name: string }>("test:user");
 const PluginToken = context<{ items: string[] }>("test:plugin");
 
 describe("context", () => {
+  it("exposes the same scoped behavior through ExecutionContext", async () => {
+    const key = ExecutionContext.key<string>("test:execution-api");
+    await ExecutionContext.withScope(() => {
+      ExecutionContext.set(key, "value");
+      expect(ExecutionContext.get(key)).toBe("value");
+      expect(ExecutionContext.snapshot().get(key)).toBe("value");
+    });
+  });
   describe("useContext / setContext", () => {
     beforeEach(() => resetContextStorage());
 
     it("throws outside withScope, naming the call that needs a scope", () => {
       expect(() => useContext(UserToken)).toThrow(
-        "[vincle/core] useContext: no active context scope",
+        "[vincle/core] ExecutionContext.get: no active context scope",
       );
       expect(() => setContext(UserToken, { name: "x" })).toThrow(
-        "[vincle/core] setContext: no active context scope",
+        "[vincle/core] ExecutionContext.set: no active context scope",
       );
     });
 
     it("throws when context not found in scope, naming the key", async () => {
       await withScope(() => {
         expect(() => useContext(UserToken)).toThrow(
-          '[vincle/core] useContext("test:user"): the value was never set in the current scope',
+          '[vincle/core] ExecutionContext.get("test:user"): the value was never set in the current scope',
         );
       });
     });
@@ -138,7 +147,9 @@ describe("context", () => {
 
     it("snapshot throws outside withScope", () => {
       resetContextStorage();
-      expect(() => snapshot()).toThrow("[vincle/core] snapshot: no active context scope");
+      expect(() => snapshot()).toThrow(
+        "[vincle/core] ExecutionContext.snapshot: no active context scope",
+      );
     });
   });
 

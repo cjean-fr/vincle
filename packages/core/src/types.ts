@@ -35,6 +35,33 @@ export class RawString {
   }
 }
 
+/** Markup whose component holes must be evaluated at render time. */
+export class TemplateNode implements Promise<RawString> {
+  readonly [Symbol.toStringTag] = "Promise";
+  readonly render: () => RawString | Promise<RawString>;
+  constructor(render: () => RawString | Promise<RawString>) {
+    this.render = render;
+  }
+
+  // oxlint-disable-next-line unicorn/no-thenable -- Preserves await on jsxTemplate for existing callers.
+  then<TResult1 = RawString, TResult2 = never>(
+    onfulfilled?: ((value: RawString) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): Promise<TResult1 | TResult2> {
+    return Promise.resolve().then(this.render).then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?: ((reason: unknown) => TResult | PromiseLike<TResult>) | null,
+  ): Promise<RawString | TResult> {
+    return this.then(undefined, onrejected);
+  }
+
+  finally(onfinally?: (() => void) | null): Promise<RawString> {
+    return this.then().finally(onfinally);
+  }
+}
+
 /**
  * Mark a string as trusted HTML: rendered verbatim, unescaped. The only way to
  * bypass escaping, and deliberately greppable — audit `raw(` call sites to audit safety.
@@ -51,6 +78,7 @@ export type Awaitable<T> = T | Promise<T>;
 export type Renderable = Awaitable<
   | VNode
   | RawString
+  | TemplateNode
   | string
   | number
   | bigint

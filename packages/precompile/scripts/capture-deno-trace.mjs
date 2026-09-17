@@ -28,6 +28,7 @@ const PRELUDE = [
   `const d = "D"; const s = "S"; const name = "N"; const css = "CSS";`,
   `const p = { z: 1 };`,
   `const Foo = (q) => null;`,
+  `const Ctx = { Provider: (q) => null };`,
 ].join("\n");
 
 const CASES = [
@@ -46,6 +47,8 @@ const CASES = [
   ["text hole", `<p>{name}</p>`],
   ["several holes", `<p>{a}{b}</p>`],
   ["component", `<div><Foo x={1} /></div>`],
+  ["provider + component", `<Ctx.Provider value="en"><div><Foo x={1} /></div></Ctx.Provider>`],
+  ["provider + text template", '<Ctx.Provider value="en"><p>{`${name}:${d}`}</p></Ctx.Provider>'],
   ["spread", `<div {...p}>x</div>`],
   ["innerHTML", `<div dangerouslySetInnerHTML={h} />`],
   ["rawtext hole", `<style>{css}</style>`],

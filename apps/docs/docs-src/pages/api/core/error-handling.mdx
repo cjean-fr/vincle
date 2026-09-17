@@ -71,6 +71,10 @@ Real examples:
 [vincle/vite-plugin] Vite entry "src/logo.sv" not found in manifest. Did you mean "src/logo.svg"? The manifest only lists files Vite bundles…
 ```
 
+The execution-context error retains its earlier function names in the message
+for compatibility; the current calls are `ExecutionContext.get`, `.set` and
+`.withScope`.
+
 The prefix is stable and greppable (`[vincle/core]`, `[vincle/flow]`,
 `[vincle/vite-plugin]`, `[vincle/precompile]`), so you can filter
 vincle errors out of a log or match them in CI. To tell them apart _in code_,
@@ -104,7 +108,8 @@ try {
 | `ERR_VINCLE_NO_SCOPE`        | a context call outside any `withScope()`                  |
 | `ERR_VINCLE_CONTEXT_KEY`     | `context()` given something other than a non-empty string |
 | `ERR_VINCLE_CONTEXT_LIMIT`   | more distinct context keys than the table holds           |
-| `ERR_VINCLE_CONTEXT_UNSET`   | `useContext()` read a value never set in this scope       |
+| `ERR_VINCLE_CONTEXT_UNSET`   | `ExecutionContext.get()` read a value never set in scope  |
+| `ERR_VINCLE_TREE_ASYNC`      | async Provider render without `AsyncLocalStorage`         |
 
 The first three are `TypeError`s — an argument that is not what it has to be.
 Every other code in this page, here and below, is a plain `Error`.

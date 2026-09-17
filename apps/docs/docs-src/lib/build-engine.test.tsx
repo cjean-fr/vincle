@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from "bun:test";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -96,6 +97,85 @@ describe("SSG build", () => {
     const data = await readFile(path.join(DIST_DIR, "llms.txt"), "utf-8");
     expect(data).toContain("Vincle");
     expect(data).toContain("Installation");
+  });
+
+  it("produces a Markdown twin for every content page", async () => {
+    const htmls = [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)]
+      .filter((f) => !["404.html", "500.html"].includes(f))
+      .toSorted();
+    expect(htmls.length).toBeGreaterThan(0);
+    for (const html of htmls) {
+      const twin =
+        html === "index.html"
+          ? path.join(DIST_DIR, ".md")
+          : path.join(DIST_DIR, html.replace(/\.html$/, ".md"));
+      expect(await Bun.file(twin).exists(), `no .md twin for ${html}`).toBe(true);
+    }
+  });
+
+  it("ships a verbatim MDX copy as each page's .md twin", async () => {
+    for (const page of [
+      "guide/getting-started/installation.mdx",
+      "api/core/renderToString.mdx",
+      "integration/adapters.mdx",
+    ]) {
+      const twin = await readFile(path.join(DIST_DIR, `${page.replace(/\.mdx$/, ".md")}`), "utf-8");
+      const source = await readFile(path.join(PROJECT_DIR, "docs-src/pages", page), "utf-8");
+      expect(twin, `${page} twin differs from source`).toBe(source);
+    }
+  });
+
+  it("announces each twin from the page head, not from error pages", async () => {
+    const index = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
+    expect(index).toContain('<link rel="alternate" type="text/markdown" href="/.md">');
+    const page = await readFile(
+      path.join(DIST_DIR, "guide/getting-started/installation.html"),
+      "utf-8",
+    );
+    expect(page).toContain(
+      '<link rel="alternate" type="text/markdown" href="/guide/getting-started/installation.md">',
+    );
+    for (const status of ["404.html", "500.html"]) {
+      const error = await readFile(path.join(DIST_DIR, status), "utf-8");
+      expect(error).not.toContain('rel="alternate"');
+    }
+  });
+
+  it("produces the agent discovery files", async () => {
+    const robots = await readFile(path.join(DIST_DIR, "robots.txt"), "utf-8");
+    expect(robots).toContain("Content-Signal: ai-train=no, search=yes, ai-input=no");
+    expect(robots).toContain("Agentmap: https://vincle.cjean.fr/.well-known/ai-catalog.json");
+
+    const headers = await readFile(path.join(DIST_DIR, "_headers"), "utf-8");
+    expect(headers).toContain('rel="alternate"; type="text/markdown"');
+    expect(headers).toContain("Access-Control-Allow-Origin: *");
+
+    const catalog = JSON.parse(
+      await readFile(path.join(DIST_DIR, ".well-known/ai-catalog.json"), "utf-8"),
+    );
+    expect(catalog.specVersion).toBeTruthy();
+    expect(catalog.host.identifier).toBe("did:web:vincle.cjean.fr");
+    expect(catalog.entries.length).toBeGreaterThan(0);
+    for (const entry of catalog.entries) {
+      expect(entry.identifier).toMatch(/^urn:air:vincle\.cjean\.fr:/);
+      expect(entry.representativeQueries.length).toBeGreaterThanOrEqual(2);
+    }
+
+    const index = JSON.parse(
+      await readFile(path.join(DIST_DIR, ".well-known/agent-skills/index.json"), "utf-8"),
+    );
+    expect(index.$schema).toBe("https://schemas.agentskills.io/discovery/0.2.0/schema.json");
+    const skill = index.skills.find((s: { name: string }) => s.name === "vincle-docs");
+    expect(skill).toBeDefined();
+    const skillBody = await readFile(
+      path.join(DIST_DIR, ".well-known/agent-skills/vincle-docs/SKILL.md"),
+      "utf-8",
+    );
+    const digest = "sha256:" + createHash("sha256").update(skillBody).digest("hex");
+    expect(skill.digest).toBe(digest);
+
+    const auth = await readFile(path.join(DIST_DIR, "auth.md"), "utf-8");
+    expect(auth).toContain("# auth.md");
   });
 
   it("emits neither security.txt nor manifest.json", () => {

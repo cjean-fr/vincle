@@ -256,8 +256,14 @@ describe("the vite adapter", () => {
         // @ts-expect-error — internal hook
         await plugin.buildStart.call(errorCtx());
         // @ts-expect-error — internal hook
-        const reExported = named(plugin.load(RID) as string, /export \{([^}]*)\}/);
-        expect(reExported).not.toEqual([]);
+        expect(plugin.load(RID)).toContain('export * from "@vincle/core/jsx-runtime"');
+        const reExported = [
+          "jsxTemplate",
+          "jsxTemplateDeferred",
+          "jsxAttr",
+          "jsxEscape",
+          "jsxEscapeDeferred",
+        ];
 
         for (const code of shapes) {
           // @ts-expect-error — internal hook
