@@ -4,132 +4,50 @@ title: Context API
 
 # Context API
 
-Pass data through a component tree without prop-drilling. Built on
-`AsyncLocalStorage` — concurrent renders are fully isolated.
+Vincle has two ways to share values. **Tree Context** passes a value to
+descendants of a JSX Provider. **ExecutionContext** holds mutable state for
+one async execution, such as request metadata or Flow orchestration.
 
-## When to use context
+## Tree Context
 
-Context solves one problem: **passing data to deeply nested components without
-threading it through every intermediate layer**. Use it for:
-
-- Request-scoped state (current user, locale, theme)
-- Service instances (database, cache, logger)
-- Per-render configuration that many components need
-
-If data only flows from parent to immediate child, pass it as a prop. Context
-adds indirection — use it only when the middle layers don't need the value.
-
-## API signatures
-
-The API consists of five functions: `context` creates a typed key,
-`setContext` writes a value, `useContext` reads it, `withScope` creates
-the isolation boundary, and `snapshot` captures the current scope for seeding
-nested scopes.
+Create a context once, wrap the relevant subtree in its Provider, and read the
+nearest value with `useContext`. Without a Provider, the declared default is
+returned. A sibling outside the Provider sees its own ancestor's value.
 
 <CodeExample src="api/context/signatures.ts" />
 
-### context(key)
-
-Creates a `ContextKey<T>` key. The `key` argument must be a non-empty
-string — a namespace is not required. The type parameter `T` enforces
-type safety at both write and read sites.
-
-### setContext(key, value)
-
-Writes a value into the current scope. Must be called inside a `withScope`
-callback — throws if no scope is active. The value is scoped to the enclosing
-`withScope` call and all renders spawned inside it.
-
-### useContext(key)
-
-Reads the value last written for that key in the current scope — there is no
-tree position involved, so a value set by a component is readable by anything
-rendered after it, not only by its children.
-Throws if `setContext` for the given key has not been called — this is
-intentional: the absence of a required value is a programming error, not a
-runtime condition to silently ignore.
-
-### withScope(fn, parentCtx?)
-
-Creates an isolated `AsyncLocalStorage` scope. Every `setContext` call inside
-`fn` is contained within this scope. Render subtrees started inside the scope
-inherit the same context. The optional `parentCtx` parameter pre-populates the
-scope with values from a parent scope — pass a `snapshot()` result here to
-seed a child scope (see `snapshot` below).
-
-## Basic example
-
-Create a context key once at module level — one declaration, shared across all
-files that need it. Provide a value with `setContext` inside a `withScope`,
-and read it anywhere in the tree with `useContext`.
-
 <CodeExample src="api/context/basic.tsx" />
 
-The `ThemeContext` key is created once and exported. `Layout` sets the value in
-a `withScope`. `Header` and `Button` read it independently, each receiving the
-same value because they render inside the same scope.
-
-## Concurrent renders
-
-Each `withScope` call creates an isolated `AsyncLocalStorage` store. Two
-renders running in parallel — even with different context values — never leak
-or interfere.
+A root Provider works directly with `renderToString`; `ExecutionContext.withScope` is not needed.
+Providers preserve their value across `await` and across deferred Flow
+fragments. Separate concurrent renders do not share values.
 
 <CodeExample src="api/context/concurrent.tsx" />
 
-This is the key difference from a global variable or a module-level store:
-context is tied to the render call, not to the process.
+The JSX shape and nearest Provider behavior match common React, Preact and
+Hono patterns. Vincle components and contexts are specific to its renderer;
+they are not interchangeable with those runtimes' objects.
 
-## snapshot()
+## ExecutionContext
 
-Captures all context values currently set in the active scope. Pass the result
-as `parentCtx` to a new `withScope` to fork a child scope that inherits all
-parent values.
-
-<CodeExample src="api/context/snapshot.tsx" />
-
-Useful when you need to spawn a sub-render (e.g. rendering an email template
-during a page request) that sees the same context as its parent.
-
-## Per-request context
-
-The common pattern for HTTP servers: extract request metadata at the handler
-level, set it in context, and let any component read it without passing
-`req` through every intermediate component.
+Use `ExecutionContext.key<T>(name)` for a named, typed token.
+`ExecutionContext.withScope(fn)` creates an isolated async scope;
+`ExecutionContext.set(key, value)` writes to it and
+`ExecutionContext.get(key)` reads the last value written. A later sibling can
+read a value set by an earlier component. `get` throws outside a scope or when
+the key has not been set.
 
 <CodeExample src="api/context/per-request.tsx" />
 
-This pattern keeps your components framework-agnostic: they depend on a
-context key, not on the HTTP server library, framework, request object, or
-middleware chain.
+`ExecutionContext.snapshot()` copies the current map. Pass the copy as the
+second argument to `ExecutionContext.withScope` to seed a child scope.
+
+<CodeExample src="api/context/snapshot.tsx" />
 
 ## Runtime support
 
-The isolation comes from `AsyncLocalStorage`, which vincle finds in one of two
-places: `globalThis.AsyncLocalStorage`, or `node:async_hooks`. Node ≥ 12.17,
-Bun, Deno ≥ 1.11 and Cloudflare Workers with `nodejs_compat` all provide it, and
-nothing below is reachable there.
-
-On a runtime that has neither, the context falls back to a **synchronous scope**,
-and the first `withScope` call warns once:
-
-```
-[vincle/core] AsyncLocalStorage is not available on this runtime — falling back
-to a synchronous context scope. One scope at a time works; overlapping
-concurrent renders will throw rather than leak context between them.
-```
-
-One scope at a time behaves exactly as documented above, nesting included. What
-the fallback cannot do is tell a _nested_ scope from a _second concurrent
-request_: both enter `withScope` while the first callback is still awaiting. It
-refuses that case instead of answering it:
-
-```
-[vincle/core] withScope() was entered while another scope was still awaiting,
-and this runtime has no AsyncLocalStorage to tell the two apart.
-```
-
-The refusal is deliberate. A render that reads another request's context is a
-cross-request data leak, silent and untestable; an error naming the cause is a
-one-line runtime configuration fix. On Cloudflare Workers, that line is
-`compatibility_flags = ["nodejs_compat"]`.
+The stores use `globalThis.AsyncLocalStorage` or `node:async_hooks`. Without
+either, tree Providers support synchronous rendering and reject async work;
+the execution store supports one scope at a time and rejects overlapping
+requests. Both warn when they enter their fallback. Enable `AsyncLocalStorage`
+for concurrent rendering.

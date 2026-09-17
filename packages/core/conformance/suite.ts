@@ -1,3 +1,4 @@
+import { ExecutionContext } from "@vincle/core";
 /**
  * Multi-runtime conformance — what `bun test` can't cover.
  *
@@ -18,7 +19,8 @@
  * It runs nothing on import: workerd forbids async work at module load time.
  * The entry points are `run.ts` (CLI) and `worker.ts`.
  */
-import { context, raw, renderToString, setContext, useContext, withScope } from "@vincle/core";
+import { createContext, raw, renderToString, useContext } from "@vincle/core";
+import { jsxEscape, jsxTemplate } from "@vincle/core/jsx-precompile-runtime";
 import { jsx } from "@vincle/core/jsx-runtime";
 
 export interface Failure {
@@ -104,22 +106,22 @@ export async function runConformance(): Promise<ConformanceResult> {
   // 2. Context across `await` — the runtime-dependent core of this suite
   // ───────────────────────────────────────────────────────────────────────────
 
-  const Theme = context<string>("conformance:theme");
+  const Theme = ExecutionContext.key<string>("conformance:theme");
 
-  await check("context survives an await", async () => {
-    const seen = await withScope(async () => {
-      setContext(Theme, "dark");
+  await check("execution context survives an await", async () => {
+    const seen = await ExecutionContext.withScope(async () => {
+      ExecutionContext.set(Theme, "dark");
       await Promise.resolve();
-      return useContext(Theme);
+      return ExecutionContext.get(Theme);
     });
     eq(seen, "dark", "value after await");
   });
 
-  await check("context survives several microtask hops", async () => {
-    const seen = await withScope(async () => {
-      setContext(Theme, "sepia");
+  await check("execution context survives several microtask hops", async () => {
+    const seen = await ExecutionContext.withScope(async () => {
+      ExecutionContext.set(Theme, "sepia");
       for (let i = 0; i < 5; i++) await Promise.resolve();
-      return useContext(Theme);
+      return ExecutionContext.get(Theme);
     });
     eq(seen, "sepia", "value after 5 awaits");
   });
@@ -132,10 +134,10 @@ export async function runConformance(): Promise<ConformanceResult> {
   // value.
   await check("two concurrent scopes don't leak into each other", async () => {
     const scope = (value: string, delay: number) =>
-      withScope(async () => {
-        setContext(Theme, value);
+      ExecutionContext.withScope(async () => {
+        ExecutionContext.set(Theme, value);
         await new Promise((r) => setTimeout(r, delay));
-        return useContext(Theme);
+        return ExecutionContext.get(Theme);
       });
 
     let results: string[];
@@ -162,16 +164,46 @@ export async function runConformance(): Promise<ConformanceResult> {
     eq(await renderToString(jsx(Slow, {})), "<em>late</em>", "async component");
   });
 
-  await check("an async component reads its scope's context", async () => {
+  await check("an async component reads its scope's execution context", async () => {
     const Reader = async () => {
       await new Promise((r) => setTimeout(r, 1));
-      return jsx("span", { children: useContext(Theme) });
+      return jsx("span", { children: ExecutionContext.get(Theme) });
     };
-    const html = await withScope(async () => {
-      setContext(Theme, "inherited");
+    const html = await ExecutionContext.withScope(async () => {
+      ExecutionContext.set(Theme, "inherited");
       return renderToString(jsx(Reader, {}));
     });
-    eq(html, "<span>inherited</span>", "context in an async component");
+    eq(html, "<span>inherited</span>", "execution context in an async component");
+  });
+
+  await check("tree Provider survives await and restores the default", async () => {
+    const Locale = createContext("default");
+    const Reader = async () => {
+      await Promise.resolve();
+      return jsx("b", { children: useContext(Locale) });
+    };
+    const html = await renderToString(
+      jsx("main", {
+        children: [
+          jsx(Reader, {}),
+          jsx(Locale.Provider, { value: "nested", children: jsx(Reader, {}) }),
+          jsx(Reader, {}),
+        ],
+      }),
+    );
+    eq(html, "<main><b>default</b><b>nested</b><b>default</b></main>", "Provider ancestry");
+  });
+
+  await check("Deno precompile helpers keep Provider ancestry", async () => {
+    const Locale = createContext("default");
+    const Reader = () => jsx("b", { children: useContext(Locale) });
+    const html = await renderToString(
+      jsx(Locale.Provider, {
+        value: "nested",
+        children: jsxTemplate`<main>${jsxEscape([jsx(Reader, {}), jsx(Reader, {})])}</main>`,
+      }),
+    );
+    eq(html, "<main><b>nested</b><b>nested</b></main>", "Provider in Deno template");
   });
 
   return { runtime: runtimeName(), passed, total: passed + failures.length, failures };

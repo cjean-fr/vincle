@@ -15,7 +15,7 @@
  */
 
 import type { VNode } from "./jsx-runtime.js";
-import type { Awaitable, ClassValue, RawString, Renderable } from "./types.js";
+import type { Awaitable, ClassValue, RawString, Renderable, TemplateNode } from "./types.js";
 
 // @generated:start
 type CSSGlobals = "-moz-initial" | "inherit" | "initial" | "revert" | "revert-layer" | "unset";
@@ -3226,7 +3226,7 @@ export namespace JSX {
    * `instanceof RawString` before it ever looks at `VNode` — so it belongs here
    * rather than behind a cast at each call site.
    */
-  export type Element = Awaitable<VNode | RawString>;
+  export type Element = Awaitable<VNode | RawString | TemplateNode>;
 
   /**
    * What may be used as a component.

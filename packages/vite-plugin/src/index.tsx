@@ -19,15 +19,7 @@
  *
  * @module
  */
-import {
-  context,
-  setContext,
-  useContext,
-  jsxs,
-  Fragment,
-  type ContextKey,
-  type JSX,
-} from "@vincle/core";
+import { ExecutionContext, jsxs, Fragment, type ContextKey, type JSX } from "@vincle/core";
 import { readFile, access } from "node:fs/promises";
 
 import {
@@ -62,7 +54,7 @@ interface ViteScope {
   base: string;
 }
 
-const ViteContext: ContextKey<ViteScope> = context<ViteScope>("@vincle/vite:scope");
+const ViteContext: ContextKey<ViteScope> = ExecutionContext.key<ViteScope>("@vincle/vite:scope");
 
 /**
  * Load and parse a Vite manifest from disk. Returns `null` if the file does
@@ -128,7 +120,7 @@ export function setVite(manifest: ViteManifest | null, options?: { base?: string
       ERR_VITE_CONFIG,
     );
   }
-  setContext(ViteContext, {
+  ExecutionContext.set(ViteContext, {
     manifest,
     base: options?.base ?? "/",
   });
@@ -153,7 +145,7 @@ export function setVite(manifest: ViteManifest | null, options?: { base?: string
  * the necessary co-bundled CSS and `modulepreload` links.
  */
 export function assetUrl(entry: string): string {
-  return resolveUrl(useContext(ViteContext), entry);
+  return resolveUrl(ExecutionContext.get(ViteContext), entry);
 }
 
 /**
@@ -246,7 +238,7 @@ function resolveUrl(scope: ViteScope, entry: string): string {
  * inside a tag you build yourself.
  */
 export function Asset({ entry }: { entry: string }): any {
-  const scope = useContext(ViteContext);
+  const scope = ExecutionContext.get(ViteContext);
   return scope.manifest === null ? resolveDev(scope, entry) : resolveProd(scope, entry);
 }
 

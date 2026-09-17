@@ -321,7 +321,6 @@ function attrName(attr: JSXAttribute): string {
 }
 
 function transformElement(node: JSXElement, ctx: TransformContext): string {
-  ctx.used.add("jsxTemplate");
   const tag = (node.openingElement.name as JSXIdentifier).name;
   const out = new TemplateBuilder();
 
@@ -333,7 +332,7 @@ function transformElement(node: JSXElement, ctx: TransformContext): string {
     out.static(`</${tag}>`);
   }
 
-  return out.build();
+  return out.build(ctx);
 }
 
 /**
@@ -346,10 +345,9 @@ function rawtextTagOf(tag: string): string | undefined {
 }
 
 function transformFragment(node: JSXFragment, ctx: TransformContext): string {
-  ctx.used.add("jsxTemplate");
   const out = new TemplateBuilder();
   emitChildren(node.children, out, ctx, undefined);
-  return out.build();
+  return out.build(ctx);
 }
 
 function emitOpening(
@@ -595,8 +593,13 @@ function emitChildren(
       if (child.expression.type !== "JSXEmptyExpression") {
         const inner = child.expression;
         const exprText = processExpressionForJsx(inner, ctx);
-
-        out.hole(escapeCall(exprText, ctx));
+        // A JS template literal always evaluates to a string. It cannot
+        // contain a VNode that needs rendering under a later Provider.
+        const scalar = inner.type === "TemplateLiteral";
+        out.hole(
+          ctx.compatibility || scalar ? escapeCall(exprText, ctx, scalar) : exprText,
+          !scalar,
+        );
       }
     } else if (child.type === "JSXElement") {
       if (isEligibleElement(child, ctx)) {
@@ -614,13 +617,13 @@ function emitChildren(
         // it through the tree walk. Wrapping it here would double-handle it
         // (jsxEscape lets VNodes through, but the call is pure overhead).
         const replaced = processExpressionForJsx(child as unknown as Expression, ctx);
-        out.hole(replaced);
+        out.hole(replaced, true);
       }
     } else if (child.type === "JSXFragment") {
       emitChildren(child.children, out, ctx, rawtextTag);
     } else if (child.type === "JSXSpreadChild") {
       const exprText = ctx.source.slice(child.expression.start, child.expression.end);
-      out.hole(escapeCall(exprText, ctx));
+      out.hole(escapeCall(exprText, ctx), true);
     }
   }
 }
@@ -634,9 +637,10 @@ function emitChildren(
  * `isEligibleElement` declines a rawtext element that has one, so the element
  * reaches this file's output as JSX and its content is the runtime's business.
  */
-function escapeCall(exprText: string, ctx: TransformContext): string {
-  ctx.used.add("jsxEscape");
-  return `jsxEscape(${exprText})`;
+function escapeCall(exprText: string, ctx: TransformContext, scalar = false): string {
+  const helper = ctx.compatibility || scalar ? "jsxEscape" : "jsxEscapeDeferred";
+  ctx.used.add(helper);
+  return `${helper}(${exprText})`;
 }
 
 function processExpressionForJsx(expr: Expression, ctx: TransformContext): string {
@@ -726,6 +730,7 @@ function normalizeSerializers(
 class TemplateBuilder {
   #parts: string[] = [""];
   #exprs: string[] = [];
+  #deferred = false;
 
   /** Append text to the current slice, escaped for a template literal. */
   static(str: string): void {
@@ -734,17 +739,20 @@ class TemplateBuilder {
   }
 
   /** Close the current slice with a runtime expression, and open the next. */
-  hole(expr: string): void {
+  hole(expr: string, deferred = false): void {
     this.#exprs.push(expr);
     this.#parts.push("");
+    this.#deferred ||= deferred;
   }
 
-  build(): string {
+  build(ctx: TransformContext): string {
+    const helper = !ctx.compatibility && this.#deferred ? "jsxTemplateDeferred" : "jsxTemplate";
+    ctx.used.add(helper);
     if (this.#exprs.length === 0) {
-      return `jsxTemplate\`${this.#parts[0] ?? ""}\``;
+      return `${helper}\`${this.#parts[0] ?? ""}\``;
     }
 
-    let result = `jsxTemplate\`${this.#parts[0] ?? ""}`;
+    let result = `${helper}\`${this.#parts[0] ?? ""}`;
     for (let i = 0; i < this.#exprs.length; i++) {
       result += `\${${this.#exprs[i] ?? ""}}${this.#parts[i + 1] ?? ""}`;
     }

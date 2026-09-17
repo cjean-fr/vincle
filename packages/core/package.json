@@ -88,7 +88,7 @@
     "conformance": "bun run conformance:bun && bun run conformance:node && bun run conformance:deno && bun run conformance:workerd",
     "conformance:bun": "bun --conditions=dist run conformance/run.ts",
     "conformance:node": "node conformance/run.ts",
-    "conformance:deno": "deno run --allow-read --allow-env conformance/run.ts",
+    "conformance:deno": "deno run --allow-read --allow-env conformance/run.ts && deno run --config conformance/deno-precompile.json --allow-read conformance/deno-precompile.tsx",
     "conformance:workerd": "./conformance/run-workerd.sh",
     "codegen": "bun scripts/codegen.ts",
     "codegen:check": "bun scripts/codegen.ts --check"

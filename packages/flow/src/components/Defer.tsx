@@ -1,10 +1,8 @@
 import {
   raw,
   renderToString,
-  setContext,
-  snapshot,
-  useContext,
-  withScope,
+  snapshotTreeContext,
+  ExecutionContext,
   type JSX,
   type Renderable,
 } from "@vincle/core";
@@ -34,7 +32,7 @@ export interface DeferGroupProps {
 }
 
 export async function DeferGroup(props: DeferGroupProps): Promise<JSX.Element> {
-  const { templateStore, nextId } = useContext(Flow);
+  const { templateStore, nextId } = ExecutionContext.get(Flow);
   const parentScope = useDeferScope();
 
   const together = props.together ?? false;
@@ -63,15 +61,15 @@ export async function DeferGroup(props: DeferGroupProps): Promise<JSX.Element> {
     },
   };
 
-  return withScope(async () => {
-    setContext(DeferContext, scope);
+  return ExecutionContext.withScope(async () => {
+    ExecutionContext.set(DeferContext, scope);
     const html = await renderToString(props.children);
     return raw(html);
-  }, snapshot());
+  }, ExecutionContext.snapshot());
 }
 
 export function Defer(props: DeferProps): JSX.Element {
-  const { registerTemplate, nextId } = useContext(Flow);
+  const { registerTemplate, nextId } = ExecutionContext.get(Flow);
   const defer = useDeferScope();
   const { children, merge, timeout, onError, fallback } = props;
   const target = props.target ?? nextId();
@@ -85,6 +83,7 @@ export function Defer(props: DeferProps): JSX.Element {
   // misuse, beats a `Frame`/`Placeholder` crash further down the pipeline.
   registerTemplate(target, {
     content: children,
+    treeScope: snapshotTreeContext(),
     merge: merge ?? "replace",
     timeout,
     onError,

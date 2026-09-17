@@ -356,13 +356,17 @@ describe("jsxEscape — promises and async iterables", () => {
   });
 
   test("a rejection propagates instead of being swallowed", async () => {
-    await expect(jsxEscape(Promise.reject(new Error("boom")))).rejects.toThrow("boom");
-    await expect(jsxEscape(["ok", Promise.reject(new Error("boom"))])).rejects.toThrow("boom");
+    await expect(Promise.resolve(jsxEscape(Promise.reject(new Error("boom"))))).rejects.toThrow(
+      "boom",
+    );
+    await expect(
+      Promise.resolve(jsxEscape(["ok", Promise.reject(new Error("boom"))])),
+    ).rejects.toThrow("boom");
   });
 });
 
 describe("jsxTemplate — promise holes", () => {
-  const value = async (v: RawString | Promise<RawString>): Promise<string> => (await v).value;
+  const value = async (v: RawString | PromiseLike<RawString>): Promise<string> => (await v).value;
   const later = <T>(v: T, ms = 1): Promise<T> =>
     new Promise((resolve) => setTimeout(() => resolve(v), ms));
 
@@ -397,7 +401,9 @@ describe("jsxTemplate — promise holes", () => {
   });
 
   test("a rejected hole rejects the template", async () => {
-    await expect(jsxTemplate`<p>${Promise.reject(new Error("boom"))}</p>`).rejects.toThrow("boom");
+    await expect(
+      Promise.resolve(jsxTemplate`<p>${Promise.reject(new Error("boom"))}</p>`),
+    ).rejects.toThrow("boom");
   });
 });
 
@@ -425,7 +431,7 @@ describe("jsxEscape — VNode contract", () => {
 });
 
 describe("jsxTemplate — VNode holes", () => {
-  const value = async (v: RawString | Promise<RawString>): Promise<string> => (await v).value;
+  const value = async (v: RawString | PromiseLike<RawString>): Promise<string> => (await v).value;
 
   test("a component hole renders its markup", async () => {
     const Foo = ({ x }: { x: number }) => jsx("b", { children: `x=${x}` });

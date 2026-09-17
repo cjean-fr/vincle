@@ -1,4 +1,4 @@
-import { useContext, type JSX, type VNode } from "@vincle/core";
+import { ExecutionContext, type JSX, type VNode } from "@vincle/core";
 import { schemeOf } from "@vincle/core/html";
 
 import { PREFIX } from "../config.js";
@@ -49,7 +49,7 @@ function isAllowedUrl(url: string): boolean {
 }
 
 export function Include<const S extends string>(props: IncludeProps<S>): JSX.Element {
-  const { nextId } = useContext(Flow);
+  const { nextId } = ExecutionContext.get(Flow);
 
   if (!isAllowedUrl(props.src)) {
     const scheme = schemeOf(props.src);

@@ -1,4 +1,4 @@
-import { raw, renderToString, snapshot, withScope, type JSX } from "@vincle/core";
+import { ExecutionContext, raw, renderToString, type JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 
@@ -52,13 +52,13 @@ function createStaticContext(
 ): StaticContext {
   return {
     renderPage: (node) =>
-      withScope(async () => {
+      ExecutionContext.withScope(async () => {
         // A page boundary is an asset boundary: a fresh state before the
         // render, so `<Style>` emits once per page rather than once per site.
         initFlowAssets();
         const html = await renderToString(node());
         return adapter?.transformShell ? adapter.transformShell(html, ctx) : html;
-      }, snapshot()),
+      }, ExecutionContext.snapshot()),
 
     emitFragments: async (cb) => {
       if (!adapter) {
@@ -72,7 +72,7 @@ function createStaticContext(
       // Standalone fragment files carry no assets — the shell including them
       // already has them — so this scope suppresses emission, and `<Style>`
       // returns null rather than a tag a later pass would have to remove.
-      await withScope(async () => {
+      await ExecutionContext.withScope(async () => {
         suppressFlowAssets();
         await flushTemplates(ctx, async (ev) => {
           if (ev.type === "fragment") {
@@ -82,7 +82,7 @@ function createStaticContext(
             await cb(ev.id, generatePath(ev.id), framed);
           }
         });
-      }, snapshot());
+      }, ExecutionContext.snapshot());
       // Emitted fragments leave the store. `flushTemplates` tracks what it has
       // processed only within one call, so without this the natural
       // site-generator loop — `renderPage(p); emitFragments(write)` per page —

@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "@vincle/core": "../dist/index.mjs",
+    "@vincle/core/jsx-runtime": "../dist/jsx-runtime.mjs",
+    "@vincle/core/jsx-precompile-runtime": "../dist/jsx-precompile-runtime.mjs"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "@vincle/core"
+  }
+}

@@ -84,6 +84,17 @@ export function runFragment(
   emit: Emit,
   opts: FlowOptions,
 ): FragmentResult {
+  return entry.treeScope
+    ? entry.treeScope(() => runFragmentInScope(id, entry, emit, opts))
+    : runFragmentInScope(id, entry, emit, opts);
+}
+
+function runFragmentInScope(
+  id: string,
+  entry: TemplateEntry,
+  emit: Emit,
+  opts: FlowOptions,
+): FragmentResult {
   const handle = entry.onError ?? opts.onError;
   const { signal, cleanup } = createTimeoutSignal(
     entry.timeout ?? opts.defaultTimeout,

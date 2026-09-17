@@ -40,15 +40,14 @@ a compile error.
 
 ### Runtime
 
-| Export                            | Purpose                                             |
-| --------------------------------- | --------------------------------------------------- |
-| `renderToString(node)`            | Renders a JSX tree to an HTML string                |
-| `raw(str)`                        | Marks a trusted HTML string (no escaping)           |
-| `Fragment`                        | Standard JSX fragment (`<>…</>`)                    |
-| `context`, `setContext`           | Scoped context for per-request isolation            |
-| `useContext`, `withScope`         | Read a context value; run code in an isolated scope |
-| `snapshot`                        | Captures current scope for child scopes             |
-| `jsx-runtime` / `jsx-dev-runtime` | JSX transform entry points (auto-wired)             |
+| Export                            | Purpose                                   |
+| --------------------------------- | ----------------------------------------- |
+| `renderToString(node)`            | Renders a JSX tree to an HTML string      |
+| `raw(str)`                        | Marks a trusted HTML string (no escaping) |
+| `Fragment`                        | Standard JSX fragment (`<>…</>`)          |
+| `createContext`, `useContext`     | Share a value with a Provider subtree     |
+| `ExecutionContext`                | Per-execution state and isolated scopes   |
+| `jsx-runtime` / `jsx-dev-runtime` | JSX transform entry points (auto-wired)   |
 
 ### Types
 
@@ -60,14 +59,15 @@ a compile error.
 | `Awaitable<T>`  | `T` or a promise of `T`                                            |
 | `ClassValue`    | What a `class` attribute accepts                                   |
 | `JSX`           | The JSX namespace                                                  |
-| `ContextKey<T>` | Branded context key type                                           |
-| `ContextMap`    | Raw context map type                                               |
+| `Context<T>`    | Tree context with a typed Provider                                 |
+| `ContextKey<T>` | Branded execution-context key type                                 |
+| `ContextMap`    | Execution-context map type                                         |
 
 Element attributes are typed per element, by the table generated into
 `@vincle/core` — see
 [JSX types](/api/core/jsx-types).
 
-Everything else is internal. There is no plugin registry, no provider tree, no
+Everything else is internal. There is no plugin registry or
 config object to maintain.
 
 ## Where to next

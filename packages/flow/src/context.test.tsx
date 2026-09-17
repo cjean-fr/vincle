@@ -1,4 +1,4 @@
-import { withScope, useContext, snapshot } from "@vincle/core";
+import { ExecutionContext } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
 import { TurboAdapter, EsiAdapter } from "./adapters/index.js";
@@ -6,22 +6,22 @@ import { initFlow, initFlowAssets, Flow } from "./context.js";
 
 describe("initFlow", () => {
   it("initializes the flow context", async () => {
-    await withScope(async () => {
+    await ExecutionContext.withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      expect(() => useContext(Flow)).not.toThrow();
+      expect(() => ExecutionContext.get(Flow)).not.toThrow();
     });
   });
 
-  it("throws when used outside withScope", () => {
+  it("throws when used outside ExecutionContext.withScope", () => {
     expect(() => initFlow({ adapter: TurboAdapter, mode: "streaming" })).toThrow();
   });
 });
 
 describe("context.registerTemplate()", () => {
   it("registers, validates ids, and is last-wins on duplicate id", async () => {
-    await withScope(async () => {
+    await ExecutionContext.withScope(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const { registerTemplate, templateStore } = useContext(Flow);
+      const { registerTemplate, templateStore } = ExecutionContext.get(Flow);
       registerTemplate("badge", { content: <span>42</span>, merge: "replace" });
       expect(templateStore.size).toBe(1);
       expect(templateStore.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
@@ -39,20 +39,20 @@ describe("context.registerTemplate()", () => {
   });
 
   it("provides isolated asset states for parallel pages (SSG)", async () => {
-    await withScope(async () => {
+    await ExecutionContext.withScope(async () => {
       initFlow({
         adapter: TurboAdapter,
         mode: "static",
         generatePath: (id) => `/f/${id}.html`,
       });
-      const parentAssets = useContext(Flow).assets;
+      const parentAssets = ExecutionContext.get(Flow).assets;
 
-      // Simulate parallel renderPage calls (SSG pattern — child scope inherits parent via snapshot)
-      const seed = snapshot();
+      // Simulate parallel renderPage calls (SSG pattern — child scope inherits parent via ExecutionContext.snapshot)
+      const seed = ExecutionContext.snapshot();
       const pageTask = (n: number) =>
-        withScope(async () => {
+        ExecutionContext.withScope(async () => {
           initFlowAssets();
-          const { assets } = useContext(Flow);
+          const { assets } = ExecutionContext.get(Flow);
           const name = `page-${n}`;
           assets.entries.set(name, {
             type: "style" as const,
@@ -76,14 +76,14 @@ describe("context.registerTemplate()", () => {
   });
 
   it("rejects a merge the adapter cannot express (capabilities)", async () => {
-    await withScope(async () => {
+    await ExecutionContext.withScope(async () => {
       initFlow({
         adapter: EsiAdapter,
         mode: "static",
         generatePath: (id) => `/f/${id}.html`,
       });
       expect(() =>
-        useContext(Flow).registerTemplate("x", {
+        ExecutionContext.get(Flow).registerTemplate("x", {
           content: <span />,
           merge: "append",
         }),

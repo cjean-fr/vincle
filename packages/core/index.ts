@@ -26,8 +26,12 @@ export type { VNode } from "./src/jsx-runtime.js";
 
 // ── Context API ────────────────────────────────────────────────────────────
 
-export { context, setContext, useContext, withScope, snapshot } from "./src/context.js";
+export { ExecutionContext } from "./src/context.js";
 export type { ContextKey, ContextMap } from "./src/context.js";
+export { createContext, useContext } from "./src/tree-context.js";
+/** @internal Used by `@vincle/flow` to retain a Provider across deferred work. */
+export { snapshotTreeContext } from "./src/tree-context.js";
+export type { Context } from "./src/tree-context.js";
 
 // ── Trusted HTML ───────────────────────────────────────────────────────────
 

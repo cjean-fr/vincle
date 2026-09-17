@@ -1,11 +1,4 @@
-import {
-  context,
-  setContext,
-  useContext,
-  withScope,
-  type ContextKey,
-  type JSX,
-} from "@vincle/core";
+import { ExecutionContext, type ContextKey, type JSX } from "@vincle/core";
 
 import type { DeferGroupData, FlowConfig } from "./types.js";
 
@@ -31,20 +24,20 @@ export interface FlowContext {
   registerTemplate(id: string, entry: TemplateEntry): void;
 }
 
-export const Flow: ContextKey<FlowContext> = context<FlowContext>("@vincle/flow:flow");
+export const Flow: ContextKey<FlowContext> = ExecutionContext.key<FlowContext>("@vincle/flow:flow");
 
 export interface DeferScope {
   group: DeferGroupData;
   claimChild(target: string): void;
 }
 
-export const DeferContext: ContextKey<DeferScope | null> = context<DeferScope | null>(
+export const DeferContext: ContextKey<DeferScope | null> = ExecutionContext.key<DeferScope | null>(
   "@vincle/flow:defer",
 );
 
 export function useDeferScope(): DeferScope | null {
   try {
-    return useContext(DeferContext);
+    return ExecutionContext.get(DeferContext);
   } catch {
     return null;
   }
@@ -67,7 +60,7 @@ export function renderPlaceholder(
   children?: JSX.Element | null,
   src?: string,
 ): JSX.Element {
-  const { config } = useContext(Flow);
+  const { config } = ExecutionContext.get(Flow);
   if (!config.adapter) {
     throw vincleError(
       `${PREFIX} renderPlaceholder("${id}"): no adapter configured — a placeholder needs an adapter ` +
@@ -86,8 +79,8 @@ export function initFlow(config: FlowConfig): void {
   let counter = 0;
   const store = createTemplateStore(config);
   const assets = createAssetState();
-  setContext(DeferContext, null);
-  setContext(Flow, {
+  ExecutionContext.set(DeferContext, null);
+  ExecutionContext.set(Flow, {
     config,
     templateStore: store,
     assets,
@@ -106,8 +99,8 @@ export function initFlow(config: FlowConfig): void {
  * object made them race on `.assets`.
  */
 export function initFlowAssets(): void {
-  const current = useContext(Flow);
-  setContext(Flow, { ...current, assets: createAssetState() });
+  const current = ExecutionContext.get(Flow);
+  ExecutionContext.set(Flow, { ...current, assets: createAssetState() });
 }
 
 /**
@@ -115,13 +108,13 @@ export function initFlowAssets(): void {
  * fragment files, whose assets belong to the shell that includes them.
  */
 export function suppressFlowAssets(): void {
-  const current = useContext(Flow);
-  setContext(Flow, { ...current, assets: createSuppressedAssetState() });
+  const current = ExecutionContext.get(Flow);
+  ExecutionContext.set(Flow, { ...current, assets: createSuppressedAssetState() });
 }
 
 export function withFlow<T>(handler: (ctx: FlowContext) => T, config: FlowConfig): Promise<T> {
-  return withScope(async function () {
+  return ExecutionContext.withScope(async function () {
     initFlow(config);
-    return handler(useContext(Flow));
+    return handler(ExecutionContext.get(Flow));
   });
 }

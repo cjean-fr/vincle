@@ -492,7 +492,7 @@ describe("one leaf taxonomy, three entry points", () => {
         );
       }
 
-      const pre = jsxEscape(v);
+      const pre = await jsxEscape(v);
       if (!(pre instanceof RawString) || pre.value !== norm) {
         failures.push(`jsxEscape(${String(v)}) → ${JSON.stringify(pre)} ≠ ${JSON.stringify(norm)}`);
       }

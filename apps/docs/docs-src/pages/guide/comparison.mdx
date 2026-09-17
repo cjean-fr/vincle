@@ -170,14 +170,14 @@ whole picture.
 
 ## Capabilities and runtime cost
 
-| Criterion                                         |    Vincle    | Kita |  Preact  |   Hono   |  React   |
-| ------------------------------------------------- | :----------: | :--: | :------: | :------: | :------: |
-| Escapes a text child by default                   |     yes      |  no  |   yes    |   yes    |   yes    |
-| Neutralizes `javascript:` in `href`               |     yes      |  no  |    no    |    no    |   yes    |
-| Component returning a `Promise` in the string API |     yes      | yes  |    no    |    no    |    no    |
-| Context API                                       | render scope | none | provider | provider | provider |
-| Client DOM rendering / hydration                  |      no      |  no  |   yes    |   yes    |   yes    |
-| Direct dependencies of SSR package                |      0       |  1   |    0¹    |    0     |    1²    |
+| Criterion                                         |           Vincle           | Kita |  Preact  |   Hono   |  React   |
+| ------------------------------------------------- | :------------------------: | :--: | :------: | :------: | :------: |
+| Escapes a text child by default                   |            yes             |  no  |   yes    |   yes    |   yes    |
+| Neutralizes `javascript:` in `href`               |            yes             |  no  |    no    |    no    |   yes    |
+| Component returning a `Promise` in the string API |            yes             | yes  |    no    |    no    |    no    |
+| Context API                                       | provider + execution scope | none | provider | provider | provider |
+| Client DOM rendering / hydration                  |             no             |  no  |   yes    |   yes    |   yes    |
+| Direct dependencies of SSR package                |             0              |  1   |    0¹    |    0     |    1²    |
 
 The first three rows are behavior checks on specific inputs, not a general
 security or API certification. For the URL row, the input is
@@ -208,14 +208,10 @@ string API.
 as a peer, so SSR uses two packages.
 ² `react-dom` depends on `scheduler` and requires `react` as a peer.
 
-The context row is a difference in kind, not a checkbox. Preact, Hono and React
-scope a value to a **position in the tree**: a `<Provider>` wraps the subtree
-allowed to read it. Vincle scopes it to the **execution** — `withScope()` opens
-an `AsyncLocalStorage` scope, `setContext()` writes into the current one from
-anywhere in the render, and everything rendered afterwards reads it, a sibling
-rendered later included, not only children. Concurrent renders never see each
-other's values, since each one holds its own scope. There is no provider
-component to place, and no subtree to wrap. See [`context`](/api/core/context).
+Vincle's `createContext` and `<Context.Provider>` scope a value to a subtree,
+as in Preact, Hono and React. Its separate `ExecutionContext` stores mutable
+per-execution state that later siblings can read. Both retain isolation across
+concurrent renders. See the [Context API](/api/core/context).
 
 `@kitajs/html` documents [why it has no context
 API](https://github.com/kitajs/html#why-there-is-no-context-api).

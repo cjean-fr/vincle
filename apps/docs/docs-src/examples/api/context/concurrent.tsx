@@ -1,16 +1,20 @@
-import { withScope, setContext, renderToString, type ContextKey } from "@vincle/core";
+import { createContext, useContext, renderToString } from "@vincle/core";
 
-declare const themeCtx: ContextKey<"light" | "dark">;
-const Page = () => <div />;
+const Theme = createContext("light");
+const Page = async () => {
+  await Promise.resolve();
+  return <div>{useContext(Theme)}</div>;
+};
 
-// Each withScope call is completely isolated
 const [lightHtml, darkHtml] = await Promise.all([
-  withScope(async () => {
-    setContext(themeCtx, "light");
-    return renderToString(<Page />);
-  }),
-  withScope(async () => {
-    setContext(themeCtx, "dark");
-    return renderToString(<Page />);
-  }),
+  renderToString(
+    <Theme.Provider value="light">
+      <Page />
+    </Theme.Provider>,
+  ),
+  renderToString(
+    <Theme.Provider value="dark">
+      <Page />
+    </Theme.Provider>,
+  ),
 ]);

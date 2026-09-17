@@ -31,7 +31,7 @@ while passing different content and metadata.
 <CodeExample src="api/renderToString/with-component.tsx" />
 
 Note how `title` and `children` flow as typed props. The layout component is
-just a function — no provider, no context wrapper required.
+just a function; use a Provider when descendants need a shared tree value.
 
 ## Async components
 
@@ -44,7 +44,7 @@ prop-drilling.
 
 Sibling async branches run in document order, one at a time — never in
 parallel. A sibling never starts before the one before it has finished, so two
-branches that both touch context (`setContext`/`useContext`) can never race.
+branches that both touch `ExecutionContext` can never race.
 The returned `Promise<string>` resolves once every branch has rendered.
 
 This order also applies to components in arrays, iterables, and precompiled
@@ -60,8 +60,8 @@ postpone it. For explicit concurrent rendering, use
 ## Concurrent renders
 
 Multiple concurrent calls to `renderToString` are safe, even when components
-use context (`setContext`/`useContext`) inside `withScope`. Each call gets its
-own isolated `AsyncLocalStorage` scope — no cross-request leakage.
+use tree Providers or `ExecutionContext.withScope`. Each Provider render and
+execution scope keeps its own values — no cross-request leakage.
 
 <CodeExample src="api/renderToString/concurrent.tsx" />
 

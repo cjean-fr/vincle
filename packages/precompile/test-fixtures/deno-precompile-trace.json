@@ -1,6 +1,6 @@
 {
   "source": "deno 2.9.6 (stable, release, x86_64-unknown-linux-gnu)",
-  "prelude": "const c = \"C\"; const f = \"F\"; const b = true; const h = \"H\"; const a = \"A\";\nconst d = \"D\"; const s = \"S\"; const name = \"N\"; const css = \"CSS\";\nconst p = { z: 1 };\nconst Foo = (q) => null;",
+  "prelude": "const c = \"C\"; const f = \"F\"; const b = true; const h = \"H\"; const a = \"A\";\nconst d = \"D\"; const s = \"S\"; const name = \"N\"; const css = \"CSS\";\nconst p = { z: 1 };\nconst Foo = (q) => null;\nconst Ctx = { Provider: (q) => null };",
   "cases": [
     {
       "label": "static",
@@ -80,6 +80,16 @@
       "label": "component",
       "jsx": "<div><Foo x={1} /></div>",
       "trace": ["jsx", "tpl [\"<div>\",\"</div>\"] holes=1"]
+    },
+    {
+      "label": "provider + component",
+      "jsx": "<Ctx.Provider value=\"en\"><div><Foo x={1} /></div></Ctx.Provider>",
+      "trace": ["jsx", "tpl [\"<div>\",\"</div>\"] holes=1", "jsx"]
+    },
+    {
+      "label": "provider + text template",
+      "jsx": "<Ctx.Provider value=\"en\"><p>{`${name}:${d}`}</p></Ctx.Provider>",
+      "trace": ["escape", "tpl [\"<p>\",\"</p>\"] holes=1", "jsx"]
     },
     {
       "label": "spread",

@@ -1,4 +1,5 @@
-import { renderToString, withScope, type JSX } from "@vincle/core";
+import { ExecutionContext } from "@vincle/core";
+import { renderToString, type JSX } from "@vincle/core";
 import { setVite } from "@vincle/vite-plugin";
 import { describe, expect, it } from "bun:test";
 
@@ -42,7 +43,7 @@ function docsContext(meta: PageMeta): DocsRenderContext {
 }
 
 async function renderPage(meta: PageMeta = { title: "Test page" }): Promise<string> {
-  return withScope(async () => {
+  return ExecutionContext.withScope(async () => {
     setVite(null, { base: "/" });
     setDocs(docsContext(meta));
     const body: JSX.Element = <main>body</main>;

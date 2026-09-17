@@ -1,16 +1,10 @@
-import { snapshot, withScope, useContext, renderToString, type ContextKey } from "@vincle/core";
+import { ExecutionContext, renderToString } from "@vincle/core";
 
-declare const themeCtx: ContextKey<"light" | "dark">;
-const ChildPage = () => <div />;
+const Theme = ExecutionContext.key<"light" | "dark">("app:theme");
+const ChildPage = () => <div>{ExecutionContext.get(Theme)}</div>;
 
-// Capture current context values and pass them to a child scope
-const seed = snapshot();
-
-const childHtml = await withScope(
-  async () => {
-    // Inherits all values from the parent scope
-    const theme = useContext(themeCtx); // still works
-    return renderToString(<ChildPage />);
-  },
-  seed, // pass ContextMap directly (not wrapped in { seed })
-);
+const childHtml = await ExecutionContext.withScope(async () => {
+  ExecutionContext.set(Theme, "dark");
+  const seed = ExecutionContext.snapshot();
+  return ExecutionContext.withScope(() => renderToString(<ChildPage />), seed);
+});
