@@ -8,7 +8,7 @@ import { assertAdapter, assertFlowOptions } from "./config.js";
 import { withFlow } from "./context.js";
 import { createStream } from "./create-stream.js";
 import { ERR_FLOW_NO_STREAMING, vincleError } from "./errors.js";
-import { flushTemplates } from "./flushTemplates.js";
+import { flushFragments } from "./flushFragments.js";
 
 /**
  * Split a trailing `</body></html>` — with whitespace anywhere between and
@@ -108,7 +108,7 @@ export async function renderShell(
 }
 
 /**
- * Run the full streaming sequence: emit shell → drain templates → emit close.
+ * Run the full streaming sequence: emit shell → drain fragments → emit close.
  * Skips shell/close when `opts.mode === "fragment"`.
  */
 export async function runSequence(
@@ -120,12 +120,12 @@ export async function runSequence(
 ): Promise<void> {
   await withFlow(
     async (ctx) => {
-      const { templateStore } = ctx;
+      const { fragments } = ctx;
       try {
         if (signal.aborted) return;
 
         // Fragment mode still renders the shell — that render is what registers
-        // the templates we are about to drain — but none of it reaches the wire.
+        // the fragments we are about to drain — but none of it reaches the wire.
         const { shellBody, closingTag } = await renderShell(node, adapter, ctx);
         if (opts.mode !== "fragment" && shellBody !== "") {
           await emit({ type: "shell", html: shellBody });
@@ -134,12 +134,12 @@ export async function runSequence(
         // Fragments dedupe against the same `ctx.assets` the shell used, and they
         // render after it, so an asset the shell already emitted is suppressed at
         // the component and a new one is emitted — with no pass over their HTML.
-        await flushTemplates({ templateStore }, emit, { ...opts, signal });
+        await flushFragments({ fragments }, emit, { ...opts, signal });
         if (opts.mode !== "fragment" && closingTag) {
           await emit({ type: "close", html: closingTag });
         }
       } finally {
-        templateStore.clear();
+        fragments.clear();
       }
     },
     { adapter, mode: "streaming" },

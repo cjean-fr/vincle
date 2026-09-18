@@ -57,7 +57,7 @@ If the request is unclear, ask one clarifying question.
 | HTML strings only                                     | `renderToString()`                                        |
 | Component itself must await data before returning JSX | async components                                          |
 | Shared state in the render tree                       | `createContext()` + `<Context.Provider>` + `useContext()` |
-| Mutable state for one async execution                 | `ExecutionContext`                                        |
+| Mutable state for one async execution                 | `Scope`                                                   |
 | DOM streaming, islands, or browser patching           | `@vincle/flow`                                            |
 
 If the user wants browser DOM updates, hydration, hooks, event handlers, or client-side interactivity, do not use this package for that task; explain that `@vincle/core` is for HTML-string generation and server-side rendering only.
@@ -79,7 +79,7 @@ const sameThing = await renderToString(
 );
 ```
 
-> **Tree Providers need no outer scope.** Use `ExecutionContext.withScope()` only for execution-scoped mutable state. Concurrent Provider renders remain isolated.
+> **Tree Providers need no outer scope.** Use `Scope.with()` only for execution-scoped mutable state. Concurrent Provider renders remain isolated.
 
 ## Async Patterns
 
@@ -143,24 +143,24 @@ const html = await renderToString(
 );
 ```
 
-Use `ExecutionContext` for mutable per-request data that a plain helper or a
+Use `Scope` for mutable per-request data that a plain helper or a
 later sibling must read. Its `get` throws if no scope or value is present.
 
 ### Sub-scopes with snapshot
 
 ```ts
-const Request = ExecutionContext.key<{ user: string }>("app:request");
-await ExecutionContext.withScope(async () => {
-  ExecutionContext.set(Request, { user: "Alice" });
+const Request = Scope.key<{ user: string }>("app:request");
+await Scope.with(async () => {
+  Scope.set(Request, { user: "Alice" });
 
   // Child scope inherits parent data via snapshot(), passed as-is —
-  // the second argument IS the ContextMap, not an options object.
-  await ExecutionContext.withScope(async () => {
-    ExecutionContext.get(Request).user; // ✅ "Alice"
-    ExecutionContext.set(Request, { user: "Child" }); // local only
-  }, ExecutionContext.snapshot());
+  // the second argument IS the ScopeMap, not an options object.
+  await Scope.with(async () => {
+    Scope.get(Request).user; // ✅ "Alice"
+    Scope.set(Request, { user: "Child" }); // local only
+  }, Scope.snapshot());
 
-  ExecutionContext.get(Request).user; // ✅ still "Alice"
+  Scope.get(Request).user; // ✅ still "Alice"
 });
 ```
 
@@ -367,7 +367,7 @@ describe("Component", () => {
 | ---------------------------------- | ----------------------------------------------------------------------------------- |
 | TypeScript errors on JSX           | Check `tsconfig.json` has `"jsxImportSource": "@vincle/core"`                       |
 | `[object Promise]` in output       | Missing `await` on `renderToString()`                                               |
-| `ExecutionContext.get` throws      | Enter `ExecutionContext.withScope()` and set the key first                          |
+| `Scope.get` throws                 | Enter `Scope.with()` and set the key first                                          |
 | Style not applied                  | Use camelCase: `borderTopColor`, not `border-top-color`                             |
 | `class` not working                | Both `class` and `className` are accepted                                           |
 | JSX in test file not resolved      | Add `// @jsxImportSource @vincle/core` at top of `.tsx` test file                   |

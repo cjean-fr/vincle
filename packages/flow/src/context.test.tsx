@@ -1,4 +1,4 @@
-import { ExecutionContext } from "@vincle/core";
+import { Scope } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
 import { TurboAdapter, EsiAdapter } from "./adapters/index.js";
@@ -6,53 +6,53 @@ import { initFlow, initFlowAssets, Flow } from "./context.js";
 
 describe("initFlow", () => {
   it("initializes the flow context", async () => {
-    await ExecutionContext.withScope(async () => {
+    await Scope.with(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      expect(() => ExecutionContext.get(Flow)).not.toThrow();
+      expect(() => Scope.get(Flow)).not.toThrow();
     });
   });
 
-  it("throws when used outside ExecutionContext.withScope", () => {
+  it("throws when used outside Scope.with", () => {
     expect(() => initFlow({ adapter: TurboAdapter, mode: "streaming" })).toThrow();
   });
 });
 
-describe("context.registerTemplate()", () => {
+describe("context.registerFragment()", () => {
   it("registers, validates ids, and is last-wins on duplicate id", async () => {
-    await ExecutionContext.withScope(async () => {
+    await Scope.with(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
-      const { registerTemplate, templateStore } = ExecutionContext.get(Flow);
-      registerTemplate("badge", { content: <span>42</span>, merge: "replace" });
-      expect(templateStore.size).toBe(1);
-      expect(templateStore.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
+      const { registerFragment, fragments } = Scope.get(Flow);
+      registerFragment("badge", { content: <span>42</span>, merge: "replace" });
+      expect(fragments.size).toBe(1);
+      expect(fragments.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
         "replace",
       );
-      registerTemplate("badge", { content: <span>43</span>, merge: "append" });
-      expect(templateStore.size).toBe(1);
-      expect(templateStore.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
+      registerFragment("badge", { content: <span>43</span>, merge: "append" });
+      expect(fragments.size).toBe(1);
+      expect(fragments.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
         "append",
       );
-      expect(() => registerTemplate("has space", { content: <span />, merge: "replace" })).toThrow(
+      expect(() => registerFragment("has space", { content: <span />, merge: "replace" })).toThrow(
         /valid fragment id/,
       );
     });
   });
 
   it("provides isolated asset states for parallel pages (SSG)", async () => {
-    await ExecutionContext.withScope(async () => {
+    await Scope.with(async () => {
       initFlow({
         adapter: TurboAdapter,
         mode: "static",
         generatePath: (id) => `/f/${id}.html`,
       });
-      const parentAssets = ExecutionContext.get(Flow).assets;
+      const parentAssets = Scope.get(Flow).assets;
 
-      // Simulate parallel renderPage calls (SSG pattern — child scope inherits parent via ExecutionContext.snapshot)
-      const seed = ExecutionContext.snapshot();
+      // Simulate parallel renderPage calls (SSG pattern — child scope inherits parent via Scope.snapshot)
+      const seed = Scope.snapshot();
       const pageTask = (n: number) =>
-        ExecutionContext.withScope(async () => {
+        Scope.with(async () => {
           initFlowAssets();
-          const { assets } = ExecutionContext.get(Flow);
+          const { assets } = Scope.get(Flow);
           const name = `page-${n}`;
           assets.entries.set(name, {
             type: "style" as const,
@@ -76,14 +76,14 @@ describe("context.registerTemplate()", () => {
   });
 
   it("rejects a merge the adapter cannot express (capabilities)", async () => {
-    await ExecutionContext.withScope(async () => {
+    await Scope.with(async () => {
       initFlow({
         adapter: EsiAdapter,
         mode: "static",
         generatePath: (id) => `/f/${id}.html`,
       });
       expect(() =>
-        ExecutionContext.get(Flow).registerTemplate("x", {
+        Scope.get(Flow).registerFragment("x", {
           content: <span />,
           merge: "append",
         }),

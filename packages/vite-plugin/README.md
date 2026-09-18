@@ -156,7 +156,7 @@ The manifest will be written to `<outDir>/.vite/manifest.json`.
 
 ## Notes
 
-- `setVite()` uses `ExecutionContext.set()` from @vincle/core — call it inside `ExecutionContext.withScope()` (`@vincle/flow`'s `renderToStatic` / `renderToStream` establish one).
+- `setVite()` uses `Scope.set()` from @vincle/core — call it inside `Scope.with()` (`@vincle/flow`'s `renderToStatic` / `renderToStream` establish one).
 - `loadViteManifest()` uses `node:fs/promises` — works in Node ≥ 20, Bun, and Deno.
 - The package has no dependency on `vite` itself — only on `@vincle/core`.
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 
 import type { FlowConfig } from "./types.js";
 
-import { createTemplateStore } from "./template-store.js";
+import { createFragmentStore } from "./fragment-store.js";
 
 function adaptCfg(overrides?: Partial<FlowConfig>): FlowConfig {
   return {
@@ -15,11 +15,11 @@ function adaptCfg(overrides?: Partial<FlowConfig>): FlowConfig {
   } as FlowConfig;
 }
 
-describe("TemplateStore", () => {
+describe("FragmentStore", () => {
   describe("register validation", () => {
     it("throws when no adapter is configured", () => {
       const cfg = adaptCfg({ adapter: undefined });
-      const store = createTemplateStore(cfg);
+      const store = createFragmentStore(cfg);
       expect(() =>
         store.register("frag-a", {
           content: "<p>hello</p>",
@@ -34,7 +34,7 @@ describe("TemplateStore", () => {
           capabilities: { streaming: false, merges: ["replace"] },
         } as any,
       });
-      const store = createTemplateStore(cfg);
+      const store = createFragmentStore(cfg);
       expect(() =>
         store.register("frag-a", {
           content: "<p>hello</p>",
@@ -45,7 +45,7 @@ describe("TemplateStore", () => {
 
     it("throws when fragment id is invalid", () => {
       const cfg = adaptCfg();
-      const store = createTemplateStore(cfg);
+      const store = createFragmentStore(cfg);
       expect(() => store.register("", { content: "x", merge: "replace" })).toThrow(
         'Defer: "" is not a valid fragment id',
       );
@@ -55,14 +55,14 @@ describe("TemplateStore", () => {
 
   describe("outstanding / hasOutstanding", () => {
     it("returns only unprocessed entries", () => {
-      const store = createTemplateStore(adaptCfg());
+      const store = createFragmentStore(adaptCfg());
       store.register("a", { content: "x", merge: "replace" });
       store.register("b", { content: "y", merge: "replace" });
       expect(store.outstanding(new Set(["a"])).map(([id]) => id)).toEqual(["b"]);
     });
 
     it("hasOutstanding is true when some entries are unprocessed", () => {
-      const store = createTemplateStore(adaptCfg());
+      const store = createFragmentStore(adaptCfg());
       store.register("a", { content: "x", merge: "replace" });
       expect(store.hasOutstanding(new Set())).toBe(true);
       expect(store.hasOutstanding(new Set(["a"]))).toBe(false);
@@ -71,7 +71,7 @@ describe("TemplateStore", () => {
 
   describe("size", () => {
     it("reflects total entries regardless of processing", () => {
-      const store = createTemplateStore(adaptCfg());
+      const store = createFragmentStore(adaptCfg());
       expect(store.size).toBe(0);
       store.register("a", { content: "x", merge: "replace" });
       expect(store.size).toBe(1);
@@ -80,7 +80,7 @@ describe("TemplateStore", () => {
 
   describe("clear", () => {
     it("purges all entries", () => {
-      const store = createTemplateStore(adaptCfg());
+      const store = createFragmentStore(adaptCfg());
       store.register("a", { content: "x", merge: "replace" });
       store.clear();
       expect(store.size).toBe(0);
@@ -89,7 +89,7 @@ describe("TemplateStore", () => {
   });
 
   it("exposes what it registered, through its own interface", () => {
-    const store = createTemplateStore(adaptCfg());
+    const store = createFragmentStore(adaptCfg());
     store.register("test", { content: "<p>x</p>", merge: "replace" });
     expect(store.outstanding(new Set())).toEqual([
       ["test", { content: "<p>x</p>", merge: "replace" }],

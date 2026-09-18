@@ -1,7 +1,6 @@
 /** @jsxImportSource @vincle/core */
 import { describe, expect, test } from "bun:test";
 
-import { context, setContext, useContext as useExecutionContext, withScope } from "./context.js";
 import {
   jsx,
   jsxEscape,
@@ -9,8 +8,9 @@ import {
   jsxTemplate,
   jsxTemplateDeferred,
 } from "./jsx-runtime.js";
+import { createContext, SyncTreeStore, useContext } from "./provider.js";
 import { renderToString } from "./render.js";
-import { createContext, SyncTreeStore, useContext } from "./tree-context.js";
+import { Scope } from "./scope.js";
 import { RawString } from "./types.js";
 
 const Locale = createContext("fr");
@@ -79,15 +79,15 @@ describe("tree context", () => {
   });
 
   test("errors unwind and execution context remains separate", async () => {
-    const Key = context<string>("tree-separation");
+    const Key = Scope.key<string>("tree-separation");
     const Fail = async () => {
       await Promise.resolve();
-      expect(useExecutionContext(Key)).toBe("execution");
+      expect(Scope.get(Key)).toBe("execution");
       expect(useContext(Locale)).toBe("en");
       throw new Error("failed");
     };
-    await withScope(async () => {
-      setContext(Key, "execution");
+    await Scope.with(async () => {
+      Scope.set(Key, "execution");
       await expect(
         renderToString(
           <Locale.Provider value="en">
@@ -95,7 +95,7 @@ describe("tree context", () => {
           </Locale.Provider>,
         ),
       ).rejects.toThrow("failed");
-      expect(useExecutionContext(Key)).toBe("execution");
+      expect(Scope.get(Key)).toBe("execution");
       expect(useContext(Locale)).toBe("fr");
       expect(await renderToString(<Reader />)).toBe("<b>fr</b>");
     });

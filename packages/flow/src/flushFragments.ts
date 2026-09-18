@@ -1,7 +1,7 @@
-import type { TemplateStore } from "./template-store.js";
+import type { FragmentStore } from "./fragment-store.js";
 import type { FlowEvent, FlowOptions } from "./types.js";
 
-import { DeferCoordinator } from "./coordinator.js";
+import { FragmentCoordinator } from "./coordinator.js";
 import { runFragment } from "./fragment-runner.js";
 
 /**
@@ -19,7 +19,7 @@ async function settleOrThrow(promises: Promise<void>[]): Promise<void> {
 }
 
 /**
- * Drain every registered template entry, emitting semantic `FlowEvent`s to
+ * Drain every registered fragment entry, emitting semantic `FlowEvent`s to
  * `emit`. Each entry's content is classified at drain time:
  *
  * - an `AsyncIterable` (returned synchronously, or passed directly) is a
@@ -39,17 +39,17 @@ async function settleOrThrow(promises: Promise<void>[]): Promise<void> {
  * A previous `assets` parameter tried to own them here too; no caller ever
  * passed it, and the branch it fed was dead.
  */
-export async function flushTemplates(
-  ctx: { templateStore: TemplateStore },
+export async function flushFragments(
+  ctx: { fragments: FragmentStore },
   emit: (ev: FlowEvent) => Promise<void>,
   opts: FlowOptions = {},
 ): Promise<void> {
   const processed = new Set<string>();
   const live: Promise<void>[] = [];
-  const coordinator = new DeferCoordinator(ctx.templateStore, emit);
+  const coordinator = new FragmentCoordinator(ctx.fragments, emit);
 
   while (!opts.signal?.aborted) {
-    const wave = ctx.templateStore.outstanding(processed);
+    const wave = ctx.fragments.outstanding(processed);
     if (wave.length > 0) {
       const oneShots: Promise<void>[] = [];
       for (const [id, entry] of wave) {
@@ -67,7 +67,7 @@ export async function flushTemplates(
     await settleOrThrow(live);
     live.length = 0;
     await coordinator.tryFlush();
-    if (!ctx.templateStore.hasOutstanding(processed)) break;
+    if (!ctx.fragments.hasOutstanding(processed)) break;
   }
   if (live.length > 0) await settleOrThrow(live);
   await coordinator.tryFlush();

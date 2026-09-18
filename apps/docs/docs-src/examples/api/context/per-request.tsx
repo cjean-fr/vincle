@@ -1,13 +1,13 @@
-import { ExecutionContext, renderToString } from "@vincle/core";
+import { Scope, renderToString } from "@vincle/core";
 
 declare function getSession(req: Request): Promise<{ userId: string }>;
-const Request = ExecutionContext.key<{ userId: string; locale: string }>("app:request");
-const App = () => <main>{ExecutionContext.get(Request).userId}</main>;
+const Request = Scope.key<{ userId: string; locale: string }>("app:request");
+const App = () => <main>{Scope.get(Request).userId}</main>;
 
 async function handleRequest(req: Request): Promise<Response> {
   const session = await getSession(req);
-  const html = await ExecutionContext.withScope(() => {
-    ExecutionContext.set(Request, {
+  const html = await Scope.with(() => {
+    Scope.set(Request, {
       userId: session.userId,
       locale: req.headers.get("Accept-Language") ?? "en",
     });

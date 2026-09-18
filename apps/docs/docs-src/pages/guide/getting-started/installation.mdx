@@ -46,22 +46,22 @@ a compile error.
 | `raw(str)`                        | Marks a trusted HTML string (no escaping) |
 | `Fragment`                        | Standard JSX fragment (`<>…</>`)          |
 | `createContext`, `useContext`     | Share a value with a Provider subtree     |
-| `ExecutionContext`                | Per-execution state and isolated scopes   |
+| `Scope`                           | Per-execution state and isolated scopes   |
 | `jsx-runtime` / `jsx-dev-runtime` | JSX transform entry points (auto-wired)   |
 
 ### Types
 
-| Export          | Purpose                                                            |
-| --------------- | ------------------------------------------------------------------ |
-| `Renderable`    | Everything the renderers can render                                |
-| `VNode`         | The engine's element representation — a class, exported as a value |
-| `RawString`     | Branded type for pre-escaped HTML                                  |
-| `Awaitable<T>`  | `T` or a promise of `T`                                            |
-| `ClassValue`    | What a `class` attribute accepts                                   |
-| `JSX`           | The JSX namespace                                                  |
-| `Context<T>`    | Tree context with a typed Provider                                 |
-| `ContextKey<T>` | Branded execution-context key type                                 |
-| `ContextMap`    | Execution-context map type                                         |
+| Export         | Purpose                                                            |
+| -------------- | ------------------------------------------------------------------ |
+| `Renderable`   | Everything the renderers can render                                |
+| `VNode`        | The engine's element representation — a class, exported as a value |
+| `RawString`    | Branded type for pre-escaped HTML                                  |
+| `Awaitable<T>` | `T` or a promise of `T`                                            |
+| `ClassValue`   | What a `class` attribute accepts                                   |
+| `JSX`          | The JSX namespace                                                  |
+| `Context<T>`   | Tree context with a typed Provider                                 |
+| `ScopeKey<T>`  | Branded execution-context key type                                 |
+| `ScopeMap`     | Execution-context map type                                         |
 
 Element attributes are typed per element, by the table generated into
 `@vincle/core` — see

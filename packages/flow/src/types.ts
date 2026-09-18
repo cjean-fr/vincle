@@ -78,21 +78,13 @@ export type StreamingAdapter = Adapter & {
   capabilities: { streaming: true };
 };
 
-export interface DeferItemFragment {
-  kind: "fragment";
-  id: string;
-}
+export type FragmentGroupItem =
+  | { kind: "fragment"; id: string }
+  | { kind: "group"; group: FragmentGroupData };
 
-export interface DeferItemGroup {
-  kind: "group";
-  group: DeferGroupData;
-}
-
-export type DeferItem = DeferItemFragment | DeferItemGroup;
-
-export interface DeferGroupData {
+export interface FragmentGroupData {
   id: string;
   together: boolean;
   parentId?: string;
-  items: DeferItem[];
+  items: FragmentGroupItem[];
 }

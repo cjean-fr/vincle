@@ -12,7 +12,7 @@ import { collectEvents, collect, type FragmentEvent } from "./test-utils.js";
 
 // renderShell only reads ctx through adapter.transformShell; these unit tests
 // pass a stub with no pending fragments.
-const FAKE_CTX: ShellContext = { templateStore: { size: 0 } };
+const FAKE_CTX: ShellContext = { fragments: { size: 0 } };
 
 describe("renderToFlowEvents", () => {
   it("keeps Provider values in deferred fragments across concurrent streams", async () => {
@@ -206,7 +206,7 @@ describe("renderShell", () => {
 });
 
 describe("runSequence", () => {
-  it("emits shell, then runs flushTemplates, then emits close in full mode", async () => {
+  it("emits shell, then runs flushFragments, then emits close in full mode", async () => {
     const events: FlowEvent[] = [];
     const emit = async (ev: FlowEvent) => void events.push(ev);
     const ac = new AbortController();
@@ -575,7 +575,7 @@ describe("shell buffering", () => {
   });
 
   /**
-   * `withPolyfill` decides from `ctx.templateStore.size`, which is only final
+   * `withPolyfill` decides from `ctx.fragments.size`, which is only final
    * once the body has rendered — it cannot be applied to a prefix. Declaring a
    * `transformShell` is therefore an opt-out, and it has to stay an opt-out:
    * streaming such an adapter would silently drop its transform.

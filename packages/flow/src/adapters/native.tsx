@@ -62,7 +62,7 @@ const POLYFILL_MERGES = ["replace", "append", "prepend", "before", "after"] as c
 /**
  * Decorate any adapter with the ~550 B inline polyfill for the WICG
  * Declarative Partial Updates API. The polyfill is injected into `<head>`
- * only when fragments are present (`ctx.templateStore.size > 0`).
+ * only when fragments are present (`ctx.fragments.size > 0`).
  *
  * Useful when you want to use `WebPlatformAdapter` in browsers that do
  * not yet support `<template for>` natively.
@@ -82,7 +82,7 @@ export function withPolyfill<T extends Adapter>(
     capabilities: { streaming: adapter.capabilities.streaming, merges: POLYFILL_MERGES },
     transformShell: (shell, ctx) => {
       const transformed = adapter.transformShell ? adapter.transformShell(shell, ctx) : shell;
-      if (ctx.templateStore.size === 0) return transformed;
+      if (ctx.fragments.size === 0) return transformed;
       return injectIntoHead(transformed, POLYFILL_SCRIPT);
     },
   };

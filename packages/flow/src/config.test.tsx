@@ -1,4 +1,4 @@
-import { ExecutionContext } from "@vincle/core";
+import { Scope } from "@vincle/core";
 import { describe, expect, it } from "bun:test";
 
 import type { FlowConfig } from "./types.js";
@@ -13,10 +13,10 @@ import {
   describeValue,
 } from "./config.js";
 import { initFlow } from "./context.js";
+import { createFragmentStore } from "./fragment-store.js";
 import { renderFragment } from "./fragment.js";
 import { renderToFlowEvents, renderToStream } from "./render.js";
 import { renderToStatic } from "./static.js";
-import { createTemplateStore } from "./template-store.js";
 
 describe("describeValue", () => {
   it("renders values unambiguously in messages", () => {
@@ -249,7 +249,7 @@ describe("entry-point fail-fast", () => {
   });
 
   it("initFlow rejects a bad config at setup, inside a scope", async () => {
-    await ExecutionContext.withScope(async () => {
+    await Scope.with(async () => {
       expect(() =>
         initFlow({
           adapter: TurboAdapter,
@@ -261,7 +261,7 @@ describe("entry-point fail-fast", () => {
   });
 
   it("register rejects a negative per-fragment timeout", () => {
-    const store = createTemplateStore({ adapter: TurboAdapter, mode: "streaming" });
+    const store = createFragmentStore({ adapter: TurboAdapter, mode: "streaming" });
     expect(() =>
       store.register("frag", { content: "<p>x</p>", merge: "replace", timeout: -5 }),
     ).toThrow(

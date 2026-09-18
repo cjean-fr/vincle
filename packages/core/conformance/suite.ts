@@ -1,4 +1,4 @@
-import { ExecutionContext } from "@vincle/core";
+import { Scope } from "@vincle/core";
 /**
  * Multi-runtime conformance — what `bun test` can't cover.
  *
@@ -106,22 +106,22 @@ export async function runConformance(): Promise<ConformanceResult> {
   // 2. Context across `await` — the runtime-dependent core of this suite
   // ───────────────────────────────────────────────────────────────────────────
 
-  const Theme = ExecutionContext.key<string>("conformance:theme");
+  const Theme = Scope.key<string>("conformance:theme");
 
   await check("execution context survives an await", async () => {
-    const seen = await ExecutionContext.withScope(async () => {
-      ExecutionContext.set(Theme, "dark");
+    const seen = await Scope.with(async () => {
+      Scope.set(Theme, "dark");
       await Promise.resolve();
-      return ExecutionContext.get(Theme);
+      return Scope.get(Theme);
     });
     eq(seen, "dark", "value after await");
   });
 
   await check("execution context survives several microtask hops", async () => {
-    const seen = await ExecutionContext.withScope(async () => {
-      ExecutionContext.set(Theme, "sepia");
+    const seen = await Scope.with(async () => {
+      Scope.set(Theme, "sepia");
       for (let i = 0; i < 5; i++) await Promise.resolve();
-      return ExecutionContext.get(Theme);
+      return Scope.get(Theme);
     });
     eq(seen, "sepia", "value after 5 awaits");
   });
@@ -134,10 +134,10 @@ export async function runConformance(): Promise<ConformanceResult> {
   // value.
   await check("two concurrent scopes don't leak into each other", async () => {
     const scope = (value: string, delay: number) =>
-      ExecutionContext.withScope(async () => {
-        ExecutionContext.set(Theme, value);
+      Scope.with(async () => {
+        Scope.set(Theme, value);
         await new Promise((r) => setTimeout(r, delay));
-        return ExecutionContext.get(Theme);
+        return Scope.get(Theme);
       });
 
     let results: string[];
@@ -167,10 +167,10 @@ export async function runConformance(): Promise<ConformanceResult> {
   await check("an async component reads its scope's execution context", async () => {
     const Reader = async () => {
       await new Promise((r) => setTimeout(r, 1));
-      return jsx("span", { children: ExecutionContext.get(Theme) });
+      return jsx("span", { children: Scope.get(Theme) });
     };
-    const html = await ExecutionContext.withScope(async () => {
-      ExecutionContext.set(Theme, "inherited");
+    const html = await Scope.with(async () => {
+      Scope.set(Theme, "inherited");
       return renderToString(jsx(Reader, {}));
     });
     eq(html, "<span>inherited</span>", "execution context in an async component");

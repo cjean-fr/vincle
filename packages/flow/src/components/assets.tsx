@@ -1,4 +1,4 @@
-import { ExecutionContext, type JSX, type Awaitable } from "@vincle/core";
+import { Scope, type JSX, type Awaitable } from "@vincle/core";
 
 import { markEmitted, registerAsset } from "../assets.js";
 import { Flow } from "../context.js";
@@ -28,7 +28,7 @@ const evaluate = (content: string | (() => Awaitable<string>)): Awaitable<string
   typeof content === "function" ? content() : content;
 
 export function Style(props: StyleProps): JSX.Element | null {
-  const { assets } = ExecutionContext.get(Flow);
+  const { assets } = Scope.get(Flow);
   const { name, media, children: content } = props;
 
   const attrs: Record<string, string> = {};
@@ -45,7 +45,7 @@ export function Style(props: StyleProps): JSX.Element | null {
 }
 
 export function Script(props: ScriptProps): JSX.Element | null {
-  const { assets } = ExecutionContext.get(Flow);
+  const { assets } = Scope.get(Flow);
   const { name, src, module: isModule, defer: isDefer, children: content } = props;
 
   const attrs: Record<string, string | boolean> = {};
