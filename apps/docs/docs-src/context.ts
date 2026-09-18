@@ -1,4 +1,4 @@
-import { ExecutionContext, type ContextKey } from "@vincle/core";
+import { Scope, type ScopeKey } from "@vincle/core";
 
 import type { NavLink } from "./lib/sidebar.js";
 import type { ResolvedDocsConfig, PageMeta, ResolvedSidebar, TabConfig } from "./types.js";
@@ -18,13 +18,13 @@ export interface DocsRenderContext {
   next: NavLink | null;
 }
 
-const DocsContext: ContextKey<DocsRenderContext> =
-  ExecutionContext.key<DocsRenderContext>("@vincle/docs:render");
+const DocsContext: ScopeKey<DocsRenderContext> =
+  Scope.key<DocsRenderContext>("@vincle/docs:render");
 
 export function setDocs(value: DocsRenderContext): void {
-  ExecutionContext.set(DocsContext, value);
+  Scope.set(DocsContext, value);
 }
 
 export function useDocs(): DocsRenderContext {
-  return ExecutionContext.get(DocsContext);
+  return Scope.get(DocsContext);
 }

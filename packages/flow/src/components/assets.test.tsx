@@ -1,4 +1,4 @@
-import { ExecutionContext } from "@vincle/core";
+import { Scope } from "@vincle/core";
 import { renderToString } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
@@ -7,12 +7,12 @@ import { Flow, initFlow, type FlowContext } from "../context.js";
 import { Style, Script } from "./assets.js";
 
 function strictFlow(): FlowContext {
-  return ExecutionContext.get(Flow);
+  return Scope.get(Flow);
 }
 
 /** Every test needs a scope with a Flow context; this is the only setup. */
 const inFlow = <T,>(fn: () => Promise<T>): Promise<T> =>
-  ExecutionContext.withScope(async () => {
+  Scope.with(async () => {
     initFlow({ adapter: TurboAdapter, mode: "streaming" });
     return fn();
   });

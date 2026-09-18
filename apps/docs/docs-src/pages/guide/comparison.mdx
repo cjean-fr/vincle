@@ -209,7 +209,7 @@ as a peer, so SSR uses two packages.
 ² `react-dom` depends on `scheduler` and requires `react` as a peer.
 
 Vincle's `createContext` and `<Context.Provider>` scope a value to a subtree,
-as in Preact, Hono and React. Its separate `ExecutionContext` stores mutable
+as in Preact, Hono and React. Its separate `Scope` stores mutable
 per-execution state that later siblings can read. Both retain isolation across
 concurrent renders. See the [Context API](/api/core/context).
 

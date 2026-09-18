@@ -24,7 +24,7 @@ for the walk.
 | `Fragment`                     | `<>…</>` support                      |
 | `raw`                          | Mark trusted HTML — no escaping       |
 | `createContext` / `useContext` | Tree-scoped Provider values           |
-| `ExecutionContext`             | Per-execution mutable state           |
+| `Scope`                        | Per-execution mutable state           |
 
 ### Types
 

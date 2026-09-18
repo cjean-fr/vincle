@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildAttrs, serializeAttr } from "./attrs.js";
-import { context, setContext, useContext, withScope } from "./context.js";
 import { jsxTemplate, jsxAttr, jsxEscape } from "./jsx-precompile-runtime.js";
 import { jsx } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
+import { Scope } from "./scope.js";
 import { raw, RawString, VNode } from "./types.js";
 
 describe("jsxTemplate", () => {
@@ -476,21 +476,21 @@ describe("jsxTemplate — VNode holes", () => {
   });
 
   // The regression the `Promise.all` form would reintroduce: sibling holes
-  // must render one after the other, in document order, so a `setContext` in
+  // must render one after the other, in document order, so a `Scope.set` in
   // the left sibling is visible to the right one — the sequencing rule, held
   // on the precompiled path too.
   test("component holes run in document order — a later hole reads an earlier write", async () => {
-    const KEY = context<string>("precompile-order");
+    const KEY = Scope.key<string>("precompile-order");
     const later = <T>(v: T, ms: number): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(v), ms));
     const Writer = async () => {
       await later(null, 5);
-      setContext(KEY, "written");
+      Scope.set(KEY, "written");
       return "w";
     };
     const Reader = async () => {
       await later(null, 1);
-      return useContext(KEY);
+      return Scope.get(KEY);
     };
 
     const build = () => jsxTemplate`<div>${jsx(Writer, {})}${jsx(Reader, {})}</div>`;
@@ -498,8 +498,8 @@ describe("jsxTemplate — VNode holes", () => {
     const results = new Set<string>();
     for (let i = 0; i < 5; i++) {
       results.add(
-        await withScope(async () => {
-          setContext(KEY, "initial");
+        await Scope.with(async () => {
+          Scope.set(KEY, "initial");
           return value(build());
         }),
       );
@@ -509,28 +509,28 @@ describe("jsxTemplate — VNode holes", () => {
   });
 
   test("the same tree renders identically through precompile and tree walk", async () => {
-    const KEY = context<string>("precompile-equivalence");
+    const KEY = Scope.key<string>("precompile-equivalence");
     const later = <T>(v: T, ms: number): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(v), ms));
     const Writer = async () => {
       await later(null, 2);
-      setContext(KEY, "w");
+      Scope.set(KEY, "w");
       return "W";
     };
     const Reader = async () => {
       await later(null, 1);
-      return useContext(KEY);
+      return Scope.get(KEY);
     };
 
     const viaPrecompile = () => jsxTemplate`<p>${jsx(Writer, {})}|${jsx(Reader, {})}</p>`;
     const viaTreeWalk = () => jsx("p", { children: [jsx(Writer, {}), "|", jsx(Reader, {})] });
 
-    const a = await withScope(async () => {
-      setContext(KEY, "i");
+    const a = await Scope.with(async () => {
+      Scope.set(KEY, "i");
       return value(viaPrecompile());
     });
-    const b = await withScope(async () => {
-      setContext(KEY, "i");
+    const b = await Scope.with(async () => {
+      Scope.set(KEY, "i");
       return renderToString(viaTreeWalk());
     });
     expect(a).toBe(b);

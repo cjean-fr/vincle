@@ -1,6 +1,6 @@
 import type { JSX } from "@vincle/core";
 
-import type { DeferContent, DeferGroupData, FlowConfig, MergeType, OnError } from "./types.js";
+import type { DeferContent, FragmentGroupData, FlowConfig, MergeType, OnError } from "./types.js";
 
 import { PREFIX, assertTimeout } from "./config.js";
 import { ERR_FLOW_MERGE_UNSUPPORTED, ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
@@ -9,9 +9,9 @@ import { assertFragmentId } from "./utils.js";
 /**
  * A unit of deferred content, keyed by its target DOM `id`. The renderer
  * decides at drain time whether `content` is a one-shot patch or a live
- * stream — see `flushTemplates`.
+ * stream — see `flushFragments`.
  */
-export type TemplateEntry = {
+export type FragmentEntry = {
   content: DeferContent;
   /** Tree context at the point where the fragment was registered. */
   treeScope?: <T>(render: () => T) => T;
@@ -22,41 +22,41 @@ export type TemplateEntry = {
   onError?: OnError;
   /** Initial fallback content rendered in the placeholder element. */
   fallback?: JSX.Element;
-  /** Id of the DeferGroup this fragment belongs to, if any. */
-  deferGroupId?: string;
+  /** Id of the fragment group this fragment belongs to, if any. */
+  groupId?: string;
 };
 
 /**
- * Internal storage for registered template entries.
+ * Internal storage for registered fragment entries.
  *
  * Hides the `Map` implementation behind a narrow interface so callers don't
  * depend on the storage primitive. Iteration logic (filtering processed ids)
- * lives here rather than in `flushTemplates`.
+ * lives here rather than in `flushFragments`.
  */
-export type TemplateStore = {
+export type FragmentStore = {
   /** Register or overwrite an entry for `id`. Validates merge support. */
-  register(id: string, entry: TemplateEntry): void;
+  register(id: string, entry: FragmentEntry): void;
   /** Retrieve a registered entry by id. */
-  get(id: string): TemplateEntry | undefined;
+  get(id: string): FragmentEntry | undefined;
   /** Entries whose id is not in `processed`. */
-  outstanding(processed: Set<string>): Array<[string, TemplateEntry]>;
+  outstanding(processed: Set<string>): Array<[string, FragmentEntry]>;
   /** True when at least one entry is not in `processed`. */
   hasOutstanding(processed: Set<string>): boolean;
   /** Total registered entries (including processed ones). */
   readonly size: number;
   /** Purge all entries to eagerly release closures and references. */
   clear(): void;
-  /** Register a DeferGroup */
-  addDeferGroup(group: DeferGroupData): void;
-  /** Retrieve a DeferGroup by id */
-  getDeferGroup(id: string): DeferGroupData | undefined;
+  /** Register a fragment group */
+  addGroup(group: FragmentGroupData): void;
+  /** Retrieve a fragment group by id */
+  getGroup(id: string): FragmentGroupData | undefined;
 };
 
-export function createTemplateStore(config: FlowConfig): TemplateStore {
-  const map = new Map<string, TemplateEntry>();
-  const deferGroups = new Map<string, DeferGroupData>();
+export function createFragmentStore(config: FlowConfig): FragmentStore {
+  const map = new Map<string, FragmentEntry>();
+  const deferGroups = new Map<string, FragmentGroupData>();
   const merges: readonly string[] = config.adapter?.capabilities.merges ?? [];
-  const store: TemplateStore = {
+  const store: FragmentStore = {
     register(id, entry) {
       assertFragmentId(id, "Defer");
       assertTimeout(entry.timeout, `<Defer target="${id}">`);
@@ -87,7 +87,7 @@ export function createTemplateStore(config: FlowConfig): TemplateStore {
       return map.get(id);
     },
     outstanding(processed) {
-      const result: Array<[string, TemplateEntry]> = [];
+      const result: Array<[string, FragmentEntry]> = [];
       for (const [id, entry] of map) {
         if (!processed.has(id)) result.push([id, entry]);
       }
@@ -106,10 +106,10 @@ export function createTemplateStore(config: FlowConfig): TemplateStore {
       map.clear();
       deferGroups.clear();
     },
-    addDeferGroup(group) {
+    addGroup(group) {
       deferGroups.set(group.id, group);
     },
-    getDeferGroup(id) {
+    getGroup(id) {
       return deferGroups.get(id);
     },
   };

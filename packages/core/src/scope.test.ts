@@ -1,87 +1,77 @@
 import { expect, describe, it, beforeEach, afterAll } from "bun:test";
 
-import type { ContextMap } from "./context.js";
+import type { ScopeMap } from "./scope.js";
 
-import {
-  context,
-  setContext,
-  useContext,
-  withScope,
-  snapshot,
-  resetContextStorage,
-  resetNamedContexts,
-  SyncContextStore,
-  ExecutionContext,
-} from "./context.js";
+import { resetContextStorage, resetNamedContexts, Scope, SyncContextStore } from "./scope.js";
 
-const UserToken = context<{ name: string }>("test:user");
-const PluginToken = context<{ items: string[] }>("test:plugin");
+const UserToken = Scope.key<{ name: string }>("test:user");
+const PluginToken = Scope.key<{ items: string[] }>("test:plugin");
 
-describe("context", () => {
-  it("exposes the same scoped behavior through ExecutionContext", async () => {
-    const key = ExecutionContext.key<string>("test:execution-api");
-    await ExecutionContext.withScope(() => {
-      ExecutionContext.set(key, "value");
-      expect(ExecutionContext.get(key)).toBe("value");
-      expect(ExecutionContext.snapshot().get(key)).toBe("value");
+describe("Scope", () => {
+  it("exposes the same scoped behavior through Scope", async () => {
+    const key = Scope.key<string>("test:execution-api");
+    await Scope.with(() => {
+      Scope.set(key, "value");
+      expect(Scope.get(key)).toBe("value");
+      expect(Scope.snapshot().get(key)).toBe("value");
     });
   });
-  describe("useContext / setContext", () => {
+  describe("Scope.get / Scope.set", () => {
     beforeEach(() => resetContextStorage());
 
-    it("throws outside withScope, naming the call that needs a scope", () => {
-      expect(() => useContext(UserToken)).toThrow(
-        "[vincle/core] ExecutionContext.get: no active context scope",
+    it("throws outside Scope.with, naming the call that needs a scope", () => {
+      expect(() => Scope.get(UserToken)).toThrow(
+        "[vincle/core] Scope.get: no active context scope",
       );
-      expect(() => setContext(UserToken, { name: "x" })).toThrow(
-        "[vincle/core] ExecutionContext.set: no active context scope",
+      expect(() => Scope.set(UserToken, { name: "x" })).toThrow(
+        "[vincle/core] Scope.set: no active context scope",
       );
     });
 
     it("throws when context not found in scope, naming the key", async () => {
-      await withScope(() => {
-        expect(() => useContext(UserToken)).toThrow(
-          '[vincle/core] ExecutionContext.get("test:user"): the value was never set in the current scope',
+      await Scope.with(() => {
+        expect(() => Scope.get(UserToken)).toThrow(
+          '[vincle/core] Scope.get("test:user"): the value was never set in the current scope',
         );
       });
     });
 
     it("reads back what was written", async () => {
-      await withScope(() => {
-        setContext(UserToken, { name: "Alice" });
-        expect(useContext(UserToken)).toEqual({ name: "Alice" });
+      await Scope.with(() => {
+        Scope.set(UserToken, { name: "Alice" });
+        expect(Scope.get(UserToken)).toEqual({ name: "Alice" });
       });
     });
 
     it("propagates through async continuations", async () => {
-      await withScope(async () => {
-        setContext(UserToken, { name: "Bob" });
+      await Scope.with(async () => {
+        Scope.set(UserToken, { name: "Bob" });
         await new Promise((r) => setTimeout(r, 5));
-        expect(useContext(UserToken).name).toBe("Bob");
+        expect(Scope.get(UserToken).name).toBe("Bob");
       });
     });
 
     it("mutations persist within same scope", async () => {
-      await withScope(async () => {
-        setContext(UserToken, { name: "Alice" });
+      await Scope.with(async () => {
+        Scope.set(UserToken, { name: "Alice" });
         await Promise.resolve();
-        useContext(UserToken).name = "Alice Updated";
+        Scope.get(UserToken).name = "Alice Updated";
         await Promise.resolve();
-        expect(useContext(UserToken).name).toBe("Alice Updated");
+        expect(Scope.get(UserToken).name).toBe("Alice Updated");
       });
     });
   });
 
-  describe("withScope", () => {
+  describe("Scope.with", () => {
     it("handles many concurrent scopes (race on ensureStorage)", async () => {
-      const Token = context<number>("test:concurrent-ensure");
+      const Token = Scope.key<number>("test:concurrent-ensure");
       const count = 20;
       const results = await Promise.all(
         Array.from({ length: count }, (_, i) =>
-          withScope(async () => {
-            setContext(Token, i);
+          Scope.with(async () => {
+            Scope.set(Token, i);
             await Promise.resolve();
-            return useContext(Token);
+            return Scope.get(Token);
           }),
         ),
       );
@@ -90,30 +80,30 @@ describe("context", () => {
 
     it("isolates concurrent scopes", async () => {
       const results = await Promise.all([
-        withScope(async () => {
-          setContext(UserToken, { name: "A" });
+        Scope.with(async () => {
+          Scope.set(UserToken, { name: "A" });
           await new Promise((r) => setTimeout(r, 10));
-          return useContext(UserToken).name;
+          return Scope.get(UserToken).name;
         }),
-        withScope(async () => {
-          setContext(UserToken, { name: "B" });
+        Scope.with(async () => {
+          Scope.set(UserToken, { name: "B" });
           await Promise.resolve();
-          return useContext(UserToken).name;
+          return Scope.get(UserToken).name;
         }),
       ]);
       expect(results).toEqual(["A", "B"]);
     });
 
     it("returns callback result", async () => {
-      const result = await withScope(() => 42);
+      const result = await Scope.with(() => 42);
       expect(result).toBe(42);
     });
 
     it("sub-scope is empty without seed", async () => {
-      await withScope(async () => {
-        setContext(UserToken, { name: "Parent" });
-        await withScope(() => {
-          expect(() => useContext(UserToken)).toThrow(/never set in the current scope/);
+      await Scope.with(async () => {
+        Scope.set(UserToken, { name: "Parent" });
+        await Scope.with(() => {
+          expect(() => Scope.get(UserToken)).toThrow(/never set in the current scope/);
         });
       });
     });
@@ -121,77 +111,77 @@ describe("context", () => {
 
   describe("snapshot / seed", () => {
     it("seed pre-fills sub-scope", async () => {
-      await withScope(async () => {
-        setContext(UserToken, { name: "Parent" });
-        const seed = snapshot();
+      await Scope.with(async () => {
+        Scope.set(UserToken, { name: "Parent" });
+        const seed = Scope.snapshot();
 
-        await withScope(() => {
-          expect(useContext(UserToken).name).toBe("Parent");
+        await Scope.with(() => {
+          expect(Scope.get(UserToken).name).toBe("Parent");
         }, seed);
       });
     });
 
     it("child mutation does not affect parent", async () => {
-      await withScope(async () => {
-        setContext(UserToken, { name: "Parent" });
-        const seed = snapshot();
+      await Scope.with(async () => {
+        Scope.set(UserToken, { name: "Parent" });
+        const seed = Scope.snapshot();
 
-        await withScope(() => {
-          setContext(UserToken, { name: "Child" });
-          expect(useContext(UserToken).name).toBe("Child");
+        await Scope.with(() => {
+          Scope.set(UserToken, { name: "Child" });
+          expect(Scope.get(UserToken).name).toBe("Child");
         }, seed);
 
-        expect(useContext(UserToken).name).toBe("Parent");
+        expect(Scope.get(UserToken).name).toBe("Parent");
       });
     });
 
-    it("snapshot throws outside withScope", () => {
+    it("Scope.snapshot throws outside Scope.with", () => {
       resetContextStorage();
-      expect(() => snapshot()).toThrow(
-        "[vincle/core] ExecutionContext.snapshot: no active context scope",
+      expect(() => Scope.snapshot()).toThrow(
+        "[vincle/core] Scope.snapshot: no active context scope",
       );
     });
   });
 
   describe("inter-plugin communication", () => {
     it("plugins share same scope", async () => {
-      await withScope(() => {
-        setContext(UserToken, { name: "Alice" });
-        setContext(PluginToken, { items: [] });
+      await Scope.with(() => {
+        Scope.set(UserToken, { name: "Alice" });
+        Scope.set(PluginToken, { items: [] });
 
-        useContext(PluginToken).items.push(useContext(UserToken).name);
+        Scope.get(PluginToken).items.push(Scope.get(UserToken).name);
 
-        expect(useContext(PluginToken).items).toEqual(["Alice"]);
+        expect(Scope.get(PluginToken).items).toEqual(["Alice"]);
       });
     });
   });
 
-  describe("context(key)", () => {
+  describe("Scope.key(name)", () => {
     it("same key returns the same Symbol within one instance", () => {
-      const a = context<string>("test:demo");
-      const b = context<string>("test:demo");
+      const a = Scope.key<string>("test:demo");
+      const b = Scope.key<string>("test:demo");
       expect(a).toBe(b);
     });
 
     it("different keys return different Symbols", () => {
-      const a = context<string>("test:x");
-      const b = context<string>("test:y");
+      const a = Scope.key<string>("test:x");
+      const b = Scope.key<string>("test:y");
       expect(a).not.toBe(b);
     });
 
     it("rejects empty or non-string keys", () => {
-      expect(() => context<string>("")).toThrow(/non-empty string key/);
+      expect(() => Scope.key<string>("")).toThrow(/non-empty string key/);
       // @ts-expect-error — intentionally wrong type at runtime
-      expect(() => context<string>(123)).toThrow(/non-empty string key/);
+      expect(() => Scope.key<string>(123)).toThrow(/non-empty string key/);
       // @ts-expect-error — intentionally wrong type at runtime
-      expect(() => context<string>()).toThrow(/non-empty string key/);
+      expect(() => Scope.key<string>()).toThrow(/non-empty string key/);
     });
 
-    it("works with setContext/useContext inside a scope", async () => {
-      const Shared = context<{ value: number }>("test:in-scope");
-      await withScope(() => {
-        setContext(Shared, { value: 42 });
-        expect(useContext(Shared).value).toBe(42);
+    it("works with Scope.set/Scope.get inside a scope", async () => {
+      const Shared = Scope.key<{ value: number }>("test:in-scope");
+      await Scope.with(() => {
+        Scope.set(Shared, { value: 42 });
+        expect(Scope.get(Shared).value).toBe(42);
       });
     });
   });
@@ -200,8 +190,8 @@ describe("context", () => {
     const OrigALS = (globalThis as any).AsyncLocalStorage;
 
     class MockALS {
-      #store: ContextMap | undefined;
-      run<T>(ctx: ContextMap, fn: () => T): Promise<T> {
+      #store: ScopeMap | undefined;
+      run<T>(ctx: ScopeMap, fn: () => T): Promise<T> {
         const prev = this.#store;
         this.#store = ctx;
         try {
@@ -217,7 +207,7 @@ describe("context", () => {
           throw e;
         }
       }
-      getStore(): ContextMap | undefined {
+      getStore(): ScopeMap | undefined {
         return this.#store;
       }
     }
@@ -231,10 +221,10 @@ describe("context", () => {
       (globalThis as any).AsyncLocalStorage = MockALS;
       resetContextStorage();
 
-      const Token = context<string>("test:global-als");
-      await withScope(async () => {
-        setContext(Token, "via-global-als");
-        expect(useContext(Token)).toBe("via-global-als");
+      const Token = Scope.key<string>("test:global-als");
+      await Scope.with(async () => {
+        Scope.set(Token, "via-global-als");
+        expect(Scope.get(Token)).toBe("via-global-als");
       });
     });
   });
@@ -249,7 +239,7 @@ describe("context", () => {
   describe("SyncContextStore — fallback without AsyncLocalStorage", () => {
     it("carries a synchronous scope", () => {
       const store = new SyncContextStore();
-      const ctx: ContextMap = new Map();
+      const ctx: ScopeMap = new Map();
       expect(store.getStore()).toBeUndefined();
       const seen = store.run(ctx, () => store.getStore());
       expect(seen).toBe(ctx);
@@ -259,7 +249,7 @@ describe("context", () => {
 
     it("holds the scope across an await, then closes it", async () => {
       const store = new SyncContextStore();
-      const ctx: ContextMap = new Map();
+      const ctx: ScopeMap = new Map();
 
       const result = await store.run(ctx, async () => {
         await new Promise((r) => setTimeout(r, 5));
@@ -273,8 +263,8 @@ describe("context", () => {
 
     it("allows synchronous nesting and restores the parent", () => {
       const store = new SyncContextStore();
-      const parent: ContextMap = new Map();
-      const child: ContextMap = new Map();
+      const parent: ScopeMap = new Map();
+      const child: ScopeMap = new Map();
 
       store.run(parent, () => {
         store.run(child, () => {
@@ -324,11 +314,11 @@ describe("context", () => {
     it("keeps the key → symbol identity, and refuses a key built per request", () => {
       // The cap can't just stop memoizing — that would make
       // `context(k) !== context(k)` silently true. It throws instead.
-      const before = context<string>("test:identity");
-      expect(context<string>("test:identity")).toBe(before);
+      const before = Scope.key<string>("test:identity");
+      expect(Scope.key<string>("test:identity")).toBe(before);
 
       expect(() => {
-        for (let i = 0; i < 10_001; i++) context<number>(`test:leak:${i}`);
+        for (let i = 0; i < 10_001; i++) Scope.key<number>(`test:leak:${i}`);
       }).toThrow(/Context keys are module-level constants/);
     });
   });

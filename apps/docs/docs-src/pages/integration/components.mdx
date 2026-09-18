@@ -12,7 +12,7 @@ plus a third for fetching a fragment from a separate URL entirely:
 - **`<Slot>`** — a named hole, standing in for a `<Defer>` that renders
   elsewhere in the tree
 - **`<Include>`** — client-side fetch placeholder
-- **`<Defer.Group>`** — coordinates when deferred fragments are delivered
+- **`<Defer.Sequence>` / `<Defer.Together>`** — coordinate when deferred fragments are delivered
 
 ## `<Defer>` — defer content (sync or lazy)
 
@@ -152,15 +152,16 @@ required — works with any static file server.
 
 <CodeExample src="flow/deferred-src.tsx" />
 
-## `<Defer.Group>` — control reveal order
+## `<Defer.Sequence>` / `<Defer.Together>` — control reveal order
 
-Wrap related Defer components in a group to release their patches in document
-order. Add `together` to wait until the group is ready before releasing its
-patches. Deferred work can still run concurrently; the group coordinates delivery.
+Wrap related Defer components in a group to coordinate when their patches are
+released. `Defer.Sequence` releases them in document order; `Defer.Together`
+waits until the group is ready before releasing its patches. Deferred work can
+still run concurrently; the group coordinates delivery.
 
-See [Streaming](/integration/streaming#control-reveal-order-with-defer-group)
-for sequential, together, and nested groups, and the
-[API reference](/api/flow/components#defer-group) for props.
+See [Streaming](/integration/streaming#control-reveal-order-with-defersequence-defertogether)
+for sequences, together groups, and nesting, and the
+[API reference](/api/flow/components#defersequence--defertogether) for props.
 
 ## Return types
 

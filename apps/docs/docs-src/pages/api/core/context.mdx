@@ -5,7 +5,7 @@ title: Context API
 # Context API
 
 Vincle has two ways to share values. **Tree Context** passes a value to
-descendants of a JSX Provider. **ExecutionContext** holds mutable state for
+descendants of a JSX Provider. **Scope** holds mutable state for
 one async execution, such as request metadata or Flow orchestration.
 
 ## Tree Context
@@ -18,7 +18,7 @@ returned. A sibling outside the Provider sees its own ancestor's value.
 
 <CodeExample src="api/context/basic.tsx" />
 
-A root Provider works directly with `renderToString`; `ExecutionContext.withScope` is not needed.
+A root Provider works directly with `renderToString`; `Scope.with` is not needed.
 Providers preserve their value across `await` and across deferred Flow
 fragments. Separate concurrent renders do not share values.
 
@@ -28,19 +28,19 @@ The JSX shape and nearest Provider behavior match common React, Preact and
 Hono patterns. Vincle components and contexts are specific to its renderer;
 they are not interchangeable with those runtimes' objects.
 
-## ExecutionContext
+## Scope
 
-Use `ExecutionContext.key<T>(name)` for a named, typed token.
-`ExecutionContext.withScope(fn)` creates an isolated async scope;
-`ExecutionContext.set(key, value)` writes to it and
-`ExecutionContext.get(key)` reads the last value written. A later sibling can
+Use `Scope.key<T>(name)` for a named, typed token.
+`Scope.with(fn)` creates an isolated async scope;
+`Scope.set(key, value)` writes to it and
+`Scope.get(key)` reads the last value written. A later sibling can
 read a value set by an earlier component. `get` throws outside a scope or when
 the key has not been set.
 
 <CodeExample src="api/context/per-request.tsx" />
 
-`ExecutionContext.snapshot()` copies the current map. Pass the copy as the
-second argument to `ExecutionContext.withScope` to seed a child scope.
+`Scope.snapshot()` copies the current map. Pass the copy as the
+second argument to `Scope.with` to seed a child scope.
 
 <CodeExample src="api/context/snapshot.tsx" />
 
@@ -48,6 +48,6 @@ second argument to `ExecutionContext.withScope` to seed a child scope.
 
 The stores use `globalThis.AsyncLocalStorage` or `node:async_hooks`. Without
 either, tree Providers support synchronous rendering and reject async work;
-the execution store supports one scope at a time and rejects overlapping
+the Scope store supports one scope at a time and rejects overlapping
 requests. Both warn when they enter their fallback. Enable `AsyncLocalStorage`
 for concurrent rendering.

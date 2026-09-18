@@ -6,23 +6,23 @@ import type { FlowConfig } from "./types.js";
 import type { FlowEvent } from "./types.js";
 
 import { TurboAdapter } from "./adapters/index.js";
-import { flushTemplates } from "./flushTemplates.js";
+import { flushFragments } from "./flushFragments.js";
+import { createFragmentStore, type FragmentStore } from "./fragment-store.js";
 import { renderToStream, Defer } from "./index.js";
 import { renderToFlowEvents } from "./render.js";
-import { createTemplateStore, type TemplateStore } from "./template-store.js";
 import { collect, collectEvents, type FragmentEvent } from "./test-utils.js";
 
-const drain = async (store: TemplateStore, opts?: Parameters<typeof flushTemplates>[2]) => {
+const drain = async (store: FragmentStore, opts?: Parameters<typeof flushFragments>[2]) => {
   const results: FlowEvent[] = [];
-  await flushTemplates({ templateStore: store }, async (ev) => void results.push(ev), opts);
+  await flushFragments({ fragments: store }, async (ev) => void results.push(ev), opts);
   return results;
 };
 
 const cfg: FlowConfig = { adapter: TurboAdapter, mode: "streaming" };
 
-describe("flushTemplates", () => {
+describe("flushFragments", () => {
   it("emits a fragment for a one-shot node entry", async () => {
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     store.register("t1", { content: <div>Hello</div>, merge: "replace" });
     const results = await drain(store);
     expect(results).toHaveLength(1);
@@ -31,7 +31,7 @@ describe("flushTemplates", () => {
   });
 
   it("emits a fragment for plain JSX content (no factory)", async () => {
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     store.register("t2", { content: <div>Plain</div>, merge: "replace" });
     const results = await drain(store);
     expect(results).toHaveLength(1);
@@ -43,7 +43,7 @@ describe("flushTemplates", () => {
       yield (<li>a</li>) as VNode;
       yield (<li>b</li>) as VNode;
     }
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     store.register("feed", { content: rows(), merge: "append" });
     const results = await drain(store);
     const fragments = results.filter((e) => e.type === "fragment");
@@ -51,7 +51,7 @@ describe("flushTemplates", () => {
   });
 
   it("handles rejected promise content via onError", async () => {
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     // Use withResolvers: promise starts pending, rejected only when drain runs
     const { promise, reject } = Promise.withResolvers<VNode>();
     const content = promise.then(
@@ -78,7 +78,7 @@ describe("flushTemplates", () => {
   });
 
   it("a per-entry onError overrides the global one", async () => {
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     const { promise, reject } = Promise.withResolvers<VNode>();
     const content = promise.then(
       () => {
@@ -237,24 +237,24 @@ describe("edge cases — streaming", () => {
   });
 });
 
-describe("flushTemplates — error propagation", () => {
+describe("flushFragments — error propagation", () => {
   it("rejects when emit() itself fails (allSettled must not swallow)", async () => {
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     store.register("t1", { content: <div>Hello</div>, merge: "replace" });
 
     const brokenEmit = async () => {
       throw new Error("emit: stream closed");
     };
 
-    // Without the fix, flushTemplates resolves silently → this test fails.
+    // Without the fix, flushFragments resolves silently → this test fails.
     // With the fix, the error propagates/rejects.
-    await expect(flushTemplates({ templateStore: store }, brokenEmit, {})).rejects.toThrow(
+    await expect(flushFragments({ fragments: store }, brokenEmit, {})).rejects.toThrow(
       "emit: stream closed",
     );
   });
 
   it("still emits siblings when emit() fails on one fragment", async () => {
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     store.register("good", { content: <span>ok</span>, merge: "replace" });
     store.register("bad", { content: <span>fail</span>, merge: "replace" });
 
@@ -265,7 +265,7 @@ describe("flushTemplates — error propagation", () => {
     };
 
     // The fix must let the "good" fragment emit before rejecting
-    await expect(flushTemplates({ templateStore: store }, emit, {})).rejects.toThrow(
+    await expect(flushFragments({ fragments: store }, emit, {})).rejects.toThrow(
       "second emit fails",
     );
 
@@ -278,9 +278,9 @@ describe("flushTemplates — error propagation", () => {
 const ARM_MS = 10;
 const OBSERVE_MS = 80;
 
-describe("flushTemplates — timeout and AbortSignal wiring", () => {
+describe("flushFragments — timeout and AbortSignal wiring", () => {
   it("passes a real, unaborted AbortSignal to a lazy factory", async () => {
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     let received: AbortSignal | undefined;
     store.register("t", {
       content: (signal: AbortSignal) => {
@@ -299,7 +299,7 @@ describe("flushTemplates — timeout and AbortSignal wiring", () => {
       await Bun.sleep(OBSERVE_MS);
       return (<div>too late</div>) as VNode;
     };
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     store.register("slow", { content: <Slow />, merge: "replace", timeout: ARM_MS });
 
     const errors: Array<{ id: string; kind: string }> = [];
@@ -321,7 +321,7 @@ describe("flushTemplates — timeout and AbortSignal wiring", () => {
       await Bun.sleep(OBSERVE_MS * 4);
       yield (<li>b</li>) as VNode;
     }
-    const store = createTemplateStore(cfg);
+    const store = createFragmentStore(cfg);
     store.register("feed", { content: slowFeed(), merge: "append", timeout: ARM_MS });
 
     const results = await drain(store);

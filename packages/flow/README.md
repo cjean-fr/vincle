@@ -145,17 +145,20 @@ import { Include } from "@vincle/flow";
 
 Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/issues/2791) and ESI `<esi:include>` — short, standard, self-explanatory.
 
-### `<Defer.Group>` — coordinate streaming reveal order
+### `<Defer.Sequence>` / `<Defer.Together>` — coordinate streaming reveal order
 
-Coordinates when sibling deferred fragments (`<Defer>`) are revealed to the browser. Eliminates layout jumping ("popcorn" streaming) where independent fragments pop in out-of-order.
+Coordinate when sibling deferred fragments (`<Defer>`) are revealed to the
+browser. Eliminates layout jumping ("popcorn" streaming) where independent
+fragments pop in out-of-order.
 
-Async operations and JSX rendering still execute **100% in parallel on the server** — only patch delivery onto the wire is orchestrated.
+Async operations and JSX rendering still execute **100% in parallel on the
+server** — only patch delivery onto the wire is orchestrated.
 
 ```tsx
 import { Defer } from "@vincle/flow";
 
-// Sequential (default): reveals in DOM order; later items wait for earlier ones
-<Defer.Group>
+// Sequence: reveals in DOM order; a fragment never overtakes its left neighbor
+<Defer.Sequence>
   <Defer target="profile" fallback={<ProfileSkeleton />}>
     {() => <Profile />}
   </Defer>
@@ -165,27 +168,28 @@ import { Defer } from "@vincle/flow";
   <Defer target="comments" fallback={<CommentsSkeleton />}>
     {() => <Comments />}
   </Defer>
-</Defer.Group>
+</Defer.Sequence>
 
 // Together: holds all patches until every fragment in the group is ready
-<Defer.Group together>
+<Defer.Together>
   <Defer target="stats">{() => <Stats />}</Defer>
   <Defer target="chart">{() => <Chart />}</Defer>
-</Defer.Group>
+</Defer.Together>
 
-// Nesting: group together items inside a sequential list
-<Defer.Group>
+// Nesting: a together group inside a sequence
+<Defer.Sequence>
   <Defer target="hero">{() => <Hero />}</Defer>
-  <Defer.Group together>
+  <Defer.Together>
     <Defer target="col-a">{() => <ColA />}</Defer>
     <Defer target="col-b">{() => <ColB />}</Defer>
-  </Defer.Group>
-</Defer.Group>
+  </Defer.Together>
+</Defer.Sequence>
 ```
 
-| Prop       | Type      | Default | Meaning                                                                      |
-| ---------- | --------- | ------- | ---------------------------------------------------------------------------- |
-| `together` | `boolean` | `false` | When true, waits for all fragments in the group before revealing any of them |
+| Component        | Behavior                                                                 |
+| ---------------- | ------------------------------------------------------------------------ |
+| `Defer.Sequence` | Patches are released one at a time, in document order                    |
+| `Defer.Together` | Patches are held until every fragment is ready, then released as a group |
 
 ### Content forms
 
@@ -422,14 +426,15 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 ### Components
 
-| Export        | Import path               | Description                                                                     |
-| ------------- | ------------------------- | ------------------------------------------------------------------------------- |
-| `Slot`        | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder    |
-| `Defer`       | `@vincle/flow`            | Push deferred content into a target DOM id — sync (plain JSX) or lazy (factory) |
-| `Defer.Group` | `@vincle/flow`            | Coordinate reveal order (sequential or together) for child Defer fragments      |
-| `Include`     | `@vincle/flow`            | Client-side fetch placeholder — no server deferral                              |
-| `Style`       | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                               |
-| `Script`      | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                              |
+| Export           | Import path               | Description                                                                     |
+| ---------------- | ------------------------- | ------------------------------------------------------------------------------- |
+| `Slot`           | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder    |
+| `Defer`          | `@vincle/flow`            | Push deferred content into a target DOM id — sync (plain JSX) or lazy (factory) |
+| `Defer.Sequence` | `@vincle/flow`            | Release child Defer fragments one at a time, in document order                  |
+| `Defer.Together` | `@vincle/flow`            | Hold child Defer fragments until every one is ready, then release as a group    |
+| `Include`        | `@vincle/flow`            | Client-side fetch placeholder — no server deferral                              |
+| `Style`          | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                               |
+| `Script`         | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                              |
 
 ### Renderers
 
@@ -468,14 +473,13 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `Adapter`             | `@vincle/flow/adapters` | `{ Placeholder, Patch, Frame, capabilities, transformShell? }`                                                                                           |
 | `StreamingAdapter`    | `@vincle/flow/adapters` | `Adapter` with `capabilities.streaming: true`                                                                                                            |
 | `AdapterCapabilities` | `@vincle/flow/adapters` | `{ streaming: boolean; merges: readonly MergeType[] }`                                                                                                   |
-| `ShellContext`        | `@vincle/flow/adapters` | What `transformShell` receives: `{ templateStore: { size } }`                                                                                            |
+| `ShellContext`        | `@vincle/flow/adapters` | What `transformShell` receives: `{ fragments: { size } }`                                                                                                |
 | `PureStaticContext`   | `@vincle/flow`          | Static generation context (no `emitFragments`)                                                                                                           |
 | `StaticContext`       | `@vincle/flow`          | Static generation context with `emitFragments`                                                                                                           |
 | `MergeType`           | `@vincle/flow`          | `"replace" \| "append" \| "prepend" \| "before" \| "after" \| "morph"`                                                                                   |
 | `FlowEvent`           | `@vincle/flow`          | `{ type: "shell" \| "fragment" \| "close", … }`                                                                                                          |
 | `Negotiation`         | `@vincle/flow`          | `{ headers?, mode?, target? }`                                                                                                                           |
 | `DeferContent`        | `@vincle/flow`          | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` |
-| `DeferGroup`          | `@vincle/flow`          | `{ id: string; together: boolean; parentId?: string; items: DeferItem[] }`                                                                               |
 
 ### Utilities
 

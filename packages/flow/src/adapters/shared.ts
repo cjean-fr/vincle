@@ -9,13 +9,13 @@ type Child = JSX.Element | RawString | string | null;
  * What `transformShell` sees of the flow state — not the full `FlowContext`.
  * A shell transform has exactly one legitimate reason to look at flow state:
  * deciding whether fragments are pending. The full context also carries
- * `assets`, `nextId`, and `registerTemplate`/the rest of `TemplateStore` —
+ * `assets`, `nextId`, and `registerFragment`/the rest of `FragmentStore` —
  * mutation hooks a *shell transform* has no business reaching, so it isn't
  * handed the context that owns them.
  */
 export interface ShellContext {
   /** Pending `<Defer>`/`<Slot>` fragments, after the shell has rendered. */
-  readonly templateStore: { readonly size: number };
+  readonly fragments: { readonly size: number };
 }
 
 export type Adapter = {
@@ -26,7 +26,7 @@ export type Adapter = {
   /**
    * Post-process the shell before it enters the stream. Receives a
    * `ShellContext`, so an adapter can decide based on the real fragment
-   * count — e.g. inject a client runtime only when `ctx.templateStore.size >
+   * count — e.g. inject a client runtime only when `ctx.fragments.size >
    * 0` (fragments exist). Always called inside the flow scope, after the
    * shell node renders.
    */
