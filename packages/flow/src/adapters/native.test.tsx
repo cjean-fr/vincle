@@ -10,9 +10,9 @@ import {
   nativePolyfillHash,
   WebPlatformAdapter,
 } from "../adapters/index.js";
-import { createTemplateStore } from "../template-store.js";
+import { createFragmentStore } from "../fragment-store.js";
 
-const ctxWith = (size: number): ShellContext => ({ templateStore: { size } });
+const ctxWith = (size: number): ShellContext => ({ fragments: { size } });
 
 describe("NativeAdapter", () => {
   it("patches are declarative templates — never per-fragment scripts (CSP)", async () => {
@@ -99,7 +99,7 @@ describe("NativeAdapter", () => {
  */
 describe("merge capabilities: the pure spec and the polyfill diverge", () => {
   const storeFor = (adapter: FlowConfig["adapter"]) =>
-    createTemplateStore({
+    createFragmentStore({
       mode: "static",
       generatePath: (id: string) => `/fragments/${id}`,
       adapter,

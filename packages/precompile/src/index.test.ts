@@ -1014,11 +1014,11 @@ describe("precompileTransform", () => {
       const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
       const code = [
         `/** @jsxImportSource @vincle/core */`,
-        `import { ExecutionContext } from "@vincle/core";`,
-        `const KEY = ExecutionContext.key<string>("e2e:order");`,
+        `import { Scope } from "@vincle/core";`,
+        `const KEY = Scope.key<string>("e2e:order");`,
         `const later = <T,>(v: T, ms: number): Promise<T> => new Promise((r) => setTimeout(() => r(v), ms));`,
-        `const Writer = async () => { await later(null, 5); ExecutionContext.set(KEY, "written"); return "w"; };`,
-        `const Reader = async () => { await later(null, 1); return ExecutionContext.get(KEY); };`,
+        `const Writer = async () => { await later(null, 5); Scope.set(KEY, "written"); return "w"; };`,
+        `const Reader = async () => { await later(null, 1); return Scope.get(KEY); };`,
         `export const build = () => <div><Writer /><Reader /></div>;`,
       ].join("\n");
       const result = precompileTransform(code, "/src/app.tsx", {
@@ -1026,13 +1026,13 @@ describe("precompileTransform", () => {
       });
       writeFileSync(outputPath, result!.code);
       const mod = (await import(outputPath)) as { build: () => unknown };
-      const { ExecutionContext } = await import("@vincle/core");
-      const KEY = ExecutionContext.key<string>("e2e:order");
+      const { Scope } = await import("@vincle/core");
+      const KEY = Scope.key<string>("e2e:order");
       const results = new Set<string>();
       for (let i = 0; i < 5; i++) {
         results.add(
-          await ExecutionContext.withScope(async () => {
-            ExecutionContext.set(KEY, "initial");
+          await Scope.with(async () => {
+            Scope.set(KEY, "initial");
             return String(await renderToString(mod.build()));
           }),
         );

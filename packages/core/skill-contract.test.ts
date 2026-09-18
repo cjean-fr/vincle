@@ -81,7 +81,7 @@ declare global {
   const raw: typeof Vincle.raw;
   const createContext: typeof Vincle.createContext;
   const useContext: typeof Vincle.useContext;
-  const ExecutionContext: typeof Vincle.ExecutionContext;
+  const Scope: typeof Vincle.Scope;
 
   const fetchUser: (id: string) => Promise<{ name: string }>;
   const fetchPosts: (id: string) => Promise<unknown[]>;

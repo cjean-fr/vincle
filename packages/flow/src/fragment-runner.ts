@@ -4,7 +4,7 @@ import { renderToString, type JSX } from "@vincle/core";
 // local copy it replaces needed an `as any` to ask the question at all.
 import { isAsyncIterable } from "@vincle/core/html";
 
-import type { TemplateEntry } from "./template-store.js";
+import type { FragmentEntry } from "./fragment-store.js";
 import type { DeferContent, FlowEvent, FlowOptions, MergeType } from "./types.js";
 
 import { createTimeoutSignal } from "./timeout.js";
@@ -20,7 +20,7 @@ type ClassificationResult =
   | { kind: "stream"; iterable: AsyncIterable<JSX.Element> }
   | { kind: "sync-error"; error: unknown };
 
-function classifyEntry(entry: TemplateEntry, signal: AbortSignal): ClassificationResult {
+function classifyEntry(entry: FragmentEntry, signal: AbortSignal): ClassificationResult {
   try {
     const value = isLazyFactory(entry.content) ? entry.content(signal) : entry.content;
     if (isAsyncIterable(value)) return { kind: "stream", iterable: value };
@@ -72,7 +72,7 @@ async function reportOrThrow(
 type FragmentResult = { isStreaming: boolean; done: Promise<void> };
 
 /**
- * Resolve a single template entry: classify the content and return the work.
+ * Resolve a single fragment entry: classify the content and return the work.
  *
  * The returned `{ isStreaming, done }` pair lets the drain loop route one-shots
  * (barrier) vs streams (run concurrently). Classification is synchronous so
@@ -80,7 +80,7 @@ type FragmentResult = { isStreaming: boolean; done: Promise<void> };
  */
 export function runFragment(
   id: string,
-  entry: TemplateEntry,
+  entry: FragmentEntry,
   emit: Emit,
   opts: FlowOptions,
 ): FragmentResult {
@@ -91,7 +91,7 @@ export function runFragment(
 
 function runFragmentInScope(
   id: string,
-  entry: TemplateEntry,
+  entry: FragmentEntry,
   emit: Emit,
   opts: FlowOptions,
 ): FragmentResult {

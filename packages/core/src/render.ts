@@ -9,8 +9,8 @@ import {
   renderLeaf,
   valueToText,
 } from "./escape.js";
+import { providerMarker, renderProvider, type Context } from "./provider.js";
 import { isVoidElement, serializeElement, serializeVoidElement } from "./serialize.js";
-import { providerMarker, renderProvider, type Context } from "./tree-context.js";
 import { RawString, VNode } from "./types.js";
 import { TemplateNode } from "./types.js";
 

@@ -1,11 +1,11 @@
-import { ExecutionContext, raw, renderToString, type JSX } from "@vincle/core";
+import { Scope, raw, renderToString, type JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 
 import { assertAdapter, PREFIX, describeValue } from "./config.js";
 import { withFlow, initFlowAssets, suppressFlowAssets, type FlowContext } from "./context.js";
 import { ERR_FLOW_CONFIG, ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
-import { flushTemplates } from "./flushTemplates.js";
+import { flushFragments } from "./flushFragments.js";
 
 const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
 
@@ -26,7 +26,7 @@ export interface PureStaticContext {
  */
 export interface StaticContext extends PureStaticContext {
   /**
-   * Materialize every pending template as a standalone file. Each is
+   * Materialize every pending fragment as a standalone file. Each is
    * wrapped with `adapter.Frame` and rendered, so `html` is ready to write as
    * is; `url` is the path from `generatePath(id)`.
    */
@@ -52,13 +52,13 @@ function createStaticContext(
 ): StaticContext {
   return {
     renderPage: (node) =>
-      ExecutionContext.withScope(async () => {
+      Scope.with(async () => {
         // A page boundary is an asset boundary: a fresh state before the
         // render, so `<Style>` emits once per page rather than once per site.
         initFlowAssets();
         const html = await renderToString(node());
         return adapter?.transformShell ? adapter.transformShell(html, ctx) : html;
-      }, ExecutionContext.snapshot()),
+      }, Scope.snapshot()),
 
     emitFragments: async (cb) => {
       if (!adapter) {
@@ -72,9 +72,9 @@ function createStaticContext(
       // Standalone fragment files carry no assets — the shell including them
       // already has them — so this scope suppresses emission, and `<Style>`
       // returns null rather than a tag a later pass would have to remove.
-      await ExecutionContext.withScope(async () => {
+      await Scope.with(async () => {
         suppressFlowAssets();
-        await flushTemplates(ctx, async (ev) => {
+        await flushFragments(ctx, async (ev) => {
           if (ev.type === "fragment") {
             const framed = await renderToString(
               adapter.Frame({ id: ev.id, children: raw(ev.html) }),
@@ -82,15 +82,15 @@ function createStaticContext(
             await cb(ev.id, generatePath(ev.id), framed);
           }
         });
-      }, ExecutionContext.snapshot());
-      // Emitted fragments leave the store. `flushTemplates` tracks what it has
+      }, Scope.snapshot());
+      // Emitted fragments leave the store. `flushFragments` tracks what it has
       // processed only within one call, so without this the natural
       // site-generator loop — `renderPage(p); emitFragments(write)` per page —
       // re-emits every earlier fragment on every page: quadratic writes, and
       // each lazy factory replayed, so a `(signal) => fetch(...)` is refetched
       // once per remaining page. A fragment is written to a file here; there is
       // nothing left to drain.
-      ctx.templateStore.clear();
+      ctx.fragments.clear();
     },
   };
 }

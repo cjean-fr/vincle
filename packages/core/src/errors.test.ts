@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import { useContext, context, withScope } from "./context.js";
 import { jsx } from "./jsx-runtime.js";
+import { Scope } from "./scope.js";
 
 /**
  * A code is only worth having if every error carries one, and a behavioural test
@@ -72,8 +72,8 @@ describe("error codes", () => {
   });
 
   it("names a context read that was never set", async () => {
-    const Theme = context<string>("errors.test:theme");
-    await expect(withScope(async () => useContext(Theme))).rejects.toThrow(
+    const Theme = Scope.key<string>("errors.test:theme");
+    await expect(Scope.with(async () => Scope.get(Theme))).rejects.toThrow(
       expect.objectContaining({ code: "ERR_VINCLE_CONTEXT_UNSET" }),
     );
   });

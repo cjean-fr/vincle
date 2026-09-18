@@ -20,13 +20,13 @@ export async function Results() {
 
 export function SearchPage() {
   return (
-    <Defer.Group>
+    <Defer.Sequence>
       <Defer target="summary" fallback={<p>Loading summary…</p>}>
         <Summary />
       </Defer>
       <Defer target="results" fallback={<p>Loading results…</p>}>
         <Results />
       </Defer>
-    </Defer.Group>
+    </Defer.Sequence>
   );
 }

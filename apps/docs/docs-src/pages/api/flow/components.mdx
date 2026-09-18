@@ -35,26 +35,27 @@ for an explicit `target` paired with its destination.
 | `timeout`  | `number`                                                                                                                                                 | —            | Per-fragment render timeout in ms                       |
 | `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void`                                                                                           | —            | Per-fragment error handler                              |
 
-## Defer.Group
+## Defer.Sequence / Defer.Together
 
-Coordinates delivery of descendant Defer fragments during streaming.
-Access it through `Defer.Group` after importing `Defer` from `@vincle/flow`.
+Coordinate the delivery of descendant Defer fragments during streaming.
+Access them through `Defer.Sequence` and `Defer.Together` after importing
+`Defer` from `@vincle/flow`.
 
-| Prop       | Type         | Default | Description                                             |
-| ---------- | ------------ | ------- | ------------------------------------------------------- |
-| `children` | `Renderable` | —       | Content containing deferred fragments or nested groups  |
-| `together` | `boolean`    | `false` | Hold patches until every group item is ready or settled |
+| Prop       | Type         | Description                                            |
+| ---------- | ------------ | ------------------------------------------------------ |
+| `children` | `Renderable` | Content containing deferred fragments or nested groups |
 
-With `together={false}`, patches are released in document order.
-With `together`, ready patches are held until the group can be released, then
-sent in document order. This coordinates delivery, not an atomic DOM update.
-Sibling deferred work can still run concurrently.
+`Defer.Sequence` releases patches one at a time, in document order — a fragment
+never overtakes its left neighbor, even when it finishes first.
+`Defer.Together` holds the group's patches until every fragment is ready (or has
+settled), then releases the whole group at once. Both coordinate delivery, not an
+atomic DOM update: sibling deferred work can still run concurrently.
 
 Groups add no HTML wrapper. Nested groups participate as an item in their
 parent's ordering. A failed fragment settles its place so later items can proceed;
 its Defer `onError` controls replacement content.
 
-See [Control reveal order](/integration/streaming#control-reveal-order-with-defer-group)
+See [Control reveal order](/integration/streaming#control-reveal-order-with-defersequence)
 for examples and the latency trade-off.
 
 ## Slot

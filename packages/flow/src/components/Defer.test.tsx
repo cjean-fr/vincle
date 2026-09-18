@@ -1,6 +1,6 @@
 import type { VNode } from "@vincle/core";
 
-import { ExecutionContext } from "@vincle/core";
+import { Scope } from "@vincle/core";
 import { raw, renderToString } from "@vincle/core";
 import { describe, expect, it } from "bun:test";
 
@@ -179,7 +179,7 @@ describe("Defer — deferred content (placeholder always)", () => {
   });
 
   it("generates a src in static mode", async () => {
-    await ExecutionContext.withScope(async () => {
+    await Scope.with(async () => {
       initFlow({
         adapter: TurboAdapter,
         mode: "static",
@@ -324,12 +324,12 @@ describe("a string DeferContent is text, not markup", () => {
   });
 });
 
-describe("Defer.Group component", () => {
+describe("Defer.Sequence / Defer.Together", () => {
   it("sequential (default): reveals in DOM order even when later item finishes first", async () => {
     const events = await collectEvents(
       renderToFlowEvents(
         () => (
-          <Defer.Group>
+          <Defer.Sequence>
             <Defer target="slow">
               {async () => {
                 await sleep(40);
@@ -342,7 +342,7 @@ describe("Defer.Group component", () => {
                 return <div>Fast content</div>;
               }}
             </Defer>
-          </Defer.Group>
+          </Defer.Sequence>
         ),
         TurboAdapter,
       ),
@@ -365,7 +365,7 @@ describe("Defer.Group component", () => {
 
     const stream = renderToFlowEvents(
       () => (
-        <Defer.Group together>
+        <Defer.Together>
           <Defer target="fast">
             {async () => {
               await sleep(15);
@@ -378,7 +378,7 @@ describe("Defer.Group component", () => {
               return <div>Slow</div>;
             }}
           </Defer>
-        </Defer.Group>
+        </Defer.Together>
       ),
       TurboAdapter,
     );
@@ -399,18 +399,18 @@ describe("Defer.Group component", () => {
     expect(Math.abs(emittedTimestamps["fast"]! - emittedTimestamps["slow"]!)).toBeLessThan(15);
   });
 
-  it("nested Defer.Group: coordinates hierarchical groups", async () => {
+  it("nested Defer.Sequence: coordinates hierarchical groups", async () => {
     const events = await collectEvents(
       renderToFlowEvents(
         () => (
-          <Defer.Group>
+          <Defer.Sequence>
             <Defer target="hero">
               {async () => {
                 await sleep(40);
                 return <div>Hero</div>;
               }}
             </Defer>
-            <Defer.Group together>
+            <Defer.Together>
               <Defer target="col-a">
                 {async () => {
                   await sleep(10);
@@ -423,14 +423,14 @@ describe("Defer.Group component", () => {
                   return <div>Col B</div>;
                 }}
               </Defer>
-            </Defer.Group>
+            </Defer.Together>
             <Defer target="footer">
               {async () => {
                 await sleep(5);
                 return <div>Footer</div>;
               }}
             </Defer>
-          </Defer.Group>
+          </Defer.Sequence>
         ),
         TurboAdapter,
       ),
@@ -452,7 +452,7 @@ describe("Defer.Group component", () => {
     const events = await collectEvents(
       renderToFlowEvents(
         () => (
-          <Defer.Group>
+          <Defer.Sequence>
             <Defer target="failing" onError={() => <div>Error UI</div>}>
               {async () => {
                 await sleep(10);
@@ -465,7 +465,7 @@ describe("Defer.Group component", () => {
                 return <div>Next OK</div>;
               }}
             </Defer>
-          </Defer.Group>
+          </Defer.Sequence>
         ),
         TurboAdapter,
       ),
@@ -485,7 +485,7 @@ describe("Defer.Group component", () => {
     const events = await collectEvents(
       renderToFlowEvents(
         () => (
-          <Defer.Group>
+          <Defer.Sequence>
             <Defer
               target="silent-fail"
               onError={() => {
@@ -503,7 +503,7 @@ describe("Defer.Group component", () => {
                 return <div>Good</div>;
               }}
             </Defer>
-          </Defer.Group>
+          </Defer.Sequence>
         ),
         TurboAdapter,
       ),
@@ -517,7 +517,7 @@ describe("Defer.Group component", () => {
     expect(fragments[0]!.html).toContain("Good");
   });
 
-  it("streaming Defer (AsyncIterable) in sequential Defer.Group: unblocks after first yield", async () => {
+  it("streaming Defer (AsyncIterable) in a Defer.Sequence: unblocks after first yield", async () => {
     async function* liveFeed() {
       yield (<li>Feed 1</li>) as VNode;
       await sleep(30);
@@ -527,7 +527,7 @@ describe("Defer.Group component", () => {
     const events = await collectEvents(
       renderToFlowEvents(
         () => (
-          <Defer.Group>
+          <Defer.Sequence>
             <Defer target="header">
               {async () => {
                 await sleep(15);
@@ -543,7 +543,7 @@ describe("Defer.Group component", () => {
                 return <footer>Footer</footer>;
               }}
             </Defer>
-          </Defer.Group>
+          </Defer.Sequence>
         ),
         TurboAdapter,
       ),

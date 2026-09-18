@@ -1,10 +1,10 @@
-import { ExecutionContext, renderToString } from "@vincle/core";
+import { Scope, renderToString } from "@vincle/core";
 
-const Theme = ExecutionContext.key<"light" | "dark">("app:theme");
-const ChildPage = () => <div>{ExecutionContext.get(Theme)}</div>;
+const Theme = Scope.key<"light" | "dark">("app:theme");
+const ChildPage = () => <div>{Scope.get(Theme)}</div>;
 
-const childHtml = await ExecutionContext.withScope(async () => {
-  ExecutionContext.set(Theme, "dark");
-  const seed = ExecutionContext.snapshot();
-  return ExecutionContext.withScope(() => renderToString(<ChildPage />), seed);
+const childHtml = await Scope.with(async () => {
+  Scope.set(Theme, "dark");
+  const seed = Scope.snapshot();
+  return Scope.with(() => renderToString(<ChildPage />), seed);
 });

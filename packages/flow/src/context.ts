@@ -1,43 +1,43 @@
-import { ExecutionContext, type ContextKey, type JSX } from "@vincle/core";
+import { Scope, type ScopeKey, type JSX } from "@vincle/core";
 
-import type { DeferGroupData, FlowConfig } from "./types.js";
+import type { FragmentGroupData, FlowConfig } from "./types.js";
 
 import { createAssetState, createSuppressedAssetState, type AssetState } from "./assets.js";
 import { assertFlowConfig, PREFIX } from "./config.js";
 import { ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
-import { createTemplateStore, type TemplateEntry, type TemplateStore } from "./template-store.js";
+import { createFragmentStore, type FragmentEntry, type FragmentStore } from "./fragment-store.js";
 
 export type { FlowConfig } from "./types.js";
 
 export interface FlowContext {
   config: FlowConfig;
-  /** Internal template-content store. */
-  templateStore: TemplateStore;
+  /** Internal fragment-content store. */
+  fragments: FragmentStore;
   /** Named asset state for `<Style name>` / `<Script name>` dedup. */
   assets: AssetState;
 
   nextId: () => string;
   /**
-   * Register template content to render into the DOM element with this `id`.
+   * Register fragment content to render into the DOM element with this `id`.
    * Validates the id and that `merge` is supported by the active adapter.
    */
-  registerTemplate(id: string, entry: TemplateEntry): void;
+  registerFragment(id: string, entry: FragmentEntry): void;
 }
 
-export const Flow: ContextKey<FlowContext> = ExecutionContext.key<FlowContext>("@vincle/flow:flow");
+export const Flow: ScopeKey<FlowContext> = Scope.key<FlowContext>("@vincle/flow:flow");
 
-export interface DeferScope {
-  group: DeferGroupData;
-  claimChild(target: string): void;
+export interface GroupScope {
+  group: FragmentGroupData;
+  add(target: string): void;
 }
 
-export const DeferContext: ContextKey<DeferScope | null> = ExecutionContext.key<DeferScope | null>(
-  "@vincle/flow:defer",
+export const Group: ScopeKey<GroupScope | null> = Scope.key<GroupScope | null>(
+  "@vincle/flow:group",
 );
 
-export function useDeferScope(): DeferScope | null {
+export function useGroupScope(): GroupScope | null {
   try {
-    return ExecutionContext.get(DeferContext);
+    return Scope.get(Group);
   } catch {
     return null;
   }
@@ -60,7 +60,7 @@ export function renderPlaceholder(
   children?: JSX.Element | null,
   src?: string,
 ): JSX.Element {
-  const { config } = ExecutionContext.get(Flow);
+  const { config } = Scope.get(Flow);
   if (!config.adapter) {
     throw vincleError(
       `${PREFIX} renderPlaceholder("${id}"): no adapter configured — a placeholder needs an adapter ` +
@@ -77,15 +77,15 @@ export function initFlow(config: FlowConfig): void {
   // The funnel for every flow entry point: a wrong config stops here, at setup.
   assertFlowConfig(config);
   let counter = 0;
-  const store = createTemplateStore(config);
+  const store = createFragmentStore(config);
   const assets = createAssetState();
-  ExecutionContext.set(DeferContext, null);
-  ExecutionContext.set(Flow, {
+  Scope.set(Group, null);
+  Scope.set(Flow, {
     config,
-    templateStore: store,
+    fragments: store,
     assets,
     nextId: () => `${config.idPrefix ?? "fragment-"}${++counter}`,
-    registerTemplate(id, entry) {
+    registerFragment(id, entry) {
       store.register(id, entry);
     },
   });
@@ -99,8 +99,8 @@ export function initFlow(config: FlowConfig): void {
  * object made them race on `.assets`.
  */
 export function initFlowAssets(): void {
-  const current = ExecutionContext.get(Flow);
-  ExecutionContext.set(Flow, { ...current, assets: createAssetState() });
+  const current = Scope.get(Flow);
+  Scope.set(Flow, { ...current, assets: createAssetState() });
 }
 
 /**
@@ -108,13 +108,13 @@ export function initFlowAssets(): void {
  * fragment files, whose assets belong to the shell that includes them.
  */
 export function suppressFlowAssets(): void {
-  const current = ExecutionContext.get(Flow);
-  ExecutionContext.set(Flow, { ...current, assets: createSuppressedAssetState() });
+  const current = Scope.get(Flow);
+  Scope.set(Flow, { ...current, assets: createSuppressedAssetState() });
 }
 
 export function withFlow<T>(handler: (ctx: FlowContext) => T, config: FlowConfig): Promise<T> {
-  return ExecutionContext.withScope(async function () {
+  return Scope.with(async function () {
     initFlow(config);
-    return handler(ExecutionContext.get(Flow));
+    return handler(Scope.get(Flow));
   });
 }

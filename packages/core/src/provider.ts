@@ -97,7 +97,7 @@ export function renderProvider<T>(
 }
 
 /** Capture the active tree frame for deferred work that executes later. */
-export function snapshotTreeContext(): <T>(render: () => T) => T {
+export function snapshotContext(): <T>(render: () => T) => T {
   const frame = store?.getStore();
   const capturedStore = store;
   return <T>(render: () => T): T =>

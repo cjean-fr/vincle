@@ -8,7 +8,7 @@ import { collect } from "./test-utils.js";
 import { composeShell, injectIntoHead } from "./utils.js";
 
 // These transforms ignore the ctx; a real ShellContext needs no stubbing.
-const CTX: ShellContext = { templateStore: { size: 0 } };
+const CTX: ShellContext = { fragments: { size: 0 } };
 
 describe("injectIntoHead", () => {
   const CONTENT = "<style>i{}</style>";

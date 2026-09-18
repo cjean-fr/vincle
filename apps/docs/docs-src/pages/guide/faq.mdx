@@ -92,7 +92,7 @@ title: FAQ
         name: "How do I debug rendering issues?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Vincle fails fast on common mistakes: an invalid tag name, a function passed as an attribute value, and a missing ExecutionContext value all throw. TypeScript catches type errors at build time. For runtime issues, wrap components in try/catch or use @vincle/flow's onError handlers for per-fragment error recovery.",
+          text: "Vincle fails fast on common mistakes: an invalid tag name, a function passed as an attribute value, and a missing Scope value all throw. TypeScript catches type errors at build time. For runtime issues, wrap components in try/catch or use @vincle/flow's onError handlers for per-fragment error recovery.",
         },
       },
     ],
@@ -267,7 +267,7 @@ Vincle throws or blocks for:
 - **Invalid tag names** — throws a `TypeError`, at construction (a computed tag, or a hand-built `VNode`)
 - **Children on a void element** — throws a `TypeError` at construction: `<img>{caption}</img>` has no valid HTML form, whatever `caption` holds
 - **Function-valued attributes** — throws (`on*` or not — a function has no HTML form)
-- **Missing execution values** — throws when `ExecutionContext.get` reads a key that was never set
+- **Missing execution values** — throws when `Scope.get` reads a key that was never set
 - **Invalid URL schemes** — blocked and replaced with `#blocked`
 
 TypeScript catches type errors at build time. For runtime issues in
