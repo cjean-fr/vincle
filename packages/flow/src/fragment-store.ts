@@ -1,9 +1,14 @@
 import type { JSX } from "@vincle/core";
 
-import type { DeferContent, FragmentGroupData, FlowConfig, MergeType, OnError } from "./types.js";
+import type { DeferContent, FlowConfig, MergeType, OnError } from "./types.js";
 
 import { PREFIX, assertTimeout } from "./config.js";
-import { ERR_FLOW_MERGE_UNSUPPORTED, ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
+import {
+  ERR_FLOW_DUP_FRAGMENT,
+  ERR_FLOW_MERGE_UNSUPPORTED,
+  ERR_FLOW_NO_ADAPTER,
+  vincleError,
+} from "./errors.js";
 import { assertFragmentId } from "./utils.js";
 
 /**
@@ -22,8 +27,6 @@ export type FragmentEntry = {
   onError?: OnError;
   /** Initial fallback content rendered in the placeholder element. */
   fallback?: JSX.Element;
-  /** Id of the fragment group this fragment belongs to, if any. */
-  groupId?: string;
 };
 
 /**
@@ -34,7 +37,7 @@ export type FragmentEntry = {
  * lives here rather than in `flushFragments`.
  */
 export type FragmentStore = {
-  /** Register or overwrite an entry for `id`. Validates merge support. */
+  /** Register an entry for `id`. One target is registered once per render — a second registration throws. Validates id, timeout, adapter and merge support. */
   register(id: string, entry: FragmentEntry): void;
   /** Retrieve a registered entry by id. */
   get(id: string): FragmentEntry | undefined;
@@ -46,15 +49,10 @@ export type FragmentStore = {
   readonly size: number;
   /** Purge all entries to eagerly release closures and references. */
   clear(): void;
-  /** Register a fragment group */
-  addGroup(group: FragmentGroupData): void;
-  /** Retrieve a fragment group by id */
-  getGroup(id: string): FragmentGroupData | undefined;
 };
 
 export function createFragmentStore(config: FlowConfig): FragmentStore {
   const map = new Map<string, FragmentEntry>();
-  const deferGroups = new Map<string, FragmentGroupData>();
   const merges: readonly string[] = config.adapter?.capabilities.merges ?? [];
   const store: FragmentStore = {
     register(id, entry) {
@@ -81,6 +79,15 @@ export function createFragmentStore(config: FlowConfig): FragmentStore {
           ERR_FLOW_MERGE_UNSUPPORTED,
         );
       }
+      if (map.has(id)) {
+        throw vincleError(
+          `${PREFIX} <Defer target="${id}">: target is already registered — a target is ` +
+            `registered once per render. Two <Defer> on the same target would emit two ` +
+            `placeholders with the same DOM id, and only the second fragment would be patched. ` +
+            `Give the second fragment a different target, or omit target to get a generated one.`,
+          ERR_FLOW_DUP_FRAGMENT,
+        );
+      }
       map.set(id, entry);
     },
     get(id) {
@@ -104,13 +111,6 @@ export function createFragmentStore(config: FlowConfig): FragmentStore {
     },
     clear() {
       map.clear();
-      deferGroups.clear();
-    },
-    addGroup(group) {
-      deferGroups.set(group.id, group);
-    },
-    getGroup(id) {
-      return deferGroups.get(id);
     },
   };
   return store;

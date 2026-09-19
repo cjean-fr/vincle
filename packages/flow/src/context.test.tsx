@@ -18,7 +18,7 @@ describe("initFlow", () => {
 });
 
 describe("context.registerFragment()", () => {
-  it("registers, validates ids, and is last-wins on duplicate id", async () => {
+  it("registers, validates ids, and refuses a duplicate id", async () => {
     await Scope.with(async () => {
       initFlow({ adapter: TurboAdapter, mode: "streaming" });
       const { registerFragment, fragments } = Scope.get(Flow);
@@ -27,10 +27,12 @@ describe("context.registerFragment()", () => {
       expect(fragments.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
         "replace",
       );
-      registerFragment("badge", { content: <span>43</span>, merge: "append" });
-      expect(fragments.size).toBe(1);
+      expect(() =>
+        registerFragment("badge", { content: <span>43</span>, merge: "append" }),
+      ).toThrow(/already registered/);
+      // The refused duplicate leaves the first registration untouched.
       expect(fragments.outstanding(new Set()).find(([id]) => id === "badge")?.[1].merge).toBe(
-        "append",
+        "replace",
       );
       expect(() => registerFragment("has space", { content: <span />, merge: "replace" })).toThrow(
         /valid fragment id/,

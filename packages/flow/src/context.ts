@@ -1,6 +1,6 @@
 import { Scope, type ScopeKey, type JSX } from "@vincle/core";
 
-import type { FragmentGroupData, FlowConfig } from "./types.js";
+import type { FlowConfig } from "./types.js";
 
 import { createAssetState, createSuppressedAssetState, type AssetState } from "./assets.js";
 import { assertFlowConfig, PREFIX } from "./config.js";
@@ -20,28 +20,12 @@ export interface FlowContext {
   /**
    * Register fragment content to render into the DOM element with this `id`.
    * Validates the id and that `merge` is supported by the active adapter.
+   * Throws when the id is already registered — one target per render.
    */
   registerFragment(id: string, entry: FragmentEntry): void;
 }
 
 export const Flow: ScopeKey<FlowContext> = Scope.key<FlowContext>("@vincle/flow:flow");
-
-export interface GroupScope {
-  group: FragmentGroupData;
-  add(target: string): void;
-}
-
-export const Group: ScopeKey<GroupScope | null> = Scope.key<GroupScope | null>(
-  "@vincle/flow:group",
-);
-
-export function useGroupScope(): GroupScope | null {
-  try {
-    return Scope.get(Group);
-  } catch {
-    return null;
-  }
-}
 
 /**
  * The single adapter negotiation for deferred-fragment placeholders. Defer,
@@ -79,7 +63,6 @@ export function initFlow(config: FlowConfig): void {
   let counter = 0;
   const store = createFragmentStore(config);
   const assets = createAssetState();
-  Scope.set(Group, null);
   Scope.set(Flow, {
     config,
     fragments: store,

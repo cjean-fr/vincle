@@ -24,7 +24,7 @@ export { renderToString } from "./src/render.js";
 export { Fragment, jsx, jsxs } from "./src/jsx-runtime.js";
 export type { VNode } from "./src/jsx-runtime.js";
 
-// ── Context API ────────────────────────────────────────────────────────────
+// ── Context & Scope ───────────────────────────────────────────────────────
 
 export { Scope } from "./src/scope.js";
 export type { ScopeKey, ScopeMap } from "./src/scope.js";
