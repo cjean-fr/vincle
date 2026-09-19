@@ -21,14 +21,14 @@
 
 ## Layout & toolchain
 
-- `packages/` — 7: `core`, `flow`, `vite-plugin`, `precompile`, `precompile-core`, `eslint-plugin`, `typescript-config`
+- `packages/` — 6: `core`, `flow`, `vite-plugin`, `precompile`, `eslint-plugin`, `typescript-config`
 - `@vincle/core`'s intrinsic element table is generated — **never hand-edit the `@generated` regions of `src/jsx-namespace.ts`**. After touching `@types/react` or `csstype` (catalog) or `scripts/codegen.ts`, run `bun run codegen` in `packages/core`; `codegen:check` (part of `check`) fails CI if the committed file is stale
 - `apps/` — internal: `docs`, `bench` · `dist/` — built output (consumed by conformance tests)
 - `turbo.json` — single source of task deps/caching; `build` depends on `^build`
 - Node >=22 for all CI/conformance; Bun 1.4.2 pinned (`packageManager`) is the dev runtime; benchmarks run with `bun --conditions=dist`
 - `tsdown` builds each package to `dist/` — **never hand-edit `dist/`**, regenerate with `bun run build`
 - `bunfig.toml`: `jsx = "react-jsx"`, `jsxImportSource = "@vincle/core"` — never change without checking all packages that reference it
-- Workspace deps: `@vincle/flow` → `core`; `@vincle/precompile` → `precompile-core`, `magic-string`, `oxc-parser`
+- Workspace deps: `@vincle/flow` → `core`; `@vincle/precompile` → `core`, `magic-string`, `oxc-parser`, `entities`
 
 ## Testing
 

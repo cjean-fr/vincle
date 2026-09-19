@@ -10,6 +10,9 @@ import type {
   Program,
 } from "oxc-parser";
 
+import MagicString from "magic-string";
+import { parseSync, visitorKeys } from "oxc-parser";
+
 import {
   collapseJsxWhitespace,
   decodeJsxEntities,
@@ -22,10 +25,7 @@ import {
   isVoidElement,
   remapAttrName,
   RUNTIME_SOURCE,
-} from "@vincle/precompile-core";
-import MagicString from "magic-string";
-import { parseSync, visitorKeys } from "oxc-parser";
-
+} from "./core/index.js";
 import { ERR_PRECOMPILE_HELPER, ERR_PRECOMPILE_INTERNAL, vincleError } from "./errors.js";
 
 export interface PluginConfig {

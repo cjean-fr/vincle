@@ -33,13 +33,13 @@
   "timeoutMS": 30000,
   "thresholds": {
     "high": 85,
-    "low": 63,
-    "break": 63
+    "low": 64,
+    "break": 64
   },
   "thresholds_comment": [
-    "Measured 2026-08-13, every mutator but BlockStatement: 68.63% (313 killed,",
-    "2 timeouts, 144 survived, 0 uncovered). `break` at 63 leaves ~5 points of",
-    "slack, like core's. It is a ratchet: when the score rises, this number rises",
-    "with it."
+    "Measured 2026-09-18, after `precompile-core` merged in as `src/core/`, every",
+    "mutator but BlockStatement: 69.75% (494 killed, 4 timeouts, 216 survived,",
+    "0 uncovered). `break` at 64 leaves ~5 points of slack, like core's. It is a",
+    "ratchet: when the score rises, this number rises with it."
   ]
 }

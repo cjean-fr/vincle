@@ -1,6 +1,6 @@
-import { RUNTIME_SOURCE } from "@vincle/precompile-core";
 import { readFile } from "node:fs/promises";
 
+import { RUNTIME_SOURCE } from "./core/index.js";
 import precompileTransform, {
   type PluginConfig,
   type RenderAttr,

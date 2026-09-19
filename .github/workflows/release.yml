@@ -13,7 +13,6 @@ on:
           - eslint-plugin
           - vite-plugin
           - precompile
-          - precompile-core
 
 jobs:
   release:

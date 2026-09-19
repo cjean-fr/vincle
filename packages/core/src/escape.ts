@@ -255,7 +255,7 @@ const RE_URL_TAB_NEWLINE = /[\t\n\r]/g;
 
 /**
  * @internal Shared with vincle's own tooling (`@vincle/eslint-plugin`,
- * `@vincle/precompile-core`, `@vincle/flow`) via `@vincle/core/html` — not
+ * `@vincle/precompile`, `@vincle/flow`) via `@vincle/core/html` — not
  * app-level API.
  *
  * The scheme a WHATWG URL parser would read, or `undefined` when the input

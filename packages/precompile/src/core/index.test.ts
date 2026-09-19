@@ -14,7 +14,7 @@ import {
   resolveAttrName,
 } from "./index.js";
 
-describe("precompile-core", () => {
+describe("core", () => {
   describe("isLowercaseTag", () => {
     it("returns true for lowercase first char", () => {
       expect(isLowercaseTag("div")).toBe(true);
