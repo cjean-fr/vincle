@@ -133,7 +133,7 @@ async function renderPages(pages: Page[]): Promise<{ url: string; title: string;
       const { prev, next } = resolveNavigation(sidebar, page.url);
       const currentTab = tabFor(config.tabs, page.url);
       const ext = path.extname(page.file);
-      const prose = config.handlers[ext]?.prose ?? false;
+      const prose = meta.prose === false ? false : (config.handlers[ext]?.prose ?? false);
 
       // Resolved before the render: `setDocs` runs inside the scope and must be
       // synchronous, so an await in there would set the context too late.

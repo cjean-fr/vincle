@@ -49,12 +49,52 @@ value, and the fix. See [Error handling](/api/core/error-handling).
 
 No lazy `Defer` in your pages? Call `renderToStatic` without options (just the handler). The handler receives a `PureStaticContext` — `emitFragments` does not exist, so the type system prevents accidental use.
 
-<CodeExample src="flow/pure-static.tsx" />
+```tsx
+import type { JSX } from "@vincle/core";
+
+import { renderToStatic } from "@vincle/flow";
+import { writeFile } from "node:fs/promises";
+
+declare const pages: { Component: () => JSX.Element; out: string }[];
+
+// Pure-static: no lazy <Defer>, no adapter needed.
+await renderToStatic(async (ctx) => {
+  await Promise.all(
+    pages.map(async (page) => {
+      const html = await ctx.renderPage(() => <page.Component />);
+      await writeFile(page.out, "<!DOCTYPE html>\n" + html);
+    }),
+  );
+});
+```
 
 ## With deferred fragments
 
 Pass `{ adapter }` as the second argument. The handler receives a `StaticContext` with `emitFragments`. Each deferred fragment is rendered and passed to your callback.
 
-<CodeExample src="flow/deferred-static.tsx" />
+```tsx
+import type { JSX } from "@vincle/core";
+
+import { renderToStatic } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+import { writeFile } from "node:fs/promises";
+
+declare const pages: { Component: () => JSX.Element; out: string }[];
+
+// Pages use <Defer> with lazy factories: emit fragment files after rendering all pages.
+await renderToStatic(
+  async (ctx) => {
+    for (const page of pages) {
+      const html = await ctx.renderPage(() => <page.Component />);
+      await writeFile(page.out, "<!DOCTYPE html>\n" + html);
+    }
+
+    // One .html file per deferred fragment — already
+    // Frame-wrapped, ready to write.
+    await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
+  },
+  { adapter: NativeAdapter },
+);
+```
 
 The same path must be declared in the page's `Include src` so the browser knows where to find each fragment.

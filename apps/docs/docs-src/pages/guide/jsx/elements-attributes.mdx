@@ -12,7 +12,20 @@ Any lowercase tag is rendered as an HTML element. Vincle knows which tags are
 [void elements](https://developer.mozilla.org/en-US/docs/Glossary/Void_element)
 (`img`, `br`, `input`, …) and renders them without a closing tag.
 
-<CodeExample src="guide/jsx/void-elements.tsx" output />
+```tsx
+import { renderToString } from "@vincle/core";
+
+const html = await renderToString(
+  <>
+    <input type="text" />
+    <br />
+  </>,
+);
+```
+
+```html
+<input type="text" /><br />
+```
 
 Uppercase tags are treated as **components** (functions).
 
@@ -78,7 +91,25 @@ Writing both is only possible for `class`/`className`, the one pair typed in
 both spellings. For the others, only the camelCase name is typed, so a
 conflict reaches an element through a spread — where the same rule applies.
 
-<CodeExample src="guide/jsx/attribute-conflicts.tsx" output />
+```tsx
+import { renderToString } from "@vincle/core";
+
+// `class` wins, `className` is dropped
+const classes = await renderToString(<div className="foo" class="bar" />);
+
+// No conflict — only one name given
+const single = await renderToString(<label htmlFor="email">Email</label>);
+
+// `class`/`className` is the only pair typed in both spellings. Every other
+// HTML name reaches an element through a spread, and the same rule applies:
+const spread = await renderToString(<label {...{ htmlFor: "a", for: "b" }}>Label</label>);
+```
+
+```html
+<div class="bar"></div>
+<label for="email">Email</label>
+<label for="b">Label</label>
+```
 
 The rationale: Vincle renders HTML, not React — the HTML-native form is the
 canonical output. React merges both values (classNames together, etc.), but
@@ -104,7 +135,15 @@ The literal `true` renders the attribute as a bare name (HTML boolean syntax).
 `style` accepts either a string or a `CSSProperties` object. Object values use
 camelCase keys (like React) and are converted to kebab-case CSS properties.
 
-<CodeExample src="guide/jsx/style-attribute.tsx" />
+```tsx
+import { renderToString } from "@vincle/core";
+
+// String style
+const html1 = await renderToString(<p style="color: red; font-size: 1.5rem;">Hello</p>);
+
+// Object style (camelCase → kebab-case conversion)
+const html2 = await renderToString(<p style={{ color: "red", fontFamily: "sans-serif" }}>Hello</p>);
+```
 
 CSS values are HTML-escaped (`&`, `<`, `>`, `"`) to prevent attribute
 breakout. CSS syntax is not additionally validated — the attack

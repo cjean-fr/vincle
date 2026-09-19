@@ -85,7 +85,6 @@ html {
 /* === Subtle thin scrollbars on secondary scroll regions === */
 .docs-nav,
 .docs-toc-column,
-.docs-code-block,
 .docs-search-results {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--docs-color-text-secondary) 35%, transparent) transparent;
@@ -229,18 +228,18 @@ html {
   }
 
   /* Code blocks: light bg + black text, never split across pages */
-  .docs-code-block {
+  .expressive-code {
     border: 1px solid #ccc !important;
     background: #fafafa !important;
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
-  .docs-code-block * {
+  .expressive-code * {
     color: #000 !important;
   }
 
-  .docs-code-block [style*="color"] {
+  .expressive-code [style*="color"] {
     color: #000 !important;
   }
 
@@ -298,7 +297,7 @@ html {
     outline-offset: -2px;
   }
 
-  .docs-code-block {
+  .expressive-code {
     border: 1px solid ButtonText;
   }
 
@@ -365,24 +364,13 @@ html {
 }
 
 /* === Code blocks: consistent spacing, never overflow === */
-.docs-code-block,
 .expressive-code {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.docs-code-block pre {
-  overflow-x: auto;
-}
-
-.docs-prose .docs-code-block,
 .docs-prose > .expressive-code {
   margin-block: 1.5rem;
-}
-
-/* Inside tabs, the tab container already has my-4 — avoid double spacing */
-.docs-tabs .docs-code-block {
-  margin-block: 0;
 }
 
 .expressive-code .frame:not(.has-title):not(.is-terminal) pre code {
@@ -401,25 +389,7 @@ html {
   transform: scale(0.95);
 }
 
-/* === MDX content tabs (state driven by aria-selected, toggled in tabs/client.ts) === */
-.docs-tab {
-  margin-bottom: -1px;
-  border-bottom: 2px solid transparent;
-  color: var(--docs-color-text-secondary);
-  transition:
-    color var(--docs-transition-fast),
-    border-color var(--docs-transition-fast);
-}
-
-.docs-tab:hover {
-  color: var(--docs-color-text);
-}
-
-.docs-tab[aria-selected="true"] {
-  border-bottom-color: var(--docs-color-accent);
-  color: var(--docs-color-accent);
-}
-
+/* === Content tabs: state driven by aria-selected, toggled in tabs/client.ts === */
 .docs-tab-panel:not(.active) {
   display: none;
 }

@@ -13,7 +13,6 @@ const config: ResolvedDocsConfig = {
   tagline: "Documentation",
   description: "The small, safe way to render JSX into HTML strings.",
   pages: "docs-src/pages",
-  examples: "docs-src/examples",
   clientEntry: "docs-src/client.ts",
   out: "dist",
   base: "/",

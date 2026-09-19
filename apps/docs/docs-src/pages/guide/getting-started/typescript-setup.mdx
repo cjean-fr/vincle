@@ -28,7 +28,17 @@ the compiler injects the runtime calls for you.
 `@vincle/core` works with Deno's built-in JSX transform. Configure the import
 source in `deno.json` so you don't need explicit imports in every file:
 
-<CodeExample src="guide/getting-started/deno.json" meta="title=deno.json" />
+```json title="deno.json"
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "npm:@vincle/core"
+  },
+  "imports": {
+    "@vincle/core": "npm:@vincle/core"
+  }
+}
+```
 
 Deno also supports `jsx: "precompile"` — Deno's own compile-time JSX transform.
 When enabled, Vincle exports the `jsxTemplate` and `jsxAttr`

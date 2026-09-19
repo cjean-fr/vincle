@@ -18,14 +18,65 @@ The examples below live together in the same directory.
 Components are functions with TypeScript props. They can load their own data.
 This example uses a local sample data source; replace it with your search service.
 
-<CodeExample src="home/results.tsx" />
+```tsx
+// Replace this sample data source with your database or search service.
+async function findResults() {
+  return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
+}
+
+export async function Results() {
+  const items = await findResults();
+  return (
+    <ul>
+      {items.map((item) => (
+        <li>
+          <a href={item.href}>{item.title}</a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
 
 ## Return HTML from a route
 
 Connect this handler to your existing server's routing layer. It uses the standard
 Response API; servers with their own response helpers can send the same HTML string.
 
-<CodeExample src="home/route.tsx" />
+```tsx
+import { renderToString } from "@vincle/core";
+
+async function findResults() {
+  return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
+}
+
+async function Results() {
+  const items = await findResults();
+  return (
+    <ul>
+      {items.map((item) => (
+        <li>
+          <a href={item.href}>{item.title}</a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Call this handler from your server's routing layer.
+export async function GET() {
+  const html = await renderToString(
+    <main>
+      <h1>Search results</h1>
+      <Results />
+    </main>,
+  );
+
+  return new Response(html, {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+```
 
 This response contains an HTML fragment. Wrap the view in your document layout
 when serving a complete page. Core adds no browser rendering runtime.
@@ -45,7 +96,40 @@ npm install @vincle/flow
 Keep Results unchanged and wrap it in Defer. Use renderToStream instead of
 renderToString to send the surrounding markup and fallback before the results.
 
-<CodeExample src="home/deferred.tsx" />
+```tsx
+import { Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+async function findResults() {
+  return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
+}
+
+async function Results() {
+  const items = await findResults();
+  return (
+    <ul>
+      {items.map((item) => (
+        <li>
+          <a href={item.href}>{item.title}</a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Page() {
+  return (
+    <main>
+      <h1>Search results</h1>
+      <Defer fallback={<p>Loading results…</p>}>
+        <Results />
+      </Defer>
+    </main>
+  );
+}
+
+const stream = renderToStream(() => <Page />, NativeAdapter);
+```
 
 The stream contains strings. In a server that accepts Web Streams, return it as a
 byte stream from your route:

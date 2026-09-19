@@ -15,7 +15,20 @@ handles both sync and lazy content. `Defer` renders its own placeholder —
 - **Sync** (plain JSX `children`) → content registered; placeholder rendered, `fallback` is its content
 - **Lazy** (factory `children`) → content deferred; placeholder rendered, `fallback` is its content
 
-<CodeExample src="flow/defer-signal.tsx" />
+```tsx
+import { Defer } from "@vincle/flow";
+
+async function HeavyDashboard() {
+  const data = await fetch("https://api.example.com/dashboard");
+  const json = await data.json();
+  return <pre>{JSON.stringify(json, null, 2)}</pre>;
+}
+
+// fallback is shown in the shell immediately.
+<Defer target="dashboard" fallback={<p>Loading dashboard…</p>}>
+  <HeavyDashboard />
+</Defer>;
+```
 
 This is the common case: placeholder and deferred content declared together,
 in one place, nothing else required. Reach for `Slot` only when the
@@ -35,29 +48,6 @@ for an explicit `target` paired with its destination.
 | `timeout`  | `number`                                                                                                                                                 | —            | Per-fragment render timeout in ms                       |
 | `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void`                                                                                           | —            | Per-fragment error handler                              |
 
-## Defer.Sequence / Defer.Together
-
-Coordinate the delivery of descendant Defer fragments during streaming.
-Access them through `Defer.Sequence` and `Defer.Together` after importing
-`Defer` from `@vincle/flow`.
-
-| Prop       | Type         | Description                                            |
-| ---------- | ------------ | ------------------------------------------------------ |
-| `children` | `Renderable` | Content containing deferred fragments or nested groups |
-
-`Defer.Sequence` releases patches one at a time, in document order — a fragment
-never overtakes its left neighbor, even when it finishes first.
-`Defer.Together` holds the group's patches until every fragment is ready (or has
-settled), then releases the whole group at once. Both coordinate delivery, not an
-atomic DOM update: sibling deferred work can still run concurrently.
-
-Groups add no HTML wrapper. Nested groups participate as an item in their
-parent's ordering. A failed fragment settles its place so later items can proceed;
-its Defer `onError` controls replacement content.
-
-See [Control reveal order](/integration/streaming#control-reveal-order-with-defersequence)
-for examples and the latency trade-off.
-
 ## Slot
 
 Declares a named insertion point that stands in for a `Defer` rendered
@@ -66,7 +56,37 @@ page-specific component fills later, by matching `target` to `name`. Its
 children render immediately as placeholder content, visible until the
 matching `Defer` patches them.
 
-<CodeExample src="flow/fill-signal.tsx" />
+```tsx
+import { Slot, Defer } from "@vincle/flow";
+
+async function LiveComments() {
+  const res = await fetch("https://api.example.com/comments");
+  const comments: Array<{ id: string; text: string }> = await res.json();
+  return (
+    <ul>
+      {comments.map((c) => (
+        <li key={c.id}>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+function Page() {
+  return (
+    <html>
+      <body>
+        <Slot name="comments">
+          <p>Loading comments…</p>
+        </Slot>
+
+        <Defer target="comments" timeout={5000}>
+          <LiveComments />
+        </Defer>
+      </body>
+    </html>
+  );
+}
+```
 
 Every adapter renders a placeholder as an element (or marker) carrying that
 one id, and every adapter's patch resolves to the _first_ match in the
@@ -86,7 +106,21 @@ second, dead placeholder with the same id right next to `Slot`'s live one.
 
 Browser fetches a fragment from a URL after the shell lands. No server-push required — works with any static file server.
 
-<CodeExample src="flow/deferred-src.tsx" />
+```tsx
+import { Include } from "@vincle/flow";
+
+// The browser fetches /fragments/comments.html after the shell lands.
+// No server-push needed — works with any static file server.
+function Page() {
+  return (
+    <html>
+      <body>
+        <Include src="/fragments/comments.html" />
+      </body>
+    </html>
+  );
+}
+```
 
 **Props:**
 

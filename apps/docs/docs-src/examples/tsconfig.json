@@ -1,8 +1,0 @@
-{
-  "extends": "../../../../packages/typescript-config/react.json",
-  "compilerOptions": {
-    "noUnusedLocals": false,
-    "noUnusedParameters": false
-  },
-  "include": ["."]
-}
