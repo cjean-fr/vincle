@@ -27,67 +27,48 @@ chunks follow as they resolve. The adapter is required — pass a streaming
 adapter (e.g. `NativeAdapter`) as the second argument. A ~550B polyfill is
 injected only when fragments are present.
 
-<CodeExample src="flow/deferred-stream.tsx" />
+```tsx
+import { Slot, Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+declare function fetchComments(): Promise<{ text: string }[]>;
+
+async function Comments() {
+  const items = await fetchComments();
+  return (
+    <ul>
+      {items.map((c) => (
+        <li>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+// <Slot> declares the placeholder with fallback content in the shell.
+// <Defer> pushes the real content, which replaces it when resolved.
+function Page() {
+  return (
+    <html>
+      <body>
+        <h1>My page</h1>
+        <Slot name="comments">
+          <p>Loading comments…</p>
+        </Slot>
+        <Defer target="comments">{() => <Comments />}</Defer>
+      </body>
+    </html>
+  );
+}
+
+// The shell is sent immediately; deferred fragments stream
+// in as they resolve. NativeAdapter injects a ~550 B polyfill.
+const stream = renderToStream(() => <Page />, NativeAdapter);
+```
 
 The shell is rendered fully before it is written — it arrives as a single
 chunk. Fragments stream in as they resolve, each written as soon as it is
 available. The response `Content-Type` is `text/html` with `chunked` transfer
 encoding.
-
-## Control reveal order with Defer.Sequence / Defer.Together
-
-Deferred components can finish in a different order on each request.
-Use `Defer.Sequence` when the page should reveal its sections in a predictable
-order, or `Defer.Together` when related sections should wait for each other.
-
-The group controls **fragment delivery**, not the order in which sibling
-deferred components start their work. Their rendering can run concurrently.
-Fallbacks remain part of the initial shell, and the group adds no HTML wrapper.
-
-### Reveal in document order
-
-`Defer.Sequence` delivers fragments in document order. If the results finish
-before the summary, their patch waits until the summary can be delivered.
-
-<CodeExample src="flow/defer-sequence.tsx" />
-
-Supply your own implementations of loadSummary and loadResults, then render
-SearchPage with renderToStream and a streaming adapter, as above.
-Async components work directly inside Defer; no function child is required.
-
-### Wait for related sections
-
-`Defer.Together` holds the group's patches until all its items are ready
-(or have settled after an error). This is useful when a summary and its results
-should be delivered as a group.
-
-<CodeExample src="flow/defer-together.tsx" />
-
-For these one-shot components, suppose the summary is ready at 80 ms and the
-results at 20 ms. These illustrative times describe delivery after the shell:
-
-| Mode           | At 20 ms            | At 80 ms                                |
-| -------------- | ------------------- | --------------------------------------- |
-| No group       | Results patch sent  | Summary patch sent                      |
-| Defer.Sequence | Results patch waits | Summary, then results patches sent      |
-| Defer.Together | Results patch waits | Both patches released in document order |
-
-If the summary finishes first, `Defer.Sequence` sends it immediately;
-`Defer.Together` still waits for the results. Grouping trades earlier delivery
-of some ready content for controlled reveal order. It does not guarantee a
-single atomic browser paint: the adapter still applies individual patches.
-
-### Nest groups
-
-Groups can be nested. For example, an outer `Defer.Sequence` can reveal a
-heading first, then an inner `Defer.Together` containing two related sections,
-then a final fragment. The inner group must release before the outer group
-advances to its next item.
-
-A failed fragment settles its position instead of blocking later items forever.
-Use Defer's `onError` to provide replacement content.
-
-See the [component reference](/api/flow/components#defersequence--defertogether) for props.
 
 ## Node HTTP server
 
@@ -95,7 +76,58 @@ Pipe the stream into any Node.js `http.ServerResponse` with `for await`. Each
 chunk is written as it becomes ready — the shell flushes immediately, deferred
 fragments arrive as they resolve.
 
-<CodeExample src="flow/node-server.tsx" />
+```tsx
+import { Slot, Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+import http from "node:http";
+
+declare function fetchComments(): Promise<{ text: string }[]>;
+
+// Simulate a slow data source
+async function Comments() {
+  const items = await fetchComments();
+  return (
+    <ul>
+      {items.map((c) => (
+        <li>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+function Page() {
+  return (
+    <html>
+      <body>
+        <h1>My page</h1>
+        <Slot name="comments">
+          <p>Loading comments…</p>
+        </Slot>
+        <Defer target="comments">{() => <Comments />}</Defer>
+      </body>
+    </html>
+  );
+}
+
+http
+  .createServer(async (_req, res) => {
+    const stream = renderToStream(() => <Page />, NativeAdapter);
+
+    // Shell flushes first; deferred fragments follow as they resolve.
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Transfer-Encoding": "chunked",
+    });
+
+    for await (const chunk of stream) {
+      res.write(chunk);
+    }
+    res.end();
+  })
+  .listen(3000);
+
+console.log("Listening on http://localhost:3000");
+```
 
 The example uses `http.createServer`, but the same pattern works with
 **Express**, **Fastify**, **Hono**, or any framework built on `node:http`.
@@ -127,7 +159,29 @@ An `AsyncIterable` returned by the factory streams one patch per yielded item.
 Each `yield` produces a patch; every patch from a single `<Defer>` carries
 that fragment's `merge` type:
 
-<CodeExample src="flow/stream-iterable.tsx" />
+```tsx
+import { Defer } from "@vincle/flow";
+
+declare function fetchRows(page: number): Promise<{ id: number; name: string }[]>;
+
+// Each yield produces an independent patch with the configured merge type.
+function Feed() {
+  return (
+    <Defer target="feed" merge="append">
+      {async function* () {
+        let page = 1;
+        while (true) {
+          const rows = await fetchRows(page++);
+          if (rows.length === 0) break;
+          for (const row of rows) {
+            yield <tr key={row.id}>{row.name}</tr>;
+          }
+        }
+      }}
+    </Defer>
+  );
+}
+```
 
 This is useful for real-time feeds, progress indicators, or any scenario where
 data arrives in multiple batches. The stream stays open until the iterable
@@ -140,7 +194,30 @@ into an `AsyncIterable` works, including a live event source. Node's
 `events.on` turns any `EventEmitter` into one, so each event becomes its own
 patch for as long as the connection stays open:
 
-<CodeExample src="flow/stream-events.tsx" />
+```tsx
+import { Defer } from "@vincle/flow";
+import { on, type EventEmitter } from "node:events";
+
+declare const priceFeed: EventEmitter; // emits "price" with { symbol, value }
+
+// Each event becomes its own patch — the stream stays open for as long as
+// the connection does, not until some fixed dataset is exhausted.
+function LivePrice() {
+  return (
+    <Defer target="price">
+      {async function* (signal) {
+        for await (const [price] of on(priceFeed, "price", { signal })) {
+          yield (
+            <span>
+              {price.symbol}: {price.value}
+            </span>
+          );
+        }
+      }}
+    </Defer>
+  );
+}
+```
 
 The factory's `signal` combines the request's abort signal with the
 fragment's `timeout` — passing it to `on` stops the listener the moment

@@ -199,7 +199,6 @@ describe("SSG build", () => {
     expect(html).toContain('http-equiv="Content-Security-Policy"');
     expect(html).toContain('http-equiv="Permissions-Policy"');
     expect(html).toContain('type="application/ld+json"');
-    expect(html).toContain('translate="no"');
     expect(html).toContain("inert");
   });
 });

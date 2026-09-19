@@ -5,6 +5,8 @@ export interface PageMeta {
   slug?: string;
   draft?: boolean;
   csp?: string;
+  /** Opt out of the handler's prose wrapper (default for `.mdx`: on). */
+  prose?: boolean;
 }
 
 // No `sidebar` here: label, order, grouping and hiding are decided by each
@@ -109,7 +111,6 @@ export interface DocsConfig {
   tagline?: string;
   description?: string;
   pages?: string;
-  examples?: string;
   clientEntry?: string;
   out?: string;
   base?: string;
@@ -132,7 +133,6 @@ export interface ResolvedDocsConfig {
   tagline: string | null;
   description: string;
   pages: string;
-  examples: string;
   clientEntry: string;
   out: string;
   base: string;

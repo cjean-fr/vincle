@@ -10,7 +10,25 @@ Fragments let you group multiple children without adding an extra DOM node.
 
 Two forms are available:
 
-<CodeExample src="guide/quick-start/fragment.tsx" />
+```tsx
+import { Fragment } from "@vincle/core";
+
+// Long form
+const items = (
+  <Fragment>
+    <li>One</li>
+    <li>Two</li>
+  </Fragment>
+);
+
+// Shorthand (requires jsxImportSource in tsconfig)
+const items2 = (
+  <>
+    <li>One</li>
+    <li>Two</li>
+  </>
+);
+```
 
 The shorthand `<>...</>` is emitted by the JSX transform when you have multiple root elements. The explicit `Fragment` import is useful when you need a key or prefer the long form:
 

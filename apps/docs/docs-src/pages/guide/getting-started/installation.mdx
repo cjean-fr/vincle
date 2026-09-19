@@ -9,26 +9,27 @@ TypeScript — that's all.
 
 ## Package manager
 
-<Tabs
-  syncKey="pkg-manager"
-  tabs={[
-    {
-      label: "npm",
-      content: <CodeBlock code="npm install @vincle/core" language="bash" />,
-    },
-    {
-      label: "bun",
-      content: <CodeBlock code="bun add @vincle/core" language="bash" />,
-    },
-  ]}
-/>
+```bash tab="npm" sync="pkg-manager"
+npm install @vincle/core
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/core
+```
 
 ## TypeScript configuration
 
 Set `jsxImportSource` in your `tsconfig.json` so that JSX files don't need any
 explicit import:
 
-<CodeExample src="guide/getting-started/tsconfig.json" meta="tsconfig.json" />
+```json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core"
+  }
+}
+```
 
 ## Attribute types
 

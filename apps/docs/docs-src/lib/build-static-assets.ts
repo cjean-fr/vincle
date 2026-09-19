@@ -212,22 +212,16 @@ export async function generateAiCatalog(outDir: string, config: ResolvedDocsConf
 /**
  * Emit a `<url>.md` twin for every content page, announced from the HTML head
  * via `rel="alternate" type="text/markdown"`. MDX pages are copied verbatim —
- * the source is the documentation; `<CodeExample src>` references resolve
- * under `apps/docs/docs-src/examples/` in the repo. The TSX home page has no
- * Markdown source and reuses `llms.txt`.
+ * the source is the documentation; code examples live in the fences themselves
+ * (`example` marks a full module, `output` one the build runs).
  */
 export async function generateMarkdownAlternates(
   pages: { url: string; file: string }[],
   outDir: string,
 ): Promise<void> {
   for (const page of pages) {
-    const target = path.join(outDir, `${page.url}.md`);
-    if (page.url === "/") {
-      const llms = await readFile(path.join(outDir, "llms.txt"), "utf-8");
-      await writeFile(target, llms, "utf-8");
-      continue;
-    }
     if (!page.file.endsWith(".mdx")) continue;
+    const target = path.join(outDir, `${page.url}.md`);
     await mkdir(path.dirname(target), { recursive: true });
     await copyFile(page.file, target);
   }

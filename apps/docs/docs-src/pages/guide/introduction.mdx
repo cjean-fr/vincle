@@ -12,7 +12,20 @@ Start with one component, render it to HTML, and return it from a route.
 With `@vincle/core`, components are functions, props are TypeScript values, and
 the result is an HTML string. The renderer adds no browser runtime.
 
-<CodeExample src="home/hello.tsx" output />
+```tsx
+import { renderToString } from "@vincle/core";
+
+function App({ name }: { name: string }) {
+  return <h1>Hello, {name}!</h1>;
+}
+
+const page = <App name="world" />;
+const html = await renderToString(page);
+```
+
+```html
+<h1>Hello, world!</h1>
+```
 
 Set up [the package](/guide/getting-started/installation) and
 [JSX in TypeScript](/guide/getting-started/typescript-setup), then connect
@@ -24,7 +37,27 @@ data access, and deployment setup.
 A component can be async. The renderer awaits its result before producing
 the final HTML.
 
-<CodeExample src="guide/async/async-component.tsx" />
+```tsx
+import { renderToString } from "@vincle/core";
+
+declare const db: {
+  users: {
+    findById(id: string): Promise<{ name: string; email: string }>;
+  };
+};
+
+async function UserCard({ id }: { id: string }) {
+  const user = await db.users.findById(id);
+  return (
+    <div class="card">
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+
+const html = await renderToString(<UserCard id="42" />);
+```
 
 Components execute in document order. Async support does not automatically
 parallelize sibling components: a complete string response waits for the tree.
@@ -44,6 +77,9 @@ see [Adapters](/integration/adapters) for setup and capabilities.
 ## What the core provides
 
 - **Typed components and attributes** — check props and HTML attributes with TypeScript.
+- **Tree context and scopes** — a React-style `createContext` passes a value to
+  a subtree (`<Context.Provider>` + `useContext`); `Scope` holds mutable
+  per-request state. See the [Context & Scope API](/api/core/scope).
 - **Default escaping** — text and attributes are escaped, and dangerous URL schemes
   are filtered. See the [security model](/guide/security) for context-specific
   rules and trusted HTML escape hatches.

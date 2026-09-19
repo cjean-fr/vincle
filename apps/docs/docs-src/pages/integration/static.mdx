@@ -27,7 +27,24 @@ No lazy `<Defer>` in your pages? Call `renderToStatic` without an adapter.
 `ctx.renderPage` applies any configured shell transforms and returns the full
 HTML string — ready to write to a file.
 
-<CodeExample src="flow/pure-static.tsx" />
+```tsx
+import type { JSX } from "@vincle/core";
+
+import { renderToStatic } from "@vincle/flow";
+import { writeFile } from "node:fs/promises";
+
+declare const pages: { Component: () => JSX.Element; out: string }[];
+
+// Pure-static: no lazy <Defer>, no adapter needed.
+await renderToStatic(async (ctx) => {
+  await Promise.all(
+    pages.map(async (page) => {
+      const html = await ctx.renderPage(() => <page.Component />);
+      await writeFile(page.out, "<!DOCTYPE html>\n" + html);
+    }),
+  );
+});
+```
 
 Each call to `ctx.renderPage` produces a complete HTML document. Use a build
 script to iterate over your routes and write each result to disk.
@@ -38,7 +55,30 @@ Pass an adapter and call `ctx.emitFragments` after rendering all pages. Each
 deferred fragment is rendered and passed to your callback with its id, its URL
 (from `generatePath`, default: `/fragments/{id}.html`), and its HTML content.
 
-<CodeExample src="flow/deferred-static.tsx" />
+```tsx
+import type { JSX } from "@vincle/core";
+
+import { renderToStatic } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+import { writeFile } from "node:fs/promises";
+
+declare const pages: { Component: () => JSX.Element; out: string }[];
+
+// Pages use <Defer> with lazy factories: emit fragment files after rendering all pages.
+await renderToStatic(
+  async (ctx) => {
+    for (const page of pages) {
+      const html = await ctx.renderPage(() => <page.Component />);
+      await writeFile(page.out, "<!DOCTYPE html>\n" + html);
+    }
+
+    // One .html file per deferred fragment — already
+    // Frame-wrapped, ready to write.
+    await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
+  },
+  { adapter: NativeAdapter },
+);
+```
 
 The browser loads the shell page first, then fetches each fragment URL
 independently using `<Include>`. Fragment files can be cached aggressively
@@ -66,7 +106,31 @@ predictable URL, only that file needs to change; the shell page that
 `renderFragment` produces exactly the bytes a full build would have written
 for one `id`, without rendering any page:
 
-<CodeExample src="flow/render-fragment.tsx" />
+```tsx
+import { renderFragment } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+declare function fetchPrice(symbol: string): Promise<{ value: number }>;
+
+// A Netlify/Vercel Edge Function — both run standard Request → Response
+// handlers, so this needs no platform SDK import.
+export default async function handler(req: Request): Promise<Response> {
+  const symbol = new URL(req.url).searchParams.get("symbol");
+  if (!symbol) return new Response("Missing symbol", { status: 400 });
+
+  const price = await fetchPrice(symbol);
+  const { url, html } = await renderFragment(
+    `price-${symbol}`,
+    <span>{price.value.toFixed(2)}</span>,
+    { adapter: NativeAdapter },
+  );
+
+  // `url` matches the path the full build already wrote this fragment to —
+  // upload `html` there (blob store, on-demand revalidation, CDN purge +
+  // PUT…). The shell page that includes it never needs rebuilding.
+  return Response.json({ url, html });
+}
+```
 
 This is what Netlify's on-demand functions or Vercel's on-demand
 revalidation need: a handler that, given fresh data, returns the fragment's

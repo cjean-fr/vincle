@@ -3,6 +3,5 @@
   "compilerOptions": {
     "types": ["vite/client", "bun"]
   },
-  "include": ["docs-src", "vite.config.ts"],
-  "exclude": ["docs-src/examples"]
+  "include": ["docs-src", "vite.config.ts"]
 }

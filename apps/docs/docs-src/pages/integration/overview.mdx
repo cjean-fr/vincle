@@ -86,7 +86,43 @@ framework. No hydration. Just HTML in chunks.
   </div>
 </div>
 
-<CodeExample src="flow/deferred-stream.tsx" />
+```tsx
+import { Slot, Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+declare function fetchComments(): Promise<{ text: string }[]>;
+
+async function Comments() {
+  const items = await fetchComments();
+  return (
+    <ul>
+      {items.map((c) => (
+        <li>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+// <Slot> declares the placeholder with fallback content in the shell.
+// <Defer> pushes the real content, which replaces it when resolved.
+function Page() {
+  return (
+    <html>
+      <body>
+        <h1>My page</h1>
+        <Slot name="comments">
+          <p>Loading comments…</p>
+        </Slot>
+        <Defer target="comments">{() => <Comments />}</Defer>
+      </body>
+    </html>
+  );
+}
+
+// The shell is sent immediately; deferred fragments stream
+// in as they resolve. NativeAdapter injects a ~550 B polyfill.
+const stream = renderToStream(() => <Page />, NativeAdapter);
+```
 
 ## Two rendering modes
 
@@ -121,23 +157,25 @@ framework. No hydration. Just HTML in chunks.
 
 ## Install
 
-<Tabs
-  syncKey="pkg-manager"
-  tabs={[
-    {
-      label: "npm",
-      content: <CodeBlock code="npm install @vincle/flow" language="bash" />,
-    },
-    {
-      label: "bun",
-      content: <CodeBlock code="bun add @vincle/flow" language="bash" />,
-    },
-  ]}
-/>
+```bash tab="npm" sync="pkg-manager"
+npm install @vincle/flow
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/flow
+```
 
 ## Adapters
 
 An adapter controls how placeholders and patches are encoded in the HTML shell.
 Integration ships five built-in adapters:
 
-<CodeExample src="flow/adapters.ts" />
+```ts
+import {
+  TurboAdapter, // Turbo Streams — <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
+  HtmxAdapter, // HTMX — hx-get / hx-swap-oob, morph on htmx >= 4
+  NativeAdapter, // <template for> + inline polyfill, all 5 positions
+  WebPlatformAdapter, // WICG declarative partial updates, replace only
+  EsiAdapter, // CDN edge composition via esi:include
+} from "@vincle/flow/adapters";
+```

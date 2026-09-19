@@ -45,8 +45,10 @@ describe("Expressive Code assets", () => {
   });
 
   /**
-   * The hoist rests on this. If an upgrade starts returning per-render styles,
-   * the `CodeBlock` path would drop them — better a failure than a silent one.
+   * The hoist rests on this. `getSharedRenderer` blanks the page-independent
+   * assets (they ship in the client bundle), so the rehype plugin must emit
+   * markup only — if an upgrade starts returning per-render styles, they are
+   * dropped silently. Better a failure here than a silent one.
    */
   it("rendering a block asks for no styles beyond the base stylesheet", async () => {
     const { ec } = await getRenderer();
