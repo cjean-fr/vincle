@@ -95,20 +95,19 @@ try {
 }
 ```
 
-| Code                         | Raised when                                                 |
-| ---------------------------- | ----------------------------------------------------------- |
-| `ERR_VINCLE_INVALID_TAG`     | a tag name that cannot be written as HTML                   |
-| `ERR_VINCLE_VOID_CHILDREN`   | content inside a void element (`<br>`, `<img>`, …)          |
-| `ERR_VINCLE_DANGEROUS_HTML`  | `dangerouslySetInnerHTML.__html` is not a string            |
-| `ERR_VINCLE_FUNCTION_ATTR`   | a function passed as an attribute value                     |
-| `ERR_VINCLE_VNODE_AS_TEXT`   | a component interpolated where text belongs                 |
-| `ERR_VINCLE_SCOPE_COLLISION` | overlapping `Scope.with()` with no `AsyncLocalStorage`      |
-| `ERR_VINCLE_NO_STORE`        | the Scope store was read before `Scope.with()` ran          |
-| `ERR_VINCLE_NO_SCOPE`        | a Scope call outside any `Scope.with()`                     |
-| `ERR_VINCLE_CONTEXT_KEY`     | `Scope.key()` given something other than a non-empty string |
-| `ERR_VINCLE_CONTEXT_LIMIT`   | more distinct context keys than the table holds             |
-| `ERR_VINCLE_CONTEXT_UNSET`   | `Scope.get()` read a value never set in scope               |
-| `ERR_VINCLE_TREE_ASYNC`      | async Provider render without `AsyncLocalStorage`           |
+| Code                         | Raised when                                                       |
+| ---------------------------- | ----------------------------------------------------------------- |
+| `ERR_VINCLE_INVALID_TAG`     | a tag name that cannot be written as HTML                         |
+| `ERR_VINCLE_VOID_CHILDREN`   | content inside a void element (`<br>`, `<img>`, …)                |
+| `ERR_VINCLE_DANGEROUS_HTML`  | `dangerouslySetInnerHTML.__html` is not a string                  |
+| `ERR_VINCLE_FUNCTION_ATTR`   | a function passed as an attribute value                           |
+| `ERR_VINCLE_VNODE_AS_TEXT`   | a component interpolated where text belongs                       |
+| `ERR_VINCLE_SCOPE_COLLISION` | overlapping renders or `Scope.with()` with no `AsyncLocalStorage` |
+| `ERR_VINCLE_NO_STORE`        | the Scope store was read before `Scope.with()` ran                |
+| `ERR_VINCLE_NO_SCOPE`        | a Scope call outside any `Scope.with()`                           |
+| `ERR_VINCLE_CONTEXT_KEY`     | `Scope.key()` given something other than a non-empty string       |
+| `ERR_VINCLE_CONTEXT_LIMIT`   | more distinct context keys than the table holds                   |
+| `ERR_VINCLE_CONTEXT_UNSET`   | `Scope.get()` read a value never set in scope                     |
 
 The first three are `TypeError`s — an argument that is not what it has to be.
 Every other code in this page, here and below, is a plain `Error`.

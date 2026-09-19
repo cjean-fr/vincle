@@ -7,6 +7,7 @@ import {
   ERR_NO_SCOPE,
   ERR_NO_STORE,
   ERR_SCOPE_COLLISION,
+  noAlsHint,
   vincleError,
 } from "./errors.js";
 
@@ -64,9 +65,7 @@ export class SyncContextStore implements ContextStore {
       throw vincleError(
         "[vincle/core] Scope.with() was entered while another scope was still awaiting, " +
           "and this runtime has no AsyncLocalStorage to tell the two apart. " +
-          "Enable it (Node ≥12.17, Bun, Deno ≥1.11, or Cloudflare Workers with " +
-          "`nodejs_compat`) — concurrent renders cannot share a synchronous scope. " +
-          "See https://vincle.cjean.fr/api/core/context",
+          noAlsHint("concurrent renders cannot share a synchronous scope"),
         ERR_SCOPE_COLLISION,
       );
     }
@@ -143,8 +142,8 @@ function warnSyncFallback(): void {
   console.warn(
     "[vincle/core] AsyncLocalStorage is not available on this runtime — " +
       "falling back to a synchronous context scope. One scope at a time works; " +
-      "overlapping concurrent renders will throw rather than leak context between them. " +
-      "See https://vincle.cjean.fr/api/core/context",
+      "a second scope entered while one is still in flight will throw. " +
+      "See https://vincle.cjean.fr/api/core/scope",
   );
 }
 

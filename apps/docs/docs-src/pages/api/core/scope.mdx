@@ -1,8 +1,8 @@
 ---
-title: Context API
+title: Context & Scope
 ---
 
-# Context API
+# Context & Scope
 
 Vincle has two ways to share values. **Tree Context** passes a value to
 descendants of a JSX Provider. **Scope** holds mutable state for
@@ -14,15 +14,15 @@ Create a context once, wrap the relevant subtree in its Provider, and read the
 nearest value with `useContext`. Without a Provider, the declared default is
 returned. A sibling outside the Provider sees its own ancestor's value.
 
-<CodeExample src="api/context/signatures.ts" />
+<CodeExample src="api/scope/signatures.ts" />
 
-<CodeExample src="api/context/basic.tsx" />
+<CodeExample src="api/scope/basic.tsx" />
 
 A root Provider works directly with `renderToString`; `Scope.with` is not needed.
 Providers preserve their value across `await` and across deferred Flow
 fragments. Separate concurrent renders do not share values.
 
-<CodeExample src="api/context/concurrent.tsx" />
+<CodeExample src="api/scope/concurrent.tsx" />
 
 The JSX shape and nearest Provider behavior match common React, Preact and
 Hono patterns. Vincle components and contexts are specific to its renderer;
@@ -37,17 +37,19 @@ Use `Scope.key<T>(name)` for a named, typed token.
 read a value set by an earlier component. `get` throws outside a scope or when
 the key has not been set.
 
-<CodeExample src="api/context/per-request.tsx" />
+<CodeExample src="api/scope/per-request.tsx" />
 
 `Scope.snapshot()` copies the current map. Pass the copy as the
 second argument to `Scope.with` to seed a child scope.
 
-<CodeExample src="api/context/snapshot.tsx" />
+<CodeExample src="api/scope/snapshot.tsx" />
 
 ## Runtime support
 
 The stores use `globalThis.AsyncLocalStorage` or `node:async_hooks`. Without
-either, tree Providers support synchronous rendering and reject async work;
-the Scope store supports one scope at a time and rejects overlapping
-requests. Both warn when they enter their fallback. Enable `AsyncLocalStorage`
-for concurrent rendering.
+either, both stores support one render at a time — including async — and
+refuse a second render that enters a Provider or `Scope.with` while the first
+is still in flight. The one case they cannot guard: a concurrent render that
+reads a context without entering one may see the in-flight render's values.
+Both warn when they enter their fallback. Enable `AsyncLocalStorage` for
+concurrent rendering.

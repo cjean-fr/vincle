@@ -77,14 +77,3 @@ export type Negotiate = (req: Request) => Negotiation;
 export type StreamingAdapter = Adapter & {
   capabilities: { streaming: true };
 };
-
-export type FragmentGroupItem =
-  | { kind: "fragment"; id: string }
-  | { kind: "group"; group: FragmentGroupData };
-
-export interface FragmentGroupData {
-  id: string;
-  together: boolean;
-  parentId?: string;
-  items: FragmentGroupItem[];
-}

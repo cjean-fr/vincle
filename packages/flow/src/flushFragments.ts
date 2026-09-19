@@ -1,7 +1,6 @@
 import type { FragmentStore } from "./fragment-store.js";
 import type { FlowEvent, FlowOptions } from "./types.js";
 
-import { FragmentCoordinator } from "./coordinator.js";
 import { runFragment } from "./fragment-runner.js";
 
 /**
@@ -19,6 +18,27 @@ async function settleOrThrow(promises: Promise<void>[]): Promise<void> {
 }
 
 /**
+ * One serialized emit shared by every fragment: concurrent fragments never
+ * interleave writes on the wire, and arrival order (completion order) is wire
+ * order. `drain` awaits the tail so the caller's next event (the closing tag)
+ * cannot overtake a patch still in flight.
+ */
+function serializeEmit(emit: (ev: FlowEvent) => Promise<void>): {
+  emit: (ev: FlowEvent) => Promise<void>;
+  drain: () => Promise<void>;
+} {
+  let tail = Promise.resolve();
+  return {
+    emit: (ev) => {
+      const next = tail.then(() => emit(ev));
+      tail = next.catch(() => {});
+      return next;
+    },
+    drain: () => tail,
+  };
+}
+
+/**
  * Drain every registered fragment entry, emitting semantic `FlowEvent`s to
  * `emit`. Each entry's content is classified at drain time:
  *
@@ -26,6 +46,8 @@ async function settleOrThrow(promises: Promise<void>[]): Promise<void> {
  *   **stream** — one patch per item, run in its own `for await` loop so a slow
  *   one never blocks the rest;
  * - anything else is a **one-shot** patch, rendered once.
+ *
+ * Fragments are emitted as they complete — concurrent work, completion order.
  *
  * One-shots drain generation by generation, so a nested `<Defer>` registered
  * while its parent renders is picked up and emitted after its parent — the
@@ -46,7 +68,7 @@ export async function flushFragments(
 ): Promise<void> {
   const processed = new Set<string>();
   const live: Promise<void>[] = [];
-  const coordinator = new FragmentCoordinator(ctx.fragments, emit);
+  const serial = serializeEmit(emit);
 
   while (!opts.signal?.aborted) {
     const wave = ctx.fragments.outstanding(processed);
@@ -54,21 +76,17 @@ export async function flushFragments(
       const oneShots: Promise<void>[] = [];
       for (const [id, entry] of wave) {
         processed.add(id);
-        const fragmentEmit = coordinator.createEmit(id);
-        const { isStreaming, done } = runFragment(id, entry, fragmentEmit, opts);
-        const trackedDone = done.finally(() => coordinator.handleSettled(id));
-        (isStreaming ? live : oneShots).push(trackedDone);
+        const { isStreaming, done } = runFragment(id, entry, serial.emit, opts);
+        (isStreaming ? live : oneShots).push(done);
       }
       await settleOrThrow(oneShots);
-      await coordinator.tryFlush();
       continue;
     }
     if (live.length === 0) break;
     await settleOrThrow(live);
     live.length = 0;
-    await coordinator.tryFlush();
     if (!ctx.fragments.hasOutstanding(processed)) break;
   }
   if (live.length > 0) await settleOrThrow(live);
-  await coordinator.tryFlush();
+  await serial.drain();
 }

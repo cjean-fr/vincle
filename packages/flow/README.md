@@ -145,52 +145,6 @@ import { Include } from "@vincle/flow";
 
 Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/issues/2791) and ESI `<esi:include>` — short, standard, self-explanatory.
 
-### `<Defer.Sequence>` / `<Defer.Together>` — coordinate streaming reveal order
-
-Coordinate when sibling deferred fragments (`<Defer>`) are revealed to the
-browser. Eliminates layout jumping ("popcorn" streaming) where independent
-fragments pop in out-of-order.
-
-Async operations and JSX rendering still execute **100% in parallel on the
-server** — only patch delivery onto the wire is orchestrated.
-
-```tsx
-import { Defer } from "@vincle/flow";
-
-// Sequence: reveals in DOM order; a fragment never overtakes its left neighbor
-<Defer.Sequence>
-  <Defer target="profile" fallback={<ProfileSkeleton />}>
-    {() => <Profile />}
-  </Defer>
-  <Defer target="feed" fallback={<FeedSkeleton />}>
-    {() => <Feed />}
-  </Defer>
-  <Defer target="comments" fallback={<CommentsSkeleton />}>
-    {() => <Comments />}
-  </Defer>
-</Defer.Sequence>
-
-// Together: holds all patches until every fragment in the group is ready
-<Defer.Together>
-  <Defer target="stats">{() => <Stats />}</Defer>
-  <Defer target="chart">{() => <Chart />}</Defer>
-</Defer.Together>
-
-// Nesting: a together group inside a sequence
-<Defer.Sequence>
-  <Defer target="hero">{() => <Hero />}</Defer>
-  <Defer.Together>
-    <Defer target="col-a">{() => <ColA />}</Defer>
-    <Defer target="col-b">{() => <ColB />}</Defer>
-  </Defer.Together>
-</Defer.Sequence>
-```
-
-| Component        | Behavior                                                                 |
-| ---------------- | ------------------------------------------------------------------------ |
-| `Defer.Sequence` | Patches are released one at a time, in document order                    |
-| `Defer.Together` | Patches are held until every fragment is ready, then released as a group |
-
 ### Content forms
 
 `Defer` accepts content in either form:
@@ -426,15 +380,13 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 ### Components
 
-| Export           | Import path               | Description                                                                     |
-| ---------------- | ------------------------- | ------------------------------------------------------------------------------- |
-| `Slot`           | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder    |
-| `Defer`          | `@vincle/flow`            | Push deferred content into a target DOM id — sync (plain JSX) or lazy (factory) |
-| `Defer.Sequence` | `@vincle/flow`            | Release child Defer fragments one at a time, in document order                  |
-| `Defer.Together` | `@vincle/flow`            | Hold child Defer fragments until every one is ready, then release as a group    |
-| `Include`        | `@vincle/flow`            | Client-side fetch placeholder — no server deferral                              |
-| `Style`          | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                               |
-| `Script`         | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                              |
+| Export    | Import path               | Description                                                                     |
+| --------- | ------------------------- | ------------------------------------------------------------------------------- |
+| `Slot`    | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder    |
+| `Defer`   | `@vincle/flow`            | Push deferred content into a target DOM id — sync (plain JSX) or lazy (factory) |
+| `Include` | `@vincle/flow`            | Client-side fetch placeholder — no server deferral                              |
+| `Style`   | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                               |
+| `Script`  | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                              |
 
 ### Renderers
 
@@ -487,6 +439,13 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | ---------------- | -------------------- | -------------------------------------------------------------------- |
 | `composeShell`   | `@vincle/flow/utils` | Compose several `transformShell` (string→string) into one            |
 | `injectIntoHead` | `@vincle/flow/utils` | Insert markup before `</head>` (building block for shell transforms) |
+
+### Flow context
+
+| Export        | Import path            | Description                                                                              |
+| ------------- | ---------------------- | ---------------------------------------------------------------------------------------- |
+| `Flow`        | `@vincle/flow/context` | The `Scope` key for the per-render flow context — `Scope.get(Flow)` from within a render |
+| `FlowContext` | `@vincle/flow/context` | The per-render context: `config`, `registerFragment`, `nextId`, asset state              |
 
 > `<Style>` / `<Script>` emit their tag directly, deduplicating as the walk
 > reaches them — no post-render pass, so nothing has to re-derive the document
