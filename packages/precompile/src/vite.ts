@@ -1,7 +1,6 @@
 import type { Plugin, ResolvedConfig } from "vite";
 
-import { RUNTIME_SOURCE } from "@vincle/precompile-core";
-
+import { RUNTIME_SOURCE } from "./core/index.js";
 import { ERR_PRECOMPILE_CONFIG, vincleError } from "./errors.js";
 import precompileTransform, {
   type PluginConfig,

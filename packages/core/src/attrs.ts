@@ -276,7 +276,7 @@ const ATTR_META = new Map<string, AttrMeta>();
 const ATTR_META_MAX = 1024;
 
 /**
- * @internal Shared with vincle's own tooling (`@vincle/precompile-core`,
+ * @internal Shared with vincle's own tooling (`@vincle/precompile`,
  * `@vincle/eslint-plugin`) via `@vincle/core/html` — not app-level API.
  *
  * Everything about an attribute *name*, memoized.
