@@ -56,14 +56,14 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@vincle/precompile-core": "workspace:^",
+    "@vincle/core": "workspace:^",
+    "entities": "^8.1.0",
     "magic-string": "^0.30.21",
     "oxc-parser": "catalog:"
   },
   "devDependencies": {
     "@jridgewell/trace-mapping": "^0.3.31",
     "@stryker-mutator/core": "^9.6.1",
-    "@vincle/core": "workspace:*",
     "bun": "catalog:",
     "preact": "^10.29.8",
     "tsdown": "catalog:",

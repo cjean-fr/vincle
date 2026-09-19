@@ -6,26 +6,25 @@ Monorepo of high-performance, type-safe tools built around JSX-to-HTML rendering
 
 ### Core
 
-| Package                                         | Description                                                                                                                |
-| :---------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
-| [`@vincle/core`](./packages/core)               | JSX-to-HTML string renderer. Zero dependencies.                                                                            |
-| [`@vincle/flow`](./packages/flow)               | Deferred fragments, streaming, and DOM patching — `<Slot>`, `<Defer>`, `<Include>` + Turbo / HTMX / Native / ESI adapters. |
-| [`@vincle/vite-plugin`](./packages/vite-plugin) | Vite asset integration — `<Asset>`, `assetUrl`, manifest resolution.                                                       |
+| Package                                         | Description                                                                                                                              |
+| :---------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@vincle/core`](./packages/core)               | JSX-to-HTML string renderer. Zero dependencies.                                                                                          |
+| [`@vincle/flow`](./packages/flow)               | Deferred fragments, streaming, and DOM patching — `<Slot>`, `<Defer>`, `<Include>` + Turbo / HTMX / Native / WebPlatform / ESI adapters. |
+| [`@vincle/vite-plugin`](./packages/vite-plugin) | Vite asset integration — `<Asset>`, `assetUrl`, manifest resolution.                                                                     |
 
 ### Tooling
 
-| Package                                                 | Description                                                      |
-| :------------------------------------------------------ | :--------------------------------------------------------------- |
-| [`@vincle/eslint-plugin`](./packages/eslint-plugin)     | ESLint rules for safe @vincle/core usage.                        |
-| [`@vincle/precompile-core`](./packages/precompile-core) | AST helpers for JSX precompile transforms.                       |
-| [`@vincle/precompile`](./packages/precompile)           | Deno-style JSX precompile transform, with Vite and Bun adapters. |
+| Package                                             | Description                                                      |
+| :-------------------------------------------------- | :--------------------------------------------------------------- |
+| [`@vincle/eslint-plugin`](./packages/eslint-plugin) | ESLint rules for safe @vincle/core usage.                        |
+| [`@vincle/precompile`](./packages/precompile)       | Deno-style JSX precompile transform, with Vite and Bun adapters. |
 
 ### Apps (internal)
 
-| App                     | Description                                                          |
-| :---------------------- | :------------------------------------------------------------------- |
-| [`docs`](./apps/docs)   | Documentation site for `@vincle/core`.                               |
-| [`bench`](./apps/bench) | Benchmarks vs @kitajs/html, React, Preact, hono/jsx + CI ratio gate. |
+| App                     | Description                                                                             |
+| :---------------------- | :-------------------------------------------------------------------------------------- |
+| [`docs`](./apps/docs)   | Documentation site for `@vincle/core`.                                                  |
+| [`bench`](./apps/bench) | Benchmarks vs @kitajs/html, React, Preact, hono/jsx + A/B revision comparison protocol. |
 
 ## Development
 

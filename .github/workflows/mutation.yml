@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: 'Package to mutate (workspace name), or "all" for all five'
+        description: 'Package to mutate (workspace name), or "all" for all four'
         required: false
         default: all
         type: choice
@@ -19,7 +19,6 @@ on:
           - all
           - "@vincle/core"
           - "@vincle/flow"
-          - "@vincle/precompile-core"
           - "@vincle/precompile"
           - "@vincle/eslint-plugin"
 

@@ -252,7 +252,7 @@ describe("buildAttrs style", () => {
 // ── Attribute name resolution ──────────────────────────────────────────────
 //
 // `resolveAttrName` is the single authority on what an attribute is *called* in
-// the document, and `@vincle/precompile-core` re-exports it to inline names at
+// the document, and `@vincle/precompile` re-exports it to inline names at
 // build time. It had no test at all: a wrong entry, or a missing one, produced an
 // attribute the browser ignores — no error, no visible failure, just a style that
 // never applied. That is how seventy SVG presentation attributes came to be
