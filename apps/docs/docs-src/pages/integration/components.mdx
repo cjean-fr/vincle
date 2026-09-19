@@ -12,7 +12,6 @@ plus a third for fetching a fragment from a separate URL entirely:
 - **`<Slot>`** — a named hole, standing in for a `<Defer>` that renders
   elsewhere in the tree
 - **`<Include>`** — client-side fetch placeholder
-- **`<Defer.Sequence>` / `<Defer.Together>`** — coordinate when deferred fragments are delivered
 
 ## `<Defer>` — defer content (sync or lazy)
 
@@ -150,18 +149,21 @@ The slot owns the loading message; `Defer` supplies the results from outside
 Browser fetches the fragment from a URL after the shell lands. No server-push
 required — works with any static file server.
 
-<CodeExample src="flow/deferred-src.tsx" />
+```tsx
+import { Include } from "@vincle/flow";
 
-## `<Defer.Sequence>` / `<Defer.Together>` — control reveal order
-
-Wrap related Defer components in a group to coordinate when their patches are
-released. `Defer.Sequence` releases them in document order; `Defer.Together`
-waits until the group is ready before releasing its patches. Deferred work can
-still run concurrently; the group coordinates delivery.
-
-See [Streaming](/integration/streaming#control-reveal-order-with-defersequence-defertogether)
-for sequences, together groups, and nesting, and the
-[API reference](/api/flow/components#defersequence--defertogether) for props.
+// The browser fetches /fragments/comments.html after the shell lands.
+// No server-push needed — works with any static file server.
+function Page() {
+  return (
+    <html>
+      <body>
+        <Include src="/fragments/comments.html" />
+      </body>
+    </html>
+  );
+}
+```
 
 ## Return types
 

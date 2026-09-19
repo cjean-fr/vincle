@@ -80,7 +80,22 @@ public API. `isSafeScheme`, for example, is exported from nowhere; the scheme
 reader it is built on, `schemeOf`, is available to build-time tooling from
 `@vincle/core/html` — not from `@vincle/core` itself.
 
-<CodeExample src="guide/getting-started/escaping.tsx" output />
+```tsx
+import { renderToString, raw } from "@vincle/core";
+
+// User input is HTML-escaped automatically
+const userInput = '<script>alert("xss")</script>';
+const html = await renderToString(<p>{userInput}</p>);
+
+// Use raw() only for trusted HTML you generated yourself
+const trustedHtml = "<em>rendered from your own markdown</em>";
+const html2 = await renderToString(<article>{raw(trustedHtml)}</article>);
+```
+
+```html
+<p>&lt;script&gt;alert("xss")&lt;/script&gt;</p>
+<article><em>rendered from your own markdown</em></article>
+```
 
 ### Escaping inside `<script>` and `<style>`
 
@@ -179,13 +194,47 @@ every value regardless of origin.
 
 `raw()` is the **only** way to inject unescaped HTML:
 
-<CodeExample src="safety/raw.tsx" output />
+```tsx
+import { renderToString, raw } from "@vincle/core";
+
+// Raw strings pass through verbatim — no escaping applied
+const html = await renderToString(<div>{raw("<strong>Bold</strong>")}</div>);
+```
+
+```html
+<div><strong>Bold</strong></div>
+```
 
 Use `raw()` only when you **know** the value is safe HTML — typically the
 output of a trusted Markdown renderer, a template engine, or your own
 hardcoded markup. Never pass user input directly to `raw()`.
 
-<CodeExample src="safety/one-rule.tsx" output />
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString, raw } from "@vincle/core";
+
+const userInput = '<script>alert("XSS")</script>';
+
+// ❌ NEVER do this with untrusted input
+const unsafe = await renderToString(<div>{raw(userInput)}</div>);
+
+// ✅ This is safe (default behavior - always escaped)
+const safe = await renderToString(<div>{userInput}</div>);
+
+// ✅ raw() is safe with trusted sources (markdown, templates, your code)
+const trustedHtml = "<strong>Hello</strong>";
+const result = await renderToString(<p>{raw(trustedHtml)}</p>);
+```
+
+```html
+<div>
+  <script>
+    alert("XSS");
+  </script>
+</div>
+<div>&lt;script&gt;alert("XSS")&lt;/script&gt;</div>
+<p><strong>Hello</strong></p>
+```
 
 ### `raw()` in an attribute
 
@@ -203,7 +252,32 @@ A URL attribute is the deliberate exception in the other direction: a
 `RawString` there skips the scheme check, because `raw()` means "I vouch for
 this value".
 
-<CodeExample src="safety/raw-attribute.tsx" output />
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString, raw } from "@vincle/core";
+
+// In content position, raw() is verbatim — that is the whole point.
+const content = await renderToString(<div>{raw("<strong>Bold</strong>")}</div>);
+
+// In attribute position it is verbatim too, except `"`: a value that carried one
+// would end the attribute and reopen the tag. Escaping it changes nothing a
+// parser reads back — the value is entity-decoded before CSS, JS or the DOM see it.
+const quoted = await renderToString(<div style={raw('font-family:"Inter"')} />);
+
+// So an attribute cannot be broken out of, even through raw().
+const attack = await renderToString(<a title={raw('" onmouseover="alert(1)')}>x</a>);
+
+// A URL attribute holding a RawString still skips the scheme check, by design:
+// raw() means "I vouch for this value".
+const vouched = await renderToString(<a href={raw("javascript:doIt()")}>run</a>);
+```
+
+```html
+<div><strong>Bold</strong></div>
+<div style='font-family:"Inter"'></div>
+<a title='" onmouseover="alert(1)'>x</a>
+<a href="javascript:doIt()">run</a>
+```
 
 Sanitized HTML is still not an attribute value. DOMPurify output contains
 quotes by construction; it belongs in element content, not in a `title`.
@@ -249,7 +323,32 @@ If you need to render untrusted user-generated HTML, run it through a
 sanitizer first, then pass the result via `raw()` — in element content, never
 as an attribute value.
 
-<CodeExample src="safety/style-injection.tsx" output />
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString } from "@vincle/core";
+
+const untrusted = "red;position:fixed;top:0;left:0;width:100vw;height:100vw";
+
+// A style object is inspected: a property name carrying CSS syntax is dropped,
+// and a value carrying `;` or `\` is CSS-escaped — the browser reads `\;` as a
+// literal `;`, so the smuggled declarations stay inside the value.
+const bag = await renderToString(<div style={{ color: untrusted }} />);
+
+// Legitimate values survive that escaping unchanged in meaning.
+const dataUri = await renderToString(
+  <div style={{ background: "url(data:image/png;base64,iVBORw0KGgo=)" }} />,
+);
+
+// A style *string* is an author-written declaration list: it is escaped for the
+// attribute, not parsed as CSS. Never build one from untrusted input.
+const asString = await renderToString(<div style={untrusted} />);
+```
+
+```html
+<div style="color:red\;position:fixed\;top:0\;left:0\;width:100vw\;height:100vw"></div>
+<div style="background:url(data:image/png\;base64,iVBORw0KGgo=)"></div>
+<div style="red;position:fixed;top:0;left:0;width:100vw;height:100vw"></div>
+```
 
 ## Best Practices
 

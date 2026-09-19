@@ -14,15 +14,65 @@ Create a context once, wrap the relevant subtree in its Provider, and read the
 nearest value with `useContext`. Without a Provider, the declared default is
 returned. A sibling outside the Provider sees its own ancestor's value.
 
-<CodeExample src="api/scope/signatures.ts" />
+```ts
+import { createContext, useContext, Scope } from "@vincle/core";
 
-<CodeExample src="api/scope/basic.tsx" />
+// Tree context: the default is returned outside any Provider.
+const Locale = createContext("en");
+const locale: string = useContext(Locale);
+
+// Execution context: a named key inside an isolated async scope.
+const RequestId = Scope.key<string>("app:request-id");
+await Scope.with(() => {
+  Scope.set(RequestId, "123");
+  const id: string = Scope.get(RequestId);
+  return id;
+});
+```
+
+```tsx
+import { createContext, useContext, renderToString } from "@vincle/core";
+
+const Theme = createContext<"light" | "dark">("light");
+
+function ThemedBox({ children }: { children: string }) {
+  const theme = useContext(Theme);
+  return <div class={theme === "dark" ? "dark" : "light"}>{children}</div>;
+}
+
+const html = await renderToString(
+  <Theme.Provider value="dark">
+    <ThemedBox>Hello</ThemedBox>
+  </Theme.Provider>,
+);
+```
 
 A root Provider works directly with `renderToString`; `Scope.with` is not needed.
 Providers preserve their value across `await` and across deferred Flow
 fragments. Separate concurrent renders do not share values.
 
-<CodeExample src="api/scope/concurrent.tsx" />
+```tsx
+import { createContext, useContext, renderToString } from "@vincle/core";
+
+const Theme = createContext("light");
+const Page = async () => {
+  await Promise.resolve();
+  return <div>{useContext(Theme)}</div>;
+};
+
+const [lightHtml, darkHtml] = await Promise.all([
+  renderToString(
+    <Theme.Provider value="light">
+      <Page />
+    </Theme.Provider>,
+  ),
+  renderToString(
+    <Theme.Provider value="dark">
+      <Page />
+    </Theme.Provider>,
+  ),
+]);
+```
 
 The JSX shape and nearest Provider behavior match common React, Preact and
 Hono patterns. Vincle components and contexts are specific to its renderer;
@@ -37,12 +87,41 @@ Use `Scope.key<T>(name)` for a named, typed token.
 read a value set by an earlier component. `get` throws outside a scope or when
 the key has not been set.
 
-<CodeExample src="api/scope/per-request.tsx" />
+```tsx
+import { Scope, renderToString } from "@vincle/core";
+
+declare function getSession(req: Request): Promise<{ userId: string }>;
+const Request = Scope.key<{ userId: string; locale: string }>("app:request");
+const App = () => <main>{Scope.get(Request).userId}</main>;
+
+async function handleRequest(req: Request): Promise<Response> {
+  const session = await getSession(req);
+  const html = await Scope.with(() => {
+    Scope.set(Request, {
+      userId: session.userId,
+      locale: req.headers.get("Accept-Language") ?? "en",
+    });
+    return renderToString(<App />);
+  });
+  return new Response(html, { headers: { "Content-Type": "text/html" } });
+}
+```
 
 `Scope.snapshot()` copies the current map. Pass the copy as the
 second argument to `Scope.with` to seed a child scope.
 
-<CodeExample src="api/scope/snapshot.tsx" />
+```tsx
+import { Scope, renderToString } from "@vincle/core";
+
+const Theme = Scope.key<"light" | "dark">("app:theme");
+const ChildPage = () => <div>{Scope.get(Theme)}</div>;
+
+const childHtml = await Scope.with(async () => {
+  Scope.set(Theme, "dark");
+  const seed = Scope.snapshot();
+  return Scope.with(() => renderToString(<ChildPage />), seed);
+});
+```
 
 ## Runtime support
 

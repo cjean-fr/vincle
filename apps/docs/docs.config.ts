@@ -11,7 +11,6 @@ export default defineConfig({
   // make the card promise `summary_large_image`.
 
   pages: "docs-src/pages",
-  examples: "docs-src/examples",
   clientEntry: "docs-src/client.ts",
   out: "dist",
   base: "/assets/",

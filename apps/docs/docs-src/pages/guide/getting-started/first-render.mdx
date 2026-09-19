@@ -11,7 +11,31 @@ Everything you need to render your first JSX to an HTML string.
 `renderToString` always returns a `Promise<string>`, even for synchronous
 trees. The simplest render outputs a complete HTML document.
 
-<CodeExample src="guide/getting-started/hello-world.tsx" output />
+```tsx
+import { renderToString } from "@vincle/core";
+
+const html = await renderToString(
+  <html lang="en">
+    <head>
+      <title>Hello, world!</title>
+    </head>
+    <body>
+      <h1>Hello, world!</h1>
+    </body>
+  </html>,
+);
+```
+
+```html
+<html lang="en">
+  <head>
+    <title>Hello, world!</title>
+  </head>
+  <body>
+    <h1>Hello, world!</h1>
+  </body>
+</html>
+```
 
 The returned string is ready to send over HTTP, write to a file, or embed in
 any response pipeline.
@@ -23,7 +47,27 @@ typed with standard TypeScript interfaces. Children are passed via the
 `children` prop or as JSX children, giving you the same composition model as
 React but without the overhead.
 
-<CodeExample src="guide/jsx/component.tsx" />
+```tsx
+import { renderToString, type JSX } from "@vincle/core";
+
+function Layout({ title, children }: { title: string; children: JSX.Element | JSX.Element[] }) {
+  return (
+    <html lang="en">
+      <head>
+        <title>{title}</title>
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+const html = await renderToString(
+  <Layout title="My page">
+    <h1>Welcome</h1>
+    <p>This is a page rendered with Vincle.</p>
+  </Layout>,
+);
+```
 
 Because there is no state or re-rendering, components are fully deterministic:
 same props, same output. This makes them trivially testable and cacheable.
@@ -35,7 +79,22 @@ properties — is HTML-escaped before it reaches the output. There is no
 escape-by-default opt-out. This covers `&`, `<`, `>`, and `"` across all
 rendering surfaces.
 
-<CodeExample src="guide/getting-started/escaping.tsx" output />
+```tsx
+import { renderToString, raw } from "@vincle/core";
+
+// User input is HTML-escaped automatically
+const userInput = '<script>alert("xss")</script>';
+const html = await renderToString(<p>{userInput}</p>);
+
+// Use raw() only for trusted HTML you generated yourself
+const trustedHtml = "<em>rendered from your own markdown</em>";
+const html2 = await renderToString(<article>{raw(trustedHtml)}</article>);
+```
+
+```html
+<p>&lt;script&gt;alert("xss")&lt;/script&gt;</p>
+<article><em>rendered from your own markdown</em></article>
+```
 
 The only way to inject unescaped HTML is `raw()`, an explicit opt-in wrapper
 for trusted content.
@@ -45,7 +104,27 @@ for trusted content.
 Any component can be an `async` function. `renderToString` awaits the whole
 tree, so the component that needs data is the component that fetches it.
 
-<CodeExample src="guide/async/async-component.tsx" />
+```tsx
+import { renderToString } from "@vincle/core";
+
+declare const db: {
+  users: {
+    findById(id: string): Promise<{ name: string; email: string }>;
+  };
+};
+
+async function UserCard({ id }: { id: string }) {
+  const user = await db.users.findById(id);
+  return (
+    <div class="card">
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+
+const html = await renderToString(<UserCard id="42" />);
+```
 
 This is covered in the [introduction](/guide/introduction#async-native).
 

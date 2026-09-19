@@ -9,7 +9,7 @@ import { mdxToJs, defineHastPlugin } from "satteri";
 import expressiveCode from "satteri-expressive-code";
 
 import { EC_THEMES, getSharedRenderer } from "./expressive-code.js";
-import { wrapTables } from "./hast-plugins.js";
+import { fenceTabs, wrapTables } from "./hast-plugins.js";
 
 /** Where compiled MDX lands before being imported. */
 const COMPILED_ROOT = path.resolve(import.meta.dirname, "../pages/.compiled");
@@ -97,6 +97,9 @@ const compileOptions: MdxCompileOptions = {
   providerImportSource: pathToFileURL(path.resolve(import.meta.dirname, "../mdx-components.jsx"))
     .href,
   hastPlugins: [
+    // Before expressive-code: wraps tabbed fences into the `.docs-tabs` DOM
+    // while they are still `pre` elements.
+    fenceTabs,
     // `customCreateRenderer` hands the plugin the shared renderer with its
     // page-independent assets blanked: those ship in the client bundle now
     // (see `expressive-code.ts`), so the plugin emits markup only.

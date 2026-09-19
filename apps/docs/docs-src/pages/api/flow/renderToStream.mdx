@@ -37,7 +37,43 @@ offending value, and the fix. See [Error handling](/api/core/error-handling).
 
 ## Usage
 
-<CodeExample src="flow/deferred-stream.tsx" />
+```tsx
+import { Slot, Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+declare function fetchComments(): Promise<{ text: string }[]>;
+
+async function Comments() {
+  const items = await fetchComments();
+  return (
+    <ul>
+      {items.map((c) => (
+        <li>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+// <Slot> declares the placeholder with fallback content in the shell.
+// <Defer> pushes the real content, which replaces it when resolved.
+function Page() {
+  return (
+    <html>
+      <body>
+        <h1>My page</h1>
+        <Slot name="comments">
+          <p>Loading comments…</p>
+        </Slot>
+        <Defer target="comments">{() => <Comments />}</Defer>
+      </body>
+    </html>
+  );
+}
+
+// The shell is sent immediately; deferred fragments stream
+// in as they resolve. NativeAdapter injects a ~550 B polyfill.
+const stream = renderToStream(() => <Page />, NativeAdapter);
+```
 
 Each chunk is written as soon as it is available — the shell as a single chunk, then one chunk per fragment. The response `Content-Type` is `text/html` with chunked transfer encoding.
 
@@ -86,12 +122,85 @@ are for — they render out of order and patch into place as they land.
 
 Pipe the stream into any Node.js `http.ServerResponse`. Each chunk is written as it becomes ready.
 
-<CodeExample src="flow/node-server.tsx" />
+```tsx
+import { Slot, Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+import http from "node:http";
+
+declare function fetchComments(): Promise<{ text: string }[]>;
+
+// Simulate a slow data source
+async function Comments() {
+  const items = await fetchComments();
+  return (
+    <ul>
+      {items.map((c) => (
+        <li>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+function Page() {
+  return (
+    <html>
+      <body>
+        <h1>My page</h1>
+        <Slot name="comments">
+          <p>Loading comments…</p>
+        </Slot>
+        <Defer target="comments">{() => <Comments />}</Defer>
+      </body>
+    </html>
+  );
+}
+
+http
+  .createServer(async (_req, res) => {
+    const stream = renderToStream(() => <Page />, NativeAdapter);
+
+    // Shell flushes first; deferred fragments follow as they resolve.
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Transfer-Encoding": "chunked",
+    });
+
+    for await (const chunk of stream) {
+      res.write(chunk);
+    }
+    res.end();
+  })
+  .listen(3000);
+
+console.log("Listening on http://localhost:3000");
+```
 
 ## Async iterables — streaming sequences
 
 An `AsyncIterable` returned by the factory streams one patch per yielded item. Each `yield` produces an independent patch with the configured `merge` type.
 
-<CodeExample src="flow/stream-iterable.tsx" />
+```tsx
+import { Defer } from "@vincle/flow";
+
+declare function fetchRows(page: number): Promise<{ id: number; name: string }[]>;
+
+// Each yield produces an independent patch with the configured merge type.
+function Feed() {
+  return (
+    <Defer target="feed" merge="append">
+      {async function* () {
+        let page = 1;
+        while (true) {
+          const rows = await fetchRows(page++);
+          if (rows.length === 0) break;
+          for (const row of rows) {
+            yield <tr key={row.id}>{row.name}</tr>;
+          }
+        }
+      }}
+    </Defer>
+  );
+}
+```
 
 The stream stays open until the iterable exhausts or the client disconnects.

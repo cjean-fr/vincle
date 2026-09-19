@@ -10,7 +10,23 @@ Components are plain functions that return JSX. No classes, no hooks, no lifecyc
 
 A component receives props as its first argument and returns JSX:
 
-<CodeExample src="guide/quick-start/component.tsx" output />
+```tsx
+import { renderToString } from "@vincle/core";
+
+function Greeting({ name }: { name: string }) {
+  return (
+    <p>
+      Hello, <strong>{name}</strong>!
+    </p>
+  );
+}
+
+const html = await renderToString(<Greeting name="Alice" />);
+```
+
+```html
+<p>Hello, <strong>Alice</strong>!</p>
+```
 
 ## Typed props
 
@@ -36,7 +52,27 @@ function Card({ title, children }: CardProps) {
 
 Components compose naturally — pass one component's output as another's children:
 
-<CodeExample src="guide/jsx/component.tsx" />
+```tsx
+import { renderToString, type JSX } from "@vincle/core";
+
+function Layout({ title, children }: { title: string; children: JSX.Element | JSX.Element[] }) {
+  return (
+    <html lang="en">
+      <head>
+        <title>{title}</title>
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+const html = await renderToString(
+  <Layout title="My page">
+    <h1>Welcome</h1>
+    <p>This is a page rendered with Vincle.</p>
+  </Layout>,
+);
+```
 
 ## Async components
 
@@ -60,11 +96,13 @@ Sibling async branches run in document order, one at a time — `renderToString`
 
 - **State** — there is no re-rendering. State lives outside the render (database, request context).
 - **Effects** — no client lifecycle. Render once, produce a string, done.
-- **Client context updates** — a Provider supplies values during server rendering; Vincle does not re-render in the browser.
+- **Client context updates** — a React-style `Context.Provider` supplies values during
+  server rendering; Vincle does not re-render in the browser.
 - **`React.memo`** — every render is a fresh call. Memoization is meaningless.
 
 ## Where to next
 
 - [Fragments](/guide/jsx/fragments) — grouping children without a DOM wrapper
 - [Elements & attributes](/guide/jsx/elements-attributes) — how JSX maps to HTML
+- [Context & Scope](/api/core/scope) — share a value with a subtree (Provider) or a request (Scope)
 - [First render](/guide/getting-started/first-render) — your first component

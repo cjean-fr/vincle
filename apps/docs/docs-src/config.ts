@@ -10,7 +10,6 @@ const ROOT = path.resolve(import.meta.dirname!, "..");
 
 const DEFAULTS = {
   pages: "./docs-src/pages",
-  examples: "./docs-src/examples",
   clientEntry: "docs-src/client.ts",
   out: "./dist",
   base: "/",
@@ -34,7 +33,6 @@ export function defineConfig(config: DocsConfig): ResolvedDocsConfig {
     tagline: config.tagline ?? null,
     description: config.description ?? config.title,
     pages: path.resolve(ROOT, config.pages ?? DEFAULTS.pages),
-    examples: path.resolve(ROOT, config.examples ?? DEFAULTS.examples),
     // No `path.resolve`: this value is a *Vite manifest key*, not a disk
     // path, and `<Asset entry>` looks it up as-is.
     clientEntry: config.clientEntry ?? DEFAULTS.clientEntry,
