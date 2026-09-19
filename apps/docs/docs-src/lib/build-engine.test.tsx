@@ -64,7 +64,7 @@ describe("SSG build", () => {
       "index.html",
       "guide/getting-started/installation.html",
       "guide/introduction.html",
-      "api/core/context.html",
+      "api/core/scope.html",
       "integration/overview.html",
     ];
     for (const page of pages) {

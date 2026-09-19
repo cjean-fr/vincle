@@ -30,7 +30,6 @@ export const ERR_NO_SCOPE = "ERR_VINCLE_NO_SCOPE";
 export const ERR_CONTEXT_KEY = "ERR_VINCLE_CONTEXT_KEY";
 export const ERR_CONTEXT_LIMIT = "ERR_VINCLE_CONTEXT_LIMIT";
 export const ERR_CONTEXT_UNSET = "ERR_VINCLE_CONTEXT_UNSET";
-export const ERR_TREE_ASYNC = "ERR_VINCLE_TREE_ASYNC";
 
 /**
  * Codes raised as `Error` — a state or a value the renderer cannot use.
@@ -44,8 +43,7 @@ export type ErrorCode =
   | typeof ERR_NO_SCOPE
   | typeof ERR_CONTEXT_KEY
   | typeof ERR_CONTEXT_LIMIT
-  | typeof ERR_CONTEXT_UNSET
-  | typeof ERR_TREE_ASYNC;
+  | typeof ERR_CONTEXT_UNSET;
 
 /** Codes raised as `TypeError` — an argument that is not what it has to be. */
 export type TypeErrorCode =
@@ -77,4 +75,17 @@ export function vincleTypeError(message: string, code: TypeErrorCode): TypeError
   error.code = code;
   Error.captureStackTrace?.(error, vincleTypeError);
   return error;
+}
+
+/**
+ * The tail of the errors raised on a runtime without `AsyncLocalStorage`: the
+ * runtimes that have it, and the page that documents the fallback. One
+ * constant so the runtime list cannot drift between the messages.
+ */
+export function noAlsHint(consequence: string): string {
+  return (
+    "Enable it (Node ≥16, Bun, Deno ≥1.11, or Cloudflare Workers with `nodejs_compat`) — " +
+    consequence +
+    ". See https://vincle.cjean.fr/api/core/scope"
+  );
 }

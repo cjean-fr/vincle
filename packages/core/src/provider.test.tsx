@@ -17,7 +17,7 @@ const Locale = createContext("fr");
 const Reader = () => <b>{useContext(Locale)}</b>;
 
 describe("tree context", () => {
-  test("synchronous fallback nests and unwinds without leaking a frame", () => {
+  test("synchronous fallback nests, allows one in-flight render, and refuses a second", async () => {
     const fallback = new SyncTreeStore();
     const token = createContext<unknown>("default");
     const outer = { context: token, value: "outer", parent: undefined };
@@ -35,15 +35,29 @@ describe("tree context", () => {
           }),
         ).toThrow("failed");
         expect(fallback.getStore()?.value).toBe("outer");
-        expect(() =>
-          fallback.run({ context: token, value: "async", parent: fallback.getStore() }, () =>
-            Promise.resolve("later"),
-          ),
-        ).toThrow("async Providers require AsyncLocalStorage");
         return fallback.getStore()?.value;
       }),
     ).toBe("outer");
     expect(fallback.getStore()).toBeUndefined();
+
+    // One render may be in flight — even async: its frame stays installed until
+    // it settles, and a second render is refused rather than leaking.
+    const pending = fallback.run(
+      { context: token, value: "in-flight", parent: fallback.getStore() },
+      () => Promise.resolve("later"),
+    );
+    expect(fallback.getStore()?.value).toBe("in-flight");
+    expect(() =>
+      fallback.run({ context: token, value: "second", parent: fallback.getStore() }, () => "x"),
+    ).toThrow("no AsyncLocalStorage");
+    await pending;
+    expect(fallback.getStore()).toBeUndefined();
+    expect(
+      fallback.run(
+        { context: token, value: "again", parent: undefined },
+        () => fallback.getStore()?.value,
+      ),
+    ).toBe("again");
   });
   test("default, nearest Provider and later siblings", async () => {
     expect(useContext(Locale)).toBe("fr");

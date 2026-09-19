@@ -1,12 +1,5 @@
 export { Slot, type SlotProps } from "./components/Slot.js";
-export {
-  Defer,
-  type DeferProps,
-  DeferSequence,
-  type DeferSequenceProps,
-  DeferTogether,
-  type DeferTogetherProps,
-} from "./components/Defer.js";
+export { Defer, type DeferProps } from "./components/Defer.js";
 export { Include, type IncludeProps } from "./components/Include.js";
 export { renderToStream, renderToFlowEvents } from "./render.js";
 export { renderToStatic } from "./static.js";

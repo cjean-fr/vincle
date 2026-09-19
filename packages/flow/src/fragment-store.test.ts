@@ -43,6 +43,14 @@ describe("FragmentStore", () => {
       ).toThrow('merge="prepend" is not supported');
     });
 
+    it("throws when the same id is registered twice", () => {
+      const store = createFragmentStore(adaptCfg());
+      store.register("frag-a", { content: "<p>hello</p>", merge: "replace" });
+      expect(() => store.register("frag-a", { content: "<p>other</p>", merge: "replace" })).toThrow(
+        "already registered",
+      );
+    });
+
     it("throws when fragment id is invalid", () => {
       const cfg = adaptCfg();
       const store = createFragmentStore(cfg);
