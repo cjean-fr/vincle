@@ -2,7 +2,7 @@ import type { ViteManifest } from "@vincle/vite-plugin";
 
 import { loadViteManifest, setVite } from "@vincle/vite-plugin";
 import { existsSync } from "node:fs";
-import { writeFile, mkdir, rm, cp } from "node:fs/promises";
+import { writeFile, mkdir, rm, cp, readdir } from "node:fs/promises";
 import { availableParallelism, cpus } from "node:os";
 import path from "node:path";
 
@@ -74,6 +74,7 @@ export async function initBuild(): Promise<void> {
 export async function rebuildAll(): Promise<void> {
   if (!manifest) await initBuild();
   await cleanupCompiled();
+  await cleanupDist();
   clearMetaCache();
   clearHistoryCache();
   allPages = await discoverPages(config);
@@ -84,6 +85,23 @@ export async function rebuildAll(): Promise<void> {
 
 async function cleanupCompiled(): Promise<void> {
   await rm(COMPILED_DIR, { recursive: true, force: true });
+}
+
+/**
+ * Vite owns `assets/` (its outDir, which it empties itself) and the files
+ * copied from `public/`; everything else under `dist/` is SSG output. A
+ * renamed or deleted page must not survive as a dead route in the served
+ * directory, so each full rebuild starts from a clean slate.
+ */
+async function cleanupDist(): Promise<void> {
+  const out = path.resolve(config.out);
+  if (!existsSync(out)) return;
+  const publicDir = path.resolve(out, "../public");
+  const publicNames = new Set(existsSync(publicDir) ? await readdir(publicDir) : []);
+  for (const entry of await readdir(out, { withFileTypes: true })) {
+    if (entry.name === "assets" || publicNames.has(entry.name)) continue;
+    await rm(path.join(out, entry.name), { recursive: true, force: true });
+  }
 }
 
 export async function rebuildPages(urls: string[]): Promise<void> {
