@@ -1,5 +1,6 @@
 import type { Renderable } from "./types.js";
 
+import { resolveAsyncLocalStorage } from "./als.js";
 import { ERR_SCOPE_COLLISION, noAlsHint, vincleError } from "./errors.js";
 
 interface Frame {
@@ -85,15 +86,10 @@ let initializing: Promise<Store> | undefined;
 
 function initialize(): Promise<Store> {
   return (initializing ??= (async () => {
-    const globalCtor = (globalThis as { AsyncLocalStorage?: new () => Store }).AsyncLocalStorage;
-    if (globalCtor) return (store = new globalCtor());
-    try {
-      const { AsyncLocalStorage } = await import("node:async_hooks");
-      return (store = new AsyncLocalStorage<Frame>());
-    } catch {
-      warnSyncTreeFallback();
-      return (store = new SyncTreeStore());
-    }
+    const als = await resolveAsyncLocalStorage<Frame>();
+    if (als) return (store = als);
+    warnSyncTreeFallback();
+    return (store = new SyncTreeStore());
   })());
 }
 
