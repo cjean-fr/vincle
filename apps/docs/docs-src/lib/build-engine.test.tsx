@@ -107,7 +107,7 @@ describe("SSG build", () => {
     for (const html of htmls) {
       const twin =
         html === "index.html"
-          ? path.join(DIST_DIR, ".md")
+          ? path.join(DIST_DIR, "index.md")
           : path.join(DIST_DIR, html.replace(/\.html$/, ".md"));
       expect(await Bun.file(twin).exists(), `no .md twin for ${html}`).toBe(true);
     }
@@ -127,7 +127,7 @@ describe("SSG build", () => {
 
   it("announces each twin from the page head, not from error pages", async () => {
     const index = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
-    expect(index).toContain('<link rel="alternate" type="text/markdown" href="/.md">');
+    expect(index).toContain('<link rel="alternate" type="text/markdown" href="/index.md">');
     const page = await readFile(
       path.join(DIST_DIR, "guide/getting-started/installation.html"),
       "utf-8",
