@@ -109,7 +109,13 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
         {canonical && <link rel="canonical" href={canonical} />}
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
         {/* Markdown twin of this page, for agents (RSS-style alternate). */}
-        {!isErrorPage && <link rel="alternate" type="text/markdown" href={currentPage + ".md"} />}
+        {!isErrorPage && (
+          <link
+            rel="alternate"
+            type="text/markdown"
+            href={isHome ? "/index.md" : currentPage + ".md"}
+          />
+        )}
         <meta property="og:type" content="website" />
         <meta property="og:title" content={title} />
         <meta property="og:locale" content="en_US" />

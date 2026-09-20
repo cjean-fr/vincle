@@ -17,7 +17,7 @@ export async function generateLlmsTxt(
     "",
     `> ${config.description}`,
     "",
-    "Every page is also available as Markdown at its URL plus `.md` (home page: `/.md`).",
+    "Every page is also available as Markdown at its URL plus `.md` (home page: `/index.md`).",
     "",
     "## Pages",
     "",
@@ -100,7 +100,7 @@ export async function updateRobotsTxt(
  */
 export async function generateNetlifyHeaders(outDir: string): Promise<void> {
   const link =
-    '</.md>; rel="alternate"; type="text/markdown", ' +
+    '</index.md>; rel="alternate"; type="text/markdown", ' +
     '</llms.txt>; rel="service-doc", ' +
     '</llms-full.txt>; rel="service-doc", ' +
     '</auth.md>; rel="describedby", ' +
@@ -221,7 +221,8 @@ export async function generateMarkdownAlternates(
 ): Promise<void> {
   for (const page of pages) {
     if (!page.file.endsWith(".mdx")) continue;
-    const target = path.join(outDir, `${page.url}.md`);
+    const name = page.url === "/" ? "index.md" : `${page.url}.md`;
+    const target = path.join(outDir, name);
     await mkdir(path.dirname(target), { recursive: true });
     await copyFile(page.file, target);
   }
