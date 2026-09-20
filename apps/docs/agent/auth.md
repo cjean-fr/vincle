@@ -16,11 +16,11 @@ machine-read any of its content.
 
 ## Machine-readable content
 
-| Path                                   | Content                                                     |
-| -------------------------------------- | ----------------------------------------------------------- |
-| `/llms.txt`                            | Index of all documentation pages                            |
-| `/llms-full.txt`                       | Every page as plain text                                    |
-| `/search-index.json`                   | Full-text search index (`{ url, title, text }`)             |
-| `/<page>.md`                           | Any page as Markdown, e.g. `/guide/views.md` (home: `/.md`) |
-| `/.well-known/ai-catalog.json`         | ARD manifest of the site's agentic resources                |
-| `/.well-known/agent-skills/index.json` | Agent skills discovery index                                |
+| Path                                   | Content                                                          |
+| -------------------------------------- | ---------------------------------------------------------------- |
+| `/llms.txt`                            | Index of all documentation pages                                 |
+| `/llms-full.txt`                       | Every page as plain text                                         |
+| `/search-index.json`                   | Full-text search index (`{ url, title, text }`)                  |
+| `/<page>.md`                           | Any page as Markdown, e.g. `/guide/views.md` (home: `/index.md`) |
+| `/.well-known/ai-catalog.json`         | ARD manifest of the site's agentic resources                     |
+| `/.well-known/agent-skills/index.json` | Agent skills discovery index                                     |
