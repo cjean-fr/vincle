@@ -1,5 +1,6 @@
 import type { Awaitable } from "./types.js";
 
+import { resolveAsyncLocalStorage } from "./als.js";
 import {
   ERR_CONTEXT_KEY,
   ERR_CONTEXT_LIMIT,
@@ -26,8 +27,8 @@ export type ScopeKey<T> = symbol & { readonly [__brand]: T };
 
 export type ScopeMap = Map<symbol, unknown>;
 
-// Tries `globalThis.AsyncLocalStorage`, then `node:async_hooks`, falling back to
-// `SyncContextStore` if neither exists. `run` is synchronous — it returns
+// Tries the runtime's `AsyncLocalStorage` (see `als.ts`), falling back to
+// `SyncContextStore` if the runtime has none. `run` is synchronous — it returns
 // whatever the callback returns, unwrapped; `Scope.with` (async) is what flattens
 // it, so this interface doesn't need an `as Promise<T>` to fake a type it never produces.
 
@@ -35,14 +36,6 @@ interface ContextStore {
   run<T>(ctx: ScopeMap, fn: () => T): T;
   getStore(): ScopeMap | undefined;
 }
-
-/** The shape of `AsyncLocalStorage` this depends on, nothing more. */
-interface AsyncLocalStorageLike {
-  run<T>(store: ScopeMap, callback: () => T): T;
-  getStore(): ScopeMap | undefined;
-}
-
-type AsyncLocalStorageCtor = new () => AsyncLocalStorageLike;
 
 /**
  * Synchronous fallback for runtimes with no `AsyncLocalStorage` — correct for
@@ -113,18 +106,10 @@ async function ensureStore(): Promise<void> {
   if (storeInit) return storeInit;
 
   storeInit = (async () => {
-    const globalCtor = (globalThis as { AsyncLocalStorage?: AsyncLocalStorageCtor })
-      .AsyncLocalStorage;
-    if (globalCtor !== undefined) {
-      contextStore = new globalCtor();
+    const als = await resolveAsyncLocalStorage<ScopeMap>();
+    if (als) {
+      contextStore = als;
       return;
-    }
-    try {
-      const { AsyncLocalStorage } = await import("node:async_hooks");
-      contextStore = new AsyncLocalStorage<ScopeMap>();
-      return;
-    } catch {
-      /* No AsyncLocalStorage on this runtime — falls back below. */
     }
     warnSyncFallback();
     contextStore = new SyncContextStore();
