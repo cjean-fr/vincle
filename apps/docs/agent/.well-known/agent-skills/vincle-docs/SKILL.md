@@ -14,7 +14,7 @@ this site is public and fully machine-readable.
 - `/llms-full.txt` — every page as plain text, in reading order
 - `/search-index.json` — JSON array of `{ "url", "title", "text" }` for full-text search
 - Any page URL + `.md` — the page as Markdown, with example code inlined
-  (e.g. `/guide/views.md`); the home page is `/.md`
+  (e.g. `/guide/views.md`); the home page is `/index.md`
 
 ## Page map
 
