@@ -7,12 +7,14 @@
     "bench": "NODE_ENV=production bun --conditions=dist run src/bench.js",
     "compare": "bun run src/compare.ts",
     "format": "oxfmt",
+    "gen:precompile": "NODE_ENV=production bun src/gen-precompile.mjs",
     "bench:stats": "bun --conditions=dist run src/stats.js",
     "test": "NODE_ENV=production bun test"
   },
   "dependencies": {
     "@kitajs/html": "^5.0.0-next.1",
-    "@vincle/core": "workspace:*"
+    "@vincle/core": "workspace:*",
+    "@vincle/precompile": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
