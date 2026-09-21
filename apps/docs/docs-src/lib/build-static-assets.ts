@@ -60,25 +60,7 @@ export async function updateRobotsTxt(
   const lines: string[] = [
     "User-agent: *",
     "Allow: /",
-    // Content Signals (draft-romm-aipref-contentsignals): search and agent use
-    // are welcome, training on this content is not.
-    "Content-Signal: ai-train=no, search=yes, ai-input=no",
-    "",
-    "# AI crawlers",
-    "User-agent: GPTBot",
-    "Disallow: /",
-    "User-agent: Google-Extended",
-    "Disallow: /",
-    "User-agent: CCBot",
-    "Disallow: /",
-    "User-agent: anthropic-ai",
-    "Disallow: /",
-    "User-agent: PerplexityBot",
-    "Disallow: /",
-    "",
-    "# Training opt-out",
-    "User-agent: FacebookBot",
-    "Disallow: /",
+    "Content-Signal: ai-train=yes, search=yes, ai-input=yes",
     "",
   ];
 
@@ -103,7 +85,6 @@ export async function generateNetlifyHeaders(outDir: string): Promise<void> {
     '</index.md>; rel="alternate"; type="text/markdown", ' +
     '</llms.txt>; rel="service-doc", ' +
     '</llms-full.txt>; rel="service-doc", ' +
-    '</auth.md>; rel="describedby", ' +
     '</.well-known/ai-catalog.json>; rel="service-desc"';
   const content = [
     "/",

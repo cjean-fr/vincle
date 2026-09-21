@@ -143,7 +143,7 @@ describe("SSG build", () => {
 
   it("produces the agent discovery files", async () => {
     const robots = await readFile(path.join(DIST_DIR, "robots.txt"), "utf-8");
-    expect(robots).toContain("Content-Signal: ai-train=no, search=yes, ai-input=no");
+    expect(robots).toContain("Content-Signal: ai-train=yes, search=yes, ai-input=yes");
     expect(robots).toContain("Agentmap: https://vincle.cjean.fr/.well-known/ai-catalog.json");
 
     const headers = await readFile(path.join(DIST_DIR, "_headers"), "utf-8");
@@ -173,9 +173,6 @@ describe("SSG build", () => {
     );
     const digest = "sha256:" + createHash("sha256").update(skillBody).digest("hex");
     expect(skill.digest).toBe(digest);
-
-    const auth = await readFile(path.join(DIST_DIR, "auth.md"), "utf-8");
-    expect(auth).toContain("# auth.md");
   });
 
   it("emits neither security.txt nor manifest.json", () => {
