@@ -61,11 +61,6 @@ export function clearMetaCache(): void {
   metaCache.clear();
 }
 
-/** Clear cache for a single directory (used by the dev server on change). */
-export function invalidateMeta(dir: string): void {
-  metaCache.delete(dir);
-}
-
 /**
  * Build the sidebar for one tab, deriving a hierarchical tree from the
  * directory structure under the tab root, ordered and labelled by each

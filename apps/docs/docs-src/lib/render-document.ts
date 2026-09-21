@@ -4,9 +4,7 @@ import { renderToString, type Awaitable, type Renderable } from "@vincle/core";
 /** A post-render HTML transform: receives the assembled document, returns the next. */
 export type Transform = (html: string) => string;
 
-export function composeTransforms(
-  ...transforms: Array<Transform | false | null | undefined>
-): Transform {
+function composeTransforms(...transforms: Array<Transform | false | null | undefined>): Transform {
   const fns = transforms.filter(Boolean) as Transform[];
   return (html) => fns.reduce((acc, t) => t(acc), html);
 }

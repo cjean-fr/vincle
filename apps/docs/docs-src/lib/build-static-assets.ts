@@ -5,8 +5,6 @@ import path from "node:path";
 
 import type { ResolvedDocsConfig } from "../types.js";
 
-import { htmlToText } from "./html-text.js";
-
 export async function generateLlmsTxt(
   pages: { url: string; title: string; html: string }[],
   config: ResolvedDocsConfig,
@@ -207,8 +205,4 @@ export async function generateMarkdownAlternates(
     await mkdir(path.dirname(target), { recursive: true });
     await copyFile(page.file, target);
   }
-}
-
-export function extractPlainText(html: string): string {
-  return htmlToText(html);
 }

@@ -2,7 +2,7 @@ import { writeFile } from "node:fs/promises";
 
 import { htmlToText } from "../lib/html-text.js";
 
-export interface PageForSearch {
+interface PageForSearch {
   url: string;
   title: string;
   text: string;

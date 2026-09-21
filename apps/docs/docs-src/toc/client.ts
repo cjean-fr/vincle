@@ -1,4 +1,4 @@
-export interface ScrollSpyOptions {
+interface ScrollSpyOptions {
   markerSelector?: string;
   linkSelector?: string;
   sublistSelector?: string;
@@ -18,7 +18,7 @@ const DEFAULTS = {
   offset: 32,
 } satisfies Required<ScrollSpyOptions>;
 
-export function installScrollSpy(toc: HTMLElement, opts: ScrollSpyOptions = {}): () => void {
+function installScrollSpy(toc: HTMLElement, opts: ScrollSpyOptions = {}): () => void {
   const o = { ...DEFAULTS, ...opts };
 
   if (typeof window === "undefined") return () => {};

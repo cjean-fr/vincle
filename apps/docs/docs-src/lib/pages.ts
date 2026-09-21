@@ -28,21 +28,6 @@ async function loadFile(
   throw new Error(`[@vincle/docs] No handler configured for "${ext}" files (${file}).`);
 }
 
-export function findPageFile(config: ResolvedDocsConfig, url: string): string | null {
-  const pagesDir = path.resolve(config.pages);
-  const extensions = Object.keys(config.handlers);
-  let route = url.replace(/^\//, "") || "index";
-  if (route.endsWith(".html")) route = route.slice(0, -".html".length);
-  if (route.endsWith("/")) route = route + "index";
-  for (const base of [route, `${route}/index`]) {
-    for (const ext of extensions) {
-      const candidate = path.join(pagesDir, base + ext);
-      if (existsSync(candidate)) return candidate;
-    }
-  }
-  return null;
-}
-
 async function walk(dir: string, extensions: string[]): Promise<string[]> {
   if (!existsSync(dir)) return [];
   const entries = await readdir(dir, { withFileTypes: true });
