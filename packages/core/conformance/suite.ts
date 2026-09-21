@@ -44,7 +44,7 @@ export interface ConformanceResult {
  * proves nothing. `navigator.userAgent` is the exact marker Cloudflare
  * documents.
  */
-export function runtimeName(): string {
+function runtimeName(): string {
   const g = globalThis as Record<string, any>;
   if (g["navigator"]?.userAgent === "Cloudflare-Workers") return "workerd";
   if (g["Bun"]?.version) return `bun ${g["Bun"].version}`;
