@@ -26,6 +26,7 @@ import { render as realworldHono } from "./realworld/hono.js";
 import { render as realworldKita } from "./realworld/kitajs.js";
 import { render as realworldPreact } from "./realworld/preact.js";
 import { render as realworldReact } from "./realworld/react.js";
+import { render as realworldPrecompiled } from "./realworld/shared.precompiled.mjs";
 import { render as realworldVincle } from "./realworld/vincle.js";
 
 const { createContext, renderToString, useContext } = Vincle;
@@ -299,12 +300,14 @@ const CASES = {
   stack: `stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
   realworld: `realworld — full page, ${PURCHASES.length} purchases (kitajs port)`,
   precompile: `precompile — ${PRECOMPILE_ROWS}-row list, tree walk vs jsxTemplate (vincle only)`,
+  "realworld-precompile": `realworld-precompile — full page, ${PURCHASES.length} purchases, tree walk vs the real precompile transform (vincle only)`,
   "provider-static": "provider-static — root Provider, mostly literal markup",
   "provider-translations": "provider-translations — root Provider, 100 readers",
 };
 
 // Build the pages outside the bench so that only the render is measured
 const rwVincle = () => realworldVincle(NAME, PURCHASES);
+const rwPrecompiled = () => realworldPrecompiled(NAME, PURCHASES);
 const rwReact = () => realworldReact(NAME, PURCHASES);
 const rwPreact = () => realworldPreact(NAME, PURCHASES);
 const rwHono = () => realworldHono(NAME, PURCHASES);
@@ -336,6 +339,9 @@ const BENCHES = [
 
   ["precompile", "@vincle/core", () => renderToString(runtimeList())],
   ["precompile", "@vincle/core (precompile)", () => renderToString(precompileList())],
+
+  ["realworld-precompile", "@vincle/core", () => rwVincle()],
+  ["realworld-precompile", "@vincle/core (precompile)", () => rwPrecompiled()],
 ];
 if (Locale) {
   BENCHES.push(
@@ -386,6 +392,16 @@ if (Locale) {
   ]);
   if (tree !== template) {
     throw new Error("precompile and the tree walk do not render the same list");
+  }
+  // The full page, the two spellings this engine can load: the `jsx()` port and
+  // what the transform emits (gen-precompile.mjs holds the JSX-source spelling
+  // and asserts all three agree, which needs a runtime that reads `.tsx`).
+  const [jsPort, precompiled] = await Promise.all([
+    realworldVincle(NAME, PURCHASES),
+    realworldPrecompiled(NAME, PURCHASES),
+  ]);
+  if (jsPort !== precompiled) {
+    throw new Error("realworld-precompile and the tree walk do not render the same page");
   }
 }
 
