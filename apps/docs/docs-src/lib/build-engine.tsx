@@ -270,7 +270,7 @@ async function renderError(status: number, title: string, message: string): Prom
 async function copyStaticAssets(): Promise<void> {
   const outDir = path.resolve(config.out);
   // `public/` is Vite's: it also lands in `dist/assets/`, so it stays limited
-  // to browser assets. The agent-facing files (auth.md, .well-known/) come
+  // to browser assets. The agent-facing files (.well-known/) come
   // from `agent/` and only exist at the site root.
   const publicDir = path.resolve(config.pages, "../../public");
   if (existsSync(publicDir)) await cp(publicDir, outDir, { recursive: true });
