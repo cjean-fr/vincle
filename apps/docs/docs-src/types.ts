@@ -14,19 +14,6 @@ export interface PageMeta {
 // declared and never read, and the two had already drifted — two pages claiming
 // `order: 2`, and a third order the sidebar did not use.
 
-export interface SidebarGroup {
-  label: string;
-  items: SidebarItem[];
-}
-
-export type SidebarItem = string | SidebarLink;
-
-export interface SidebarLink {
-  label: string;
-  href: string;
-  external?: boolean;
-}
-
 export interface ResolvedSidebar {
   groups: ReadonlyArray<{
     label: string | null;
