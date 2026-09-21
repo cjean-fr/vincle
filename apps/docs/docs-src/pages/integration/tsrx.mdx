@@ -1,0 +1,121 @@
+---
+title: TSRX
+---
+
+# TSRX
+
+[TSRX](https://tsrx.dev/) is a TypeScript language extension for declarative
+UIs. `@vincle/core` is compatible with it: its
+[jsx-runtime](/guide/getting-started/typescript-setup) exports the same
+`jsx`, `jsxs`, and `Fragment` that TSRX's compiler emits, so `.tsrx`
+components render through vincle — no dedicated target package, no React.
+
+The whole wiring is pointing TSRX's transform at vincle with
+`jsxImportSource: "@vincle/core"`, in the bundler plugin and in your
+`tsconfig.json`.
+
+## Setup on Bun
+
+```json title="package.json"
+{
+  "dependencies": {
+    "@tsrx/bun-plugin-react": "^0.1.99",
+    "@tsrx/react": "^0.3.4",
+    "@vincle/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "@tsrx/typescript-plugin": "^0.4.7",
+    "typescript": "^5.9.3"
+  }
+}
+```
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core",
+    "plugins": [{ "name": "@tsrx/typescript-plugin" }]
+  }
+}
+```
+
+```ts title="build.ts"
+import tsrxReact from "@tsrx/bun-plugin-react";
+
+await Bun.build({
+  entrypoints: ["./src/index.tsx"],
+  outdir: "./dist",
+  plugins: [tsrxReact({ jsxImportSource: "@vincle/core" })],
+});
+```
+
+```tsx title="src/App.tsrx"
+export function Hello({ names }: { names: string[] }) @{
+  const hour = new Date().getHours();
+  const greeting = hour < 18 ? "Bonjour" : "Bonsoir";
+
+  <>
+    <div class="card">
+      <h1>{greeting}, TSRX + vincle !</h1>
+
+      @for (const name of names) {
+        <div class="row">
+          <span class="badge">{name[0].toUpperCase()}</span>
+          <strong>{name}</strong>
+        </div>
+      }
+
+      @if (names.length > 3) {
+        <p class="more">…and {names.length - 3} more.</p>
+      }
+    </div>
+
+    <style>
+      .card { padding: 1rem; border: 1px solid #ccc; border-radius: 8px; }
+      .row { display: flex; gap: 0.5rem; align-items: center; }
+      .badge { font-weight: 600; }
+      .more { color: #666; }
+    </style>
+  </>
+}
+```
+
+```tsx title="src/index.tsx"
+import { renderToString } from "@vincle/core";
+import { Hello } from "./App.tsrx";
+
+const html = await renderToString(<Hello names={["vincle", "TSRX"]} />);
+console.log(html);
+```
+
+```bash
+bun build.ts && bun dist/index.js
+```
+
+## Setup on Vite
+
+Same option on the Vite plugin:
+
+```ts title="vite.config.ts"
+import { defineConfig } from "vite";
+import tsrxReact from "@tsrx/vite-plugin-react";
+
+export default defineConfig({
+  plugins: [tsrxReact({ jsxImportSource: "@vincle/core" })],
+});
+```
+
+For the rest of your `.tsx` modules, set the import source as in
+[TypeScript setup → Vite / esbuild](/guide/getting-started/typescript-setup#vite--esbuild).
+
+## Notes
+
+- **`renderToString` is awaited** — it returns a promise.
+- **Use the build, not a preload.** The plugin's extracted styles only work
+  inside `Bun.build`; the `css` loader it relies on is not available at
+  runtime. The build is also what emits the scoped styles as
+  `dist/<entry>.css` — inline it into your document's head when serving.
+- **Keep `@tsrx/react` a direct dependency** when imports are left external
+  (SSR, library builds): generated modules import
+  `@tsrx/react/runtime/iterable`, which ships inside it.
