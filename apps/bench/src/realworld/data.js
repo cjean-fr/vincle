@@ -7,5 +7,3 @@ export function generatePurchases(amount = 1000) {
     quantity: i * 5,
   }));
 }
-
-export const PURCHASES = generatePurchases();
