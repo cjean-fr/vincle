@@ -12,7 +12,7 @@ import { collect } from "../test-utils.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe("Defer — deferred content (placeholder always)", () => {
+describe("Defer: deferred content (placeholder always)", () => {
   it("generates distinct targets and patches each matching placeholder", async () => {
     const html = await collect(
       renderToStream(
@@ -194,7 +194,7 @@ describe("Defer — deferred content (placeholder always)", () => {
   });
 });
 
-describe("Defer — streaming sequences (async-iterable child)", () => {
+describe("Defer: streaming sequences (async-iterable child)", () => {
   it("streams each yield as an append fragment", async () => {
     async function* rows() {
       yield (<li>a</li>) as VNode;
@@ -275,7 +275,7 @@ describe("Defer — streaming sequences (async-iterable child)", () => {
   });
 });
 
-describe("edge cases — Defer", () => {
+describe("edge cases: Defer", () => {
   it("NativeAdapter escapes a hostile id in the processing instruction", async () => {
     const html = await collect(
       renderToStream(

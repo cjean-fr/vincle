@@ -1,5 +1,5 @@
 /**
- * Generic stream lifecycle factory — encapsulates backpressure, cancellation,
+ * Generic stream lifecycle factory: encapsulates backpressure, cancellation,
  * and `ReadableStream` mechanics so callers focus on producing events.
  *
  * - `pull()` releases any producer parked on backpressure.

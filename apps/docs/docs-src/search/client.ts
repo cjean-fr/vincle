@@ -162,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Open via any [data-search-trigger] button — pass trigger for morph origin
+  // Open via any [data-search-trigger] button: pass trigger for morph origin
   document.addEventListener("click", (e) => {
     const trigger = (e.target as Element | null)?.closest("[data-search-trigger]");
     if (trigger) {

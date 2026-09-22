@@ -55,19 +55,19 @@ describe("static subtree serialization", () => {
     expect(node).toBeInstanceOf(VNode);
   });
 
-  test("object style serializes — buildAttrs handles it on both paths", async () => {
+  test("object style serializes: buildAttrs handles it on both paths", async () => {
     const node = jsx("div", { style: { color: "red" }, children: "x" });
     expect(node).toBeInstanceOf(RawString);
     expect(await renderToString(node)).toBe('<div style="color:red">x</div>');
   });
 
-  test("class array serializes — buildAttrs handles it on both paths", async () => {
+  test("class array serializes: buildAttrs handles it on both paths", async () => {
     const node = jsx("div", { class: ["foo", "bar"], children: "x" });
     expect(node).toBeInstanceOf(RawString);
     expect(await renderToString(node)).toBe('<div class="foo bar">x</div>');
   });
 
-  // The static path and the tree walk must not merely both work — they must agree.
+  // The static path and the tree walk must not merely both work: they must agree.
   test("serialized attributes are byte-identical to the tree-walk's", async () => {
     const props = { style: { backgroundColor: "red", "--x": 1 }, class: ["a", "", "b"], id: "i" };
     const serialized = jsx("p", { ...props, children: "t" });
@@ -145,7 +145,7 @@ describe("jsxAttr", () => {
     expect(r.value).toBe("");
   });
 
-  // The fragment is bare — the separating space is the transform's, and
+  // The fragment is bare: the separating space is the transform's, and
   // `jsxTemplate` is what takes it back when these cases return "".
   test("null/undefined are skipped", () => {
     expect((jsxAttr("hidden", null) as RawString).value).toBe("");

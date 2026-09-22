@@ -35,7 +35,7 @@ describe("static serialization re-entrancy", () => {
     };
 
     const result = serializeStatic("div", props);
-    // Outer call: children "hello" is static, getter returns static "x" —
+    // Outer call: children "hello" is static, getter returns static "x",
     // the outer call must succeed and return a RawString.
     expect(result).toBeInstanceOf(RawString);
   });
@@ -50,11 +50,11 @@ describe("static serialization re-entrancy", () => {
 });
 
 /**
- * Tag validation — one gate, and it is `jsx()`.
+ * Tag validation: one gate, and it is `jsx()`.
  *
  * The rule being pinned has not changed: a name carrying a space or a quote closes
  * the start tag, and everything after it becomes markup. What changed is where it
- * is enforced. The static path checked the name, and so did each tree walk — three checks
+ * is enforced. The static path checked the name, and so did each tree walk: three checks
  * for one answer, two of them unreachable through the public API, since a string
  * tag only ever enters the engine through `jsx()`. An unreachable
  * branch does not stay neutral, it drifts; and the price was paid on every element
@@ -62,10 +62,10 @@ describe("static serialization re-entrancy", () => {
  *
  * So the check sits at the gate, and fires at construction: the earliest moment
  * at which the stack still points at the element the developer wrote. Both shapes
- * are exercised below — the one that would serialize, and the one that would reach the
- * tree walk — because the guarantee is that *neither* gets through.
+ * are exercised below: the one that would serialize, and the one that would reach the
+ * tree walk, because the guarantee is that *neither* gets through.
  */
-describe("tag validation — jsx() is the single gate", () => {
+describe("tag validation: jsx() is the single gate", () => {
   const INVALID = [
     "div onload=alert(1)",
     'div"',
@@ -81,9 +81,9 @@ describe("tag validation — jsx() is the single gate", () => {
 
   for (const tag of INVALID) {
     test(`rejects ${JSON.stringify(tag)}`, () => {
-      // Static children — the shape that would have been serialized to raw HTML.
+      // Static children: the shape that would have been serialized to raw HTML.
       expect(() => jsx(tag, { children: "hello" })).toThrow(/\[vincle\/core\] Invalid tag name/);
-      // Dynamic children — the shape that would have reached the tree walk.
+      // Dynamic children: the shape that would have reached the tree walk.
       expect(() => jsx(tag, { children: Promise.resolve("hello") })).toThrow(
         /\[vincle\/core\] Invalid tag name/,
       );
@@ -104,7 +104,7 @@ describe("tag validation — jsx() is the single gate", () => {
 // ── SVG / Foreign elements ─────────────────────────────────────────────────
 //
 // SVG and MathML elements are "foreign elements" per the HTML5 spec. They are
-// NOT void elements — they MUST have either a start tag + end tag, or a
+// NOT void elements: they MUST have either a start tag + end tag, or a
 // self-closing start tag (`<path/>`). Vincle always emits closing tags for
 // non-void elements, which is valid HTML5 per the spec's serialization
 // algorithm (foreign elements with closing tags are always correct).
@@ -153,7 +153,7 @@ describe("SVG foreign elements render with closing tags (not void)", () => {
 
   test("SVG elements are NOT void elements", () => {
     // path, circle, use, line, rect, ellipse, polyline, polygon, stop
-    // are all emptyable but NOT void — they accept <desc>/<animate> children.
+    // are all emptyable but NOT void: they accept <desc>/<animate> children.
     for (const tag of ["path", "circle", "use", "line", "rect", "ellipse", "polygon", "stop"]) {
       expect(isVoidElement(tag)).toBe(false);
       expect(isValidTag(tag)).toBe(true);

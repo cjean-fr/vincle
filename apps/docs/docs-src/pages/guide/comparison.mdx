@@ -1,6 +1,6 @@
 ---
 title: Comparison
-description: How @vincle/core compares to kitajs/html, preact-render-to-string, hono/jsx and react-dom/server — measured, with the method and the losses.
+description: A measured comparison of @vincle/core with kitajs/html, preact-render-to-string, hono/jsx and react-dom/server, including the method and tradeoffs.
 ---
 
 # Comparison
@@ -44,8 +44,8 @@ speed. Given the string `<img src=x onerror="alert(1)">` as a text child:
 
 `@kitajs/html` does not escape text children unless you ask it to, with a `safe`
 attribute or its `escape` helper. This is deliberate on their part, and they
-ship [`@kitajs/ts-html-plugin`](https://github.com/kitajs/ts-html-plugin) — an
-editor plugin and CLI — to catch unescaped interpolations before they reach
+ship [`@kitajs/ts-html-plugin`](https://github.com/kitajs/ts-html-plugin): an
+editor plugin and CLI: to catch unescaped interpolations before they reach
 production. Verified identical on 4.2.13 and 5.0.0-next.1.
 
 Vincle takes the other side of that trade: escaping is not reachable from the
@@ -61,13 +61,13 @@ import { raw } from "@vincle/core";
 
 Which is the better design is a real argument, and it is not settled by this
 page. What it does settle is that a benchmark comparing the two defaults is not
-comparing the same work — see below.
+comparing the same work: see below.
 
 ## Attribute names are a list, not a rule
 
 SVG mixes two conventions in one namespace: `viewBox` and `preserveAspectRatio`
 are camelCase in the specification, `stroke-width` and `clip-path` are
-hyphenated. No transformation separates them — only a list does. Given
+hyphenated. No transformation separates them: only a list does. Given
 `<svg viewBox="0 0 24 24" strokeWidth={2} clipPath="url(#a)" />`:
 
 | Renderer                  | Output                                                                 |
@@ -79,18 +79,18 @@ hyphenated. No transformation separates them — only a list does. Given
 | `@kitajs/html`            | `<svg viewBox="0 0 24 24" strokeWidth="2" clipPath="url(#a)"></svg>`   |
 
 The split is a convention, not a defect. `@kitajs/html` and Preact pass
-attribute names through, so you write the name the markup carries —
+attribute names through, so you write the name the markup carries,
 `stroke-width` renders as `stroke-width`. Vincle, React and Hono accept the
 camelCase spelling and map it, which is what the exception list is for.
 
 What earns the section is the failure mode of mixing the two. An HTML parser
 lowercases `strokeWidth` to `strokewidth`, which is not an SVG attribute, so the
-stroke keeps its default width — `getComputedStyle` reports `1px` where
+stroke keeps its default width: `getComputedStyle` reports `1px` where
 `stroke-width="7"` reports `7px`. `viewBox` survives, because the parser's
 foreign-content adjustment table names it; `strokeWidth` is not in that table.
 Nothing reports this: no error, no warning, and `@kitajs/html`'s types accept
-both spellings. JSX written against `@types/react` — which is every icon set
-shipped as components — is camelCase throughout.
+both spellings. JSX written against `@types/react` uses camelCase throughout, including
+in icon sets shipped as components.
 
 ## Performance
 
@@ -142,7 +142,7 @@ Two differences compound in that column, and neither is an implementation
 detail.
 
 **It renders a different string.** `realworld` happens to contain no character
-needing an escape, so there the comparison is fair — 0.73× is a real number for
+needing an escape, so there the comparison is fair: 0.73× is a real number for
 a real page. On any input carrying `&` or `<`, the two produce different bytes,
 and Vincle is doing work kitajs is not.
 
@@ -150,7 +150,7 @@ and Vincle is doing work kitajs is not.
 string immediately. Vincle's `jsx()` builds a node, and `renderToString` walks
 it. Comparing them measures the tree, not the renderer.
 
-Vincle has a path with no tree — the [precompile
+Vincle has a path with no tree: the [precompile
 transform](/integration/precompile) emits `jsxTemplate` calls the way kitajs
 emits concatenations. Measured on the same 100-row list, output verified
 identical byte for byte before timing, over 7 fresh processes on each engine:
@@ -201,7 +201,7 @@ react-dom        throws React error #426
 Preact's `renderToStringAsync` does not change that result: its async support is
 for components that _throw_ a promise, not ones that return one. React and Hono
 both support async rendering through their streaming entry points
-(`renderToReadableStream`, `hono/jsx/streaming`) — the row is about the plain
+(`renderToReadableStream`, `hono/jsx/streaming`): the row is about the plain
 string API.
 
 ¹ `preact-render-to-string` declares no direct dependency but requires `preact`
@@ -244,7 +244,7 @@ bun run --filter=@vincle/bench bench:stats -- --runs 8
 It prints the throughput and ratio tables above: one row per implementation,
 over 8 fresh processes, each ratio computed inside a process and then averaged.
 The time-per-page column is derived from throughput. A single run is not a
-measurement — the protocol, and what counts as a real delta, are in
+measurement: the protocol, and what counts as a real delta, are in
 `apps/bench/README.md`. The like-for-like kitajs measurement is
 `apps/bench/src/ab-precompile-kita.js`; it refuses to report a number if the two
 outputs differ by a single byte.

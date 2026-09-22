@@ -20,7 +20,7 @@ export interface FlowContext {
   /**
    * Register fragment content to render into the DOM element with this `id`.
    * Validates the id and that `merge` is supported by the active adapter.
-   * Throws when the id is already registered — one target per render.
+   * Throws when the id is already registered: one target per render.
    */
   registerFragment(id: string, entry: FragmentEntry): void;
 }
@@ -47,7 +47,7 @@ export function renderPlaceholder(
   const { config } = Scope.get(Flow);
   if (!config.adapter) {
     throw vincleError(
-      `${PREFIX} renderPlaceholder("${id}"): no adapter configured — a placeholder needs an adapter ` +
+      `${PREFIX} renderPlaceholder("${id}"): no adapter configured: a placeholder needs an adapter ` +
         "to emit its deferred-fragment markup. Pass { adapter: ... } to renderToStatic, " +
         "or render through renderToStream() with an adapter.",
       ERR_FLOW_NO_ADAPTER,
@@ -75,7 +75,7 @@ export function initFlow(config: FlowConfig): void {
 }
 
 /**
- * Give the current scope its own asset state — a page boundary.
+ * Give the current scope its own asset state: a page boundary.
  *
  * A new context object, not a mutation of the existing one: two `renderPage`
  * calls awaited together each get their own scope, and mutating the shared
@@ -87,7 +87,7 @@ export function initFlowAssets(): void {
 }
 
 /**
- * Give the current scope an asset state that emits nothing — used for standalone
+ * Give the current scope an asset state that emits nothing: used for standalone
  * fragment files, whose assets belong to the shell that includes them.
  */
 export function suppressFlowAssets(): void {

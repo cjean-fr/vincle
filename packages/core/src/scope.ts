@@ -15,7 +15,7 @@ import {
 declare const __brand: unique symbol;
 
 /**
- * A context key. A `symbol` at runtime — the brand is phantom, and exists only
+ * A context key. A `symbol` at runtime: the brand is phantom, and exists only
  * so `Scope.get(key)` knows what `key` was declared to hold.
  *
  * Intersecting with `symbol` rather than wrapping it is what removes the casts
@@ -28,7 +28,7 @@ export type ScopeKey<T> = symbol & { readonly [__brand]: T };
 export type ScopeMap = Map<symbol, unknown>;
 
 // Tries the runtime's `AsyncLocalStorage` (see `als.ts`), falling back to
-// `SyncContextStore` if the runtime has none. `run` is synchronous — it returns
+// `SyncContextStore` if the runtime has none. `run` is synchronous: it returns
 // whatever the callback returns, unwrapped; `Scope.with` (async) is what flattens
 // it, so this interface doesn't need an `as Promise<T>` to fake a type it never produces.
 
@@ -38,14 +38,14 @@ interface ContextStore {
 }
 
 /**
- * Synchronous fallback for runtimes with no `AsyncLocalStorage` — correct for
+ * Synchronous fallback for runtimes with no `AsyncLocalStorage`: correct for
  * one scope at a time, but unable to tell a nested scope from a second
  * concurrent request, since both enter `run()` while the first `fn` is in
  * flight. It refuses the second case rather than returning the wrong value: a
  * render leaking another request's context is a cross-request data leak no
  * test would catch, while a named error is a one-line runtime config fix.
  *
- * @internal Exported for `context.test.ts` — `ensureStore` never reaches this
+ * @internal Exported for `context.test.ts`: `ensureStore` never reaches this
  * on a runtime that actually has `AsyncLocalStorage`.
  */
 export class SyncContextStore implements ContextStore {
@@ -76,7 +76,7 @@ export class SyncContextStore implements ContextStore {
 
     // A synchronous `fn` returns control here, closing the scope right away and
     // allowing nesting. An async `fn` keeps the scope installed until it
-    // settles — otherwise `Scope.get` after the first `await` would see nothing.
+    // settles: otherwise `Scope.get` after the first `await` would see nothing.
     if (result instanceof Promise) {
       this.#pending = true;
       const settle = (): void => {
@@ -119,13 +119,13 @@ async function ensureStore(): Promise<void> {
 }
 
 /**
- * Never silent — the fallback changes a guarantee (isolation between concurrent
+ * Never silent: the fallback changes a guarantee (isolation between concurrent
  * renders), which should surface at startup, not in production. Once per
  * process: a runtime property, not a per-render one.
  */
 function warnSyncFallback(): void {
   console.warn(
-    "[vincle/core] AsyncLocalStorage is not available on this runtime — " +
+    "[vincle/core] AsyncLocalStorage is not available on this runtime: " +
       "falling back to a synchronous context scope. One scope at a time works; " +
       "a second scope entered while one is still in flight will throw. " +
       "See https://vincle.cjean.fr/api/core/scope",
@@ -135,14 +135,14 @@ function warnSyncFallback(): void {
 function getStore(): ContextStore {
   if (!contextStore)
     throw vincleError(
-      "[vincle/core] context store not initialized — call Scope.with first.",
+      "[vincle/core] context store not initialized: call Scope.with first.",
       ERR_NO_STORE,
     );
   return contextStore;
 }
 
 /**
- * @internal Should only be used in tests — resets storage to force re-init.
+ * @internal Should only be used in tests: resets storage to force re-init.
  *
  * It deliberately leaves `namedContexts` alone: the tokens declared at module
  * level are already held in variables, and clearing the table would hand the
@@ -156,7 +156,7 @@ export function resetContextStorage(): void {
 /**
  * @internal Should only be used by the test that saturates the cap below.
  * `namedContexts` is process-wide, so a saturated table makes every later
- * `Scope.key()` call throw — in any package sharing the module instance.
+ * `Scope.key()` call throw: in any package sharing the module instance.
  */
 export function resetNamedContexts(): void {
   namedContexts.clear();
@@ -166,7 +166,7 @@ function scopeContext(caller: string): ScopeMap {
   const ctx = contextStore?.getStore();
   if (!ctx) {
     throw vincleError(
-      `[vincle/core] ${caller}: no active context scope — context calls must run inside Scope.with(). ` +
+      `[vincle/core] ${caller}: no active context scope: context calls must run inside Scope.with(). ` +
         "Wrap the render in one: const html = await Scope.with(() => renderToString(<Page />));",
       ERR_NO_SCOPE,
     );
@@ -199,7 +199,7 @@ const NAMED_CONTEXTS_MAX = 10_000;
  * export const Theme = Scope.key<"light" | "dark">("app:theme");
  * ```
  *
- * @throws if 10 000 distinct keys are created — a key built per request leaks,
+ * @throws if 10 000 distinct keys are created: a key built per request leaks,
  *   since the table that keeps the identity never releases one.
  */
 function contextKey<T>(globalKey: string): ScopeKey<T> {
@@ -216,7 +216,7 @@ function contextKey<T>(globalKey: string): ScopeKey<T> {
       throw vincleError(
         `[vincle/core] Scope.key(): ${NAMED_CONTEXTS_MAX} distinct keys have been created. ` +
           "Context keys are module-level constants, and the table that keeps " +
-          "Scope.key(k) === Scope.key(k) never releases them — building a key per request " +
+          "Scope.key(k) === Scope.key(k) never releases them: building a key per request " +
           "leaks. Declare the key once and pass the per-request value through Scope.set().",
         ERR_CONTEXT_LIMIT,
       );
@@ -259,7 +259,7 @@ function getValue<T>(key: ScopeKey<T>): T {
   if (!ctx.has(key)) {
     throw vincleError(
       `[vincle/core] Scope.get(${describeKey(key)}): the value was never set in the current scope. ` +
-        "Set it above the reader with Scope.set(key, value) inside the same Scope.with() — " +
+        "Set it above the reader with Scope.set(key, value) inside the same Scope.with(): " +
         "or check that the render actually runs in the scope that sets it.",
       ERR_CONTEXT_UNSET,
     );
@@ -268,7 +268,7 @@ function getValue<T>(key: ScopeKey<T>): T {
 }
 
 /**
- * Copy the current scope, to seed another one — a deferred fragment rendered
+ * Copy the current scope, to seed another one: a deferred fragment rendered
  * later still sees the values its page had.
  *
  * @example
@@ -291,7 +291,7 @@ function copyScope(): ScopeMap {
  * ```
  */
 async function runInScope<T>(fn: () => Awaitable<T>, seed?: ScopeMap): Promise<T> {
-  // `await` on an already-resolved value still costs a microtask tick — paid
+  // `await` on an already-resolved value still costs a microtask tick: paid
   // once, at process start, not on every render. `ensureStore` only awaits
   // anything the first time; once `contextStore` is set, this check is what
   // keeps every later call synchronous up to the actual `run()`.
@@ -302,7 +302,7 @@ async function runInScope<T>(fn: () => Awaitable<T>, seed?: ScopeMap): Promise<T
 /**
  * Per-execution state, independent of JSX Provider ancestry.
  *
- * A `Scope` value lives in the execution it was set in — visible to everything
+ * A `Scope` value lives in the execution it was set in: visible to everything
  * rendered in the same `Scope.with()`, and to nothing outside it. Contrast with
  * the JSX Provider (`createContext` / `useContext`), whose value lives in the
  * tree: it follows the component ancestry, not the execution.

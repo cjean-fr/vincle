@@ -1,10 +1,10 @@
 /**
- * React 19 context parity — the executable spec.
+ * React 19 context parity: the executable spec.
  *
  * Each case builds one component tree, parameterised over the runtime, and
  * renders it with both `renderToStaticMarkup` (React) and `renderToString`
  * (vincle). The assertion is a triple: both engines agree, and both agree
- * with the pinned expected string — so a future React upgrade that moves
+ * with the pinned expected string, so a future React upgrade that moves
  * behaviour fails here the same way a vincle regression would.
  *
  * The surface tracked is React 19's modern one: the context object is the

@@ -46,7 +46,7 @@ describe("table of contents and permalinks", () => {
   /**
    * The two passes commute. It used to be the opposite: the permalink adds a
    * "#" inside the heading, which ended up in the table-of-contents label, and
-   * only the order of the transform array prevented it — written down in a
+   * only the order of the transform array prevented it: written down in a
    * comment.
    */
   it("the order of the two passes changes nothing", () => {

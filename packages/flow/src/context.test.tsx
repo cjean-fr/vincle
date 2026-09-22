@@ -49,7 +49,7 @@ describe("context.registerFragment()", () => {
       });
       const parentAssets = Scope.get(Flow).assets;
 
-      // Simulate parallel renderPage calls (SSG pattern — child scope inherits parent via Scope.snapshot)
+      // Simulate parallel renderPage calls (SSG pattern: child scope inherits parent via Scope.snapshot)
       const seed = Scope.snapshot();
       const pageTask = (n: number) =>
         Scope.with(async () => {

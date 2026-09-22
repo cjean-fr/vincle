@@ -10,10 +10,10 @@ dist
 coverage
 *.lcov
 
-# mutation testing — Stryker's instrumented sandbox
+# mutation testing: Stryker's instrumented sandbox
 .stryker-tmp
 
-# conformance — local Miniflare/wrangler state, not a record
+# conformance: local Miniflare/wrangler state, not a record
 conformance/.wrangler
 
 # logs

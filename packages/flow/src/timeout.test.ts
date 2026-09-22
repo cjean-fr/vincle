@@ -64,7 +64,7 @@ describe("createTimeoutSignal", () => {
 
       expect(signal.aborted).toBe(true);
       expect((signal.reason as Error).message).toBe(
-        `[vincle/flow] Fragment "hero" timed out after ${ARM_MS}ms — its content did not finish in time. ` +
+        `[vincle/flow] Fragment "hero" timed out after ${ARM_MS}ms: its content did not finish in time. ` +
           "Increase the timeout (the fragment's timeout prop or defaultTimeout), or make the " +
           "content finish faster, e.g. by forwarding the abort signal to fetch().",
       );
@@ -126,7 +126,7 @@ describe("createTimeoutSignal", () => {
 
       expect(signal.aborted).toBe(true);
       expect((signal.reason as Error).message).toBe(
-        '[vincle/flow] Fragment "zero" timed out after 0ms — its content did not finish in time. ' +
+        '[vincle/flow] Fragment "zero" timed out after 0ms: its content did not finish in time. ' +
           "Increase the timeout (the fragment's timeout prop or defaultTimeout), or make the " +
           "content finish faster, e.g. by forwarding the abort signal to fetch().",
       );

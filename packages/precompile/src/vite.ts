@@ -13,7 +13,7 @@ export type { PluginConfig };
 /**
  * Virtual module ID that re-exports the three precompile runtime helpers
  * (jsxTemplate, jsxAttr, jsxEscape). Users never need to create a physical
- * adapter file — the plugin provides this module automatically when no
+ * adapter file: the plugin provides this module automatically when no
  * explicit runtimeSource is configured.
  */
 const VIRTUAL_MODULE_ID = "virtual:vincle-precompile-runtime";
@@ -28,7 +28,7 @@ const FRAMEWORK_RUNTIME_SUFFIX = "/jsx-runtime";
 
 export default function vitePrecompile(config?: PluginConfig): Plugin {
   // A misconfigured plugin is a config error: name the option and the value,
-  // and fail now — not mid-build when Vite is transforming the first file.
+  // and fail now, not mid-build when Vite is transforming the first file.
   if (
     config?.runtimeSource !== undefined &&
     (typeof config.runtimeSource !== "string" || config.runtimeSource.length === 0)
@@ -49,7 +49,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
   let runtimeSourceForTransform: string | null = null;
   let renderAttr: RenderAttr | null = null;
   /**
-   * The runtime's `jsxEscape`, loaded at build time — static text is then
+   * The runtime's `jsxEscape`, loaded at build time: static text is then
    * escaped by the target runtime's own rules, which is what makes a
    * precompiled page byte-identical to the dynamic one. Null for a runtime
    * that does not declare the `"vincle"` dialect, and for a runtime this build
@@ -74,7 +74,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
   /**
    * The actual module that the virtual module re-exports from.  Set
-   * during buildStart — either the framework's runtime (when the probe
+   * during buildStart: either the framework's runtime (when the probe
    * succeeds) or @vincle/core/jsx-precompile-runtime.
    *
    * When runtimeSource is explicit, the virtual module is not involved
@@ -88,7 +88,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
    *
    * A precompiled module and a runtime-rendered one emit the same bytes, so a
    * build where the transform never runs is indistinguishable from one where it
-   * did — except in speed, which nobody measures on their own page. These three
+   * did: except in speed, which nobody measures on their own page. These three
    * counters are what turns that silence into a warning at `buildEnd`.
    */
   let modulesSeen = 0;
@@ -141,7 +141,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       } else if (candidateFrameworkRuntime) {
         // Probe {jsxImportSource}/jsx-runtime for the precompile helpers.
         // Preact, Hono and @vincle/core export jsxTemplate here; React
-        // does not — the probe throws a clear build error.
+        // does not: the probe throws a clear build error.
         let mod: Record<string, unknown>;
         try {
           mod = (await import(/* @vite-ignore */ candidateFrameworkRuntime)) as Record<
@@ -152,14 +152,14 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
           this.error(
             `[vincle/precompile] failed to probe ${candidateFrameworkRuntime}: ${String(err)}. ` +
               `The module for jsxImportSource "${candidateFrameworkRuntime.replace(FRAMEWORK_RUNTIME_SUFFIX, "")}" ` +
-              "could not be imported — is it installed and resolvable from where Vite runs? " +
+              "could not be imported: is it installed and resolvable from where Vite runs? " +
               "Or set an explicit runtimeSource.",
           );
         }
         if (typeof mod["jsxTemplate"] !== "function") {
           this.error(
             `[vincle/precompile] jsxImportSource "${candidateFrameworkRuntime.replace(FRAMEWORK_RUNTIME_SUFFIX, "")}" ` +
-              'does not support the precompile transform — its jsx-runtime has no "jsxTemplate" export. ' +
+              'does not support the precompile transform: its jsx-runtime has no "jsxTemplate" export. ' +
               "Use Preact, Hono, or @vincle/core, or set an explicit runtimeSource to a module that " +
               "exports jsxTemplate, jsxAttr and jsxEscape.",
           );
@@ -170,8 +170,8 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       // Which output the transform emits is decided by the runtime, not by an
       // option: a runtime that declares the `"vincle"` precompile dialect gets
       // the corrected, sanitized output, because it is the one that promises a
-      // precompiled page renders the same bytes as a dynamic one. Any other —
-      // Preact, Hono, an adapter that re-exports only the three helpers — gets
+      // precompiled page renders the same bytes as a dynamic one. Any other,
+      // Preact, Hono, an adapter that re-exports only the three helpers: gets
       // Deno's output, which is what its own helpers were written against.
       //
       // The import is the only thing inside the `try`: checking exports in
@@ -184,7 +184,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         mod = (await import(/* @vite-ignore */ source)) as typeof mod;
       } catch (err) {
         // Nothing to read, so nothing to improve on: Deno's output it is. Not
-        // an error — the generated code imports the helpers itself, and a
+        // an error: the generated code imports the helpers itself, and a
         // module Vite can resolve but this build cannot is a normal setup.
         this.warn(
           `[vincle/precompile] could not load "${source}" at build time ` +
@@ -200,7 +200,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         this.error(
           `[vincle/precompile] "${source}" declares the "vincle" precompile dialect ` +
             "but does not export both jsxAttr and jsxEscape, so build-time sanitization cannot " +
-            'run — a literal href="javascript:…" would reach the bundle verbatim. Re-export ' +
+            'run: a literal href="javascript:…" would reach the bundle verbatim. Re-export ' +
             "the runtime whole (`export * from`) rather than naming a subset.",
         );
       }
@@ -249,7 +249,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       this.warn(
         `[vincle/precompile] nothing was precompiled in this build: ${detail}. ` +
           "A page rendered by an SSG, or by a server that imports its own modules, never " +
-          "reaches a Vite plugin — and since the transform emits byte-identical output, speed " +
+          "reaches a Vite plugin, and since the transform emits byte-identical output, speed " +
           "is the only thing that would have told you. If this build is not the one that " +
           "renders your JSX, drop the plugin from it.",
       );

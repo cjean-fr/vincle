@@ -7,7 +7,7 @@ import { useDocs } from "../context.js";
 export function Tabs() {
   const { resolvedTabs, currentTab, currentPage } = useDocs();
 
-  // Error pages — no tab context.
+  // Error pages: no tab context.
   if (currentTab === null && currentPage !== "/") return null;
 
   return (

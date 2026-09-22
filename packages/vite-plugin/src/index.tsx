@@ -58,10 +58,10 @@ const ViteContext: ScopeKey<ViteScope> = Scope.key<ViteScope>("@vincle/vite:scop
 
 /**
  * Load and parse a Vite manifest from disk. Returns `null` if the file does
- * not exist — that's how dev-mode setups signal "no manifest yet".
+ * not exist: that's how dev-mode setups signal "no manifest yet".
  *
  * A file that exists but does not hold a Vite manifest is a configuration
- * problem, not a "dev mode" signal — it throws, naming the file.
+ * problem, not a "dev mode" signal: it throws, naming the file.
  *
  * @example
  * const manifest = await loadViteManifest("docs/assets/.vite/manifest.json");
@@ -79,7 +79,7 @@ export async function loadViteManifest(path: string): Promise<ViteManifest | nul
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     throw vincleError(
-      `[vincle/vite-plugin] loadViteManifest: could not read the manifest at "${path}" — ${reason}. ` +
+      `[vincle/vite-plugin] loadViteManifest: could not read the manifest at "${path}": ${reason}. ` +
         "Check the path points at the file `vite build` wrote (.vite/manifest.json by default).",
       ERR_VITE_MANIFEST_READ,
       { cause: err },
@@ -91,7 +91,7 @@ export async function loadViteManifest(path: string): Promise<ViteManifest | nul
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     throw vincleError(
-      `[vincle/vite-plugin] loadViteManifest: the manifest at "${path}" is not valid JSON — ${reason}. ` +
+      `[vincle/vite-plugin] loadViteManifest: the manifest at "${path}" is not valid JSON: ${reason}. ` +
         "Re-run `vite build`; the file may be stale or truncated.",
       ERR_VITE_MANIFEST_PARSE,
       { cause: err },
@@ -159,7 +159,7 @@ function missingEntryMessage(entry: string, manifest: ViteManifest): string {
   return (
     `[vincle/vite-plugin] Vite entry "${entry}" not found in manifest. ` +
     (near ? `Did you mean "${near}"? ` : "") +
-    "The manifest only lists files Vite bundles — the file must be imported by (or referenced from) " +
+    "The manifest only lists files Vite bundles: the file must be imported by (or referenced from) " +
     "an entry point, and the manifest must be current (re-run `vite build`). " +
     `Known entries: ${keys.length > 0 ? keys.join(", ") : "(none)"}.`
   );
@@ -184,7 +184,7 @@ function suggestEntry(entry: string, keys: string[]): string | null {
 }
 
 function levenshtein(a: string, b: string): number {
-  // Classic two-row DP. Cold path only — it runs to build an error message.
+  // Classic two-row DP. Cold path only: it runs to build an error message.
   if (a === b) return 0;
   const m = a.length;
   const n = b.length;
@@ -221,7 +221,7 @@ function resolveUrl(scope: ViteScope, entry: string): string {
  * - `entry="path/to/file.css"` → `<link rel="stylesheet" href="{base}{entry}">`
  * - any other entry → `<script type="module" src="{base}{entry}">`
  *
- * The Vite HMR client (`/@vite/client`) is NOT emitted here — pipe the
+ * The Vite HMR client (`/@vite/client`) is NOT emitted here: pipe the
  * rendered HTML through `server.transformIndexHtml()` to let Vite inject it
  * (and apply its other dev transforms). Any setup that doesn't go through
  * `transformIndexHtml` must add `<script type="module" src="/@vite/client">`
@@ -258,7 +258,7 @@ function resolveProd(scope: ViteScope, entry: string): JSX.Element {
   const out: JSX.Element[] = [];
   const seen = new Set<string>();
 
-  // Co-bundled CSS — render-blocking, must appear before scripts.
+  // Co-bundled CSS: render-blocking, must appear before scripts.
   for (const css of chunk.css ?? []) {
     out.push(<link rel="stylesheet" href={`${scope.base}${css}`} />);
   }

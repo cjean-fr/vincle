@@ -1,7 +1,7 @@
 # @vincle/core
 
-The JSX → HTML engine. One package, no dependencies, under 100 KB to download —
-runtime and the per-element attribute table together, every HTML and SVG
+The JSX → HTML engine has no dependencies and is under 100 KB to download.
+That includes the runtime and per-element attribute table for every HTML and SVG
 element, every CSS property. `csstype` alone, one of the two packages React
 needs just to type a `style` prop, is 138 KB. `bun run size` breaks the package
 down by kind and measures it against that budget on every build; it warns rather
@@ -13,7 +13,7 @@ for the walk.
 
 ## Status
 
-`1.0.0` — first public release.
+`1.0.0`: first public release.
 
 ## API
 
@@ -22,7 +22,7 @@ for the walk.
 | `renderToString`               | Render a JSX tree to an HTML string   |
 | `jsx` / `jsxs`                 | JSX runtime (auto-wired via tsconfig) |
 | `Fragment`                     | `<>…</>` support                      |
-| `raw`                          | Mark trusted HTML — no escaping       |
+| `raw`                          | Mark trusted HTML: no escaping        |
 | `createContext` / `useContext` | Tree-scoped Provider values           |
 | `Scope`                        | Per-execution mutable state           |
 
@@ -31,11 +31,11 @@ for the walk.
 `VNode`, `RawString`, `Awaitable`, `Renderable`, `ClassValue`, and the `JSX`
 namespace.
 
-`VNode` is a concrete class — one element (tag, attrs, children) — exported as
+`VNode` is a concrete class representing one element (tag, attrs, children), exported as
 a **type only**, the name of what `jsx()` produces, for typing a component's
 return or a generator's yield. `jsx()` is the only way to make one,
 structurally: the class is not reachable as a value from the package, so the
-tag is validated at that single door — `jsx()` — because the tree walk does
+tag is validated at that single door: `jsx()`, because the tree walk does
 not re-check it. `Renderable` is the separate, broader type: everything a
 component may return (a `VNode`, a string, a promise, an iterable of any of
 those, …).
@@ -44,7 +44,7 @@ those, …).
 
 | Subpath                    | Module                                          |
 | -------------------------- | ----------------------------------------------- |
-| `.`                        | `index.ts` — the public API                     |
+| `.`                        | `index.ts`: the public API                      |
 | `./jsx-runtime`            | `src/jsx-runtime.ts`                            |
 | `./jsx-dev-runtime`        | `src/jsx-dev-runtime.ts`                        |
 | `./jsx-precompile-runtime` | `src/jsx-precompile-runtime.ts`                 |
@@ -65,15 +65,15 @@ each one was, at some point, quietly untrue.
   `src/execution-order.test.ts`.
 
 - **The static path and the walk emit the same bytes.** A static subtree serialized at
-  `jsx()` time is byte-identical to the same subtree walked as a `VNode` — 1000
+  `jsx()` time is byte-identical to the same subtree walked as a `VNode`: 1000
   generated trees, `src/path-equivalence.test.ts`.
 
 - **The precompile runtime and the VNode runtime agree.** `jsxEscape` /
-  `jsxTemplate` are a third traversal of the same value taxonomy — 1000 generated
+  `jsxTemplate` are a third traversal of the same value taxonomy: 1000 generated
   values, `src/precompile-equivalence.test.ts`. `jsxAttr` and `buildAttrs` remain
   two attribute serializers pinned by a residual equivalence in `attrs.test.ts`.
-  The precompile surface is exactly `jsxTemplate` / `jsxAttr` / `jsxEscape` — the
-  contract Deno defined and Preact and Hono also export — so the transform in
+  The precompile surface is exactly `jsxTemplate` / `jsxAttr` / `jsxEscape`: the
+  contract Deno defined and Preact and Hono also export, so the transform in
   `@vincle/precompile` emits nothing a compatible runtime lacks, and
   hands back what it cannot express with those three (a rawtext element with a
   dynamic hole, a void element carrying content).
@@ -84,7 +84,7 @@ each one was, at some point, quietly untrue.
   Nothing serializes as `[object Promise]`.
 
 - **The output is the tree, or an error.** A void element given content
-  (`<img>{caption}</img>` — which type-checks, since the element types allow
+  (`<img>{caption}</img>`, which type-checks, since the element types allow
   children there) has no valid HTML form: a parser drops the closing tag and
   reparents the content. Both paths refuse it rather than emit it. A child that
   renders to nothing is not content, so a conditional child still renders the
@@ -92,31 +92,31 @@ each one was, at some point, quietly untrue.
 
 - **Escaping and URL filtering are not optional.** Text and attributes are escaped
   by default; `<script>`/`<style>` follow rawtext rules so real JS and CSS can be
-  written inline — **whatever shape the child arrives in**: a string, a promise,
+  written inline: **whatever shape the child arrives in**: a string, a promise,
   an iterable, an async iterable, or a component that returns code, so
   `<script>{await getCode()}</script>` reaches the JavaScript engine as written.
-  The escape form follows the element's sub-language, so a JSON data block —
-  `<script type="application/ld+json">{JSON.stringify(data)}</script>` — stays
+  The escape form follows the element's sub-language, so a JSON data block,
+  `<script type="application/ld+json">{JSON.stringify(data)}</script>`: stays
   parseable without `raw()`. `javascript:`, `vbscript:` and non-image `data:` URLs are
   replaced with `#blocked` in URL attributes. Scheme detection follows the WHATWG
-  parser, so obfuscation with tabs or control characters does not get through — and
+  parser, so obfuscation with tabs or control characters does not get through, and
   a relative URL is not mistaken for a scheme.
 
 - **Attributes are typed per element.** `JSX.IntrinsicElements` is filled in by
   a table generated from `@types/react` (see `scripts/codegen.ts`), so
   `<dvi clas="x">` is a compile error. Custom elements (any
   hyphenated name) stay open. Attribute names use camelCase spelling,
-  which the engine maps to the HTML one — including the SVG presentation
+  which the engine maps to the HTML one: including the SVG presentation
   attributes (`strokeWidth` → `stroke-width`).
 
 ## Intrinsic element types
 
-The per-element attribute table ships inside the package — nothing to install.
+The per-element attribute table ships inside the package: nothing to install.
 It is generated from `@types/react` and `csstype` (so the names, value unions
 and CSS properties match what you already know) by `scripts/codegen.ts`, which
 rewrites the marked regions of `src/jsx-namespace.ts`; CI fails if the committed
 file drifts (`bun run codegen` to regenerate). Both are dev-time inputs only:
-the CSS types are expanded inline, so the generated file is self-contained —
+the CSS types are expanded inline, so the generated file is self-contained,
 nothing external is referenced, not even type-only. The table keeps
 `JSX.IntrinsicElements` an open interface: custom elements and user extensions
 merge into it (e.g. `hx-*` attributes, Turbo's `turbo-frame`).
@@ -125,22 +125,22 @@ merge into it (e.g. `hx-*` attributes, Turbo's `turbo-frame`).
 
 - **No error-boundary component.** Errors reject; there is no component-level
   recovery here.
-- `renderToString` never throws synchronously — every failure arrives as a
+- `renderToString` never throws synchronously: every failure arrives as a
   rejection, so one `try`/`catch` around the await is enough. **One exception**,
   at the root of the tree: a static subtree is serialized during `jsx()`, so what
-  that refuses — an unserializable attribute, an invalid tag name, content in a
-  void element — throws where the JSX is _written_, before `renderToString` is
+  that refuses: an unserializable attribute, an invalid tag name, content in a
+  void element: throws where the JSX is _written_, before `renderToString` is
   ever called. `renderToString(<div onClick={fn}>text</div>)` throws;
   `renderToString(<div onClick={fn}><Comp/></div>)` rejects. Inside a component
-  the distinction disappears — `jsx()` then runs during the walk, which converts
+  the distinction disappears: `jsx()` then runs during the walk, which converts
   the throw.
 - A failing sibling stops the ones after it.
 - **`Error` messages are annotated with the throwing component's name**, once:
-  `[Profile] not found`. Only the innermost component — an ancestor that
+  `[Profile] not found`. Only the innermost component: an ancestor that
   re-throws the same error doesn't add itself. A thrown value that isn't an
   `Error` passes through unchanged.
 - **Messages are self-contained**: `[vincle/<package>] <api>: <what>. <why>.
-<how to fix it>` — the prefix is stable and greppable, and the message names
+<how to fix it>`: the prefix is stable and greppable, and the message names
   the offending value. Config errors fail fast, at the entry point that
   receives the config, before anything renders.
 - **Per-fragment recovery** is `@vincle/flow`'s `onError`, for streaming.

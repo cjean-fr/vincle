@@ -1,14 +1,14 @@
 /**
  * The skill is documentation an LLM reads *before* writing code, so an example
- * that no longer compiles is not a typo — it is a wrong answer, generated at
+ * that no longer compiles is not a typo: it is a wrong answer, generated at
  * scale, in every project that installs this package. Nothing executed those
- * examples: a `withScope(fn, { seed: snapshot() })` shipped in it for months,
+ * examples. For months it shipped `withScope(fn, { seed: snapshot() })`,
  * and it throws on the first run.
  *
  * Every fenced `ts` / `tsx` block in `SKILL.md` is therefore extracted and
  * type-checked against this package's own sources. A block that is deliberately
- * wrong — a `❌` example, a config fragment — opts out with an HTML comment on
- * the line before its fence:
+ * wrong, such as a `❌` example or a config fragment, opts out with an HTML
+ * comment on the line before its fence:
  *
  *     <!-- skip-typecheck -->
  *     ```tsx
@@ -26,7 +26,7 @@ const PACKAGE_ROOT = import.meta.dir;
 const SKILL = join(PACKAGE_ROOT, "skills/core/SKILL.md");
 const OUT = join(PACKAGE_ROOT, "tmp/skill-check");
 
-/** ```lang … ``` — `before` is everything up to the fence, for the opt-out scan. */
+/** ```lang … ```: `before` is everything up to the fence, for the opt-out scan. */
 const RE_BLOCK = /```(ts|tsx)\n([\s\S]*?)\n```/g;
 // `<!-- skip-typecheck -->`, optionally carrying its reason: `… -->` is not
 // part of the match, so `<!-- skip-typecheck: on purpose -->` opts out too.
@@ -65,7 +65,7 @@ function extractBlocks(markdown: string): { checked: Block[]; skipped: number } 
 }
 
 // What the examples borrow from the reader's own application. Types are as loose
-// as the example needs — this pins that the *vincle* API is used correctly, not
+// as the example needs: this pins that the *vincle* API is used correctly, not
 // that a fictional `fetchUser` is well designed.
 const SKILL_GLOBALS = `
 // Relative to the generated directory, not the package root: an unresolved
@@ -112,7 +112,7 @@ const TSCONFIG = {
   compilerOptions: {
     noEmit: true,
     // A snippet declares what it is illustrating, used or not. That is prose,
-    // not dead code — the rest of the package's strictness still applies.
+    // not dead code: the rest of the package's strictness still applies.
     noUnusedLocals: false,
     noUnusedParameters: false,
     // The package root: these files live under it and reach back into `src/`.
@@ -128,7 +128,7 @@ const TSCONFIG = {
   exclude: [],
 };
 
-describe("SKILL.md — every example compiles", () => {
+describe("SKILL.md: every example compiles", () => {
   it("type-checks the fenced ts/tsx blocks against this package", () => {
     const markdown = readFileSync(SKILL, "utf8");
     const { checked, skipped } = extractBlocks(markdown);

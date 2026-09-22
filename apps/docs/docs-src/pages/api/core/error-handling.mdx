@@ -12,11 +12,11 @@ them mid-tree.
 Server-side rendering is fundamentally different from client-side React, and a
 boundary component has little to catch:
 
-- **No recovery after output** — once HTML is sent, a boundary can't
+- **No recovery after output**: once HTML is sent, a boundary can't
   retroactively replace it. The server's only choice is what to send next.
-- **SSR errors are exceptional** — a server error usually means a 500, not
+- **SSR errors are exceptional**: a server error usually means a 500, not
   a graceful partial fallback.
-- **Streaming recovery is per-fragment** — `@vincle/flow` provides `onError`
+- **Streaming recovery is per-fragment**: `@vincle/flow` provides `onError`
   for the streaming case, which is more granular than a boundary.
 
 ## Top-level errors
@@ -36,7 +36,7 @@ try {
 ```
 
 An `Error` thrown by a component is annotated with that component's name,
-once — the innermost one, not the whole chain:
+once: the innermost one, not the whole chain:
 
 ```tsx
 function Profile() {
@@ -51,11 +51,11 @@ try {
 ```
 
 A thrown value that isn't an `Error` (a string, a plain object) is never
-wrapped — `catch` sees exactly what was thrown.
+wrapped: `catch` sees exactly what was thrown.
 
 ## Message format
 
-Every error vincle raises is prefixed and self-contained — it says **where** it
+Every error vincle raises is prefixed and self-contained. It says **where** it
 came from, **what** went wrong (naming the offending value), **why**, and **how
 to fix it**:
 
@@ -67,7 +67,7 @@ Real examples:
 
 ```
 [vincle/core] Scope.get("app:theme"): the value was never set in the current scope. Set it above the reader with Scope.set(key, value) inside the same Scope.with()…
-[vincle/flow] <Defer target="hero">: merge="prepend" is not supported by this adapter — it supports: replace, append. Pick one of those, or use an adapter that supports "prepend".
+[vincle/flow] <Defer target="hero">: merge="prepend" is not supported by this adapter: it supports: replace, append. Pick one of those, or use an adapter that supports "prepend".
 [vincle/vite-plugin] Vite entry "src/logo.sv" not found in manifest. Did you mean "src/logo.svg"? The manifest only lists files Vite bundles…
 ```
 
@@ -77,7 +77,7 @@ call to fix.
 The prefix is stable and greppable (`[vincle/core]`, `[vincle/flow]`,
 `[vincle/vite-plugin]`, `[vincle/precompile]`), so you can filter
 vincle errors out of a log or match them in CI. To tell them apart _in code_,
-read `error.code` rather than the message — see below.
+read `error.code` rather than the message: see below.
 
 ## Error codes
 
@@ -109,7 +109,7 @@ try {
 | `ERR_VINCLE_CONTEXT_LIMIT`   | more distinct context keys than the table holds                   |
 | `ERR_VINCLE_CONTEXT_UNSET`   | `Scope.get()` read a value never set in scope                     |
 
-The first three are `TypeError`s — an argument that is not what it has to be.
+The first three are `TypeError`s: an argument that is not what it has to be.
 Every other code in this page, here and below, is a plain `Error`.
 
 ### `@vincle/flow`
@@ -135,12 +135,12 @@ Every other code in this page, here and below, is a plain `Error`.
 | `ERR_VINCLE_VITE_MISSING_ENTRY`  | an entry the manifest does not list                        |
 | `ERR_VINCLE_PRECOMPILE_CONFIG`   | `runtimeSource` is not a module specifier                  |
 | `ERR_VINCLE_PRECOMPILE_HELPER`   | a runtime helper answered a shape the transform cannot use |
-| `ERR_VINCLE_PRECOMPILE_INTERNAL` | an invariant of the transform broke — a bug to report      |
+| `ERR_VINCLE_PRECOMPILE_INTERNAL` | an invariant of the transform broke: a bug to report       |
 
 The codes are not exported: compare against the string, as you would an
 `ENOENT`. The set may grow; an existing code will not be renamed or reused.
 
-Config errors fail **fast**, at the entry point that receives the config —
+Config errors fail **fast**, at the entry point that receives the config,
 before a single byte is rendered or a build starts:
 
 - `@vincle/flow`: `renderToStream`, `renderToFlowEvents`, `renderToStatic`,

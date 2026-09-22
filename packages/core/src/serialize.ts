@@ -2,7 +2,8 @@
  * Static serialization: an element whose subtree is already final becomes HTML at
  * construction time, instead of a `VNode` the tree walk reads back later.
  *
- * Three depths, one rule — `null` bails, and means "this renders later":
+ * The three functions below share a rule: `null` stops serialization
+ * because the node must render later.
  *
  *   serializeStatic   one element and everything under it
  *   serializeContent  an element's children, into the string between its tags
@@ -68,8 +69,8 @@ export function serializeVoidElement(tag: string, attrStr: string): string {
  *
  * The tag name arrives judged: `jsx()` is the one door in, and this function is
  * not reachable from outside the package, so there is no second way an element
- * gets here unexamined. The void check stays — this path never builds a `VNode`,
- * so the door's check never runs for it — and its answer is needed anyway, to
+ * gets here unexamined. The void check stays: this path never builds a `VNode`,
+ * so the door's check never runs for it, and its answer is needed anyway, to
  * know whether the tag closes.
  *
  * What this deliberately does *not* do, because a second opinion on it is how
@@ -82,7 +83,7 @@ export function serializeVoidElement(tag: string, attrStr: string): string {
  *   getter in the props twice, and sends `<div style={{…}}>` and `class={[…]}`
  *   down the slow path for nothing.
  *   `dangerouslySetInnerHTML` is the one prop shape that really is invisible here
- *   — it replaces the children this walk reads from `props` — and `jsx()` keeps
+ *  : it replaces the children this walk reads from `props`, and `jsx()` keeps
  *   that one to itself.
  */
 export function serializeStatic(
@@ -90,12 +91,12 @@ export function serializeStatic(
   props: Record<string, unknown>,
 ): RawString | Promise<RawString> | null {
   // `ownChildren` (props.ts) owns what an inherited `children` means; asking it
-  // is what costs, at one call per element — 4% of a page of static markup — so
+  // is what costs, at one call per element: 4% of a page of static markup, so
   // the condition that makes it worth asking is named and tested here.
   const prototypeCarriesChildren = "children" in Object.prototype;
   const children = prototypeCarriesChildren ? ownChildren(props) : props["children"];
   const isVoid = isVoidElement(tag);
-  // The door (`jsx-runtime.ts`) repeats this same condition on the VNode path —
+  // The door (`jsx-runtime.ts`) repeats this same condition on the VNode path,
   // keep the two in sync; `path-equivalence.test.ts` fuzzes the agreement.
   if (isVoid && children !== undefined)
     throw vincleTypeError(voidChildrenMessage(tag), ERR_VOID_CHILDREN);
@@ -108,7 +109,7 @@ export function serializeStatic(
   if (content === null) return null;
 
   const attrStr = buildAttrs(props);
-  // A promised attribute value does not make a subtree dynamic — it makes the
+  // A promised attribute value does not make a subtree dynamic: it makes the
   // *serialized result* awaitable, which `JSX.Element` has always allowed. Doing
   // it here rather than falling back to a VNode keeps one serializer for one
   // element, whatever its attributes turn out to be.
@@ -151,7 +152,7 @@ function serializeChild(child: unknown, rawtextTag: string | undefined): string 
   // The two tests `renderNode` opens with, for the same reason. A non-object is
   // a leaf by construction. `RawString` is the object this path hands itself
   // back, one per nested element, and the only hot shape that reaches
-  // `isIterable` / `isAsyncIterable` — everything else short-circuits on their
+  // `isIterable` / `isAsyncIterable`: everything else short-circuits on their
   // `typeof` test before the `Symbol` lookup. Worth 7.0% on `stack` and 4.6% on
   // `realworld`.
   if (typeof child !== "object" || child === null) {

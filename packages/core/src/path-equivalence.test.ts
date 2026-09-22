@@ -7,17 +7,17 @@ import { invalidTagMessage, isValidTag } from "./tag.js";
 import { VNode, raw } from "./types.js";
 
 /**
- * Path-equivalence fuzzer — the structural guard for the hybrid model.
+ * Path-equivalence fuzzer: the structural guard for the hybrid model.
  *
  * The engine builds HTML two ways over the same value taxonomy: the static path
  * (`jsx` pre-renders static subtrees to a `RawString`) and the VNode tree walk
  * (`renderNode`). A "hole" is any value kind one path handles and the other
- * mishandles — silently, since the fallback is `escapeContent(String(v))`, not an
+ * mishandles: silently, since the fallback is `escapeContent(String(v))`, not an
  * error. That's the class of bug an eager (single-path) renderer can't have.
  *
  * This test proves the two paths agree: a seeded generator builds the *same
- * logical tree* twice — once with `jsx` (static path on) and once with `vnodeOf` (the
- * VNode `jsx` returns when the static path bails, so every element stays a VNode) — and
+ * logical tree* twice: once with `jsx` (static path on) and once with `vnodeOf` (the
+ * VNode `jsx` returns when the static path bails, so every element stays a VNode), and
  * asserts byte-identical output. Any divergence is a hole; the failing seed
  * reproduces it.
  */
@@ -28,11 +28,11 @@ type Builder = (tag: any, props: any) => unknown;
  * The control: builds the same `VNode` `jsx` returns once the static path has bailed,
  * so every element takes the tree-walk path.
  *
- * Hand-written rather than derived — there is no "`jsx` minus the static path" to call.
+ * Hand-written rather than derived: there is no "`jsx` minus the static path" to call.
  * It has to differ from `jsx` in exactly one way, the static path, or the comparison
  * stops meaning anything, so its `dangerouslySetInnerHTML` handling and its two
- * checks — the tag gate and the void rule, run in the door's order on the final
- * children — are kept aligned with `jsx`'s by hand.
+ * checks (the tag gate and the void rule) must follow `jsx`'s order on the
+ * final children. We keep them aligned by hand.
  */
 function vnodeOf(tag: any, attributes: Record<string, unknown> | null): unknown {
   const props = attributes ?? {};
@@ -57,7 +57,7 @@ function trustedInnerHTML(html: unknown): unknown {
   );
 }
 
-// Seeded PRNG (mulberry32) — same seed ⇒ same sequence ⇒ same logical tree.
+// Seeded PRNG (mulberry32): same seed ⇒ same sequence ⇒ same logical tree.
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -123,7 +123,7 @@ function randProps(r: () => number): Record<string, unknown> {
   if (r() < 0.08) p["style"] = raw("color:blue");
   // A promised attribute value: the static path now returns a `Promise<RawString>` for
   // these instead of declining, so this is the one prop shape where the two paths
-  // do not even have the same *return type* — only the same bytes.
+  // do not even have the same *return type*: only the same bytes.
   if (r() < 0.12) p["href"] = Promise.resolve(r() < 0.5 ? "/p" : "javascript:alert(1)");
   // `__html` clears the children when it is nullish, and that is a second
   // branch: a string is trusted as markup, `null`/`undefined` render nothing.
@@ -141,7 +141,7 @@ function genLeaf(r: () => number): unknown {
   if (roll < 0.69) return r() < 0.33 ? null : r() < 0.5 ? undefined : r() < 0.5;
   if (roll < 0.82) return raw("<em>" + pick(TEXTS, r) + "</em>");
   if (roll < 0.92) return BigInt(Math.floor(r() * 10000));
-  // A function that is not a component — a child, not a tag. The static path declines
+  // A function that is not a component: a child, not a tag. The static path declines
   // it (`typeof child === "function"`) and the walk stringifies it, so the two
   // agree only because the static path hands it over rather than serializing `String(fn)`.
   if (roll < 0.96) return r() < 0.5 ? function named() {} : (): string => "x";
@@ -152,12 +152,12 @@ function genLeaf(r: () => number): unknown {
  * Does this element throw its children away?
  *
  * `dangerouslySetInnerHTML` replaces them, so children generated under one are
- * built and then dropped — and *built* is where the static path decides. A
+ * built and then dropped, and *built* is where the static path decides. A
  * subtree it refuses at construction (a void element carrying content, an
  * invalid tag)
  * but the walk never renders has no single right answer: the eager path has
  * already seen it, the lazy path never will. That is a property of the two
- * models, not a hole between them, so the generator does not build such trees —
+ * models, not a hole between them, so the generator does not build such trees,
  * it would compare a construction-time refusal against a render that skipped the
  * offending node.
  */
@@ -187,7 +187,7 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
 
   if (roll < 0.42) {
     // Async component. The static path declines on it and renders the static siblings
-    // anyway, so an async child is where a partly serialized tree meets the walk —
+    // anyway, so an async child is where a partly serialized tree meets the walk,
     // the mix `precompile-equivalence.test.ts` generates and this one did not.
     const body = gen(h, r, depth - 1);
     return h(async () => body, {});
@@ -232,7 +232,7 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
   }
 
   if (roll < 0.72) {
-    // Void element — with children that render to nothing as often as without.
+    // Void element: with children that render to nothing as often as without.
     //
     // Generating them childless only was how the static path and the tree-walk
     // drifted unnoticed: void handling was decided from a `hasChildren` flag two
@@ -270,7 +270,7 @@ function gen(h: Builder, r: () => number, depth: number): unknown {
 /**
  * What a path *did*, as one comparable string: the HTML, or the refusal.
  *
- * The build is inside the try because the static path happens at `jsx()` time — a void
+ * The build is inside the try because the static path happens at `jsx()` time: a void
  * element carrying content is refused while the tree is being constructed, where
  * the tree walk refuses the same tree at render time. Comparing only successful
  * renders would let the two paths disagree on which trees are legal at all.
@@ -290,7 +290,7 @@ async function outcome(build: () => unknown): Promise<string> {
  * the static path is what decides that shape: a promised attribute makes the serialized
  * subtree a `Promise`, which the component then returns, where the walk returns a
  * `VNode` and the error surfaces outside the annotated call. That is a property
- * of the error path, not of the two serializers this test compares — the refusal
+ * of the error path, not of the two serializers this test compares: the refusal
  * itself is what has to match.
  */
 function bareMessage(message: string): string {
@@ -321,8 +321,8 @@ describe("path equivalence: static ≡ tree-walk", () => {
 });
 
 describe("a void element carrying children", () => {
-  // TypeScript accepts `<br>{x}</br>` — `@types/react` does not forbid children
-  // on a void tag — so this input is reachable, and it has no valid HTML form: a
+  // TypeScript accepts `<br>{x}</br>`: `@types/react` does not forbid children
+  // on a void tag, so this input is reachable, and it has no valid HTML form: a
   // parser drops the closing tag and reparents the content, turning `<br>x</br>`
   // into two breaks and a text node. Both paths refuse it, with one message.
   //

@@ -1,7 +1,7 @@
 import type { RuleModule } from "../types.js";
 
 /**
- * Inline event handlers are not forbidden — `@vincle/core` serializes a string
+ * Inline event handlers are not forbidden: `@vincle/core` serializes a string
  * handler like any other attribute, escaped. This rule is where they get
  * discouraged, because the runtime deliberately says nothing: an SSR renderer
  * emits the same tree thousands of times a second, so a per-render `console.warn`
@@ -21,7 +21,7 @@ import type { RuleModule } from "../types.js";
  *                          error, not just on event handlers. → error.
  *
  * Component props are ignored entirely: `<Foo onClick={fn} />` passes the
- * function to the component, which is not serialized — that is a normal
+ * function to the component, which is not serialized: that is a normal
  * client-side callback, not a render error.
  */
 
@@ -52,7 +52,7 @@ export const noUnsafeEventHandlers: RuleModule = {
       inlineHandler:
         "Inline event handler \"{{name}}\" is rendered as an HTML attribute. It works, but it requires a `script-src 'unsafe-inline'` CSP allowance and the code in the string is never bundled or type-checked. Prefer attaching the listener from a script.",
       functionAttribute:
-        '"{{name}}" was passed a function. @vincle/core renders attributes to HTML, and a function cannot be serialized — rendering throws. Pass a string, or attach the listener client-side.',
+        '"{{name}}" was passed a function. @vincle/core renders attributes to HTML, and a function cannot be serialized: rendering throws. Pass a string, or attach the listener client-side.',
     },
   },
   defaultOptions: [],
@@ -77,7 +77,7 @@ export const noUnsafeEventHandlers: RuleModule = {
         }
 
         // A string on an event handler works but ships uncached code under a
-        // `script-src 'unsafe-inline'` allowance — discouraged, not broken.
+        // `script-src 'unsafe-inline'` allowance: discouraged, not broken.
         if (/^on[A-Za-z]/.test(name)) {
           context.report({
             node,

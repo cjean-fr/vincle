@@ -8,7 +8,7 @@ title: TSRX
 UIs. `@vincle/core` is compatible with it: its
 [jsx-runtime](/guide/getting-started/typescript-setup) exports the same
 `jsx`, `jsxs`, and `Fragment` that TSRX's compiler emits, so `.tsrx`
-components render through vincle — no dedicated target package, no React.
+components render through vincle: no dedicated target package, no React.
 
 The whole wiring is pointing TSRX's transform at vincle with
 `jsxImportSource: "@vincle/core"`, in the bundler plugin and in your
@@ -111,11 +111,11 @@ For the rest of your `.tsx` modules, set the import source as in
 
 ## Notes
 
-- **`renderToString` is awaited** — it returns a promise.
+- **`renderToString` is awaited**: it returns a promise.
 - **Use the build, not a preload.** The plugin's extracted styles only work
   inside `Bun.build`; the `css` loader it relies on is not available at
   runtime. The build is also what emits the scoped styles as
-  `dist/<entry>.css` — inline it into your document's head when serving.
+  `dist/<entry>.css`: inline it into your document's head when serving.
 - **Keep `@tsrx/react` a direct dependency** when imports are left external
   (SSR, library builds): generated modules import
   `@tsrx/react/runtime/iterable`, which ships inside it.

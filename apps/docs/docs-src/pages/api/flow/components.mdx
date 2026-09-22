@@ -8,9 +8,9 @@ Components for deferring content in the HTML shell. Imported from `@vincle/flow`
 
 ## Defer
 
-Registers content to render later, in place of a placeholder. Unified —
-handles both sync and lazy content. `Defer` renders its own placeholder —
-`fallback` is its content — so no `Slot` needs to exist first:
+Registers content to render later in place of a placeholder. It handles
+both sync and lazy content. `Defer` renders its own placeholder, whose content
+comes from `fallback`, so no `Slot` needs to exist first:
 
 - **Sync** (plain JSX `children`) → content registered; placeholder rendered, `fallback` is its content
 - **Lazy** (factory `children`) → content deferred; placeholder rendered, `fallback` is its content
@@ -33,7 +33,7 @@ async function HeavyDashboard() {
 This is the common case: placeholder and deferred content declared together,
 in one place, nothing else required. Reach for `Slot` only when the
 placeholder's position needs to be declared somewhere `Defer` can't reach
-directly — see below. `target` is optional: when omitted, Vincle generates
+directly: see below. `target` is optional: when omitted, Vincle generates
 the placeholder id. See the [named slot example](/integration/components)
 for an explicit `target` paired with its destination.
 
@@ -42,16 +42,16 @@ for an explicit `target` paired with its destination.
 | Prop       | Type                                                                                                                                                     | Default      | Description                                             |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------- |
 | `target`   | `string`                                                                                                                                                 | Generated id | Optional placeholder id; match a `Slot` name to fill it |
-| `fallback` | `VNode`                                                                                                                                                  | —            | Content rendered in the placeholder                     |
-| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | —            | Content — plain JSX, a factory, or an async iterable    |
+| `fallback` | `VNode`                                                                                                                                                  | N/A          | Content rendered in the placeholder                     |
+| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | N/A          | Content: plain JSX, a factory, or an async iterable     |
 | `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after"`                                                                                              | `"replace"`  | How content applies to the target                       |
-| `timeout`  | `number`                                                                                                                                                 | —            | Per-fragment render timeout in ms                       |
-| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void`                                                                                           | —            | Per-fragment error handler                              |
+| `timeout`  | `number`                                                                                                                                                 | N/A          | Per-fragment render timeout in ms                       |
+| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void`                                                                                           | N/A          | Per-fragment error handler                              |
 
 ## Slot
 
 Declares a named insertion point that stands in for a `Defer` rendered
-elsewhere in the tree — typically a layout reserving a spot that a
+elsewhere in the tree: typically a layout reserving a spot that a
 page-specific component fills later, by matching `target` to `name`. Its
 children render immediately as placeholder content, visible until the
 matching `Defer` patches them.
@@ -90,27 +90,27 @@ function Page() {
 
 Every adapter renders a placeholder as an element (or marker) carrying that
 one id, and every adapter's patch resolves to the _first_ match in the
-document — the same rule HTML `id` uniqueness and `getElementById` already
+document: the same rule HTML `id` uniqueness and `getElementById` already
 impose. So when pairing `Slot` with `Defer`, `Slot` must come first, and
-`Defer` should skip its own `fallback` — passing one there just renders a
+`Defer` should skip its own `fallback`: passing one there just renders a
 second, dead placeholder with the same id right next to `Slot`'s live one.
 
 **Props:**
 
 | Prop       | Type     | Default | Description                                        |
 | ---------- | -------- | ------- | -------------------------------------------------- |
-| `name`     | `string` | —       | Fragment id, required                              |
-| `children` | `VNode`  | —       | Fallback content rendered immediately in the shell |
+| `name`     | `string` | N/A     | Fragment id, required                              |
+| `children` | `VNode`  | N/A     | Fallback content rendered immediately in the shell |
 
 ## Include
 
-Browser fetches a fragment from a URL after the shell lands. No server-push required — works with any static file server.
+Browser fetches a fragment from a URL after the shell lands. No server-push required: works with any static file server.
 
 ```tsx
 import { Include } from "@vincle/flow";
 
 // The browser fetches /fragments/comments.html after the shell lands.
-// No server-push needed — works with any static file server.
+// No server-push needed: works with any static file server.
 function Page() {
   return (
     <html>
@@ -126,12 +126,12 @@ function Page() {
 
 | Prop       | Type     | Default | Description                            |
 | ---------- | -------- | ------- | -------------------------------------- |
-| `src`      | `string` | —       | URL of the fragment HTML file to fetch |
-| `fallback` | `VNode`  | —       | Placeholder shown while fetching       |
+| `src`      | `string` | N/A     | URL of the fragment HTML file to fetch |
+| `fallback` | `VNode`  | N/A     | Placeholder shown while fetching       |
 
-## Style / Script — asset emission
+## Style / Script: asset emission
 
-`<Style>` and `<Script>` emit their tag at their own position in the tree, once per `name` — first occurrence wins. Later occurrences return `null`, so a page can declare its own CSS/JS without a separate asset-resolution pass.
+`<Style>` and `<Script>` emit their tag at their own position in the tree, once per `name`: first occurrence wins. Later occurrences return `null`, so a page can declare its own CSS/JS without a separate asset-resolution pass.
 
 ```tsx
 import { Style, Script } from "@vincle/flow/components";
@@ -151,35 +151,35 @@ const Page = () => (
 
 | Prop       | Type                                  | Default | Description                                       |
 | ---------- | ------------------------------------- | ------- | ------------------------------------------------- |
-| `name`     | `string`                              | —       | Asset id, required, dedup key                     |
-| `media`    | `string`                              | —       | `media` attribute                                 |
-| `children` | `string \| (() => Awaitable<string>)` | —       | CSS text, evaluated only if this occurrence emits |
+| `name`     | `string`                              | N/A     | Asset id, required, dedup key                     |
+| `media`    | `string`                              | N/A     | `media` attribute                                 |
+| `children` | `string \| (() => Awaitable<string>)` | N/A     | CSS text, evaluated only if this occurrence emits |
 
 **Script props:**
 
 | Prop       | Type                                  | Default | Description                                        |
 | ---------- | ------------------------------------- | ------- | -------------------------------------------------- |
-| `name`     | `string`                              | —       | Asset id, required, dedup key                      |
-| `src`      | `string`                              | —       | `src` attribute                                    |
+| `name`     | `string`                              | N/A     | Asset id, required, dedup key                      |
+| `src`      | `string`                              | N/A     | `src` attribute                                    |
 | `module`   | `boolean`                             | `false` | Sets `type="module"`                               |
 | `defer`    | `boolean`                             | `false` | Sets the `defer` attribute                         |
-| `children` | `string \| (() => Awaitable<string>)` | —       | Inline JS, evaluated only if this occurrence emits |
+| `children` | `string \| (() => Awaitable<string>)` | N/A     | Inline JS, evaluated only if this occurrence emits |
 
-In static generation, standalone fragment files (`emitFragments`) suppress asset emission — the shell that includes them already carries the assets, so fragments are emitted without a duplicate `<style>`/`<script>` tag.
+In static generation, standalone fragment files (`emitFragments`) suppress asset emission: the shell that includes them already carries the assets, so fragments are emitted without a duplicate `<style>`/`<script>` tag.
 
 ## Content forms
 
 `Defer` accepts children in either form:
 
-| Children                     | Behaviour                                                          |
-| ---------------------------- | ------------------------------------------------------------------ |
-| Plain JSX                    | Deferred automatically — no thunk needed                           |
-| `(signal: AbortSignal) => …` | **Cancellable** — receives `AbortSignal` (request + timeout abort) |
+| Children                     | Behaviour                                                         |
+| ---------------------------- | ----------------------------------------------------------------- |
+| Plain JSX                    | Deferred automatically: no thunk needed                           |
+| `(signal: AbortSignal) => …` | **Cancellable**: receives `AbortSignal` (request + timeout abort) |
 
 **Return types (for both forms):**
 
-| Return type                  | Behaviour                                            |
-| ---------------------------- | ---------------------------------------------------- |
-| A renderable JSX node        | One-shot patch — renders once and resolves           |
-| `Promise<JSX.Element>`       | Resolves asynchronously, then patches in             |
-| `AsyncIterable<JSX.Element>` | A stream — one patch per item, as each item resolves |
+| Return type                  | Behaviour                                           |
+| ---------------------------- | --------------------------------------------------- |
+| A renderable JSX node        | One-shot patch: renders once and resolves           |
+| `Promise<JSX.Element>`       | Resolves asynchronously, then patches in            |
+| `AsyncIterable<JSX.Element>` | A stream: one patch per item, as each item resolves |

@@ -42,7 +42,7 @@ any response pipeline.
 
 ## Components are functions
 
-Components are plain functions — no classes, no hooks, no lifecycle. Props are
+Components are plain functions: no classes, no hooks, no lifecycle. Props are
 typed with standard TypeScript interfaces. Children are passed via the
 `children` prop or as JSX children, giving you the same composition model as
 React but without the overhead.
@@ -74,8 +74,8 @@ same props, same output. This makes them trivially testable and cacheable.
 
 ## Values are escaped
 
-**Every** value embedded in JSX — text content, attribute values, style
-properties — is HTML-escaped before it reaches the output. There is no
+**Every** value embedded in JSX, whether text content, an attribute value, or a
+style property, is HTML-escaped before it reaches the output. There is no
 escape-by-default opt-out. This covers `&`, `<`, `>`, and `"` across all
 rendering surfaces.
 
@@ -130,6 +130,6 @@ This is covered in the [introduction](/guide/introduction#async-native).
 
 ## Where to next
 
-- [Elements & attributes](/guide/jsx/elements-attributes) — `class`, `style`, booleans
-- [Introduction](/guide/introduction) — components are functions
-- [Async-native](/guide/introduction#async-native) — `await` inside render
+- [Elements & attributes](/guide/jsx/elements-attributes): `class`, `style`, booleans
+- [Introduction](/guide/introduction): components are functions
+- [Async-native](/guide/introduction#async-native): `await` inside render

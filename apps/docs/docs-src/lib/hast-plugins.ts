@@ -54,7 +54,7 @@ function isBlankText(node: unknown): boolean {
  * bun add @vincle/core
  * ```
  *
- * Groups sharing a `sync` key share their active tab across pages — see
+ * Groups sharing a `sync` key share their active tab across pages: see
  * `tabs/client.ts`. The emitted DOM matches the former JSX `<Tabs>`
  * component, so the client script and the CSS are untouched.
  */

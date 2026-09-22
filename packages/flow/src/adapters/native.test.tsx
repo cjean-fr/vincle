@@ -15,7 +15,7 @@ import { createFragmentStore } from "../fragment-store.js";
 const ctxWith = (size: number): ShellContext => ({ fragments: { size } });
 
 describe("NativeAdapter", () => {
-  it("patches are declarative templates — never per-fragment scripts (CSP)", async () => {
+  it("patches are declarative templates: never per-fragment scripts (CSP)", async () => {
     const repl = await renderToString(
       NativeAdapter.Patch({ id: "x", children: "c", merge: "replace" }),
     );
@@ -30,7 +30,7 @@ describe("NativeAdapter", () => {
     expect(app).not.toContain("<script");
   });
 
-  it("refuses morph — the polyfill has no diffing algorithm", () => {
+  it("refuses morph: the polyfill has no diffing algorithm", () => {
     // `insertAdjacentHTML(ADJ["morph"], …)` throws in the browser, so the
     // refusal has to happen server-side, at registration.
     expect(NativeAdapter.capabilities.merges).not.toContain("morph");
@@ -91,7 +91,7 @@ describe("NativeAdapter", () => {
  * Both adapters share the same `Patch`, so the same markup. What sets them
  * apart is what that markup **produces**: `data-merge` is only read by the
  * polyfill. Declaring all five merges on both sides made the registry accept
- * an `append` that the pure spec silently ignores — a missing fragment, no
+ * an `append` that the pure spec silently ignores: a missing fragment, no
  * error, which is exactly what the rest of the package refuses on principle.
  *
  * The README always said so ("`replace` only"); it was the code that promised
@@ -105,7 +105,7 @@ describe("merge capabilities: the pure spec and the polyfill diverge", () => {
       adapter,
     } as FlowConfig);
 
-  it("WebPlatformAdapter declares only replace — nothing else works without JS", () => {
+  it("WebPlatformAdapter declares only replace: nothing else works without JS", () => {
     expect(WebPlatformAdapter.capabilities.merges).toEqual(["replace"]);
   });
 
@@ -141,7 +141,7 @@ describe("merge capabilities: the pure spec and the polyfill diverge", () => {
 });
 
 /**
- * The polyfill turns `data-src` into `fetch(src)` + `innerHTML` — a client-side
+ * The polyfill turns `data-src` into `fetch(src)` + `innerHTML`: a client-side
  * sink outside `@vincle/core`'s output-encoding model. The gate below mirrors
  * the server policy (`<Include>` allows http(s) or relative only): anything
  * that does not resolve to http(s) is dropped, fail-closed, before `fetch`.

@@ -1,6 +1,6 @@
 # @vincle/flow
 
-Fragment streaming extension for [@vincle/core](https://github.com/cjean-fr/vincle/tree/main/packages/core). Renders deferred JSX fragments and delivers them to the browser as DOM patches. **Pick the adapter that matches your JS budget — from zero JS (WebPlatform/ESI) to ~550 B (Native) to full framework (Turbo/HTMX).**
+Fragment streaming extension for [@vincle/core](https://github.com/cjean-fr/vincle/tree/main/packages/core). Renders deferred JSX fragments and delivers them to the browser as DOM patches. **Pick the adapter that matches your JS budget: from zero JS (WebPlatform/ESI) to ~550 B (Native) to full framework (Turbo/HTMX).**
 
 ## When to use
 
@@ -11,18 +11,18 @@ Use `@vincle/core` alone for SSG, emails, and pure SSR. Add `@vincle/flow` when 
 | Renders JSX → HTML string | Adds deferred fragments + streaming patch delivery |
 | Server-only, zero runtime | Emits adapter-specific markup for DOM updates      |
 | `renderToString()`        | `renderToStream()` / `renderToStatic()`            |
-| —                         | Adapters: Turbo, HTMX, Native, WebPlatform, ESI    |
+| N/A                       | Adapters: Turbo, HTMX, Native, WebPlatform, ESI    |
 
 ## Why deferred regions in streaming SSR
 
 A standard `renderToString` call is a serial pipeline: the server computes the full page before sending the first byte. With streaming, the shell (layout, navigation, above-the-fold content) goes to the browser immediately while heavy components are still rendering.
 
-Deferred regions of the same **wave** render **in parallel** and independently — the slowest one does not block its wave-mates. Waves flush one after another, and streams run on their own separate schedule. The browser receives the shell, paints it, then receives patches as they arrive and applies them in-place.
+Deferred regions of the same **wave** render **in parallel** and independently: the slowest one does not block its wave-mates. Waves flush one after another, and streams run on their own separate schedule. The browser receives the shell, paints it, then receives patches as they arrive and applies them in-place.
 
-- **TTFB / FCP** — users see content in one round-trip, not after all async work settles
-- **No virtual DOM, no hydration** — patches are applied as plain HTML by the adapter's client mechanism (Turbo, HTMX) or a minimal polyfill
-- **Fault isolation** — a failed fragment routes to `onError` (or logs) and is skipped; the rest of the page is unaffected
-- **Memory** — fragments are streamed out as they render, not accumulated before flushing
+- **TTFB / FCP**: users see content in one round-trip, not after all async work settles
+- **No virtual DOM, no hydration**: patches are applied as plain HTML by the adapter's client mechanism (Turbo, HTMX) or a minimal polyfill
+- **Fault isolation**: a failed fragment routes to `onError` (or logs) and is skipped; the rest of the page is unaffected
+- **Memory**: fragments are streamed out as they render, not accumulated before flushing
 
 ## Why deferred regions in SSG
 
@@ -30,10 +30,10 @@ In static generation every page is a snapshot. Cache invalidation is the hard pa
 
 The shell (stable layout, navigation) is one file. Each fragment is a separate file at a predictable URL. Your build pipeline treats them independently:
 
-- **Granular invalidation** — only fragments whose data changed need to be regenerated; the shell stays cached
-- **Per-fragment TTL** — a "live prices" fragment can expire in 60 s while the surrounding page is cached for a day
-- **CDN composition** — shell and fragments are plain HTML files; any CDN can serve them
-- **Incremental builds** — on large sites, regenerating ten fragment files instead of ten thousand pages cuts build time
+- **Granular invalidation**: only fragments whose data changed need to be regenerated; the shell stays cached
+- **Per-fragment TTL**: a "live prices" fragment can expire in 60 s while the surrounding page is cached for a day
+- **CDN composition**: shell and fragments are plain HTML files; any CDN can serve them
+- **Incremental builds**: on large sites, regenerating ten fragment files instead of ten thousand pages cuts build time
 
 ## Install
 
@@ -43,11 +43,11 @@ bun add @vincle/flow
 
 ## Components
 
-@vincle/flow provides three declarative primitives for deferred content — a unified family built around **Slot** (the hole) and **Defer** (the deferred content that fills it). Each works with any adapter, in both streaming and static generation.
+@vincle/flow provides three declarative primitives for deferred content: a unified family built around **Slot** (the hole) and **Defer** (the deferred content that fills it). Each works with any adapter, in both streaming and static generation.
 
-### `<Slot>` — a named insertion point with fallback content
+### `<Slot>`: a named insertion point with fallback content
 
-Declares a named insertion point in the shell. Its `children` are rendered immediately as placeholder content — visible in the initial HTML until a `<Defer target="…">` overrides them.
+Declares a named insertion point in the shell. Its `children` are rendered immediately as placeholder content: visible in the initial HTML until a `<Defer target="…">` overrides them.
 
 ```tsx
 import { Slot, Defer } from "@vincle/flow";
@@ -73,20 +73,20 @@ function PageContent() {
 }
 ```
 
-`Slot` registers nothing in the pending store — it is purely a passive hole. The `children` are the initial fallback, visible until a `<Defer>` pushes deferred content that patches the placeholder.
+`Slot` registers nothing in the pending store. It is purely a passive hole. The `children` are the initial fallback, visible until a `<Defer>` pushes deferred content that patches the placeholder.
 
-### `<Defer>` — deferred fragment (sync or lazy)
+### `<Defer>`: deferred fragment (sync or lazy)
 
-Defines deferred content targeting a DOM element by id. **Unified** — one component for both synchronous and deferred content. The behaviour depends on `children`:
+Defines deferred content targeting a DOM element by id. **Unified**: one component for both synchronous and deferred content. The behaviour depends on `children`:
 
 | `children` type     | `fallback` | Behaviour                                         |
 | ------------------- | ---------- | ------------------------------------------------- |
-| `VNode` (plain JSX) | —          | Registers content; renders a placeholder          |
+| `VNode` (plain JSX) | N/A        | Registers content; renders a placeholder          |
 | `VNode` (plain JSX) | provided   | Registers content; placeholder renders `fallback` |
-| `(signal) => …`     | —          | Lazy content; renders a placeholder               |
+| `(signal) => …`     | N/A        | Lazy content; renders a placeholder               |
 | `(signal) => …`     | provided   | Lazy content; placeholder renders `fallback`      |
 
-**Sync** — plain JSX:
+**Sync**: plain JSX:
 
 ```tsx
 import { Defer } from "@vincle/flow";
@@ -95,7 +95,7 @@ import { Defer } from "@vincle/flow";
 <Defer target="comments"><Comments /></Defer>
 ```
 
-**Lazy with placeholder** — factory + fallback:
+**Lazy with placeholder**: factory + fallback:
 
 ```tsx
 <Defer target="comments" fallback={<p>Loading…</p>}>
@@ -103,7 +103,7 @@ import { Defer } from "@vincle/flow";
 </Defer>
 ```
 
-**Cancellable** — factory receives `AbortSignal` (request lifetime + per-fragment timeout):
+**Cancellable**: factory receives `AbortSignal` (request lifetime + per-fragment timeout):
 
 ```tsx
 // One-shot
@@ -112,24 +112,24 @@ import { Defer } from "@vincle/flow";
 // Async
 <Defer target="comments">{() => <Comments />}</Defer>
 
-// Stream — each yield is a separate patch
+// Stream: each yield is a separate patch
 <Defer target="feed" merge="append">
   {() => liveRows()}
 </Defer>
 
-// With timeout — receives AbortSignal
+// With timeout: receives AbortSignal
 <Defer target="dashboard" timeout={2000}>
   {(signal) => <Dashboard signal={signal} />}
 </Defer>
 ```
 
-The factory is invoked lazily — only when the fragment is about to render. It receives an `AbortSignal` for cancellation and must return a renderable JSX node (or a `Promise` / `AsyncIterable` thereof — the runtime unwraps these automatically).
+The factory is invoked only when the fragment is about to render. It receives an `AbortSignal` for cancellation and must return a renderable JSX node (or a `Promise` / `AsyncIterable` thereof, which the runtime unwraps automatically).
 
-`Defer` always renders a placeholder at its position in the shell — `fallback` is that placeholder's content (empty if none given) — and the deferred content replaces it when it resolves. Rendering a `Defer` without any adapter throws at registration: there is no placeholder to emit and nothing to patch into.
+`Defer` always renders a placeholder at its position in the shell: `fallback` is that placeholder's content (empty if none given), and the deferred content replaces it when it resolves. Rendering a `Defer` without any adapter throws at registration: there is no placeholder to emit and nothing to patch into.
 
-### `<Include>` — client-side fetch only
+### `<Include>`: client-side fetch only
 
-Renders a placeholder with a `src` attribute — the browser fetches the fragment after the shell lands. No server-push, works with any static host.
+Renders a placeholder with a `src` attribute: the browser fetches the fragment after the shell lands. No server-push, works with any static host.
 
 ```tsx
 import { Include } from "@vincle/flow";
@@ -137,36 +137,36 @@ import { Include } from "@vincle/flow";
 <Include src="/fragments/comments.html" />;
 <Include src="/fragments/stats.html" fallback={<Spinner />} />;
 
-// @ts-expect-error — dangerous schemes are rejected at compile time
+// @ts-expect-error: dangerous schemes are rejected at compile time
 <Include src="javascript:alert(1)" />;
 ```
 
-`src` uses a strict **whitelist**: for string **literals**, only `http(s):` and relative paths compile. Every other scheme (`javascript:`, `data:`, `mailto:`, …) is a compile-time error — exactly what a fragment fetch needs. Dynamic `string` values pass through and remain the caller's responsibility.
+`src` uses a strict **whitelist**: for string **literals**, only `http(s):` and relative paths compile. Every other scheme (`javascript:`, `data:`, `mailto:`, …) is a compile-time error. A fragment fetch needs no other scheme. Dynamic `string` values pass through and remain the caller's responsibility.
 
-Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/issues/2791) and ESI `<esi:include>` — short, standard, self-explanatory.
+Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/issues/2791) and ESI `<esi:include>`: short, standard, self-explanatory.
 
 ### Content forms
 
 `Defer` accepts content in either form:
 
-| Child                        | Behaviour                                                             |
-| ---------------------------- | --------------------------------------------------------------------- |
-| JSX node (plain children)    | Deferred automatically — executes when the fragment renders           |
-| `(signal: AbortSignal) => …` | **Cancellable** — receives `AbortSignal` (request cancel + `timeout`) |
+| Child                        | Behaviour                                                            |
+| ---------------------------- | -------------------------------------------------------------------- |
+| JSX node (plain children)    | Deferred automatically: executes when the fragment renders           |
+| `(signal: AbortSignal) => …` | **Cancellable**: receives `AbortSignal` (request cancel + `timeout`) |
 
-`Slot` children are plain JSX (not deferred) — they render immediately as the fallback placeholder in the shell.
+`Slot` children are plain JSX (not deferred). They render immediately as the fallback placeholder in the shell.
 
 ### Common props
 
-| Prop       | Applies to | Meaning                                                             |
-| ---------- | ---------- | ------------------------------------------------------------------- |
-| `name`     | `Slot`     | id of the placeholder (required)                                    |
-| `target`   | `Defer`    | target DOM id to push content into                                  |
-| `fallback` | `Defer`    | placeholder content shown in the shell (only for lazy factories)    |
-| `merge`    | `Defer`    | how content applies to its target (default `"replace"`) — see below |
-| `timeout`  | `Defer`    | per-fragment render timeout in ms                                   |
-| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's `onError`     |
-| `src`      | `Include`  | URL the browser fetches for the fragment content                    |
+| Prop       | Applies to | Meaning                                                            |
+| ---------- | ---------- | ------------------------------------------------------------------ |
+| `name`     | `Slot`     | id of the placeholder (required)                                   |
+| `target`   | `Defer`    | target DOM id to push content into                                 |
+| `fallback` | `Defer`    | placeholder content shown in the shell (only for lazy factories)   |
+| `merge`    | `Defer`    | how content applies to its target (default `"replace"`): see below |
+| `timeout`  | `Defer`    | per-fragment render timeout in ms                                  |
+| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's `onError`    |
+| `src`      | `Include`  | URL the browser fetches for the fragment content                   |
 
 ### Merge types
 
@@ -181,13 +181,13 @@ Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/
 | `"after"`   | Content inserted as next sibling of target                     |
 | `"morph"`   | Target element is diffed against content, preserving DOM state |
 
-The first five say **where** content goes; `"morph"` says **how** it is applied — the client diffs instead of swapping, so focus, scroll position and form state survive the update. It needs a diffing client: `TurboAdapter` (Turbo >= 8) and `HtmxAdapter` (htmx >= 4) only.
+The first five say **where** content goes; `"morph"` says **how** it is applied: the client diffs instead of swapping, so focus, scroll position and form state survive the update. It needs a diffing client: `TurboAdapter` (Turbo >= 8) and `HtmxAdapter` (htmx >= 4) only.
 
-An adapter that cannot express a merge **rejects it at registration** with a clear error (see capabilities). `NativeAdapter` supports the five positions but not `"morph"` — diffing is far past a 550 B budget. `WebPlatformAdapter` and `EsiAdapter` support `"replace"` only.
+An adapter that cannot express a merge **rejects it at registration** with a clear error (see capabilities). `NativeAdapter` supports the five positions but not `"morph"`: diffing is far past a 550 B budget. `WebPlatformAdapter` and `EsiAdapter` support `"replace"` only.
 
 ## Adapters
 
-Each adapter implements `Placeholder`/`Patch`/`Frame` (JSX), optional `transformShell`, and a `capabilities` descriptor. The streaming wire format (shell → fragments, `\n`-separated) is the primitive's own serialization in `renderToStream` — an adapter only declares it can stream (`capabilities.streaming: true`), it does not implement the wire. Adapters are **pure wire formats** — HTTP negotiation is a separate concern (see below).
+Each adapter implements `Placeholder`/`Patch`/`Frame` (JSX), optional `transformShell`, and a `capabilities` descriptor. The streaming wire format (shell → fragments, `\n`-separated) is the primitive's own serialization in `renderToStream`: an adapter only declares it can stream (`capabilities.streaming: true`), it does not implement the wire. Adapters are **pure wire formats**: HTTP negotiation is a separate concern (see below).
 
 | Adapter              | `Placeholder`          | `Patch` (streaming inline)                      | `Frame` (SSG lazy-load) |
 | -------------------- | ---------------------- | ----------------------------------------------- | ----------------------- |
@@ -197,8 +197,8 @@ Each adapter implements `Placeholder`/`Patch`/`Frame` (JSX), optional `transform
 | `WebPlatformAdapter` | `<?start name>…<?end>` | `<template for="…">` (`replace` only)           | `<template for="…">`    |
 | `EsiAdapter`         | `<esi:include src>`    | `<esi:inline name fetchable>` (static only)     | raw HTML                |
 
-- **`Patch`** — fragment delivered inline in the same HTTP response as the shell.
-- **`Frame`** — fragment served as a standalone file fetched by the client (SSG).
+- **`Patch`**: fragment delivered inline in the same HTTP response as the shell.
+- **`Frame`**: fragment served as a standalone file fetched by the client (SSG).
 - `NativeAdapter` injects a ~550 B polyfill for DOM patching. Pass `WebPlatformAdapter` for zero-JS output, or `EsiAdapter` for CDN-level composition without client JS. An adapter is **required**: `renderToStream` takes it as its second argument, and a `Defer` without one throws at registration.
 
 ### Capabilities
@@ -212,21 +212,21 @@ type AdapterCapabilities = {
 };
 ```
 
-This is surfaced in the type system. `renderToStream` / `serve` require a streaming adapter, so **`EsiAdapter` is rejected at compile time** there — ESI composition happens at the CDN, via `renderToStatic` + `emitFragments`. An unsupported `merge` fails fast at registration.
+This is surfaced in the type system. `renderToStream` / `serve` require a streaming adapter, so **`EsiAdapter` is rejected at compile time** there: ESI composition happens at the CDN, via `renderToStatic` + `emitFragments`. An unsupported `merge` fails fast at registration.
 
 #### `NativeAdapter` (~550 B polyfill)
 
 Uses the [Declarative Partial Updates](https://developer.chrome.com/blog/declarative-partial-updates) API plus a minimal polyfill injected via `transformShell`. All five merge positions (not `"morph"`), no external client library, works in modern browsers.
 
-Every update is a **declarative `<template for>`** — the merge mode rides on `data-merge`, lazy client fetches on `data-src`. There are **no per-fragment inline scripts**; the only JS is a single static polyfill, which makes a strict CSP straightforward:
+Every update is a **declarative `<template for>`**: the merge mode rides on `data-merge`, lazy client fetches on `data-src`. There are **no per-fragment inline scripts**; the only JS is a single static polyfill, which makes a strict CSP straightforward:
 
 ```ts
 import { NativeAdapter, nativePolyfillHash, NATIVE_POLYFILL } from "@vincle/flow/adapters";
 
-// Option A — keep the inline <script>, pin it by hash (static ⇒ cache/SSG-safe):
+// Option A: keep the inline <script>, pin it by hash (static ⇒ cache/SSG-safe):
 res.headers.set("Content-Security-Policy", `script-src 'self' '${await nativePolyfillHash()}'`);
 
-// Option B — serve the polyfill from your origin under script-src 'self':
+// Option B: serve the polyfill from your origin under script-src 'self':
 //   write NATIVE_POLYFILL to e.g. /flow.js, then:
 const selfHosted = {
   ...NativeAdapter,
@@ -238,14 +238,14 @@ A per-request **nonce** is intentionally not offered: it would break the static-
 
 #### `WebPlatformAdapter`
 
-Pure WICG spec — no JS at all. Requires `chrome://flags/#enable-experimental-web-platform-features` until the spec ships. `"replace"` only.
+Pure WICG spec: no JS at all. Requires `chrome://flags/#enable-experimental-web-platform-features` until the spec ships. `"replace"` only.
 
-#### `EsiAdapter` — CDN-level composition
+#### `EsiAdapter`: CDN-level composition
 
 For **SSG with a CDN ESI processor** (Varnish, Fastly, nginx ESI module). The shell contains `<esi:include src="…">` tags; the CDN fetches each fragment independently, applies separate TTLs, and assembles the final response before it reaches the browser. `"replace"` only; no client-side JS.
 
 ```tsx
-// Defer with ESI — placeholder becomes esi:include, content renders the fragment
+// Defer with ESI: placeholder becomes esi:include, content renders the fragment
 <Defer target="nav" fallback={<span>Loading nav…</span>}>
   {(signal) => <Nav signal={signal} />}
 </Defer>
@@ -296,7 +296,7 @@ await renderToStatic(async (ctx) => {
 });
 ```
 
-No adapter required — @vincle/flow stays invisible for pure-static rendering, as long as no `<Defer>` is rendered. A `Defer` without an adapter throws at registration.
+No adapter required: @vincle/flow stays invisible for pure-static rendering, as long as no `<Defer>` is rendered. A `Defer` without an adapter throws at registration.
 
 ### Static generation with deferred fragments
 
@@ -311,7 +311,7 @@ await renderToStatic(
       await Bun.write(page.outPath, "<!DOCTYPE html>\n" + html);
     }
 
-    // Each fragment is already wrapped in adapter.Frame and rendered —
+    // Each fragment is already wrapped in adapter.Frame and rendered,
     // `html` is ready to write, no raw()/renderToString needed.
     await ctx.emitFragments((id, url, html) => Bun.write("./out" + url, html));
   },
@@ -324,7 +324,7 @@ await renderToStatic(
 
 ### On-demand fragment regeneration
 
-When one piece of data changes, `renderFragment` writes just its fragment — no site rebuild:
+When one piece of data changes, `renderFragment` writes just its fragment: no site rebuild:
 
 ```tsx
 import { renderFragment } from "@vincle/flow";
@@ -333,11 +333,11 @@ import { NativeAdapter } from "@vincle/flow/adapters";
 const { url, html } = await renderFragment("price-AAPL", <span>{price}</span>, {
   adapter: NativeAdapter,
 });
-// `url` matches what the full build wrote — upload `html` there (blob store,
+// `url` matches what the full build wrote: upload `html` there (blob store,
 // on-demand revalidation, CDN purge + PUT…). The shell that includes it is untouched.
 ```
 
-This is host-agnostic on purpose — it fits Netlify's on-demand functions or Vercel's on-demand revalidation, but doesn't depend on either.
+This is host-agnostic on purpose. It fits Netlify's on-demand functions or Vercel's on-demand revalidation, but doesn't depend on either.
 
 ### HTTP responses with negotiation
 
@@ -360,7 +360,7 @@ Bun.serve({
 
 ### Composing shell transforms
 
-`composeShell` chains several `transformShell` functions (e.g. to inject `<title>`, asset links) into one — falsy entries are skipped, so an adapter's own transform splices in cleanly:
+`composeShell` chains several `transformShell` functions (e.g. to inject `<title>`, asset links) into one: falsy entries are skipped, so an adapter's own transform splices in cleanly:
 
 ```tsx
 import { NativeAdapter, createAdapter } from "@vincle/flow/adapters";
@@ -380,13 +380,13 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 ### Components
 
-| Export    | Import path               | Description                                                                     |
-| --------- | ------------------------- | ------------------------------------------------------------------------------- |
-| `Slot`    | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder    |
-| `Defer`   | `@vincle/flow`            | Push deferred content into a target DOM id — sync (plain JSX) or lazy (factory) |
-| `Include` | `@vincle/flow`            | Client-side fetch placeholder — no server deferral                              |
-| `Style`   | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                               |
-| `Script`  | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                              |
+| Export    | Import path               | Description                                                                    |
+| --------- | ------------------------- | ------------------------------------------------------------------------------ |
+| `Slot`    | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder   |
+| `Defer`   | `@vincle/flow`            | Push deferred content into a target DOM id: sync (plain JSX) or lazy (factory) |
+| `Include` | `@vincle/flow`            | Client-side fetch placeholder: no server deferral                              |
+| `Style`   | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                              |
+| `Script`  | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                             |
 
 ### Renderers
 
@@ -395,7 +395,7 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | `renderToStream`     | `@vincle/flow`      | Streams shell + fragments as a `ReadableStream<string>` via the given `adapter`               |
 | `renderToFlowEvents` | `@vincle/flow`      | Lower level: `ReadableStream<FlowEvent>` (semantic events) with backpressure and cancellation |
 | `renderToStatic`     | `@vincle/flow`      | Runs `handler` in a static render scope                                                       |
-| `renderFragment`     | `@vincle/flow`      | Renders one fragment on demand, outside a full build — for on-demand regeneration             |
+| `renderFragment`     | `@vincle/flow`      | Renders one fragment on demand, outside a full build: for on-demand regeneration              |
 | `serve`              | `@vincle/flow/http` | Full HTTP `Response` builder                                                                  |
 
 ### Negotiation
@@ -407,16 +407,16 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 ### Adapters
 
-| Export               | Import path             | Description                                             |
-| -------------------- | ----------------------- | ------------------------------------------------------- |
-| `NativeAdapter`      | `@vincle/flow/adapters` | Declarative Partial Updates + polyfill — no `morph`     |
-| `TurboAdapter`       | `@vincle/flow/adapters` | Hotwire Turbo Streams — all merge types                 |
-| `HtmxAdapter`        | `@vincle/flow/adapters` | HTMX OOB swaps — all merge types                        |
-| `WebPlatformAdapter` | `@vincle/flow/adapters` | Pure WICG spec, zero JS — `replace` only                |
-| `EsiAdapter`         | `@vincle/flow/adapters` | CDN-level ESI composition — `replace` only, static only |
-| `createAdapter`      | `@vincle/flow/adapters` | Build a custom adapter                                  |
-| `NATIVE_POLYFILL`    | `@vincle/flow/adapters` | Native adapter polyfill as a JS string                  |
-| `nativePolyfillHash` | `@vincle/flow/adapters` | `() => Promise<string>` — CSP hash for the polyfill     |
+| Export               | Import path             | Description                                            |
+| -------------------- | ----------------------- | ------------------------------------------------------ |
+| `NativeAdapter`      | `@vincle/flow/adapters` | Declarative Partial Updates + polyfill: no `morph`     |
+| `TurboAdapter`       | `@vincle/flow/adapters` | Hotwire Turbo Streams: all merge types                 |
+| `HtmxAdapter`        | `@vincle/flow/adapters` | HTMX OOB swaps: all merge types                        |
+| `WebPlatformAdapter` | `@vincle/flow/adapters` | Pure WICG spec, zero JS: `replace` only                |
+| `EsiAdapter`         | `@vincle/flow/adapters` | CDN-level ESI composition: `replace` only, static only |
+| `createAdapter`      | `@vincle/flow/adapters` | Build a custom adapter                                 |
+| `NATIVE_POLYFILL`    | `@vincle/flow/adapters` | Native adapter polyfill as a JS string                 |
+| `nativePolyfillHash` | `@vincle/flow/adapters` | `() => Promise<string>`: CSP hash for the polyfill     |
 
 ### Types
 
@@ -442,13 +442,13 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 
 ### Flow context
 
-| Export        | Import path            | Description                                                                              |
-| ------------- | ---------------------- | ---------------------------------------------------------------------------------------- |
-| `Flow`        | `@vincle/flow/context` | The `Scope` key for the per-render flow context — `Scope.get(Flow)` from within a render |
-| `FlowContext` | `@vincle/flow/context` | The per-render context: `config`, `registerFragment`, `nextId`, asset state              |
+| Export        | Import path            | Description                                                                             |
+| ------------- | ---------------------- | --------------------------------------------------------------------------------------- |
+| `Flow`        | `@vincle/flow/context` | The `Scope` key for the per-render flow context: `Scope.get(Flow)` from within a render |
+| `FlowContext` | `@vincle/flow/context` | The per-render context: `config`, `registerFragment`, `nextId`, asset state             |
 
 > `<Style>` / `<Script>` emit their tag directly, deduplicating as the walk
-> reaches them — no post-render pass, so nothing has to re-derive the document
+> reaches them: no post-render pass, so nothing has to re-derive the document
 > order the engine already guarantees.
 
 ## License

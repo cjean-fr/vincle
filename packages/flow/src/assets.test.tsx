@@ -7,11 +7,11 @@ import {
   registerAsset,
 } from "./assets.js";
 
-// What is left of this module after the marker protocol was removed: a
-// registry, and the one-claim-per-name rule that `<Style>` / `<Script>` consult
-// while they render. The substitution pass — `createMarker` + `resolveAssets`,
-// a regex over the whole document — is gone; `components/assets.test.tsx` covers
-// what replaced it.
+// After removal of the marker protocol, this module provides a registry
+// and the one-claim-per-name rule used by `<Style>` and `<Script>`. The old
+// substitution pass, `createMarker` plus `resolveAssets`, scanned the whole
+// document with a regex. It is gone; `components/assets.test.tsx` covers
+// the replacement.
 
 describe("createAssetState", () => {
   it("starts empty and emitting", () => {

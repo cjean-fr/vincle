@@ -2,7 +2,7 @@
  * @vincle/core's precompile path against kitajs, at equal production.
  *
  * `text`, `stack` and `realworld` set vincle's tree walk against kitajs's string
- * concatenation — two architectures. The precompile path does what kitajs does,
+ * concatenation: two architectures. The precompile path does what kitajs does,
  * and had never been put against it.
  *
  * And kitajs does not escape its children by default, which has to be neutralised
@@ -28,14 +28,14 @@ import { bench, group, run } from "mitata";
 const ROWS = 100;
 // `& <` is the point: without them, both kitajs modes render the same bytes.
 //
-// The row is what a template really comes out as — literal markup the transform
+// The row is what a template really comes out as: literal markup the transform
 // inlines, and a hole for what it cannot know. With nothing literal the transform
 // has nothing to inline and measures its own worst case: on this same list, the
 // precompile path is level with the tree walk it replaces (3%), where a literal
 // class puts it 35% ahead. A fixture at either end answers a question nobody has.
 const data = Array.from({ length: ROWS }, (_, i) => ({
   index: i,
-  text: `Item ${i} — a & b < c`,
+  text: `Item ${i}: a & b < c`,
 }));
 
 const LI = ['<li class="item" ', ">", "</li>"];
@@ -79,7 +79,7 @@ function assertComparable() {
   const s = kitajsSafe();
   if (v !== s) {
     const i = firstDiff(v, s);
-    console.error(`Output diverges at ${i} — the comparison would be false.`);
+    console.error(`Output diverges at ${i}: the comparison would be false.`);
     console.error(`  vincle : ${JSON.stringify(v.slice(i, i + 60))}`);
     console.error(`  kitajs : ${JSON.stringify(s.slice(i, i + 60))}`);
     process.exit(1);
@@ -114,9 +114,9 @@ if (process.argv.includes("--json")) {
   console.log(JSON.stringify(out));
 } else {
   console.log(
-    `identical output — ${bytes} B; without \`safe\`, kitajs produces ${unescaped} (unescaped)\n`,
+    `identical output: ${bytes} B; without \`safe\`, kitajs produces ${unescaped} (unescaped)\n`,
   );
-  group(`${ROWS}-row list — no tree built on either side`, () => {
+  group(`${ROWS}-row list: no tree built on either side`, () => {
     bench("@vincle/core (precompile, escapes)", () => void vinclePrecompile());
     bench("@kitajs/html (safe, escapes)", () => void kitajsSafe());
     bench("@kitajs/html (default, does not escape)", () => void kitajsDefault());

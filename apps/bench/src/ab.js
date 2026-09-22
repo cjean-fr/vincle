@@ -1,5 +1,5 @@
 /**
- * The A/B crossover engine — is build A faster than build B?
+ * The A/B crossover engine answers whether build A is faster than build B.
  *
  * The unit is the pair, and the quantity is A relative to B. Three things keep
  * the pair readable on a shared machine, where a single run is not a
@@ -11,8 +11,8 @@
  *     *difference between the two processes of a pair* remains, and that is
  *     small because the pair is adjacent in time.
  *   - the pair order alternates (A-then-B, B-then-A, …): each build is the
- *     first process of its pair half the time, so a position bias — warm CPU,
- *     warm caches, a ramping frequency — is not confounded with the build.
+ *     first process of its pair half the time. This keeps position effects, such
+ *     as a warming CPU, warm caches, or a ramping frequency, separate from the build.
  *   - the verdict is on the PAIRED ratio, not on two session means. The
  *     `--save`/`--against` path compares two sessions and inherits their drift;
  *     a pair measures A and B in one session, so the drift has no room.
@@ -26,7 +26,7 @@
  * frozen. To run both through the same bench without touching the workspace,
  * each build gets a throwaway sandbox: a copy of this app whose node_modules
  * points `@vincle/core` at that build and every other dependency at the
- * workspace's. The bench files are copied, not symlinked — resolution follows
+ * workspace's. The bench files are copied, not symlinked: resolution follows
  * the real path of the importer, so a symlinked bench.js would still resolve
  * from the workspace. A/B therefore runs under the bun engine only: it spawns
  * `bun` on the sandbox.
@@ -129,8 +129,8 @@ function controlOps(ops, kase, mode) {
 
 /**
  * One pair: the ops maps of the run that ran A and of the run that ran B.
- * Returns, per library entry, p = (A/control)/(B/control) — or the raw A/B when
- * the case has no control — plus whether the control was in play.
+ * Returns, per library entry, p = (A/control)/(B/control), or the raw A/B when
+ * the case has no control: plus whether the control was in play.
  */
 function pairRatios(opsA, opsB, control) {
   const out = new Map(); // "case\0name" → { p, controlled }
@@ -155,7 +155,7 @@ const median = (xs) => {
 };
 
 /**
- * 95% bootstrap confidence interval of the median, resampling PAIRS — the
+ * 95% bootstrap confidence interval of the median, resampling PAIRS: the
  * machine's mood varies pair to pair, not within a pair, so the pair is the
  * resampling unit. Seeded so a saved re-analysis prints the same interval.
  */
@@ -187,7 +187,7 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
   ]) {
     if (!existsSync(resolve(dir, "package.json"))) {
       console.error(
-        `${label}: no package.json in ${dir} — pass a package root (package.json + dist/)`,
+        `${label}: no package.json in ${dir}: pass a package root (package.json + dist/)`,
       );
       process.exit(1);
     }
@@ -199,8 +199,8 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
   const abPairs = [];
   try {
     // Two throwaway runs first: the calibration runs before the A/B pairs, so
-    // if the machine is still coming off the cold start — page cache, governor
-    // ramp — it would sample the ramp, not the steady state, and overstate
+    // if the machine is still coming off the cold start: page cache, governor
+    // ramp: it would sample the ramp, not the steady state, and overstate
     // σ_pair for pairs that actually run in the steady state.
     console.log("warming up: 2 throwaway runs …");
     await abMeasureOnce(resolve(sandboxA, "src", "bench.js"));
@@ -216,7 +216,7 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
     };
 
     if (calibrate > 0) {
-      console.log(`calibrating: ${calibrate} A/A pairs — the noise floor of the design itself …`);
+      console.log(`calibrating: ${calibrate} A/A pairs: the noise floor of the design itself …`);
       for (let i = 0; i < calibrate; i++) {
         calPairs.push(await runPair(sandboxA, sandboxA, i % 2 === 0));
         process.stdout.write(`\r  cal ${i + 1}/${calibrate}`);
@@ -265,7 +265,7 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
       : control === "none"
         ? "none (raw)"
         : control;
-  console.log(`\n  A vs B — p > 1 means A is faster. Control: ${controlLabel}.\n`);
+  console.log(`\n  A vs B: p > 1 means A is faster. Control: ${controlLabel}.\n`);
   console.log(
     `${"case".padEnd(11)}${"entry".padEnd(26)}${"A vs B".padStart(9)}` +
       `${"95% CI".padStart(21)}${"pairs A>B".padStart(11)}${"σ_pair".padStart(9)}${"resolvable".padStart(12)}  verdict`,
@@ -284,10 +284,10 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
     // log space, and "resolvable" is the delta that is 3σ above it at n = runs.
     const logSd = e.calPs.length >= 2 ? stdev(e.calPs.map(Math.log)) : undefined;
     e.verdict = e.ci[0] > 1 ? "A faster" : e.ci[1] < 1 ? "B faster" : "no finding";
-    const sigma = logSd === undefined ? "—" : `${(logSd * 100).toFixed(1)}%`;
+    const sigma = logSd === undefined ? "-" : `${(logSd * 100).toFixed(1)}%`;
     const resolvable =
       logSd === undefined
-        ? "—"
+        ? "-"
         : `${((Math.exp((3 * logSd) / Math.sqrt(runs)) - 1) * 100).toFixed(1)}%`;
     console.log(
       `${e.case.padEnd(11)}${e.name.padEnd(26)}` +
@@ -301,9 +301,9 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
   }
   console.log(
     `\n  The pair is the resampling unit. σ_pair is the A/A noise floor; "resolvable" is the smallest\n` +
-      `  delta 3σ can separate at ${runs} pairs — it falls as 1/√n. A delta smaller than that is below the\n` +
+      `  delta 3σ can separate at ${runs} pairs: it falls as 1/√n. A delta smaller than that is below the\n` +
       `  floor: raise --runs, or accept it is not measurable and decide on other grounds. (raw) rows have\n` +
-      `  no control and are not divided by the machine — treat them as a glance, not a verdict.\n`,
+      `  no control and are not divided by the machine: treat them as a glance, not a verdict.\n`,
   );
 
   if (save !== undefined) {

@@ -11,7 +11,7 @@ import { TableOfContents } from "./TableOfContents.js";
 import { Tabs } from "./Tabs.js";
 import { ThemeToggle, themeInitScript, themeScriptHash } from "./ThemeToggle.js";
 
-// The hosts the `<head>` below actually loads from — a 'self'-only policy
+// The hosts the `<head>` below actually loads from: a 'self'-only policy
 // would block the site's own font stylesheets, font files and preconnects.
 const FONT_STYLES = "https://api.fontshare.com https://fonts.googleapis.com";
 const FONT_FILES = "https://api.fontshare.com https://fonts.gstatic.com";
@@ -23,7 +23,7 @@ const FONT_PRECONNECTS = `${FONT_STYLES} https://fonts.gstatic.com`;
  * - `script-src` allows the inline theme bootstrap **by hash**, not
  *   `'unsafe-inline'`: the hash is derived from `themeInitScriptSource` at
  *   render time, so it cannot drift from the script it authorizes.
- * - `style-src` keeps `'unsafe-inline'` — expressive-code emits per-token
+ * - `style-src` keeps `'unsafe-inline'`: expressive-code emits per-token
  *   `style` attributes, which cannot be hashed.
  * - `frame-ancestors` is deliberately absent: it is ignored in a meta CSP, and
  *   only an HTTP header served by the host can enforce it.

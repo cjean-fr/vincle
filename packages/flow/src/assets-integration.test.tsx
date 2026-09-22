@@ -6,7 +6,7 @@ import { Style, Script } from "./components/index.js";
 import { renderToStream, renderToStatic, Defer } from "./index.js";
 import { collect } from "./test-utils.js";
 
-describe("Style/Script — render pipeline integration", () => {
+describe("Style/Script: render pipeline integration", () => {
   it("deduplicates same name across shell", async () => {
     const html = await collect(
       renderToStream(
@@ -149,10 +149,10 @@ describe("Style/Script — render pipeline integration", () => {
   });
 
   // The hole that motivated dropping the marker protocol. The channel was
-  // in-band: any trusted content — markdown through `raw()`, a documentation
-  // page showing the syntax — that contained the marker was substituted, and
-  // being first in the document it took the position from the real `<Style>`,
-  // which then rendered nothing at all.
+  // in-band. Trusted content, such as markdown passed through `raw()` or a
+  // documentation page showing the syntax, could contain the marker. When
+  // substituted first, it took the position of the real `<Style>`, which
+  // then rendered nothing.
   it("trusted content that looks like the old marker is left alone", async () => {
     const html = await collect(
       renderToStream(
@@ -229,7 +229,7 @@ describe("Style/Script — render pipeline integration", () => {
   });
 });
 
-describe("Style/Script — SSG (renderToStatic)", () => {
+describe("Style/Script: SSG (renderToStatic)", () => {
   it("each page gets its own assets (page boundary)", async () => {
     const pages: string[] = [];
     await renderToStatic(async (ctx) => {
@@ -285,7 +285,7 @@ describe("Style/Script — SSG (renderToStatic)", () => {
   // This path had no test at all while it was a post-render pass, and the pass
   // was misnamed: `resolveAssets(html, { isolate: true })` built a fresh state
   // with no entries, so every marker resolved to *nothing*. Standalone fragment
-  // files carry no assets — the shell that includes them has them. The rule is
+  // files carry no assets: the shell that includes them has them. The rule is
   // the same now, stated before the render instead of after it.
   it("standalone fragment files carry no assets", async () => {
     const written: string[] = [];

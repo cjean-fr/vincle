@@ -16,7 +16,7 @@ const isVirtualId = (id: string): id is VirtualId => id in MODULES;
  * can import them into the hashed bundle. Generated rather than checked in: a
  * committed copy would drift from the theme config.
  *
- * The resolved ids keep their extension — Vite's CSS pipeline matches on it.
+ * The resolved ids keep their extension: Vite's CSS pipeline matches on it.
  */
 export function expressiveCodeAssets(): Plugin {
   return {

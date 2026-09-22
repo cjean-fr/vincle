@@ -54,7 +54,7 @@ describe("jsxTemplate", () => {
 
   test("boolean attribute false leaves no separator behind", () => {
     // `jsxAttr` carries the separating space, so an attribute it drops takes
-    // the space with it — the byte-for-byte match with the runtime path, which
+    // the space with it: the byte-for-byte match with the runtime path, which
     // renders `<input disabled={false} />` as `<input>`.
     expect((jsxTemplate`<input ${jsxAttr("disabled", false)}>` as RawString).value).toBe("<input>");
   });
@@ -167,18 +167,19 @@ describe("jsxTemplate", () => {
 
 // ── jsxAttr: the async wrapper ─────────────────────────────────────────────
 //
-// The value taxonomy lives in `serializeAttr` (`attrs.ts`) — pinned there, once,
+// The value taxonomy lives in `serializeAttr` (`attrs.ts`): pinned there, once,
 // in `attrs.test.ts`. What remains here is the wrapper's own contract: a
 // promised value recurses per attribute (where `buildAttrsAsync` resolves the
 // batch), and everything else is delegated.
 //
 // This used to be a second attribute serializer tested for equivalence against
-// `buildAttrs`. The two drifted four times; one drift — `jsxAttr('x"><script>',
-// v)` closing the start tag — was an injection. The equivalence suite died with
+// `buildAttrs`. The two drifted four times. In one case,
+// `jsxAttr('x"><script>', v)` closed the start tag and enabled injection.
+// The equivalence suite died with
 // the duplication; the taxonomy is tested once, the static path's inline copy is kept
 // aligned by the residual equivalence below.
 
-describe("jsxAttr — the async wrapper", () => {
+describe("jsxAttr: the async wrapper", () => {
   test("a promised value is awaited, not stringified", async () => {
     expect((await jsxAttr("href", Promise.resolve("/late"))).value).toBe('href="/late"');
   });
@@ -189,7 +190,7 @@ describe("jsxAttr — the async wrapper", () => {
     );
   });
 
-  test("a function throws — the taxonomy throws, the wrapper propagates", () => {
+  test("a function throws: the taxonomy throws, the wrapper propagates", () => {
     expect(() => jsxAttr("onClick", () => {})).toThrow(/not serializable/);
   });
 
@@ -202,7 +203,7 @@ describe("jsxAttr — the async wrapper", () => {
 
 // ── Residual equivalence: buildAttrs ≡ serializeAttr ────────────────────────
 //
-// `buildAttrs` stays inline on purpose — delegation costs the static path 13–16% (the
+// `buildAttrs` stays inline on purpose: delegation costs the static path 13–16% (the
 // RawString allocation per attribute is the price, not the branch). That leaves
 // two copies of the value taxonomy in the engine: the inline one and
 // `serializeAttr`. The tables (`attrMeta`, style/class helpers, escape) are
@@ -261,14 +262,14 @@ describe("buildAttrs ≡ serializeAttr", () => {
 // `jsxEscape` handles arrays, iterables, async iterables and promises; that is
 // the "async is native, the developer asks for nothing" promise on the
 // precompiled path. None of it was covered: `escapeArray`, `collectAsyncIterable`
-// and `jsxTemplate`'s promise branch were three untested functions — including
+// and `jsxTemplate`'s promise branch were three untested functions: including
 // the call a precompiled list page spends most of its time in.
 //
 // Every case below is checked against the same value rendered through the VNode
-// engine, because "it produces something" is not the contract — "it produces the
+// engine, because "it produces something" is not the contract: "it produces the
 // same document" is.
 
-describe("jsxEscape — synchronous collections", () => {
+describe("jsxEscape: synchronous collections", () => {
   const value = async (v: unknown): Promise<string> => {
     const r = await jsxEscape(v);
     if (r instanceof VNode) throw new Error("unexpected VNode from jsxEscape");
@@ -304,7 +305,7 @@ describe("jsxEscape — synchronous collections", () => {
   });
 });
 
-describe("jsxEscape — promises and async iterables", () => {
+describe("jsxEscape: promises and async iterables", () => {
   const value = async (v: unknown): Promise<string> => {
     const r = await jsxEscape(v);
     if (r instanceof VNode) throw new Error("unexpected VNode from jsxEscape");
@@ -365,7 +366,7 @@ describe("jsxEscape — promises and async iterables", () => {
   });
 });
 
-describe("jsxTemplate — promise holes", () => {
+describe("jsxTemplate: promise holes", () => {
   const value = async (v: RawString | PromiseLike<RawString>): Promise<string> => (await v).value;
   const later = <T>(v: T, ms = 1): Promise<T> =>
     new Promise((resolve) => setTimeout(() => resolve(v), ms));
@@ -396,7 +397,7 @@ describe("jsxTemplate — promise holes", () => {
     );
   });
 
-  test("a raw promise hole — not wrapped in jsxEscape — is awaited too", async () => {
+  test("a raw promise hole, not wrapped in jsxEscape: is awaited too", async () => {
     expect(await value(jsxTemplate`<p>${later(raw("<b>x</b>"))}</p>`)).toBe("<p><b>x</b></p>");
   });
 
@@ -407,16 +408,16 @@ describe("jsxTemplate — promise holes", () => {
   });
 });
 
-// ── VNode holes — the Deno/Preact precompile contract ──────────────────────
+// ── VNode holes: the Deno/Preact precompile contract ──────────────────────
 //
 // The transform leaves component elements in place (`jsxTemplate`(…, `<Foo/>`,
 // …)); the compiler turns them into `jsx(Foo, …)` VNodes. `jsxEscape` must let
-// a VNode pass through untouched — it is markup to render, not a value to
-// escape — and `jsxTemplate` renders it through the tree walk. Stringifying
+// a VNode pass through untouched: it is markup to render, not a value to
+// escape, and `jsxTemplate` renders it through the tree walk. Stringifying
 // the VNode was the `[object Object]` bug that broke every component once the
 // precompile plugin was enabled.
 
-describe("jsxEscape — VNode contract", () => {
+describe("jsxEscape: VNode contract", () => {
   test("a VNode passes through untouched, not stringified", () => {
     const vnode = jsx("div", { children: "x" });
     expect(jsxEscape(vnode)).toBe(vnode);
@@ -430,7 +431,7 @@ describe("jsxEscape — VNode contract", () => {
   });
 });
 
-describe("jsxTemplate — VNode holes", () => {
+describe("jsxTemplate: VNode holes", () => {
   const value = async (v: RawString | PromiseLike<RawString>): Promise<string> => (await v).value;
 
   test("a component hole renders its markup", async () => {
@@ -459,7 +460,7 @@ describe("jsxTemplate — VNode holes", () => {
     );
   });
 
-  test("a raw JSX element expression — not wrapped in jsxEscape — renders", async () => {
+  test("a raw JSX element expression, not wrapped in jsxEscape: renders", async () => {
     // What the transform emits for `{<Foo/>}`: jsxEscape around the expression,
     // whose result is the VNode.
     const Foo = () => jsx("span", { children: "hi" });
@@ -477,9 +478,9 @@ describe("jsxTemplate — VNode holes", () => {
 
   // The regression the `Promise.all` form would reintroduce: sibling holes
   // must render one after the other, in document order, so a `Scope.set` in
-  // the left sibling is visible to the right one — the sequencing rule, held
+  // the left sibling is visible to the right one: the sequencing rule, held
   // on the precompiled path too.
-  test("component holes run in document order — a later hole reads an earlier write", async () => {
+  test("component holes run in document order: a later hole reads an earlier write", async () => {
     const KEY = Scope.key<string>("precompile-order");
     const later = <T>(v: T, ms: number): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(v), ms));

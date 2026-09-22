@@ -6,7 +6,7 @@ title: Static generation
 
 Build HTML files at compile time. `renderToStatic` gives you a context to
 render all your pages, then emit fragment files if any page uses `<Defer>` with a lazy factory.
-Fragments are fetched by the browser after the shell page loads — no streaming
+Fragments are fetched by the browser after the shell page loads: no streaming
 connection required.
 
 ## When to use static generation
@@ -25,7 +25,7 @@ If you need fragments to arrive in the same HTTP response as the shell, use
 
 No lazy `<Defer>` in your pages? Call `renderToStatic` without an adapter.
 `ctx.renderPage` applies any configured shell transforms and returns the full
-HTML string — ready to write to a file.
+HTML string: ready to write to a file.
 
 ```tsx
 import type { JSX } from "@vincle/core";
@@ -72,7 +72,7 @@ await renderToStatic(
       await writeFile(page.out, "<!DOCTYPE html>\n" + html);
     }
 
-    // One .html file per deferred fragment — already
+    // One .html file per deferred fragment: already
     // Frame-wrapped, ready to write.
     await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
   },
@@ -82,7 +82,8 @@ await renderToStatic(
 
 The browser loads the shell page first, then fetches each fragment URL
 independently using `<Include>`. Fragment files can be cached aggressively
-— they are static HTML files with predictable URLs.
+
+- they are static HTML files with predictable URLs.
 
 ## Fragment file naming
 
@@ -98,7 +99,7 @@ your build script and templates to keep them in sync.
 
 ## On-demand regeneration
 
-A full rebuild is wasteful when only one piece of data changed — a price, a
+A full rebuild is wasteful when only one piece of data changed: a price, a
 stock count, a comment count. Because each fragment is a standalone file at a
 predictable URL, only that file needs to change; the shell page that
 `<Include>`s it is untouched.
@@ -112,7 +113,7 @@ import { NativeAdapter } from "@vincle/flow/adapters";
 
 declare function fetchPrice(symbol: string): Promise<{ value: number }>;
 
-// A Netlify/Vercel Edge Function — both run standard Request → Response
+// A Netlify/Vercel Edge Function: both run standard Request → Response
 // handlers, so this needs no platform SDK import.
 export default async function handler(req: Request): Promise<Response> {
   const symbol = new URL(req.url).searchParams.get("symbol");
@@ -125,7 +126,7 @@ export default async function handler(req: Request): Promise<Response> {
     { adapter: NativeAdapter },
   );
 
-  // `url` matches the path the full build already wrote this fragment to —
+  // `url` matches the path the full build already wrote this fragment to,
   // upload `html` there (blob store, on-demand revalidation, CDN purge +
   // PUT…). The shell page that includes it never needs rebuilding.
   return Response.json({ url, html });
@@ -134,7 +135,7 @@ export default async function handler(req: Request): Promise<Response> {
 
 This is what Netlify's on-demand functions or Vercel's on-demand
 revalidation need: a handler that, given fresh data, returns the fragment's
-`{ url, html }`. Writing those bytes to `url` — a blob store, a
-revalidation call, a CDN purge and re-upload — is host-specific and stays in
+`{ url, html }`. How you publish those bytes at `url`, whether through a blob
+store, a revalidation call, or a CDN purge and re-upload, depends on the host and stays in
 your handler; `renderFragment` itself doesn't know which host it's running
 on. See [`renderFragment`](/api/flow/renderFragment) for the full API.

@@ -30,7 +30,7 @@ describe("injectIntoHead", () => {
 
   // The regression: `startsWith("<html")` matched neither branch for a shell
   // opening with a doctype, so the head landed *before* it. Nothing may precede
-  // a doctype — a browser that sees markup first renders in quirks mode.
+  // a doctype: a browser that sees markup first renders in quirks mode.
   it("never places content before a doctype", () => {
     expect(injectIntoHead("<!doctype html><html><body>x</body></html>", CONTENT)).toBe(
       "<!doctype html><html><head><style>i{}</style></head><body>x</body></html>",
@@ -44,7 +44,7 @@ describe("injectIntoHead", () => {
     );
   });
 
-  it("prepends on a bare fragment — nothing to preserve", () => {
+  it("prepends on a bare fragment: nothing to preserve", () => {
     expect(injectIntoHead("<div>x</div>", CONTENT)).toBe(
       "<head><style>i{}</style></head><div>x</div>",
     );

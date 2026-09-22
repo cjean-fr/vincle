@@ -66,7 +66,7 @@ describe("flushFragments", () => {
 
     store.register("bad", { content: content as any, merge: "replace" });
 
-    // Start drain and reject synchronously — renderToString will await content
+    // Start drain and reject synchronously: renderToString will await content
     // which rejects via the .then() chain
     reject(new Error("trigger"));
 
@@ -105,7 +105,7 @@ describe("flushFragments", () => {
   });
 });
 
-describe("edge cases — streaming", () => {
+describe("edge cases: streaming", () => {
   it("reader cancel stops an infinite generator", async () => {
     async function* inf() {
       let i = 0;
@@ -237,7 +237,7 @@ describe("edge cases — streaming", () => {
   });
 });
 
-describe("flushFragments — error propagation", () => {
+describe("flushFragments: error propagation", () => {
   it("rejects when emit() itself fails (allSettled must not swallow)", async () => {
     const store = createFragmentStore(cfg);
     store.register("t1", { content: <div>Hello</div>, merge: "replace" });
@@ -278,7 +278,7 @@ describe("flushFragments — error propagation", () => {
 const ARM_MS = 10;
 const OBSERVE_MS = 80;
 
-describe("flushFragments — timeout and AbortSignal wiring", () => {
+describe("flushFragments: timeout and AbortSignal wiring", () => {
   it("passes a real, unaborted AbortSignal to a lazy factory", async () => {
     const store = createFragmentStore(cfg);
     let received: AbortSignal | undefined;

@@ -1,5 +1,5 @@
 /**
- * JSX precompile runtime — a gateway to `jsx-runtime`.
+ * JSX precompile runtime: a gateway to `jsx-runtime`.
  * The `react-jsx-precompile` transform imports this module for the
  * `jsxTemplate`, `jsxAttr`, and `jsxEscape` calls it generates. Those three are
  * the whole contract, shared with Deno's precompile and Preact: the transform

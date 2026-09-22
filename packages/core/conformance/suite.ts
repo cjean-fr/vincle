@@ -1,11 +1,11 @@
 import { Scope } from "@vincle/core";
 /**
- * Multi-runtime conformance — what `bun test` can't cover.
+ * Multi-runtime conformance: what `bun test` can't cover.
  *
  * The unit suite runs on Bun, against the sources. This one runs on **every
  * claimed runtime**, against the **published artifact**: the `exports` map
  * reserves the `bun` condition (TS sources) for Bun, everything else lands on
- * `dist/*.mjs`. Two blind spots closed at once — the port, and the gap
+ * `dist/*.mjs`. Two blind spots closed at once: the port, and the gap
  * between what's tested and what's published.
  *
  * What's checked here is what **depends on the runtime**, not the whole API:
@@ -13,8 +13,8 @@ import { Scope } from "@vincle/core";
  * that's exactly what Bun alone can't tell apart.
  *
  * No dependencies, no test framework, no JSX syntax: the module has to load
- * as-is under Bun, Node, Deno and workerd — only the first has `bun:test`,
- * only the first three have a `process`, and each transpiles JSX its own way.
+ * as-is under Bun, Node, Deno and workerd. Only Bun has `bun:test`; only
+ * the first three have a `process`, and each transpiles JSX its own way.
  *
  * It runs nothing on import: workerd forbids async work at module load time.
  * The entry points are `run.ts` (CLI) and `worker.ts`.
@@ -69,7 +69,7 @@ export async function runConformance(): Promise<ConformanceResult> {
   const eq = (actual: unknown, expected: unknown, what: string): void => {
     if (actual !== expected) {
       throw new Error(
-        `${what} — expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
+        `${what}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
       );
     }
   };
@@ -103,7 +103,7 @@ export async function runConformance(): Promise<ConformanceResult> {
   });
 
   // ───────────────────────────────────────────────────────────────────────────
-  // 2. Context across `await` — the runtime-dependent core of this suite
+  // 2. Context across `await`: the runtime-dependent core of this suite
   // ───────────────────────────────────────────────────────────────────────────
 
   const Theme = Scope.key<string>("conformance:theme");
@@ -129,7 +129,7 @@ export async function runConformance(): Promise<ConformanceResult> {
   // The test that justifies this file. Two scopes in flight at once: exactly
   // what a synchronous stack can't tell apart, and what a runtime with no
   // `AsyncLocalStorage` must refuse rather than render incorrectly. Success
-  // therefore has two valid shapes — correct isolation, or an explicit
+  // therefore has two valid shapes: correct isolation, or an explicit
   // refusal; only one thing counts as a failure: rendering another scope's
   // value.
   await check("two concurrent scopes don't leak into each other", async () => {
@@ -211,7 +211,7 @@ export async function runConformance(): Promise<ConformanceResult> {
 
 /** Report shared by both entry points, so the output is the same everywhere. */
 export function report(result: ConformanceResult): string {
-  const lines = [`[conformance] ${result.runtime} — ${result.passed}/${result.total}`];
+  const lines = [`[conformance] ${result.runtime}: ${result.passed}/${result.total}`];
   for (const f of result.failures) lines.push(`  ✗ ${f.name}\n      ${f.detail}`);
   return lines.join("\n");
 }

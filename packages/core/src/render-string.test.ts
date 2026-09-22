@@ -44,8 +44,8 @@ describe("renderToString (async)", () => {
   test("async component as non-first child in an otherwise-sync array", async () => {
     // Regression: the child pre-scan used to check `child instanceof Promise`
     // on the *raw* children, before any component was invoked. An async
-    // component shows up there as a plain VNode (tag = function) — its
-    // Promise-ness only appears after calling it — so it slipped through the
+    // component shows up there as a plain VNode (tag = function): its
+    // Promise-ness only appears after calling it, so it slipped through the
     // fast sync path and got string-coerced into "[object Promise]".
     async function Async() {
       await Promise.resolve();
@@ -95,7 +95,7 @@ describe("renderToString (async)", () => {
 //
 // `Renderable` declares `Iterable<Renderable>`, and the attribute types declare
 // `Awaitable`. Both were declarations the tree walk did not keep: a `Set` rendered
-// as `[object Set]`, a promised attribute as `[object Promise]` — while the
+// as `[object Set]`, a promised attribute as `[object Promise]`, while the
 // precompile runtime, over the same JSX, awaited and drained them. A type that
 // promises something the engine does not do is worse than no type.
 
@@ -142,7 +142,7 @@ describe("promised attribute values are awaited", () => {
     );
   });
 
-  test("on an element with static children — the subtree still serializes", async () => {
+  test("on an element with static children: the subtree still serializes", async () => {
     const node = jsx("a", { href: Promise.resolve("/p"), children: "click" });
     expect(node).toBeInstanceOf(Promise);
     expect(await renderToString(node)).toBe('<a href="/p">click</a>');
@@ -172,7 +172,7 @@ describe("promised attribute values are awaited", () => {
     expect(await renderToString(jsx("a", { href: Promise.resolve("javascript:alert(1)") }))).toBe(
       '<a href="#blocked"></a>',
     );
-    // `>` is not escaped in an attribute — it cannot end a quoted value. See
+    // `>` is not escaped in an attribute: it cannot end a quoted value. See
     // `escapeAttr`.
     expect(await renderToString(jsx("p", { title: Promise.resolve('"x" & <y>') }))).toBe(
       '<p title="&quot;x&quot; &amp; &lt;y>"></p>',
@@ -219,7 +219,7 @@ describe("dangerouslySetInnerHTML", () => {
 describe("renderToString never throws synchronously", () => {
   // The signature says `Promise<string>`; a synchronous throw walks straight past
   // `.catch()`. `buildAttrs` is the one that throws during the walk, and only for
-  // an element the static path declined — hence the promised child.
+  // an element the static path declined: hence the promised child.
   test("an unserializable attribute rejects instead of throwing", async () => {
     let threw = false;
     let promise: Promise<string> | undefined;
@@ -262,7 +262,7 @@ describe("Error annotation", () => {
     await expect(renderToString(jsx(Boom, {}))).rejects.toThrow("[Boom] not found");
   });
 
-  test("only the innermost component is named — an ancestor does not re-annotate", async () => {
+  test("only the innermost component is named: an ancestor does not re-annotate", async () => {
     function Boom() {
       throw new Error("not found");
     }
@@ -337,14 +337,14 @@ describe("Error annotation", () => {
 // Two branches of the element walk are no longer reachable through `jsx()`: an
 // element with `children === undefined`, and an element whose children are a
 // single string. For a string tag the static path only bails when a *child* is
-// dynamic — a promised attribute no longer sends the element down the walk, the
-// static path awaits it — so both shapes now always serialize.
+// dynamic: a promised attribute no longer sends the element down the walk, the
+// static path awaits it, so both shapes now always serialize.
 //
 // They are kept, and tested here on hand-built nodes, because they are not
 // speculation: they carry the void-element rule (`<br>`, not `<br></br>`) and the
 // rawtext rule (`<script>` content is not escaped like text). If either shape ever
 // reaches the walk again, dropping them would be a silent divergence from the
-// static path — so what is pinned below is the *contract*, not a route a document takes
+// static path, so what is pinned below is the *contract*, not a route a document takes
 // today. The differential fuzzers are what would notice the day it changes.
 
 describe("element walk contract (guard branches)", () => {
@@ -379,7 +379,7 @@ describe("element walk contract (guard branches)", () => {
 });
 
 // The rawtext rule used to apply to *direct strings only*. Every other shape
-// went to `renderNode`, which knows nothing about rawtext — so a string that
+// went to `renderNode`, which knows nothing about rawtext, so a string that
 // arrived wrapped came out escaped as ordinary text. That is not a milder
 // escaping, it is the wrong one: an HTML parser does not decode entities inside
 // script-data, so `&lt;` reaches the JavaScript engine verbatim and the code is
@@ -485,7 +485,7 @@ describe("rawtext content survives every child shape", () => {
   // The deliberate exclusion. An element inside `<script>` is markup, and markup
   // has no meaning there; re-escaping finished markup would corrupt it, so this
   // shape keeps going through the ordinary walk. Pinned so the exclusion is a
-  // decision rather than an oversight — and so it shows up if anyone revisits it.
+  // decision rather than an oversight, and so it shows up if anyone revisits it.
   test("an element child of a rawtext element is left to the ordinary walk", async () => {
     expect(await renderToString(jsx("script", { children: jsx("b", { children: "x" }) }))).toBe(
       "<script><b>x</b></script>",
@@ -500,7 +500,7 @@ describe("rawtext content survives every child shape", () => {
   });
 
   // The last shape the rule missed: a leaf that is neither a string nor any of
-  // the containers above — an object with a `toString`, a boxed primitive. It
+  // the containers above: an object with a `toString`, a boxed primitive. It
   // went through `valueToText`, which HTML-escapes, so `<` reached the
   // JavaScript engine as `&lt;`. Both paths are asserted because the static path and
   // the walk coerce it in different functions.
@@ -522,7 +522,7 @@ describe("rawtext content survives every child shape", () => {
   // A `<script>` with a non-JS `type` is a data block, and the ones that occur
   // hold JSON. The escape form is what decides whether that block survives: the
   // `<\` the HTML spec suggests is a JavaScript escape, and `\s` is a JSON parse
-  // error — JSON-LD used to need `raw()` and a hand-rolled `\u003c` pass.
+  // error: JSON-LD used to need `raw()` and a hand-rolled `\u003c` pass.
   // End-to-end here rather than on `escapeRawTagContent`, because what has to
   // hold is the property the caller sees: what goes in comes back out.
   test("a JSON data block survives hostile data, without raw()", async () => {

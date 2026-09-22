@@ -1,9 +1,9 @@
-/** Where a page comes from, and when it last changed — the two `PageFooter` values. */
+/** Where a page comes from, and when it last changed: the two `PageFooter` values. */
 import path from "node:path";
 
 const APP_ROOT = path.resolve(import.meta.dirname!, "../..");
 
-/** `{editUrl}/{path within the app}` — the base carries host, branch and app dir. */
+/** `{editUrl}/{path within the app}`: the base carries host, branch and app dir. */
 export function editUrlFor(base: string | null, file: string): string | null {
   if (!base) return null;
   const rel = path.relative(APP_ROOT, file);
@@ -19,7 +19,7 @@ const cache = new Map<string, Promise<string | null>>();
  * Commit date of the last change to `file`, ISO 8601, or `null`.
  *
  * Git, not `stat`: a CI checkout dates every file to the clone. `null` covers
- * no git, a shallow clone, an untracked page — the footer omits the line.
+ * no git, a shallow clone, an untracked page: the footer omits the line.
  */
 export function lastModified(file: string): Promise<string | null> {
   const hit = cache.get(file);

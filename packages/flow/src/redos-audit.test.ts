@@ -1,12 +1,12 @@
 /**
- * ReDoS audit — ASVS 1.3.12 (L3).
+ * ReDoS audit: ASVS 1.3.12 (L3).
  *
  * Every regex in `@vincle/flow`'s production code is declared here with its
  * pattern, its purpose, and why it cannot backtrack catastrophically. Each
  * declaration is checked three ways:
  *
  *   1. **Against the source.** The production files are parsed and every regex
- *      literal found has to match a declaration — and every declaration has to
+ *      literal found has to match a declaration, and every declaration has to
  *      match a literal. Adding, removing or editing a regex fails this test.
  *   2. **Statically.** The pattern is scanned for the constructs that make
  *      backtracking blow up. Nothing here may trip the analyzer.
@@ -21,7 +21,7 @@ import { parseSync } from "oxc-parser";
 
 /**
  * Package root, derived from this file. The scan reads the sources next to
- * it — they don't move depending on which directory `bun test` is invoked from.
+ * it: they don't move depending on which directory `bun test` is invoked from.
  */
 const PACKAGE_ROOT = dirname(import.meta.dir);
 
@@ -30,7 +30,7 @@ type Risk = string;
 interface RegexEntry {
   /** Path relative to the package root, as the source scan reports it. */
   file: string;
-  /** The binding it is attached to — how a reader finds it. */
+  /** The binding it is attached to: how a reader finds it. */
   name: string;
   pattern: string;
   flags: string;
@@ -57,7 +57,7 @@ const AUDITED: RegexEntry[] = [
     pattern: "<\\/head\\s*>",
     flags: "i",
     purpose: "Find where to insert into an existing <head> (injectIntoHead, placement 1).",
-    whySafe: "One `\\s*` between two fixed literals — the trailing `>` gives it a single exit.",
+    whySafe: "One `\\s*` between two fixed literals: the trailing `>` gives it a single exit.",
     matches: ["<head></head>", "<HEAD>\n</HEAD >"],
     rejects: ["<head>", "</header>"],
   },
@@ -68,7 +68,7 @@ const AUDITED: RegexEntry[] = [
     flags: "i",
     purpose: "Open a <head> right after <html …>, wherever it sits (injectIntoHead, placement 2).",
     whySafe:
-      "`[^>]*` is a negated class terminated by the very character it excludes — it cannot backtrack " +
+      "`[^>]*` is a negated class terminated by the very character it excludes: it cannot backtrack " +
       "past its own terminator.",
     matches: ["<html>", '<html lang="en">', "<HTML DATA-X>"],
     rejects: ["<htmlx>", "<html"],
@@ -80,7 +80,7 @@ const AUDITED: RegexEntry[] = [
     flags: "i",
     purpose:
       "Keep a leading doctype first when the shell has no <html> (injectIntoHead, placement 3). " +
-      "Nothing may precede a doctype — markup before it puts the browser in quirks mode.",
+      "Nothing may precede a doctype: markup before it puts the browser in quirks mode.",
     whySafe: "Anchored at the start; `\\s*` and `[^>]*` are separated by a fixed literal.",
     matches: ["<!doctype html>", "  <!DOCTYPE html>", '\n<!doctype html SYSTEM "x">'],
     rejects: ["<html><!doctype html>", "<!doctypehtml>"],
@@ -175,7 +175,7 @@ describe("ReDoS inventory is derived from the source, not from memory", () => {
     const stale = AUDITED.filter((r) => !found.has(identify(r)));
     expect(
       stale.map((r) => `${r.name} at ${identify(r)}`),
-      "remove entries that no longer exist — this is what REGEX_MARKER outlived",
+      "remove entries that no longer exist: this is what REGEX_MARKER outlived",
     ).toEqual([]);
   });
 
@@ -199,12 +199,12 @@ describe("ReDoS inventory is derived from the source, not from memory", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Static analysis — the constructs that make backtracking explode
+// 2. Static analysis: the constructs that make backtracking explode
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** A group followed by a quantifier: `(x)+`, `(?:a|b)*`, … */
 const hasQuantifiedGroup = (src: string): boolean => /\([^)]+\)[*+?{]/.test(src);
-/** Alternation inside a quantified group — the classic `(a|a)*` shape. */
+/** Alternation inside a quantified group: the classic `(a|a)*` shape. */
 const hasAltInQuantifiedGroup = (src: string): boolean => /\(.*\|.*\)[*+?{]/.test(src);
 /** Two quantifiers in a row, e.g. `++`. (`+?` is lazy, not nested.) */
 const hasAdjacentQuantifiers = (src: string): boolean => /[+*?][+*?]/.test(src);
@@ -234,7 +234,7 @@ describe("ReDoS static analysis", () => {
     it(`${entry.name} is structurally safe`, () => {
       expect(() => new RegExp(entry.pattern, entry.flags)).not.toThrow();
       const risks = analyze(entry.pattern);
-      expect(risks, `flagged (${risks.join("; ")}) — justification: ${entry.whySafe}`).toEqual([]);
+      expect(risks, `flagged (${risks.join("; ")}): justification: ${entry.whySafe}`).toEqual([]);
     });
   }
 });
@@ -247,7 +247,7 @@ describe("ReDoS behavioural contract", () => {
   for (const entry of AUDITED) {
     it(`${entry.name} matches and rejects what it declares`, () => {
       for (const input of entry.matches ?? []) {
-        // `g`/`y` would carry lastIndex between assertions — build per input.
+        // `g`/`y` would carry lastIndex between assertions: build per input.
         expect(
           new RegExp(entry.pattern, entry.flags).test(input),
           `should match ${JSON.stringify(input)}`,

@@ -195,7 +195,7 @@ describe("isSafeScheme", () => {
     expect(isSafeScheme("data:text/html,<script>alert(1)</script>")).toBe(false);
   });
 
-  test("no scheme — safe", () => {
+  test("no scheme: safe", () => {
     expect(isSafeScheme("example.com")).toBe(true);
     expect(isSafeScheme("local")).toBe(true);
   });
@@ -206,7 +206,7 @@ describe("isSafeScheme", () => {
   });
 
   // A scheme is `ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) ":"`. A prefix that
-  // cannot be one is not a scheme the check should judge — it is a relative
+  // cannot be one is not a scheme the check should judge: it is a relative
   // reference, and the browser resolves it against the document.
   //
   //   new URL("écho:test", base).protocol         === "https:"   (relative)
@@ -226,7 +226,7 @@ describe("isSafeScheme", () => {
   });
 
   // Homograph attempt: Cyrillic "а" in "jаvascript". Not a scheme character, so
-  // no parser reads a scheme here either — and nothing executes.
+  // no parser reads a scheme here either, and nothing executes.
   test("a homograph scheme is not a scheme", () => {
     expect(new URL("jаvascript:alert(1)", "https://example.test/").protocol).toBe("https:");
     expect(isSafeScheme("jаvascript:alert(1)")).toBe(true);
@@ -267,14 +267,14 @@ describe("isSafeScheme", () => {
   });
 
   /**
-   * Differential test against the platform's own WHATWG URL parser — the same
+   * Differential test against the platform's own WHATWG URL parser: the same
    * algorithm the browser applies. It is the only oracle that cannot drift from
    * what a browser will actually execute, and it decides these cases rather
    * than a hand-written list.
    *
    * The contract is one-directional on purpose: whenever the parser resolves an
    * input to an executable scheme, `isSafeScheme` must reject it. The converse
-   * does not hold — rejecting more than the parser executes is allowed.
+   * does not hold: rejecting more than the parser executes is allowed.
    */
   test("agrees with WHATWG URL on every executable scheme", () => {
     const EXECUTABLE = new Set(["javascript:", "vbscript:"]);
@@ -298,7 +298,7 @@ describe("isSafeScheme", () => {
       try {
         protocol = new URL(input, "https://example.test/").protocol;
       } catch {
-        continue; // not a URL at all — nothing to execute
+        continue; // not a URL at all: nothing to execute
       }
       const executable =
         EXECUTABLE.has(protocol) || (protocol === "data:" && !/^data:image\//i.test(input.trim()));
@@ -338,7 +338,7 @@ describe("URL_ATTRIBUTES", () => {
   });
 });
 
-// ── escapeRawTagContent — <script> tokenizer states ────────────────────────
+// ── escapeRawTagContent: <script> tokenizer states ────────────────────────
 //
 // `<script>` is SCRIPT_DATA, not RAWTEXT: `<!--` opens *script data escaped* and
 // a following `<script` opens *script data double escaped*, a state in which
@@ -346,7 +346,7 @@ describe("URL_ATTRIBUTES", () => {
 // the renderer's own closing tag inert. Asserted here against a real HTML5
 // parser, because the failure is invisible in the output string.
 
-describe("escapeRawTagContent — script data double escape", () => {
+describe("escapeRawTagContent: script data double escape", () => {
   const tagsOf = async (html: string): Promise<string[]> => {
     const seen: string[] = [];
     await new HTMLRewriter()
@@ -393,7 +393,7 @@ describe("escapeRawTagContent — script data double escape", () => {
   });
 
   // Breaking `<script` already disarms the pair, and `<!--` on its own line is
-  // valid JavaScript under Annex B — escaping it would turn working source into
+  // valid JavaScript under Annex B: escaping it would turn working source into
   // a syntax error.
   test("<!-- is left intact", () => {
     expect(escapeRawTagContent("<!--", "script")).toBe("<!--");
@@ -411,7 +411,7 @@ describe("escapeRawTagContent — script data double escape", () => {
 
   // The reason the escape is a unicode escape rather than the `<\` the HTML spec
   // suggests: a `<script>` with a non-JS `type` is a data block, and the ones
-  // that occur hold JSON — where `\s` is a parse error, not the identity.
+  // that occur hold JSON, where `\s` is a parse error, not the identity.
   test("neutralization is transparent inside a JSON string literal", () => {
     const json = JSON.stringify({ "@type": "Article", name: "</script><img src=x>" });
     const escaped = escapeRawTagContent(json, "script");
@@ -420,13 +420,13 @@ describe("escapeRawTagContent — script data double escape", () => {
     expect(JSON.parse(escaped)).toEqual({ "@type": "Article", name: "</script><img src=x>" });
   });
 
-  test("style is RAWTEXT — only </style matters", () => {
+  test("style is RAWTEXT: only </style matters", () => {
     expect(escapeRawTagContent("<!--", "style")).toBe("<!--");
     expect(escapeRawTagContent("<style", "style")).toBe("<style");
     expect(escapeRawTagContent("</style>", "style")).toBe("<\\/style>");
   });
 
-  // CSS reads `\u` as a literal `u` — `\` + non-hex is that character — so the
+  // CSS reads `\u` as a literal `u`: `\` + non-hex is that character, so the
   // two tags cannot share one escape form. Asserted so that unifying them again
   // fails here rather than silently in a stylesheet.
   test("style keeps the backslash form, which CSS reads back", () => {
@@ -445,7 +445,7 @@ describe("escapeRawTagContent — script data double escape", () => {
 // ── One leaf taxonomy, three entry points ─────────────────────────────────
 //
 // `renderLeaf` is the definition; the walks route to it instead of restating it.
-// This test holds them to that — a copy reintroduced anywhere shows up here as a
+// This test holds them to that: a copy reintroduced anywhere shows up here as a
 // disagreement.
 
 describe("one leaf taxonomy, three entry points", () => {
@@ -500,7 +500,7 @@ describe("one leaf taxonomy, three entry points", () => {
     expect(failures).toEqual([]);
   });
 
-  test("a VNode is not a text value — valueToText throws", () => {
+  test("a VNode is not a text value: valueToText throws", () => {
     expect(() => valueToText(new VNode("div", {}, null))).toThrow(/reached a text position/);
   });
 });

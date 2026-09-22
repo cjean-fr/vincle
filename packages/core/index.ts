@@ -1,5 +1,5 @@
 /**
- * @vincle/core — VNode-based JSX-to-HTML renderer.
+ * @vincle/core: VNode-based JSX-to-HTML renderer.
  *
  * Builds a VNode tree and walks it to produce HTML, which is what lets a render
  * be deferred or streamed. The tree is not a public data structure: `VNode` is a
@@ -14,7 +14,7 @@ export { renderToString } from "./src/render.js";
 
 // ── JSX runtime ────────────────────────────────────────────────────────────
 //
-// `VNode` is exported as a **type only**, the name of what `jsx()` produces —
+// `VNode` is exported as a **type only**, the name of what `jsx()` produces,
 // for typing a component's return or a generator's yield. The runtime's
 // `instanceof` tests are internal, and the precompile contract (Deno/Preact)
 // is the three helpers `jsxTemplate` / `jsxAttr` / `jsxEscape`, none of which

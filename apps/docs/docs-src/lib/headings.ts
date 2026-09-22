@@ -1,8 +1,8 @@
 /**
  * What "a heading carrying an id" means, defined once.
  *
- * Two passes read headings from the rendered HTML — the table of contents and
- * the permalinks — and each used to carry its own expression. They diverged
+ * Two passes read headings from the rendered HTML: the table of contents and
+ * the permalinks, and each used to carry its own expression. They diverged
  * on a heading split across several lines: the permalink pass caught it, the
  * TOC pass didn't. None of the site's 195 occurrences hit it, but nothing
  * ruled it out.
@@ -35,7 +35,7 @@ export function eachHeading(html: string): Heading[] {
   return out;
 }
 
-/** The permalink's class — the table of contents must be able to ignore it. */
+/** The permalink's class: the table of contents must be able to ignore it. */
 export const ANCHOR_CLASS = "docs-heading-anchor";
 
 const ANCHOR_RE = new RegExp(`<a class="${ANCHOR_CLASS}"[\\s\\S]*?</a>`, "gi");
@@ -45,6 +45,6 @@ const ANCHOR_RE = new RegExp(`<a class="${ANCHOR_CLASS}"[\\s\\S]*?</a>`, "gi");
  *
  * This is what makes the two passes commute: the table of contents could get
  * polluted by the "#" permalinks add, and the order of the transform array
- * was the only thing preventing it — in a comment.
+ * was the only thing preventing it: in a comment.
  */
 export const withoutAnchor = (inner: string): string => inner.replace(ANCHOR_RE, "");

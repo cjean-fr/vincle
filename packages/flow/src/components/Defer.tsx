@@ -18,7 +18,7 @@ export function Defer(props: DeferProps): JSX.Element {
   const { children, merge, timeout, onError, fallback } = props;
   const target = props.target ?? nextId();
 
-  // Throws when there is no adapter — there is no placeholder to render and
+  // Throws when there is no adapter: there is no placeholder to render and
   // nothing to patch into without one, so requiring it here, at the point of
   // misuse, beats a `Frame`/`Placeholder` crash further down the pipeline.
   // It also throws when the target is already registered.

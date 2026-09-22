@@ -40,8 +40,8 @@ function isAbortSignal(value: unknown): value is AbortSignal {
 
 /**
  * Validate the shared flow options at the call site, so a misconfigured value
- * fails at setup — before a single byte is rendered or streamed — with a
- * message that names the option, the offending value, and the fix.
+ * fails at setup, before any bytes are rendered or streamed. The error
+ * names the option, its invalid value, and the fix.
  *
  * `source` is the public API that received the options, for the message.
  * Extra keys (e.g. ResponseInit on `serve`) are ignored: only the flow keys
@@ -85,8 +85,8 @@ export function assertFlowOptions(opts: FlowOptions | undefined, source: string)
 const ADAPTER_SLOTS = ["Placeholder", "Patch", "Frame"] as const;
 
 /**
- * Structural validation of an adapter object. `undefined` is legal — static
- * mode may run without one — a non-undefined adapter must be complete:
+ * Structural validation of an adapter object. `undefined` is legal: static
+ * mode may run without one. When an adapter is provided, it must implement
  * Placeholder, Patch, Frame, and a capabilities declaration.
  */
 export function assertAdapter(adapter: unknown, source: string): void {
@@ -102,7 +102,7 @@ export function assertAdapter(adapter: unknown, source: string): void {
   const missing = ADAPTER_SLOTS.filter((slot) => typeof record[slot] !== "function");
   if (missing.length > 0) {
     throw vincleError(
-      `${PREFIX} ${source}: the adapter is missing ${missing.map((slot) => `"${slot}"`).join(", ")} — ` +
+      `${PREFIX} ${source}: the adapter is missing ${missing.map((slot) => `"${slot}"`).join(", ")}: ` +
         "an adapter needs Placeholder, Patch and Frame. Use createAdapter() or a built-in adapter.",
       ERR_FLOW_CONFIG,
     );
@@ -110,7 +110,7 @@ export function assertAdapter(adapter: unknown, source: string): void {
   const caps = record["capabilities"] as { streaming?: unknown; merges?: unknown } | null;
   if (caps === null || typeof caps !== "object") {
     throw vincleError(
-      `${PREFIX} ${source}: the adapter is missing capabilities — declare ` +
+      `${PREFIX} ${source}: the adapter is missing capabilities: declare ` +
         "{ streaming: boolean, merges: MergeType[] } (see createAdapter()).",
       ERR_FLOW_CONFIG,
     );
@@ -146,7 +146,7 @@ export function assertAdapter(adapter: unknown, source: string): void {
 
 /**
  * Validate a full flow config at the point of use. Every entry point funnels
- * through `initFlow`, so this is where a wrong config stops — at setup, not
+ * through `initFlow`, so this is where a wrong config stops: at setup, not
  * mid-render.
  */
 export function assertFlowConfig(config: unknown): void {
@@ -194,7 +194,7 @@ export function assertFlowConfig(config: unknown): void {
     }
   } else if (generatePath !== undefined) {
     throw vincleError(
-      `${PREFIX} FlowConfig: generatePath is only used in static mode (renderToStatic) — ` +
+      `${PREFIX} FlowConfig: generatePath is only used in static mode (renderToStatic): ` +
         'remove it from the streaming config, or drop mode: "streaming" if you meant static generation.',
       ERR_FLOW_CONFIG,
     );

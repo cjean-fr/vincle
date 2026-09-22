@@ -8,14 +8,14 @@ import { raw, RawString, VNode } from "./types.js";
  * Path-equivalence fuzzer for the **third** renderer.
  *
  * `path-equivalence.test.ts` proves the static path and the tree walk emit the same
- * bytes. It says nothing about the precompile runtime — `jsxEscape` /
- * `jsxTemplate`, the helpers the Deno/Bun-style transform calls — which is a
+ * bytes. It says nothing about the precompile runtime: `jsxEscape` /
+ * `jsxTemplate`, the helpers the Deno/Bun-style transform calls, which is a
  * third traversal of the same value taxonomy, and was pinned only by a
  * hand-written case list.
  *
  * The hole such a list leaves is the class this kind of fuzzer exists to catch:
  * a value kind one path handles and the other mishandles. An array of VNodes is
- * that shape — `jsxTemplate` sends every container down its deferred path, so
+ * that shape: `jsxTemplate` sends every container down its deferred path, so
  * `valueToText`, which refuses a VNode, is never asked to flatten one.
  * `@vincle/precompile` wraps every hole in `jsxEscape`, so its own
  * output never depended on that; but `jsxTemplate` is a public export, and GOAL
@@ -29,7 +29,7 @@ import { raw, RawString, VNode } from "./types.js";
  * renderers would measure exhaustion instead of equivalence.
  */
 
-// Seeded PRNG (mulberry32) — same seed ⇒ same sequence ⇒ same logical value.
+// Seeded PRNG (mulberry32): same seed ⇒ same sequence ⇒ same logical value.
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -88,7 +88,7 @@ function genLeaf(r: () => number): unknown {
   // The text is drawn *now*, not inside `toString`. A leaf that draws from the
   // PRNG when stringified is not the same value twice, and the comparison then
   // measures how many times each path calls `String()` instead of what it
-  // emits — which is a real difference: wrap a value in an element and the static path
+  // emits, which is a real difference: wrap a value in an element and the static path
   // stringifies a leaf before declining on a dynamic sibling, so the walk
   // stringifies it a second time. That is wasted work on a pure `toString` and
   // invisible; it made one seed in a thousand look like a renderer divergence.
@@ -107,7 +107,7 @@ function genValue(r: () => number, depth: number): unknown {
   if (roll < 0.24) return genLeaf(r);
 
   if (roll < 0.32) {
-    // Element that cannot be serialized — a dynamic child keeps it a VNode.
+    // Element that cannot be serialized: a dynamic child keeps it a VNode.
     const child = genValue(r, depth - 1);
     return jsx("div", { class: pick(["a", "b c"], r), children: [child] });
   }
@@ -126,7 +126,7 @@ function genValue(r: () => number, depth: number): unknown {
   }
 
   if (roll < 0.54) {
-    // Async component — the shape GOAL calls the distinctive one.
+    // Async component: the shape GOAL calls the distinctive one.
     const body = genValue(r, depth - 1);
     return jsx(async () => body, {});
   }
@@ -138,7 +138,7 @@ function genValue(r: () => number, depth: number): unknown {
   }
 
   if (roll < 0.73) {
-    // Array — possibly nested, possibly holding VNodes. The hole that was open.
+    // Array: possibly nested, possibly holding VNodes. The hole that was open.
     const n = Math.floor(r() * 4);
     return Array.from({ length: n }, () => genValue(r, depth - 1));
   }
@@ -159,7 +159,7 @@ function genValue(r: () => number, depth: number): unknown {
     })();
   }
 
-  // Promise of anything — including a promise of a container.
+  // Promise of anything: including a promise of a container.
   return Promise.resolve(genValue(r, depth - 1));
 }
 
@@ -169,7 +169,7 @@ const viaWalk = (v: unknown): Promise<string> => renderToString(v);
 
 async function viaEscape(v: unknown): Promise<string> {
   const escaped = await jsxEscape(v);
-  // `jsxEscape` lets a VNode through untouched by contract — the caller is the
+  // `jsxEscape` lets a VNode through untouched by contract: the caller is the
   // rendez-vous that walks it. That is what a transform's generated code does.
   return escaped instanceof VNode ? renderToString(escaped) : escaped.value;
 }
@@ -187,14 +187,14 @@ async function viaTemplate(v: unknown): Promise<string> {
  * changes.
  *
  * The regression that made it necessary: a hole inside rawtext was escaped for
- * HTML, so `a && b` came out `a &amp;&amp; b` — and an HTML parser never decodes
+ * HTML, so `a && b` came out `a &amp;&amp; b`, and an HTML parser never decodes
  * an entity in rawtext, so the JavaScript parser received those characters
  * literally. The tree walk had the rule, the static path was reconciled with it, and
  * the precompile path was the third renderer nobody had checked.
  *
  * There is no third copy of the rule any more, and that is what this block now
  * holds: the transform stops precompiling a rawtext element that has a dynamic
- * hole and emits the element itself as a template hole — an ordinary `jsx()`
+ * hole and emits the element itself as a template hole: an ordinary `jsx()`
  * call, the shape it already uses for components. So the rule stays where the
  * runtime keeps it, and the target runtime is whichever one the app compiles
  * against. The two forms below are the two sides of that: the same element,
@@ -216,8 +216,8 @@ async function viaTemplateRawtext(v: unknown, tag: string): Promise<string> {
  *
  * The comparison above cannot see the interleaving: one value and two empty
  * fragments leave the loop over `values` and the `templates[i + 1]` it appends
- * pinned by nothing, so the sequencing rule — holes in document order, no
- * `Promise.all` over siblings — rests on a single hand-written case.
+ * pinned by nothing, so the sequencing rule: holes in document order, no
+ * `Promise.all` over siblings: rests on a single hand-written case.
  *
  * `frags.length` is always `vals.length + 1`, the shape a tagged template has
  * and the only one a transform emits. A template with a spare fragment drops it,

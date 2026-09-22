@@ -16,4 +16,4 @@ const Page = () => (
 const html = await renderToString(<Page />);
 if (html !== "<ul><b>en</b><b>en</b></ul>")
   throw new Error(`Deno precompile lost Provider context: ${html}`);
-console.log("[conformance] deno precompile Provider — 1/1");
+console.log("[conformance] deno precompile Provider: 1/1");

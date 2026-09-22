@@ -6,7 +6,7 @@ import type { Adapter } from "./adapters/index.js";
 // with no diffing client rejects `morph` rather than falling back to a plain replace.
 export const ALL_MERGES = ["replace", "append", "prepend", "before", "after", "morph"] as const;
 
-/** Derived from `ALL_MERGES`, the single declaration `assertAdapter` also validates — runtime and type can't drift. */
+/** Derived from `ALL_MERGES`, the single declaration `assertAdapter` also validates: runtime and type can't drift. */
 export type MergeType = (typeof ALL_MERGES)[number];
 
 export interface AdapterCapabilities {
@@ -16,10 +16,10 @@ export interface AdapterCapabilities {
 
 /**
  * Content renderable as a deferred fragment:
- * - `JSX.Element` — one-shot sync/async render
- * - `string` — **escaped text**; for real HTML, wrap with `raw()`
- * - `(signal) => JSX.Element` — lazy factory; `signal` = request abort + fragment timeout
- * - `AsyncIterable<JSX.Element>` — streaming
+ * - `JSX.Element`: one-shot sync/async render
+ * - `string`: **escaped text**; for real HTML, wrap with `raw()`
+ * - `(signal) => JSX.Element`: lazy factory; `signal` = request abort + fragment timeout
+ * - `AsyncIterable<JSX.Element>`: streaming
  */
 export type DeferContent =
   | JSX.Element

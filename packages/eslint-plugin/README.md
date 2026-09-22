@@ -44,7 +44,7 @@ export default [
 
 `@vincle/core` refuses content inside a void element (`<img>{caption}</img>`) at
 render time. To be told while writing, enable `void-dom-elements-no-children`
-from `eslint-plugin-react`, or its port of the same name in oxlint — it reads a
+from `eslint-plugin-react`, or its port of the same name in oxlint. It reads a
 tag and its children and nothing else, so despite the package it sits in, it is
 a rule about JSX rather than about React. It is not repeated here.
 

@@ -5,7 +5,7 @@ title: Installation
 # Installation
 
 `@vincle/core` has zero runtime dependencies. Install it and configure
-TypeScript — that's all.
+TypeScript. That's all.
 
 ## Package manager
 
@@ -33,7 +33,7 @@ explicit import:
 
 ## Attribute types
 
-Every HTML and SVG element is typed per element — `src` on `<img>`, `href` on
+Every HTML and SVG element is typed per element: `src` on `<img>`, `href` on
 `<a>`. The types are part of `@vincle/core`: nothing to install, and a typo is
 a compile error.
 
@@ -52,20 +52,20 @@ a compile error.
 
 ### Types
 
-| Export         | Purpose                                                            |
-| -------------- | ------------------------------------------------------------------ |
-| `Renderable`   | Everything the renderers can render                                |
-| `VNode`        | The engine's element representation — a class, exported as a value |
-| `RawString`    | Branded type for pre-escaped HTML                                  |
-| `Awaitable<T>` | `T` or a promise of `T`                                            |
-| `ClassValue`   | What a `class` attribute accepts                                   |
-| `JSX`          | The JSX namespace                                                  |
-| `Context<T>`   | Tree context with a typed Provider                                 |
-| `ScopeKey<T>`  | Branded execution-context key type                                 |
-| `ScopeMap`     | Execution-context map type                                         |
+| Export         | Purpose                                                           |
+| -------------- | ----------------------------------------------------------------- |
+| `Renderable`   | Everything the renderers can render                               |
+| `VNode`        | The engine's element representation: a class, exported as a value |
+| `RawString`    | Branded type for pre-escaped HTML                                 |
+| `Awaitable<T>` | `T` or a promise of `T`                                           |
+| `ClassValue`   | What a `class` attribute accepts                                  |
+| `JSX`          | The JSX namespace                                                 |
+| `Context<T>`   | Tree context with a typed Provider                                |
+| `ScopeKey<T>`  | Branded execution-context key type                                |
+| `ScopeMap`     | Execution-context map type                                        |
 
 Element attributes are typed per element, by the table generated into
-`@vincle/core` — see
+`@vincle/core`: see
 [JSX types](/api/core/jsx-types).
 
 Everything else is internal. There is no plugin registry or
@@ -73,5 +73,5 @@ config object to maintain.
 
 ## Where to next
 
-- [First render](/guide/getting-started/first-render) — your first component
-- [TypeScript setup](/guide/getting-started/typescript-setup) — Deno, esbuild
+- [First render](/guide/getting-started/first-render): your first component
+- [TypeScript setup](/guide/getting-started/typescript-setup): Deno, esbuild

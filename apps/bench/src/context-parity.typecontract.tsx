@@ -1,11 +1,9 @@
 /**
- * React 19 context type contract — checked by `bun run check`, not by `bun test`.
+ * React 19 context type contract - checked by `bun run check`, not by `bun test`.
  *
- * No runtime assertion: the file *is* the assertion. If it compiles, a modern
- * React context object remains assignable to the vincle context type — the
- * direction of interoperability this package exists for — and the JSX surface
- * accepts the three React 19 forms. The `@ts-expect-error` line locks in the
- * one direction deliberately not claimed, so a widening there fails the build.
+ * Vincle and React contexts stay distinct even though their JSX surfaces match:
+ * vincle cannot render a React context or read its default. The JSX surface
+ * accepts the three React 19 forms for contexts created by vincle.
  *
  * @module
  */
@@ -17,14 +15,12 @@ import { createContext } from "@vincle/core";
 type IsAssignable<From, To> = [From] extends [To] ? true : false;
 type Expect<T extends true> = T;
 
-// A React context is usable where a vincle context is expected:
-// `useContext(reactContext)` type-checks.
+// React contexts have the same visible surface but a different runtime protocol.
 type ReactIsVincle = IsAssignable<ReactContext<number>, VincleContext<number>>;
-export type _reactContextIsVincleCompatible = Expect<ReactIsVincle>;
+// @ts-expect-error `false` does not satisfy the `true` constraint
+export type _reactContextIsNotVincleCompatible = Expect<ReactIsVincle>;
 
-// The reverse is not claimed: a vincle context does not carry `$$typeof`, and
-// masquerading as a React context would be a lie React's reconciler would not
-// honour. If this ever starts compiling, the directive below fails the build.
+// The reverse is also invalid: a vincle context does not carry `$$typeof`.
 type VincleIsReact = IsAssignable<VincleContext<number>, ReactContext<number>>;
 // @ts-expect-error `false` does not satisfy the `true` constraint
 export type _vincleContextIsNotAReactContext = Expect<VincleIsReact>;

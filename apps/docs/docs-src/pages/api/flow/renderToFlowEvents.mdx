@@ -6,7 +6,7 @@ title: renderToFlowEvents
 
 Low-level streaming primitive: returns a `ReadableStream<FlowEvent>` of raw
 events instead of adapter-encoded HTML. `renderToStream` is exactly this
-primitive piped through the adapter's own encoding — reach for it when you need
+primitive piped through the adapter's own encoding: reach for it when you need
 the shell, fragments, and close as separate events (custom wire format, custom
 framing, or a client protocol the built-in adapters don't cover).
 
@@ -36,7 +36,7 @@ runtime.
 | `fragment` | `{ type: "fragment"; id: string; html: string; merge: MergeType }` | A deferred fragment is ready; `html` is the raw inner content, `merge` is that template's merge type |
 | `close`    | `{ type: "close"; html: string }`                                  | The closing `</body></html>` tags, after all fragments                                               |
 
-The shell is rendered completely before its event is emitted — it is never
+The shell is rendered completely before its event is emitted. It is never
 streamed progressively. Fragments follow as they resolve, one event each
 (streaming templates emit one event per yielded item). `opts.mode: "fragment"`
 suppresses the `shell` and `close` events entirely.
@@ -52,13 +52,13 @@ const stream = renderToFlowEvents(() => <Page />, NativeAdapter);
 for await (const ev of stream) {
   switch (ev.type) {
     case "shell":
-      // ev.html — the full shell, before closing tags
+      // ev.html: the full shell, before closing tags
       break;
     case "fragment":
-      // ev.id, ev.html, ev.merge — patch into the shell yourself
+      // ev.id, ev.html, ev.merge: patch into the shell yourself
       break;
     case "close":
-      // ev.html — trailing </body></html>
+      // ev.html: trailing </body></html>
       break;
   }
 }
@@ -69,8 +69,8 @@ passing `opts.signal`) aborts pending renders and releases the producer.
 
 ## Options
 
-Same `FlowOptions` as `renderToStream` — `signal`, `onError`,
-`defaultTimeout` — plus `mode: "full" | "fragment"`.
+Same `FlowOptions` as `renderToStream`: `signal`, `onError`,
+`defaultTimeout`, plus `mode: "full" | "fragment"`.
 
 See [renderToStream](/api/flow/renderToStream) for the ready-made encoding, or
 [Adapters](/api/flow/adapters) for the built-in wire formats.

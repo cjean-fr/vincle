@@ -20,7 +20,7 @@ describe("TurboAdapter", () => {
     expect(patch).not.toContain("method=");
   });
 
-  it("morph is replace + method=morph — Turbo has no morph action", async () => {
+  it("morph is replace + method=morph: Turbo has no morph action", async () => {
     const patch = await renderToString(
       TurboAdapter.Patch({ id: "x", children: "c", merge: "morph" }),
     );
