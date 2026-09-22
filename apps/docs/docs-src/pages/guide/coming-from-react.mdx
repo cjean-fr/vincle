@@ -336,25 +336,25 @@ optimize away in the first place, compiler or not.
 
 ## Migration checklist
 
-| React pattern                      | Vincle equivalent                                                                   |
-| ---------------------------------- | ----------------------------------------------------------------------------------- |
-| `useState`                         | Props or context — state lives outside the render                                   |
-| `useEffect`                        | Not needed — no client lifecycle                                                    |
-| `useRef`                           | Not needed — no DOM access                                                          |
-| `useMemo` / `useCallback`          | Not needed — no re-renders                                                          |
-| `useContext`                       | `useContext` reads the nearest Provider, or its default                             |
-| `createContext`                    | `createContext(defaultValue)` with `<Context.Provider value={...}>`                 |
-| `React.memo`                       | Not needed — every render is a fresh call                                           |
-| `Suspense`                         | Async component + `<Defer>` from `@vincle/flow`                                     |
-| `ErrorBoundary`                    | No equivalent — try/catch at top level, `onError` in `@vincle/flow` for streaming   |
-| `dangerouslySetInnerHTML`          | Same API — also `raw(html)` as child                                                |
-| `onClick={() => fn()}`             | HTML `<form>`, `hx-*`/`data-action`/`x-on:click`, or `onclick="fn()"` (global `fn`) |
-| `className` / `class`              | Both work — HTML name wins if both present, no merge                                |
-| `htmlFor` → `for`                  | `htmlFor` remapped to `for`; `for` wins if both present                             |
-| `@types/react`                     | Built into `@vincle/core` — per-element attribute types, nothing to install         |
-| `defaultValue` / `defaultChecked`  | `value` / `checked` — nothing rehydrates, so there is no "initial" value            |
-| `ref` / `suppressHydrationWarning` | Not typed — no reconciler to talk to (`@vincle/no-refs` flags them)                 |
-| `<img>{caption}</img>`             | Refused — no valid HTML form; use `alt`, or a `<figure>`                            |
+| React pattern                      | Vincle equivalent                                                                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `useState`                         | Props or context — state lives outside the render                                                                              |
+| `useEffect`                        | Not needed — no client lifecycle                                                                                               |
+| `useRef`                           | Not needed — no DOM access                                                                                                     |
+| `useMemo` / `useCallback`          | Not needed — no re-renders                                                                                                     |
+| `useContext`                       | `useContext` reads the nearest Provider, or its default                                                                        |
+| `createContext`                    | `createContext(defaultValue)` — the context is its own provider (`<Context value>`, `.Provider` is an alias), plus `.Consumer` |
+| `React.memo`                       | Not needed — every render is a fresh call                                                                                      |
+| `Suspense`                         | Async component + `<Defer>` from `@vincle/flow`                                                                                |
+| `ErrorBoundary`                    | No equivalent — try/catch at top level, `onError` in `@vincle/flow` for streaming                                              |
+| `dangerouslySetInnerHTML`          | Same API — also `raw(html)` as child                                                                                           |
+| `onClick={() => fn()}`             | HTML `<form>`, `hx-*`/`data-action`/`x-on:click`, or `onclick="fn()"` (global `fn`)                                            |
+| `className` / `class`              | Both work — HTML name wins if both present, no merge                                                                           |
+| `htmlFor` → `for`                  | `htmlFor` remapped to `for`; `for` wins if both present                                                                        |
+| `@types/react`                     | Built into `@vincle/core` — per-element attribute types, nothing to install                                                    |
+| `defaultValue` / `defaultChecked`  | `value` / `checked` — nothing rehydrates, so there is no "initial" value                                                       |
+| `ref` / `suppressHydrationWarning` | Not typed — no reconciler to talk to (`@vincle/no-refs` flags them)                                                            |
+| `<img>{caption}</img>`             | Refused — no valid HTML form; use `alt`, or a `<figure>`                                                                       |
 
 ## What you lose
 

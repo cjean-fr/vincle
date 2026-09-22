@@ -30,6 +30,7 @@ export const ERR_NO_SCOPE = "ERR_VINCLE_NO_SCOPE";
 export const ERR_CONTEXT_KEY = "ERR_VINCLE_CONTEXT_KEY";
 export const ERR_CONTEXT_LIMIT = "ERR_VINCLE_CONTEXT_LIMIT";
 export const ERR_CONTEXT_UNSET = "ERR_VINCLE_CONTEXT_UNSET";
+export const ERR_CONTEXT_CHILDREN = "ERR_VINCLE_CONTEXT_CHILDREN";
 
 /**
  * Codes raised as `Error` — a state or a value the renderer cannot use.
@@ -43,7 +44,8 @@ export type ErrorCode =
   | typeof ERR_NO_SCOPE
   | typeof ERR_CONTEXT_KEY
   | typeof ERR_CONTEXT_LIMIT
-  | typeof ERR_CONTEXT_UNSET;
+  | typeof ERR_CONTEXT_UNSET
+  | typeof ERR_CONTEXT_CHILDREN;
 
 /** Codes raised as `TypeError` — an argument that is not what it has to be. */
 export type TypeErrorCode =

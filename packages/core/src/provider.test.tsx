@@ -77,6 +77,74 @@ describe("tree context", () => {
     expect(html).toBe("<main><b>fr</b><b>en</b><b>de</b><b>en</b><b>fr</b></main>");
   });
 
+  test("the context is its own Provider, as in React 19", async () => {
+    expect(Locale.Provider).toBe(Locale);
+    expect(await renderToString(jsx(Locale, { value: "en", children: jsx(Reader, {}) }))).toBe(
+      "<b>en</b>",
+    );
+    expect(
+      await renderToString(
+        <Locale.Provider value="en">
+          <Reader />
+        </Locale.Provider>,
+      ),
+    ).toBe("<b>en</b>");
+  });
+
+  test("Consumer reads the nearest Provider, or the default outside one", async () => {
+    const read = (value: unknown) => <b>{"c=" + value}</b>;
+    expect(await renderToString(<Locale.Consumer>{read}</Locale.Consumer>)).toBe("<b>c=fr</b>");
+    expect(
+      await renderToString(
+        <Locale.Provider value="en">
+          <Locale.Consumer>{read}</Locale.Consumer>
+        </Locale.Provider>,
+      ),
+    ).toBe("<b>c=en</b>");
+    expect(
+      await renderToString(
+        <Locale.Provider value="en">
+          <Locale.Provider value="de">
+            <Locale.Consumer>{read}</Locale.Consumer>
+          </Locale.Provider>
+        </Locale.Provider>,
+      ),
+    ).toBe("<b>c=de</b>");
+  });
+
+  test("Consumer renders whatever its function returns", async () => {
+    expect(
+      await renderToString(
+        <Locale.Provider value="en">
+          <Locale.Consumer>
+            {() => (
+              <main>
+                <Reader />
+              </main>
+            )}
+          </Locale.Consumer>
+        </Locale.Provider>,
+      ),
+    ).toBe("<main><b>en</b></main>");
+  });
+
+  test("a Consumer without a function child throws a named error", async () => {
+    // The untyped door only: a JSX child here is checked against the function
+    // prop, so the runtime refusal is reached through `jsx` with raw attrs.
+    await expect(renderToString(jsx(Locale.Consumer, { children: "nope" }))).rejects.toThrow(
+      "not a function",
+    );
+    await expect(
+      renderToString(jsx(Locale, { value: "en", children: jsx(Locale.Consumer, {}) })),
+    ).rejects.toMatchObject({ code: "ERR_VINCLE_CONTEXT_CHILDREN" });
+  });
+
+  test("the public surface matches React 19: no defaultValue property", async () => {
+    expect(Object.keys(Locale)).toEqual(["Provider", "Consumer"]);
+    expect("defaultValue" in Locale).toBe(false);
+    expect(await renderToString(<Reader />)).toBe("<b>fr</b>");
+  });
+
   test("async readers and concurrent roots stay isolated", async () => {
     const AsyncReader = async () => {
       await new Promise((resolve) => setTimeout(resolve, 1));
