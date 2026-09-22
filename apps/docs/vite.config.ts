@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [
     expressiveCodeAssets(),
     // No `precompile()` here on purpose: this Vite build produces the client
-    // bundle, whose entry graph is `.ts` and CSS — no JSX passes through it. The
+    // bundle, whose entry graph is `.ts` and CSS: no JSX passes through it. The
     // pages are rendered by the SSG, which imports the compiled MDX directly and
     // never goes through Vite. And precompile pays per render repeated: a page
     // built once has nothing to amortise.

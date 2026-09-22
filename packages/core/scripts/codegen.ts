@@ -655,7 +655,7 @@ const cssBlock: string[] = [
 ];
 
 const tableBlock: string[] = [
-  `/* Intrinsic table — generated from @types/react ${reactVersion} + csstype ${csstypeVersion} by scripts/codegen.ts. Do not edit. */`,
+  `/* Intrinsic table: generated from @types/react ${reactVersion} + csstype ${csstypeVersion} by scripts/codegen.ts. Do not edit. */`,
   ...aliasEmit,
   "",
   ...ifaceBlocks,

@@ -1,5 +1,5 @@
 import { renderToString, type JSX } from "@vincle/core";
-// The protocol test is core's — same predicate the tree walk dispatches on, so
+// The protocol test is core's: same predicate the tree walk dispatches on, so
 // "what counts as a stream" cannot mean one thing here and another there. The
 // local copy it replaces needed an `as any` to ask the question at all.
 import { isAsyncIterable } from "@vincle/core/html";
@@ -131,7 +131,7 @@ function runFragmentInScope(
 
 /**
  * One-shot: render once, emit one patch. `cleanup` fires at the render
- * boundary — the deadline covers the render, not the emit that follows it.
+ * boundary: the deadline covers the render, not the emit that follows it.
  */
 async function runValue(
   id: string,
@@ -152,7 +152,7 @@ async function runValue(
     cleanup();
   }
 
-  // The render finished, but past the deadline — treat it like a render error
+  // The render finished, but past the deadline: treat it like a render error
   // rather than emit content the client may already have given up on waiting for.
   if (signal.aborted) {
     await reportOrThrow(emit, onError, id, "fragment", signal.reason);
@@ -183,7 +183,7 @@ async function runStream(
     else signal.addEventListener("abort", onAbort, { once: true });
   });
 
-  // `fatal`: true for a failed emit, false for an iteration/render problem —
+  // `fatal`: true for a failed emit, false for an iteration/render problem,
   // only the former propagates, the latter routes to emitError.
   let fatal = false;
 

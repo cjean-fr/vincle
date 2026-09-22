@@ -7,7 +7,7 @@ import { renderToStream } from "./render.js";
 export type { Negotiate, Negotiation } from "./types.js";
 
 // `Vary` is a comma-separated list, so later sources must union their tokens
-// into it rather than overwrite — otherwise a negotiator's `Vary: HX-Target`
+// into it rather than overwrite: otherwise a negotiator's `Vary: HX-Target`
 // would silently drop a caller's `Vary: Cookie`, corrupting shared-cache keys.
 function appendVary(headers: Headers, value: string): void {
   const seen = new Set<string>();
@@ -29,7 +29,7 @@ function appendVary(headers: Headers, value: string): void {
 }
 
 /**
- * Later sources win, so a negotiator can correct what the caller asked for —
+ * Later sources win, so a negotiator can correct what the caller asked for,
  * except `Vary`, which unions rather than overwrites.
  */
 function mergeHeaders(
@@ -52,7 +52,7 @@ function mergeHeaders(
  *
  * Negotiation is opt-in and orthogonal to the adapter: pass `negotiate` (e.g.
  * `negotiateHtmx`, or your own) to extract per-request hints and headers.
- * Without it, the full page is rendered — the client library extracts its own
+ * Without it, the full page is rendered: the client library extracts its own
  * target. `mode: "fragment"` (shell suppressed) is an explicit opt-in; it only
  * produces output when the targeted content is expressed as `<Defer>` fragments.
  */

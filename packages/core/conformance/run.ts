@@ -1,5 +1,5 @@
 /**
- * Conformance CLI entry point — Bun, Node and Deno.
+ * Conformance CLI entry point: Bun, Node and Deno.
  *
  * Exits 1 as soon as one case fails: that's what CI reads. workerd goes
  * through `worker.ts` instead, having neither `process` nor an exit code.

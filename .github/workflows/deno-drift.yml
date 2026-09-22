@@ -3,10 +3,10 @@ name: Deno drift
 # `compatibility` output is measured against Deno's own precompile transform, and
 # `test-fixtures/deno-precompile-trace.json` is what it emitted when captured.
 # Pull requests compare against that file, so their CI needs no Deno and stays
-# hermetic — but a pinned reference is a reference that ages.
+# hermetic, but a pinned reference is a reference that ages.
 #
 # This job is the other half: whatever Deno is current, re-capture and compare.
-# Manual, like `mutation.yml` — it can only fail for a reason no pull request
+# Manual, like `mutation.yml`: it can only fail for a reason no pull request
 # caused, so it has no business on that path. Run it when raising the Deno
 # version, before a release, or whenever you want to know.
 #

@@ -36,7 +36,7 @@ const searchDocs: WebMcpTool = {
     if (hits.length === 0) return `No results for "${query}".`;
     return hits
       .map(
-        (hit) => `- ${hit.document.title} — ${hit.document.url}\n  ${excerpt(hit.document, query)}`,
+        (hit) => `- ${hit.document.title}: ${hit.document.url}\n  ${excerpt(hit.document, query)}`,
       )
       .join("\n");
   },

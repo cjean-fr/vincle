@@ -7,7 +7,7 @@ import { ERR_FLOW_NO_ADAPTER, ERR_FLOW_NO_FRAGMENT, vincleError } from "./errors
 import { renderToStatic } from "./static.js";
 
 export interface RenderFragmentOptions {
-  /** Wire-format adapter — the same one the site's full build uses. */
+  /** Wire-format adapter: the same one the site's full build uses. */
   adapter: Adapter;
   /**
    * Fragment URL convention. Must match the full build's `generatePath`, or
@@ -21,7 +21,7 @@ export interface RenderFragmentOptions {
 }
 
 /**
- * Render a single fragment on demand, outside a full site build — given
+ * Render a single fragment on demand, outside a full site build: given
  * fresh content, produces the exact bytes `emitFragments` would have written
  * for this `id` during a full build, at the same URL. The page that includes
  * it (via `Include`/`Frame`) never needs rebuilding.
@@ -38,7 +38,7 @@ export async function renderFragment(
   // Fail fast on the options, before a single byte is rendered.
   if (opts.adapter === undefined) {
     throw vincleError(
-      `${PREFIX} renderFragment: opts.adapter is required — pass the same adapter the site's ` +
+      `${PREFIX} renderFragment: opts.adapter is required: pass the same adapter the site's ` +
         "full build uses (e.g. TurboAdapter).",
       ERR_FLOW_NO_ADAPTER,
     );
@@ -65,7 +65,7 @@ export async function renderFragment(
   if (!result) {
     throw vincleError(
       `${PREFIX} renderFragment("${id}"): produced no output for this id. ` +
-        "The fragment was never registered or rendered — its content may have thrown or timed out " +
+        "The fragment was never registered or rendered: its content may have thrown or timed out " +
         "(check the onError/console log), or the id differs from the <Defer target> that was " +
         "rendered. Verify the id matches and that the content renders.",
       ERR_FLOW_NO_FRAGMENT,

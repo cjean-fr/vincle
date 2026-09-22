@@ -116,7 +116,7 @@ describe("renderToFlowEvents", () => {
     expect(fragments.map((p) => p.id)).toEqual(["outer", "inner"]);
   });
 
-  it("propagates an external AbortSignal — stream closes after it fires", async () => {
+  it("propagates an external AbortSignal: stream closes after it fires", async () => {
     const ac = new AbortController();
     const stream = renderToFlowEvents(
       () => (
@@ -343,8 +343,8 @@ describe("renderToStream", () => {
   });
 
   it("emits the exact wire bytes: shell \\n patch \\n patch \\n close \\n", async () => {
-    // The wire is the only thing the client parses — pin it byte for byte:
-    // the shell run, then one patch per fragment, each separated from the
+    // The client parses only the wire, so assert its exact bytes. Expect
+    // the shell, then one patch per fragment, each separated from the
     // next by `\n`, then the closing tag and a final separator.
     const chunks: string[] = [];
     for await (const c of renderToStream(
@@ -374,7 +374,7 @@ describe("renderToStream", () => {
   });
 });
 
-describe("edge cases — render pipeline", () => {
+describe("edge cases: render pipeline", () => {
   it("pre-aborted signal → no events, stream closes cleanly", async () => {
     const ac = new AbortController();
     ac.abort();
@@ -455,7 +455,7 @@ describe("edge cases — render pipeline", () => {
  * A per-chunk streamed shell (flush at every suspension) was dropped
  * 2026-07-31: it cost ~38% on the tree walk for a TTFB gain that only pays when
  * the body has slow components. The shell is now a single event, emitted only
- * once the whole document is knowable — the `<head>` waits for the `<body>`.
+ * once the whole document is knowable: the `<head>` waits for the `<body>`.
  */
 describe("shell buffering", () => {
   const gate = () => {
@@ -487,7 +487,7 @@ describe("shell buffering", () => {
       TurboAdapter,
     ).getReader();
 
-    // Nothing reaches the wire while the body is pending — the shell is not
+    // Nothing reaches the wire while the body is pending: the shell is not
     // split at suspension points anymore.
     const pending = reader.read();
     const race = await Promise.race([
@@ -497,7 +497,7 @@ describe("shell buffering", () => {
     expect(race).toBe("tick");
 
     g.open();
-    // The in-flight read resolves first — it is the one that raced the tick.
+    // The in-flight read resolves first: it is the one that raced the tick.
     const events: FlowEvent[] = [];
     const first = await pending;
     if (!first.done) events.push(first.value);
@@ -576,7 +576,7 @@ describe("shell buffering", () => {
 
   /**
    * `withPolyfill` decides from `ctx.fragments.size`, which is only final
-   * once the body has rendered — it cannot be applied to a prefix. Declaring a
+   * once the body has rendered: it cannot be applied to a prefix. Declaring a
    * `transformShell` is therefore an opt-out, and it has to stay an opt-out:
    * streaming such an adapter would silently drop its transform.
    */

@@ -3,14 +3,14 @@
 // `stryker.config.json` measures the whole suite. This one runs *only* the
 // fuzzers, so a surviving mutant means one thing: the generated inputs never
 // reach that branch, or reach it and both paths stay in agreement. That is the
-// list of what the fuzzing does not detect — the input a generator has to grow
+// list of what the fuzzing does not detect: the input a generator has to grow
 // to cover, or a branch that is no fuzzer's business.
 //
 // Scope is the render path the three fuzzers traverse. `context.ts`, `html.ts`
 // and the namespace/dev-runtime files are out: no fuzzer touches them, and
 // their mutants would all survive as known noise.
 //
-// No break threshold — this is a measurement, not a gate. The suite-wide gate
+// No break threshold: this is a measurement, not a gate. The suite-wide gate
 // stays in `stryker.config.json`.
 import base from "./stryker.config.json" with { type: "json" };
 

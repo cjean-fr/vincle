@@ -10,7 +10,7 @@ import { flushFragments } from "./flushFragments.js";
 const DEFAULT_GENERATE_PATH = (id: string) => `/fragments/${id}.html`;
 
 /**
- * Static generation context for pure-static pages — no adapter, no fragment
+ * Static generation context for pure-static pages: no adapter, no fragment
  * emission. When `renderToStatic` is called without options, the handler
  * receives this type and cannot call `emitFragments`.
  */
@@ -63,14 +63,14 @@ function createStaticContext(
     emitFragments: async (cb) => {
       if (!adapter) {
         throw vincleError(
-          `${PREFIX} emitFragments(): emitFragments requires an adapter — fragments cannot ` +
+          `${PREFIX} emitFragments(): emitFragments requires an adapter: fragments cannot ` +
             "be framed into standalone files without one. Pass { adapter: ... } to renderToStatic. " +
             "Example: renderToStatic(handler, { adapter: NativeAdapter })",
           ERR_FLOW_NO_ADAPTER,
         );
       }
-      // Standalone fragment files carry no assets — the shell including them
-      // already has them — so this scope suppresses emission, and `<Style>`
+      // Standalone fragment files carry no assets: the shell including them
+      // already has them, so this scope suppresses emission, and `<Style>`
       // returns null rather than a tag a later pass would have to remove.
       await Scope.with(async () => {
         suppressFlowAssets();
@@ -85,7 +85,7 @@ function createStaticContext(
       }, Scope.snapshot());
       // Emitted fragments leave the store. `flushFragments` tracks what it has
       // processed only within one call, so without this the natural
-      // site-generator loop — `renderPage(p); emitFragments(write)` per page —
+      // site-generator loop: `renderPage(p); emitFragments(write)` per page,
       // re-emits every earlier fragment on every page: quadratic writes, and
       // each lazy factory replayed, so a `(signal) => fetch(...)` is refetched
       // once per remaining page. A fragment is written to a file here; there is
@@ -97,14 +97,14 @@ function createStaticContext(
 
 /**
  * Static generation for pure-static sites (no lazy `<Defer>` content).
- * Call without options — the handler receives a `PureStaticContext`
+ * Call without options: the handler receives a `PureStaticContext`
  * without `emitFragments`.
  */
 export async function renderToStatic<T>(handler: (ctx: PureStaticContext) => T): Promise<T>;
 
 /**
  * Static generation with deferred fragments.
- * Pass `{ adapter }` — the handler receives a `StaticContext` with
+ * Pass `{ adapter }`: the handler receives a `StaticContext` with
  * `emitFragments` to materialize fragment files.
  */
 export async function renderToStatic<T>(

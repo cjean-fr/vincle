@@ -28,7 +28,7 @@ export const noGlobalJsxNamespace: RuleModule = {
     schema: [],
     messages: {
       preferImportedJsx:
-        'The global `JSX` namespace comes from React, not @vincle/core — a bare `JSX.{{member}}` is typed wrong for Vincle. Import `JSX` from "@vincle/core".',
+        'The global `JSX` namespace comes from React, not @vincle/core: a bare `JSX.{{member}}` is typed wrong for Vincle. Import `JSX` from "@vincle/core".',
       useVNode: "Replace `JSX.Element` with the public `VNode` type.",
     },
   },

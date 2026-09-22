@@ -5,7 +5,7 @@ import { RawString, VNode, raw } from "./types.js";
 
 // ── VNode: the tag gate ────────────────────────────────────────────────────
 //
-// The tag is judged at the door — `jsx()`, the only way an element is built —
+// The tag is judged at the door: `jsx()`, the only way an element is built,
 // because the tree walk trusts the tag it finds and does not re-check it. A
 // name that got in unexamined was written into the document verbatim, closing
 // tag and all. The gate is on the door, not on the exits, so the test asserts
@@ -25,15 +25,15 @@ describe("the tag gate", () => {
 
   test("accepts what a compiler emits, on every exit of the fork", () => {
     const Comp = (): string => "x";
-    // static exit — judged before `serializeStatic` takes over
+    // static exit: judged before `serializeStatic` takes over
     expect(jsx("div", {})).toBeInstanceOf(RawString);
-    // VNode exit — a promised child bails the static path
+    // VNode exit: a promised child bails the static path
     expect((jsx("my-widget", { children: Promise.resolve("x") }) as VNode).tag).toBe("my-widget");
-    // `dsih` exit — serialized or not, the name was judged first
+    // `dsih` exit: serialized or not, the name was judged first
     expect((jsx("svg:rect", { dangerouslySetInnerHTML: { __html: "x" } }) as VNode).tag).toBe(
       "svg:rect",
     );
-    // component exit — a function tag is not a name to judge
+    // component exit: a function tag is not a name to judge
     expect((jsx(Comp, {}) as VNode).tag).toBe(Comp);
   });
 });

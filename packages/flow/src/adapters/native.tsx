@@ -8,7 +8,7 @@ import { createAdapter, type Adapter } from "./shared.js";
 export { NATIVE_POLYFILL, nativePolyfillHash } from "./native-polyfill.js";
 
 /**
- * WICG Declarative Partial Updates wire format — no polyfill, zero JS.
+ * WICG Declarative Partial Updates wire format: no polyfill, zero JS.
  *
  * `merges: ["replace"]` only: `Patch` can write `data-merge`, but nothing reads
  * it without a polyfill, and declaring the others would accept a merge the
@@ -54,7 +54,7 @@ export const WebPlatformAdapter = createAdapter({
 
 /**
  * What the polyfill can express: `insertAdjacentHTML`'s four positions, plus
- * `replace`. `morph` is out — diffing two DOM trees is orders of magnitude past
+ * `replace`. `morph` is out: diffing two DOM trees is orders of magnitude past
  * this budget, so the adapter refuses it rather than degrading it to a replace.
  */
 const POLYFILL_MERGES = ["replace", "append", "prepend", "before", "after"] as const;
@@ -71,14 +71,14 @@ export function withPolyfill<T extends Adapter>(
   adapter: T,
 ): Omit<T, "capabilities"> & {
   // `streaming` kept literal so `renderToStream` can still refuse a
-  // non-streamable adapter at compile time — widening to `boolean` here would
+  // non-streamable adapter at compile time: widening to `boolean` here would
   // lose that refusal for every decorated adapter.
   capabilities: { streaming: T["capabilities"]["streaming"]; merges: typeof POLYFILL_MERGES };
 } {
   return {
     ...adapter,
     // The polyfill reads `data-merge` and translates it to `insertAdjacentHTML`
-    // — exactly what the pure spec lacks — so those merges become real here.
+    //: exactly what the pure spec lacks, so those merges become real here.
     capabilities: { streaming: adapter.capabilities.streaming, merges: POLYFILL_MERGES },
     transformShell: (shell, ctx) => {
       const transformed = adapter.transformShell ? adapter.transformShell(shell, ctx) : shell;
@@ -88,5 +88,5 @@ export function withPolyfill<T extends Adapter>(
   };
 }
 
-/** Default Native adapter — WICG format + inline polyfill (~550 B). */
+/** Default Native adapter: WICG format + inline polyfill (~550 B). */
 export const NativeAdapter = withPolyfill(WebPlatformAdapter);

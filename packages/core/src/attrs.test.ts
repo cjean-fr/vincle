@@ -15,26 +15,26 @@ import { raw } from "./types.js";
 //
 // The single dispatch every attribute path shares: `buildAttrs` keeps its own
 // inline copy (delegation costs the static path 13–16%), and
-// `jsxAttr` delegates directly. The values below are the contract — written by
+// `jsxAttr` delegates directly. The values below are the contract: written by
 // hand, not derived from another serializer, or the test would only prove a
 // serializer equals itself.
 
-describe("serializeAttr — the value taxonomy", () => {
+describe("serializeAttr: the value taxonomy", () => {
   const CASES: [string, unknown, string | null][] = [
-    // Handlers are plain attributes — emitted, not dropped.
+    // Handlers are plain attributes: emitted, not dropped.
     ["onClick", 'alert("x") & 1', 'onclick="alert(&quot;x&quot;) &amp; 1"'],
     ["onClick", 42, 'onclick="42"'],
-    // Strings — the hot path, coercion-free.
+    // Strings: the hot path, coercion-free.
     ["class", "foo", 'class="foo"'],
     ["className", "foo", 'class="foo"'],
     // URL attributes: unsafe scheme → #blocked.
     ["href", "javascript:alert(1)", 'href="#blocked"'],
     ["href", "java\tscript:alert(1)", 'href="#blocked"'],
     ["href", "/page", 'href="/page"'],
-    // The `?` breaks the scheme — the value is not a URL at all.
+    // The `?` breaks the scheme: the value is not a URL at all.
     ["href", "recherche?q=café:test", 'href="recherche?q=café:test"'],
     ["data", "javascript:alert(1)", 'data="#blocked"'],
-    // Style objects — camelCase to kebab, syntax-carrying names dropped.
+    // Style objects: camelCase to kebab, syntax-carrying names dropped.
     ["style", { backgroundColor: "red" }, 'style="background-color:red"'],
     ["style", { "color:red;position": "fixed" }, ""],
     // Booleans: name alone on a boolean attribute, stringified otherwise.
@@ -51,7 +51,7 @@ describe("serializeAttr — the value taxonomy", () => {
     // A RawString is an object: read as a style bag it would serialize as
     // `style="value:color:red"`. Tested before the style/class branches.
     ["style", raw("color:red"), 'style="color:red"'],
-    // A class instance is neither a bag of declarations — it falls back to
+    // A class instance is neither a bag of declarations: it falls back to
     // its string form (shape only: the exact bytes depend on the runtime).
     ["style", new Date(0), null],
     // …and so is an array, except on `class` where it joins.
@@ -70,7 +70,7 @@ describe("serializeAttr — the value taxonomy", () => {
 
   for (const [key, value, expected] of CASES) {
     if (expected === null) {
-      test(`${key}=${JSON.stringify(value) ?? String(value)} — string form`, () => {
+      test(`${key}=${JSON.stringify(value) ?? String(value)}: string form`, () => {
         expect(serializeAttr(key, value).value).toMatch(/^style=".+"$/);
       });
       continue;
@@ -204,7 +204,7 @@ describe("buildAttrs style", () => {
   });
 
   // `ms` is the one vendor prefix spelled lowercase, so the kebab-case rule
-  // leaves it without its leading dash — a declaration no browser applies.
+  // leaves it without its leading dash: a declaration no browser applies.
   test("the -ms- prefix keeps its leading dash", () => {
     expect(buildAttrs({ style: { msFlexAlign: "center" } })).toBe(' style="-ms-flex-align:center"');
     expect(buildAttrs({ style: { WebkitBoxOrient: "vertical" } })).toBe(
@@ -221,9 +221,9 @@ describe("buildAttrs style", () => {
   });
 
   // A value carrying `;` used to pass through verbatim and inject declarations
-  // exactly as a smuggled name did. Values are repaired rather than dropped —
-  // `url(data:…;base64,…)` is legitimate — by CSS-escaping `\` and `;` in one
-  // pass, which no browser parses any differently.
+  // exactly as a smuggled name did. Values are repaired rather than dropped,
+  // `url(data:…;base64,…)` is legitimate. CSS-escaping `\` and `;` in one
+  // pass preserves how browsers parse the value.
   test("values carrying CSS syntax are escaped, not passed through", () => {
     expect(buildAttrs({ style: { color: "red;position:fixed" } })).toBe(
       ' style="color:red\\;position:fixed"',
@@ -254,7 +254,7 @@ describe("buildAttrs style", () => {
 // `resolveAttrName` is the single authority on what an attribute is *called* in
 // the document, and `@vincle/precompile` re-exports it to inline names at
 // build time. It had no test at all: a wrong entry, or a missing one, produced an
-// attribute the browser ignores — no error, no visible failure, just a style that
+// attribute the browser ignores: no error, no visible failure, just a style that
 // never applied. That is how seventy SVG presentation attributes came to be
 // emitted as `strokewidth`.
 //
@@ -309,7 +309,7 @@ describe("resolveAttrName", () => {
     ["stdDeviation", "stdDeviation"],
     ["zoomAndPan", "zoomAndPan"],
     ["textLength", "textLength"],
-    // Everything else lowercases — no entry needed, and none should exist.
+    // Everything else lowercases: no entry needed, and none should exist.
     ["tabIndex", "tabindex"],
     ["readOnly", "readonly"],
     ["maxLength", "maxlength"],
@@ -342,7 +342,7 @@ describe("resolveAttrName", () => {
     });
   }
 
-  test("resolution is idempotent — a resolved name resolves to itself", () => {
+  test("resolution is idempotent: a resolved name resolves to itself", () => {
     for (const [, expected] of CASES) {
       expect(resolveAttrName(expected)).toBe(expected);
     }
@@ -363,7 +363,7 @@ describe("resolveAttrName tables are consistent", () => {
   });
 
   // A table entry whose key already survives `toLowerCase()` unchanged would be
-  // dead weight — the default branch would produce the same answer.
+  // dead weight: the default branch would produce the same answer.
   test("every entry earns its place", () => {
     for (const [key, value] of SVG_HYPHENATED) {
       expect(value).not.toBe(key.toLowerCase());
@@ -383,7 +383,7 @@ describe("resolveAttrName tables are consistent", () => {
 
 // ── Style objects, non-plain values ────────────────────────────────────────
 
-describe("buildAttrs style — only an object literal is a bag of declarations", () => {
+describe("buildAttrs style: only an object literal is a bag of declarations", () => {
   test("a RawString is the developer's escape hatch, not a style bag", () => {
     // Read as a bag, `raw()`'s own `value` property became a declaration:
     // `style="value:color:red"`. `jsxAttr` never had the bug.
@@ -411,7 +411,8 @@ describe("buildAttrs style — only an object literal is a bag of declarations",
 
 describe("an attribute name must name something", () => {
   // The empty name emitted ` ="v"`, which a parser reads as an attribute called
-  // `="v"`: no injection — the value stays escaped — but nothing anyone wrote.
+  // `="v"` does not inject code because the value stays escaped, but it is
+  // not a valid attribute name either.
   test("the empty name is not a name", () => {
     expect(isValidAttrName("")).toBe(false);
     expect(buildAttrs({ "": 'x" onload="alert(1)' })).toBe("");
@@ -435,7 +436,7 @@ const polluted = <T>(key: string, value: unknown, fn: () => T): T => {
   }
 };
 
-describe("buildAttrs — the props object is read, not its prototype", () => {
+describe("buildAttrs: the props object is read, not its prototype", () => {
   test("an inherited property is not an attribute", () => {
     expect(polluted("onload", "alert(1)", () => buildAttrs({ class: "ok" }))).toBe(' class="ok"');
   });
@@ -456,12 +457,12 @@ describe("buildAttrs — the props object is read, not its prototype", () => {
 
 // Same gadget, the three reads the attribute loops don't cover. `children` and
 // `dangerouslySetInnerHTML` are read by key, once in `jsx()` and once on the
-// static path — and `dangerouslySetInnerHTML` bypasses the escaping chain, so it
+// static path, and `dangerouslySetInnerHTML` bypasses the escaping chain, so it
 // is the one that turns the primitive into injected markup rather than a stray
 // attribute. Both paths are asserted: the static path owns the static case, which
 // is the common one, and only `jsx()` sees `dangerouslySetInnerHTML`.
 describe("the children are read from the props object, not its prototype", () => {
-  test("an inherited `children` is not content — static path", async () => {
+  test("an inherited `children` is not content: static path", async () => {
     const html = await polluted("children", "POLLUTED", () =>
       renderToString(jsx("div", { class: "ok" })),
     );
@@ -500,7 +501,7 @@ describe("a RawString attribute value cannot end the attribute", () => {
   });
 
   test("everything else stays verbatim", () => {
-    // An entity, a `<`, an `&` — the point of `raw()` — and a CSS string, which
+    // An entity, a `<`, an `&`: the point of `raw()`, and a CSS string, which
     // the parser decodes back to `"` before the CSS parser ever sees it.
     expect(buildAttrs({ title: raw("<b>a &amp; b</b>") })).toBe(' title="<b>a &amp; b</b>"');
     expect(buildAttrs({ style: raw('font-family:"Foo"') })).toBe(

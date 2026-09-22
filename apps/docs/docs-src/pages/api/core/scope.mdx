@@ -126,7 +126,7 @@ const childHtml = await Scope.with(async () => {
 ## Runtime support
 
 The stores use `globalThis.AsyncLocalStorage` or `node:async_hooks`. Without
-either, both stores support one render at a time — including async — and
+either, both stores support one render at a time: including async, and
 refuse a second render that enters a Provider or `Scope.with` while the first
 is still in flight. The one case they cannot guard: a concurrent render that
 reads a context without entering one may see the in-flight render's values.

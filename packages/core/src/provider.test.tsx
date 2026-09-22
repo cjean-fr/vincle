@@ -40,8 +40,8 @@ describe("tree context", () => {
     ).toBe("outer");
     expect(fallback.getStore()).toBeUndefined();
 
-    // One render may be in flight — even async: its frame stays installed until
-    // it settles, and a second render is refused rather than leaking.
+    // One render may be in flight, including an async render. Its frame stays
+    // installed until it settles; a second render is refused instead of leaking.
     const pending = fallback.run(
       { context: token, value: "in-flight", parent: fallback.getStore() },
       () => Promise.resolve("later"),

@@ -5,7 +5,7 @@ title: Streaming
 # Streaming
 
 Send the HTML shell immediately and stream deferred fragments inline in the
-same HTTP response. One connection, progressive delivery — no client-side fetch
+same HTTP response. One connection, progressive delivery: no client-side fetch
 logic required.
 
 ## When to stream
@@ -23,7 +23,7 @@ use [Static generation](/integration/static) instead.
 ## renderToStream
 
 Returns a `ReadableStream<string>`. The shell chunk is emitted first; fragment
-chunks follow as they resolve. The adapter is required — pass a streaming
+chunks follow as they resolve. The adapter is required: pass a streaming
 adapter (e.g. `NativeAdapter`) as the second argument. A ~550B polyfill is
 injected only when fragments are present.
 
@@ -65,7 +65,7 @@ function Page() {
 const stream = renderToStream(() => <Page />, NativeAdapter);
 ```
 
-The shell is rendered fully before it is written — it arrives as a single
+The shell is rendered fully before it is written. It arrives as a single
 chunk. Fragments stream in as they resolve, each written as soon as it is
 available. The response `Content-Type` is `text/html` with `chunked` transfer
 encoding.
@@ -73,7 +73,7 @@ encoding.
 ## Node HTTP server
 
 Pipe the stream into any Node.js `http.ServerResponse` with `for await`. Each
-chunk is written as it becomes ready — the shell flushes immediately, deferred
+chunk is written as it becomes ready: the shell flushes immediately, deferred
 fragments arrive as they resolve.
 
 ```tsx
@@ -153,7 +153,7 @@ Bun.serve({
 `serve` builds a `Response` from a page function with optional content
 negotiation (HTMX).
 
-## Async iterables — streaming sequences
+## Async iterables: streaming sequences
 
 An `AsyncIterable` returned by the factory streams one patch per yielded item.
 Each `yield` produces a patch; every patch from a single `<Defer>` carries
@@ -189,7 +189,7 @@ exhausts or the client disconnects.
 
 ### Driven by events, not a fixed dataset
 
-The generator doesn't have to enumerate a known dataset — anything adaptable
+The generator doesn't have to enumerate a known dataset: anything adaptable
 into an `AsyncIterable` works, including a live event source. Node's
 `events.on` turns any `EventEmitter` into one, so each event becomes its own
 patch for as long as the connection stays open:
@@ -200,7 +200,7 @@ import { on, type EventEmitter } from "node:events";
 
 declare const priceFeed: EventEmitter; // emits "price" with { symbol, value }
 
-// Each event becomes its own patch — the stream stays open for as long as
+// Each event becomes its own patch: the stream stays open for as long as
 // the connection does, not until some fixed dataset is exhausted.
 function LivePrice() {
   return (
@@ -220,7 +220,7 @@ function LivePrice() {
 ```
 
 The factory's `signal` combines the request's abort signal with the
-fragment's `timeout` — passing it to `on` stops the listener the moment
+fragment's `timeout`: passing it to `on` stops the listener the moment
 either fires, instead of leaking it for the life of the emitter.
 
 ## Merge types during streaming
@@ -233,6 +233,6 @@ either fires, instead of leaking it for the life of the emitter.
 | `"before"`  | Content inserted as previous sibling      |
 | `"after"`   | Content inserted as next sibling          |
 
-A `<Defer>`'s `merge` applies to the whole streaming sequence — every patch from
+A `<Defer>`'s `merge` applies to the whole streaming sequence: every patch from
 a single `<Defer>` carries the same merge type. For a different merge per
 chunk, target separate `<Defer>`s.

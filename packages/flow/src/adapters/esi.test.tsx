@@ -23,7 +23,7 @@ describe("EsiAdapter", () => {
 
   // `id` comes from `nextId()` today, so it is well-formed by construction.
   // That is a property of the caller, not of this adapter, and it was the only
-  // attribute in the repo relying on it — `src` two lines up never did.
+  // attribute in the repo relying on it: `src` two lines up never did.
   it("escapes id into the esi:inline name attribute", async () => {
     const html = await renderToString(
       EsiAdapter.Patch({ id: 'x" onload="boom', children: "c", merge: "replace" }),
@@ -32,8 +32,8 @@ describe("EsiAdapter", () => {
     expect(html).not.toContain('name="x" onload=');
   });
 
-  it("renderToStream refuses a non-streaming adapter — at compile time and at runtime", () => {
-    // @ts-expect-error — EsiAdapter's `capabilities.streaming: false` is not
+  it("renderToStream refuses a non-streaming adapter: at compile time and at runtime", () => {
+    // @ts-expect-error: EsiAdapter's `capabilities.streaming: false` is not
     // assignable to StreamingAdapter's `capabilities.streaming: true`. If
     // this stops erroring, the compile-time half of the guard regressed
     // silently; the throw below only ever verified the runtime half.

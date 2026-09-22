@@ -1,12 +1,12 @@
 /**
- * Shared `AsyncLocalStorage` detection for `scope` and `provider` — the two
+ * Shared `AsyncLocalStorage` detection for `scope` and `provider`: the two
  * subsystems that need per-async-context state, each with its own store type
  * and its own synchronous fallback.
  *
  * Resolves the runtime's `AsyncLocalStorage`: `globalThis.AsyncLocalStorage`
  * first (Node's global, Deno, Bun, Cloudflare with node compat), then
  * `node:async_hooks` (Node). Returns an instance typed with the caller's own
- * store type, or `undefined` when the runtime has neither — the synchronous
+ * store type, or `undefined` when the runtime has neither: the synchronous
  * fallback, and the warning about the guarantee it degrades, stay with the
  * caller, since that guarantee differs per consumer.
  *

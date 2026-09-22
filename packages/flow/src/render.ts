@@ -11,8 +11,8 @@ import { ERR_FLOW_NO_STREAMING, vincleError } from "./errors.js";
 import { flushFragments } from "./flushFragments.js";
 
 /**
- * Split a trailing `</body></html>` — with whitespace anywhere between and
- * after — off the end of the shell.
+ * Split a trailing `</body></html>`: with whitespace anywhere between and
+ * after: off the end of the shell.
  *
  * String scanning, not a regex: an end-anchored `/((?:<\/body>)?\s*<\/html>\s*)$/`
  * is quadratic on a shell that does not close with `</html>`, because every start
@@ -37,12 +37,12 @@ function splitClosingTags(shell: string): { body: string; closingTag: string } {
 
 /**
  * Turn the event sequence into wire bytes: the shell run, then each event
- * separated from the next. This is the primitive's job, not an adapter's —
+ * separated from the next. This is the primitive's job, not an adapter's,
  * every streaming adapter serializes events the same way, and only the
  * fragment framing (`Patch`) differs between them.
  *
  * The shell arrives as a run of chunks, not one event. They are consecutive
- * slices of the same document, so nothing may be inserted between them — the
+ * slices of the same document, so nothing may be inserted between them: the
  * separator is written once, when the first non-shell event proves the run is
  * over.
  */
@@ -88,7 +88,7 @@ function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent,
  * tags, then apply `adapter.transformShell` if present.
  *
  * `<Style>` / `<Script>` emit their tag during the render, deduplicating against
- * `ctx.assets` as the walk reaches them, so there is no resolution pass here —
+ * `ctx.assets` as the walk reaches them, so there is no resolution pass here,
  * and so nothing to order against `transformShell`.
  *
  * @returns The transformed shell body (minus closing tags) and the raw closing
@@ -124,8 +124,8 @@ export async function runSequence(
       try {
         if (signal.aborted) return;
 
-        // Fragment mode still renders the shell — that render is what registers
-        // the fragments we are about to drain — but none of it reaches the wire.
+        // Fragment mode still renders the shell: that render is what registers
+        // the fragments we are about to drain, but none of it reaches the wire.
         const { shellBody, closingTag } = await renderShell(node, adapter, ctx);
         if (opts.mode !== "fragment" && shellBody !== "") {
           await emit({ type: "shell", html: shellBody });
@@ -133,7 +133,7 @@ export async function runSequence(
 
         // Fragments dedupe against the same `ctx.assets` the shell used, and they
         // render after it, so an asset the shell already emitted is suppressed at
-        // the component and a new one is emitted — with no pass over their HTML.
+        // the component and a new one is emitted: with no pass over their HTML.
         await flushFragments({ fragments }, emit, { ...opts, signal });
         if (opts.mode !== "fragment" && closingTag) {
           await emit({ type: "close", html: closingTag });
@@ -171,7 +171,7 @@ export function renderToFlowEvents(
 }
 
 /**
- * Render to a `ReadableStream<string>` of adapter-encoded HTML — the shell
+ * Render to a `ReadableStream<string>` of adapter-encoded HTML: the shell
  * followed by each fragment as wire-format markup.
  *
  * The wire is the primitive's own serialization (`encodeWith`); an adapter
@@ -187,7 +187,7 @@ export function renderToStream(
   assertStreamInput("renderToStream", adapter, opts);
   if (adapter.capabilities.streaming !== true) {
     throw vincleError(
-      "[vincle/flow] renderToStream(): this adapter does not stream — capabilities.streaming is false, " +
+      "[vincle/flow] renderToStream(): this adapter does not stream: capabilities.streaming is false, " +
         "so it can only produce static output. Use renderToStatic() with this adapter, or pass a " +
         "streaming adapter (TurboAdapter, NativeAdapter, HtmxAdapter, WebPlatformAdapter).",
       ERR_FLOW_NO_STREAMING,

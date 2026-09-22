@@ -12,8 +12,8 @@ import { Scope } from "./scope.js";
  * `throw new Error(` cannot appear. Any that does is a throw someone added
  * without a code, and this fails naming the file.
  *
- * A bare `throw error` — the rethrows in `render.ts` that re-raise what a
- * component threw — is deliberately not matched: those errors are the caller's,
+ * Bare rethrows in `render.ts`, such as `throw error`, are deliberately
+ * excluded. They re-raise an error from the caller's component,
  * and stamping a vincle code on them would be a lie.
  */
 const UNCODED_THROW = /\bthrow\s+new\s+\w*Error\s*\(/g;
@@ -30,13 +30,13 @@ function sourceFiles(dir: string): string[] {
 
 /**
  * Every package, from one file. The convention is the workspace's, not this
- * package's — a second copy of this scan in each of the other five would rot
+ * package's: a second copy of this scan in each of the other five would rot
  * apart from it, and every package's tests run together in CI anyway.
  */
 const PACKAGES = join(import.meta.dir, "..", "..");
 
 describe("error codes", () => {
-  it("every thrown error is stamped — no bare `throw new Error(`", () => {
+  it("every thrown error is stamped: no bare `throw new Error(`", () => {
     const offenders: string[] = [];
     for (const pkg of readdirSync(PACKAGES)) {
       const src = join(PACKAGES, pkg, "src");

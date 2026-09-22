@@ -66,7 +66,7 @@ function Breadcrumbs() {
 
 ## How it works
 
-`Fragment` is a plain function that returns its `children` prop unchanged. No wrapper element is created — the children are flattened directly into the parent during rendering.
+`Fragment` is a plain function that returns its `children` prop unchanged. No wrapper element is created: the children are flattened directly into the parent during rendering.
 
 ```tsx
 import { Fragment, type VNode } from "@vincle/core";
@@ -78,6 +78,6 @@ export function Fragment({ children }: { children?: VNode }): VNode | undefined 
 
 ## Where to next
 
-- [Components](/guide/jsx/components) — functions that return JSX
-- [Elements & attributes](/guide/jsx/elements-attributes) — how JSX maps to HTML
-- [First render](/guide/getting-started/first-render) — your first component
+- [Components](/guide/jsx/components): functions that return JSX
+- [Elements & attributes](/guide/jsx/elements-attributes): how JSX maps to HTML
+- [First render](/guide/getting-started/first-render): your first component

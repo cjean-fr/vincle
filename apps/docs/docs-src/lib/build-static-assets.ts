@@ -11,7 +11,7 @@ export async function generateLlmsTxt(
   outDir: string,
 ): Promise<void> {
   const lines: string[] = [
-    `# ${config.title} — ${config.tagline ?? "Documentation"}`,
+    `# ${config.title}: ${config.tagline ?? "Documentation"}`,
     "",
     `> ${config.description}`,
     "",
@@ -34,7 +34,7 @@ export async function generateLlmsFullTxt(
   outDir: string,
 ): Promise<void> {
   const parts: string[] = [
-    `# ${config.title} — Full documentation`,
+    `# ${config.title}: Full documentation`,
     "",
     `> ${config.description}`,
     "",
@@ -154,7 +154,7 @@ export async function generateAgentSkillsIndex(outDir: string): Promise<void> {
 
 /**
  * ARD (Agentic Resource Discovery) manifest: what agents can find on this
- * host. Only resources that actually exist are listed — today, the agent
+ * host. Only resources that actually exist are listed: today, the agent
  * skills. No fabricated MCP servers or A2A agents.
  */
 export async function generateAiCatalog(outDir: string, config: ResolvedDocsConfig): Promise<void> {
@@ -168,7 +168,7 @@ export async function generateAiCatalog(outDir: string, config: ResolvedDocsConf
     host: { displayName: config.title, identifier: `did:web:${host}` },
     entries: skills.map((skill) => ({
       identifier: `urn:air:${host}:skill:${skill.name}`,
-      displayName: `${config.title} — ${skill.name}`,
+      displayName: `${config.title}: ${skill.name}`,
       type: "text/markdown",
       url: `${base}${skill.url}`,
       description: skill.description,
@@ -190,7 +190,7 @@ export async function generateAiCatalog(outDir: string, config: ResolvedDocsConf
 
 /**
  * Emit a `<url>.md` twin for every content page, announced from the HTML head
- * via `rel="alternate" type="text/markdown"`. MDX pages are copied verbatim —
+ * via `rel="alternate" type="text/markdown"`. MDX pages are copied verbatim,
  * the source is the documentation; code examples live in the fences themselves
  * (`example` marks a full module, `output` one the build runs).
  */

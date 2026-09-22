@@ -34,23 +34,23 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Test — nothing built, nothing cached
+      - name: Test with nothing built or cached
         run: bun run test --parallel
 
-      - name: Lint — builds the oxlint plugin it needs
+      - name: Lint (builds its oxlint plugin)
         run: bun run lint
 
   # `bun test` proves nothing about Node, Deno or workerd, and `@vincle/core`
-  # claims all four — down to `SyncContextStore`'s error message. This job runs
+  # claims all four: down to `SyncContextStore`'s error message. This job runs
   # conformance against `dist`, so against the published artefact rather than
   # against the sources.
   conformance:
-    name: Conformance — ${{ matrix.runtime }}
+    name: Conformance (${{ matrix.runtime }})
     runs-on: ubuntu-latest
     env:
       DO_NOT_TRACK: 1
     strategy:
-      # Without this, the first failing runtime masks the other three — and
+      # Without this, the first failing runtime masks the other three, and
       # whether one gives out or all of them do is exactly what a conformance
       # matrix is there to say.
       fail-fast: false
@@ -95,13 +95,13 @@ jobs:
       - name: Build @vincle/core
         run: bun x turbo run build --filter=@vincle/core
 
-      - name: Conformance — ${{ matrix.runtime }}
+      - name: Conformance (${{ matrix.runtime }})
         run: bun run --filter=@vincle/core conformance:${{ matrix.runtime }}
 
       # Size is measured on `dist`, so here: this is the only job that builds it
       # for certain. Once (bun): the artefact is the same for all four runtimes.
-      # Non-blocking — over budget, a `::warning::` annotation shows on the run.
-      - name: Size report — @vincle/core
+      # Non-blocking: over budget, a `::warning::` annotation shows on the run.
+      - name: Size report for @vincle/core
         if: matrix.runtime == 'bun'
         run: bun run --filter=@vincle/core size
 
@@ -147,7 +147,7 @@ jobs:
         run: bun run test
 
       # Coverage stays here: the same suite with `--coverage`, a few seconds.
-      # Mutation lives in `mutation.yml` — ten minutes on every PR did not pay.
+      # Mutation lives in `mutation.yml`: ten minutes on every PR did not pay.
       - name: Coverage
         run: bun run test:coverage
 
@@ -166,7 +166,7 @@ jobs:
       # report is jitter inside that VM and not the uncertainty of the number:
       # measured across four runs, the ratio against kitajs on `realworld` moved
       # between 0.53 and 0.64 while every run printed ±0.02, and kitajs's own
-      # throughput moved 42% — which no commit here can cause.
+      # throughput moved 42%, which no commit here can cause.
       #
       # An archive nobody can compare across runs answers no question, and it
       # invites the comparison it cannot support. `bench:stats -- --against`

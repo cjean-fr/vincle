@@ -1,5 +1,5 @@
 /**
- * compare.ts — is <a> faster than <b>?
+ * Compare builds <a> and <b> to see which is faster.
  *
  *   bun run compare                     # origin/main vs the working tree
  *   bun run compare <a>                 # <a> vs the working tree
@@ -11,8 +11,8 @@
  * faster than main".
  *
  * Each side is measured from a hermetic mini-CI build, never from the local
- * dist: the two source folders the build needs — packages/core and
- * packages/typescript-config, the tsconfig base its tsconfig.json extends —
+ * dist. The build copies packages/core and packages/typescript-config, which
+ * supplies the base tsconfig that packages/core extends,
  * are copied WITHOUT node_modules into a throwaway workspace, then
  * `bun install` and `bun run build`, the way CI builds them. What is measured
  * is what a clean checkout of that revision would publish, whatever the local
@@ -44,7 +44,7 @@ import { abMain } from "./ab.js";
 const FOLDERS = ["packages/core", "packages/typescript-config"] as const;
 
 // Generated, never source. Copied in and a build that failed halfway would
-// leave a stale dist that still answers `--conditions=dist` — tsdown's
+// leave a stale dist that still answers `--conditions=dist`: tsdown's
 // `clean: true` only protects a build that actually runs.
 const WORKDIR_EXCLUDES = [
   "packages/core/node_modules",
@@ -99,7 +99,7 @@ function resolveSide(arg: string | undefined, label: string, fallback: "commit" 
   if (hash) return { kind: "commit", hash, ref: tok };
   console.error(
     `${label}: "${tok}" is neither a git ref nor the working tree (".", "workdir"). ` +
-      `Pass a branch, a tag, a hash, "origin/main" — or "." for the working tree.`,
+      `Pass a branch, a tag, a hash, "origin/main", or "." for the working tree.`,
   );
   process.exit(1);
 }
@@ -111,7 +111,7 @@ function describe(side: Side, root: string): string {
     return `working tree @ ${head}${dirty ? " (uncommitted changes under the measured folders)" : ""}`;
   }
   const subject = git(["log", "-1", "--format=%s", side.hash], root);
-  return `${side.ref} @ ${side.hash.slice(0, 7)} — ${subject}`;
+  return `${side.ref} @ ${side.hash.slice(0, 7)}: ${subject}`;
 }
 
 function run(cmd: string, args: string[], cwd: string): Promise<void> {
@@ -202,9 +202,9 @@ const root = git(["rev-parse", "--show-toplevel"]);
 const sideA = resolveSide(opts.a, "a", "commit");
 const sideB = resolveSide(opts.b, "b", "workdir");
 
-// The same revision — or the working tree sitting clean on it — is not a
-// comparison. (A dirty workdir on the same HEAD is: that is the uncommitted
-// change being measured.)
+// Comparing a revision with itself, or with a clean working tree at that
+// revision, yields no comparison. A dirty working tree at the same HEAD
+// does have a change to measure.
 const head = git(["rev-parse", "HEAD"], root);
 const treeDirty = git(["status", "--porcelain", ...FOLDERS], root) !== "";
 const sameTree =
@@ -213,7 +213,7 @@ const sameTree =
     ((sideB.kind === "commit" && sideB.hash === sideA.hash) ||
       (sideB.kind === "workdir" && head === sideA.hash && !treeDirty)));
 if (sameTree) {
-  console.error("a and b are the same tree — nothing to compare. Pass a different ref.");
+  console.error("a and b are the same tree: nothing to compare. Pass a different ref.");
   process.exit(1);
 }
 
@@ -222,9 +222,9 @@ console.log(`\ncomparing\n  A: ${describe(sideA, root)}\n  B: ${describe(sideB, 
 const temps: string[] = [];
 let pkgA: string, pkgB: string;
 try {
-  console.log(`building A — mini CI (copy without vendor, bun install, bun run build) …`);
+  console.log(`building A: mini CI (copy without vendor, bun install, bun run build) …`);
   pkgA = await prepareSide(sideA, root, temps);
-  console.log(`\nbuilding B — mini CI …`);
+  console.log(`\nbuilding B: mini CI …`);
   pkgB = await prepareSide(sideB, root, temps);
 } catch (e) {
   console.error(

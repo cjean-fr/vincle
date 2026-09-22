@@ -2,14 +2,14 @@
  * The `JSX` namespace TypeScript reads when it type-checks JSX syntax.
  *
  * It lives here, once, because it has to be *exported by the module named in
- * `jsxImportSource`* — that module is where the compiler looks, and a global
+ * `jsxImportSource`*: the compiler looks in that module, while a global
  * `declare global { namespace JSX }` is only a fallback it does not always
  * consult. So `jsx-runtime`, `jsx-dev-runtime` and the package root each
  * re-export this one declaration rather than restating it; four copies of the
  * same members is four chances to disagree about what a `<div>` accepts.
  *
  * The regions between the `@generated` markers are owned by
- * `scripts/codegen.ts` (source: `@types/react`) — never edit them by hand.
+ * `scripts/codegen.ts` (source: `@types/react`). Never edit them by hand.
  *
  * @module
  */
@@ -3222,8 +3222,8 @@ export namespace JSX {
    * What `jsx()` produces: a `VNode`, a `RawString` when static serialization
    * succeeded, or a promise of one when an attribute value is itself a promise.
    *
-   * `RawString` is a first-class renderable leaf — `renderNode` special-cases
-   * `instanceof RawString` before it ever looks at `VNode` — so it belongs here
+   * `RawString` is a first-class renderable leaf. `renderNode` special-cases
+   * `instanceof RawString` before it ever looks at `VNode`, so it belongs here
    * rather than behind a cast at each call site.
    */
   export type Element = Awaitable<VNode | RawString | TemplateNode>;
@@ -3234,13 +3234,13 @@ export namespace JSX {
    * The return type is `Renderable`, not `Element`: the renderers handle far more
    * than nodes. `() => "text"`, `() => 42`, `() => [<a/>, <b/>]` and
    * `async () => <div/>` all render correctly, and `Element` as the component
-   * contract rejects every one of them. Widening stops there — an object or a
+   * contract rejects every one of them. Widening stops there; an object or a
    * symbol return is still an error.
    *
    * `Awaitable<Renderable>`, not `Renderable`, for the one shape the flat type
    * cannot express: `JSX.Element` is itself awaitable, so an async component that
-   * *writes its return type down* — `async (): Promise<JSX.Element>`, the
-   * annotation anyone arriving from React reaches for — is a promise of a
+   * *writes its return type down* as `async (): Promise<JSX.Element>`
+   * (the annotation anyone arriving from React reaches for) creates a promise of a
    * promise. Inference collapses it, so the flat type holds only as long as nobody
    * annotates. Making `Renderable` itself recursive is the other way to say this,
    * and TypeScript refuses it: a type reached through its own `then` callback is
@@ -3249,7 +3249,7 @@ export namespace JSX {
   export type ElementType = string | ((props: any) => Awaitable<Renderable>);
 
   // @generated:start
-  /* Intrinsic table — generated from @types/react 19.3.0 + csstype 3.2.3 by scripts/codegen.ts. Do not edit. */
+  /* Intrinsic table: generated from @types/react 19.3.0 + csstype 3.2.3 by scripts/codegen.ts. Do not edit. */
   type Booleanish = boolean | "true" | "false";
   type AriaRole =
     | "alert"

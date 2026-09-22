@@ -8,7 +8,7 @@ const REGEX_FRAGMENT_ID = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
 export function assertFragmentId(id: string, label: string): void {
   if (!REGEX_FRAGMENT_ID.test(id)) {
     throw vincleError(
-      `${PREFIX} ${label}: "${id}" is not a valid fragment id — ids must start with a letter and ` +
+      `${PREFIX} ${label}: "${id}" is not a valid fragment id: ids must start with a letter and ` +
         'contain only letters, digits, hyphens and underscores (e.g. "price-aapl"). ' +
         "Fragment ids become DOM ids and URL segments.",
       ERR_FLOW_FRAGMENT_ID,
@@ -22,14 +22,14 @@ export function assertFragmentId(id: string, label: string): void {
  *
  * Four placements, in decreasing order of what the shell tells us:
  *
- *   1. before `</head>` — the shell said where its head is;
- *   2. just after `<html …>` — wherever it sits, not only at offset 0;
- *   3. just after a leading doctype — a fragment shell that still declares one;
- *   4. at the front — a bare fragment, nothing to preserve.
+ *   1. before `</head>`: the shell said where its head is;
+ *   2. just after `<html …>`: wherever it sits, not only at offset 0;
+ *   3. just after a leading doctype: a fragment shell that still declares one;
+ *   4. at the front: a bare fragment, nothing to preserve.
  *
  * Case 3 is why a leading doctype is matched on its own rather than folded
- * into case 2: nothing may precede a doctype — a browser that sees markup
- * first ignores it and renders the page in quirks mode.
+ * into case 2. Nothing may precede a doctype; a browser that sees markup
+ * first ignores the doctype and renders the page in quirks mode.
  */
 export function injectIntoHead(html: string, content: string): string {
   const closingHead = html.match(/<\/head\s*>/i);

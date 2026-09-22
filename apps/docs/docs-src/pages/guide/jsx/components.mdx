@@ -4,7 +4,7 @@ title: Components
 
 # Components
 
-Components are plain functions that return JSX. No classes, no hooks, no lifecycle — just props in, string out.
+Components are plain functions that return JSX. No classes, no hooks, no lifecycle: just props in, string out.
 
 ## Basics
 
@@ -50,7 +50,7 @@ function Card({ title, children }: CardProps) {
 
 ## Composition
 
-Components compose naturally — pass one component's output as another's children:
+Components compose naturally: pass one component's output as another's children:
 
 ```tsx
 import { renderToString, type JSX } from "@vincle/core";
@@ -90,19 +90,19 @@ async function Profile({ id }: { id: string }) {
 }
 ```
 
-Sibling async branches run in document order, one at a time — `renderToString` resolves only when every branch finishes.
+Sibling async branches run in document order, one at a time: `renderToString` resolves only when every branch finishes.
 
 ## What you don't need
 
-- **State** — there is no re-rendering. State lives outside the render (database, request context).
-- **Effects** — no client lifecycle. Render once, produce a string, done.
-- **Client context updates** — a React-style `Context.Provider` supplies values during
+- **State**: there is no re-rendering. State lives outside the render (database, request context).
+- **Effects**: no client lifecycle. Render once, produce a string, done.
+- **Client context updates**: a React-style `Context.Provider` supplies values during
   server rendering; Vincle does not re-render in the browser.
-- **`React.memo`** — every render is a fresh call. Memoization is meaningless.
+- **`React.memo`**: every render is a fresh call. Memoization is meaningless.
 
 ## Where to next
 
-- [Fragments](/guide/jsx/fragments) — grouping children without a DOM wrapper
-- [Elements & attributes](/guide/jsx/elements-attributes) — how JSX maps to HTML
-- [Context & Scope](/api/core/scope) — share a value with a subtree (Provider) or a request (Scope)
-- [First render](/guide/getting-started/first-render) — your first component
+- [Fragments](/guide/jsx/fragments): grouping children without a DOM wrapper
+- [Elements & attributes](/guide/jsx/elements-attributes): how JSX maps to HTML
+- [Context & Scope](/api/core/scope): share a value with a subtree (Provider) or a request (Scope)
+- [First render](/guide/getting-started/first-render): your first component

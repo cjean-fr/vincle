@@ -244,7 +244,7 @@ is a separate decision; do not publish during this stage unless requested.
 4. End each session with the branch/ref, changed files, passing checks,
    benchmark artifacts kept locally, unresolved decisions and the next stage.
 
-## Completion record — 2026-09-17
+## Completion record: 2026-09-17
 
 - Stages 1–7 are complete in the current working tree. `createContext` /
   `useContext` provide tree values; `ExecutionContext` owns the earlier ambient

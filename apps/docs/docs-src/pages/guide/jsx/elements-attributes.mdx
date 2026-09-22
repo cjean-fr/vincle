@@ -31,8 +31,8 @@ Uppercase tags are treated as **components** (functions).
 
 ### Content in a void element is refused
 
-`<img>{caption}</img>` type-checks — the element types do not forbid children on
-a void tag — but it has no valid HTML form: a parser drops the closing tag and
+`<img>{caption}</img>` type-checks: the element types do not forbid children on
+a void tag, but it has no valid HTML form: a parser drops the closing tag and
 reparents the content, so the document stops being the one you wrote. Vincle
 throws instead:
 
@@ -59,8 +59,8 @@ while writing instead, enable
 [`void-dom-elements-no-children`](https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/void-dom-elements-no-children.md)
 from `eslint-plugin-react`; oxlint carries a port under the same name. The rule
 reads a tag and its children and nothing else, so it applies to any JSX. It is
-stricter than the renderer — it reports `<img>{caption}</img>` whatever
-`caption` turns out to hold — which is what you want from a question asked
+stricter than the renderer. It reports `<img>{caption}</img>` whatever
+`caption` turns out to hold, which is what you want from a question asked
 before the page exists.
 
 ## Attributes
@@ -84,12 +84,12 @@ you're used to from React:
 
 When both the React-style name (`className`, `htmlFor`, `tabIndex`, …) and the
 HTML-native name (`class`, `for`, `tabindex`, …) appear on the same element,
-the **HTML name wins** and the React name is silently dropped — no merge, no
+the **HTML name wins** and the React name is silently dropped: no merge, no
 warning. This holds for every entry in the remapping table above.
 
 Writing both is only possible for `class`/`className`, the one pair typed in
 both spellings. For the others, only the camelCase name is typed, so a
-conflict reaches an element through a spread — where the same rule applies.
+conflict reaches an element through a spread, where the same rule applies.
 
 ```tsx
 import { renderToString } from "@vincle/core";
@@ -97,7 +97,7 @@ import { renderToString } from "@vincle/core";
 // `class` wins, `className` is dropped
 const classes = await renderToString(<div className="foo" class="bar" />);
 
-// No conflict — only one name given
+// No conflict: only one name given
 const single = await renderToString(<label htmlFor="email">Email</label>);
 
 // `class`/`className` is the only pair typed in both spellings. Every other
@@ -111,7 +111,7 @@ const spread = await renderToString(<label {...{ htmlFor: "a", for: "b" }}>Label
 <label for="b">Label</label>
 ```
 
-The rationale: Vincle renders HTML, not React — the HTML-native form is the
+The rationale: Vincle renders HTML, not React: the HTML-native form is the
 canonical output. React merges both values (classNames together, etc.), but
 Vincle does not. If you use both by accident, the HTML name silently wins.
 
@@ -146,21 +146,21 @@ const html2 = await renderToString(<p style={{ color: "red", fontFamily: "sans-s
 ```
 
 CSS values are HTML-escaped (`&`, `<`, `>`, `"`) to prevent attribute
-breakout. CSS syntax is not additionally validated — the attack
+breakout. CSS syntax is not additionally validated: the attack
 vectors that motivated CSS value filtering (`expression()`,
 `url(javascript:)`) are no longer relevant on modern browsers.
 See the [security model](/guide/security).
 
 ## Event handlers
 
-A function-valued attribute **throws** at render time — a function has no HTML
+A function-valued attribute **throws** at render time: a function has no HTML
 form, and there is no client runtime to attach it to. Nothing is special-cased
 about `on*`: `title={fn}` fails the same way, with the same message. The
 [`no-unsafe-event-handlers`](https://github.com/cjean-fr/vincle/tree/main/packages/eslint-plugin)
 rule flags the practice at the source, before a render can.
 
 String-valued handlers (`onClick="doThing()"`) are allowed and HTML-escaped,
-but the JavaScript inside is **not** sanitized — never interpolate user data
+but the JavaScript inside is **not** sanitized: never interpolate user data
 there.
 
 ## Custom attributes
@@ -171,5 +171,5 @@ covers `data-*`, `aria-*`, and framework-specific attributes like `hx-get`.
 
 ## Where to next
 
-- [First render](/guide/getting-started/first-render) — your first component
-- [Security model](/guide/security) — the URL allowlist
+- [First render](/guide/getting-started/first-render): your first component
+- [Security model](/guide/security): the URL allowlist

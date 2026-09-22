@@ -20,8 +20,8 @@ const rules = {
  * One prefix, `@vincle`, everywhere.
  *
  * There were three: `meta.name` said `vincle`, `recommended` registered the
- * plugin under `@vincle/core` — the name of the *renderer*, which is not an
- * ESLint plugin at all — and the repo's own oxlint config used `vincle/`. A
+ * plugin under `@vincle/core`: the name of the *renderer*, which is not an
+ * ESLint plugin at all, and the repo's own oxlint config used `vincle/`. A
  * user who enabled `recommended` and then tried to override one rule with any
  * of the other two spellings got "Could not find plugin".
  *

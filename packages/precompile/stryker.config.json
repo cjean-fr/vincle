@@ -3,7 +3,7 @@
   "testRunner_comment": [
     "The `command` runner, like core's. `stryker-mutator-bun-runner` reads",
     "`testFiles` as its own option rather than Stryker's, so a top-level entry is",
-    "ignored in silence and its default `*.spec.*` patterns match nothing here —",
+    "ignored in silence and its default `*.spec.*` patterns match nothing here -",
     "Stryker then exits with `No tests were executed`."
   ],
   "testRunner": "command",
@@ -13,8 +13,8 @@
   "commandRunner_comment": [
     "`bun test src`, not `bun test`. Mutation runs in a sandbox: a copy of this",
     "package alone, instrumented sources, a moved cwd. A test that depends on",
-    "anything but the mutated code — a neighbouring manifest, the repo layout,",
-    "the transpiler — fails there and nowhere else, so the run is restricted to",
+    "anything but the mutated code: a neighbouring manifest, the repo layout,",
+    "the transpiler: fails there and nowhere else, so the run is restricted to",
     "the tests that live next to the mutated code. Root tests still run under",
     "`bun test` and in CI; they simply kill no mutant."
   ],

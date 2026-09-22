@@ -11,10 +11,10 @@ Build HTML files at compile time. Gives you a context to render all your pages, 
 ```tsx
 import { renderToStatic } from "@vincle/flow";
 
-// Pure static — no adapter, no emitFragments
+// Pure static: no adapter, no emitFragments
 function renderToStatic<T>(fn: (ctx: PureStaticContext) => T): Promise<T>;
 
-// With deferred fragments — adapter required
+// With deferred fragments: adapter required
 function renderToStatic<T>(fn: (ctx: StaticContext) => T, options: StaticOptions): Promise<T>;
 ```
 
@@ -22,10 +22,10 @@ function renderToStatic<T>(fn: (ctx: StaticContext) => T, options: StaticOptions
 
 | Option         | Type                     | Default                              | Description                              |
 | -------------- | ------------------------ | ------------------------------------ | ---------------------------------------- |
-| `adapter`      | `Adapter`                | — (required)                         | Wire-format adapter for fragment framing |
+| `adapter`      | `Adapter`                | : (required)                         | Wire-format adapter for fragment framing |
 | `generatePath` | `(id: string) => string` | ``(id) => `/fragments/${id}.html` `` | URL path for each fragment               |
 
-**Options are validated up front** — before a single page renders. A missing
+**Options are validated up front**: before a single page renders. A missing
 or malformed `adapter`, or a non-function `generatePath`, fails at the call
 with a message prefixed `[vincle/flow]` that names the option, the offending
 value, and the fix. See [Error handling](/api/core/error-handling).
@@ -47,7 +47,7 @@ value, and the fix. See [Error handling](/api/core/error-handling).
 
 ## Pure static
 
-No lazy `Defer` in your pages? Call `renderToStatic` without options (just the handler). The handler receives a `PureStaticContext` — `emitFragments` does not exist, so the type system prevents accidental use.
+No lazy `Defer` in your pages? Call `renderToStatic` without options (just the handler). The handler receives a `PureStaticContext`: `emitFragments` does not exist, so the type system prevents accidental use.
 
 ```tsx
 import type { JSX } from "@vincle/core";
@@ -89,7 +89,7 @@ await renderToStatic(
       await writeFile(page.out, "<!DOCTYPE html>\n" + html);
     }
 
-    // One .html file per deferred fragment — already
+    // One .html file per deferred fragment: already
     // Frame-wrapped, ready to write.
     await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
   },

@@ -20,9 +20,9 @@ describe("the vite adapter", () => {
   ) {
     const plugin = precompile(config);
     const resolvedConfig = { esbuild: { jsxImportSource } };
-    // @ts-expect-error — accessing internal Vite plugin lifecycle hooks that aren't on the public type
+    // @ts-expect-error: accessing internal Vite plugin lifecycle hooks that aren't on the public type
     plugin.configResolved?.(resolvedConfig);
-    // @ts-expect-error — accessing internal Vite plugin transform hook
+    // @ts-expect-error: accessing internal Vite plugin transform hook
     return plugin.transform!(code, id);
   }
 
@@ -110,7 +110,7 @@ describe("the vite adapter", () => {
     const plugin = precompile({
       runtimeSource: "totally-bogus-module-xyz",
     });
-    // @ts-expect-error — calling internal hook with minimal config for testing
+    // @ts-expect-error: calling internal hook with minimal config for testing
     plugin.configResolved.call({}, { esbuild: {} });
     const warnings: string[] = [];
     const ctx = {
@@ -121,10 +121,10 @@ describe("the vite adapter", () => {
         warnings.push(msg);
       },
     };
-    // @ts-expect-error — calling internal hook with a fake plugin context
+    // @ts-expect-error: calling internal hook with a fake plugin context
     await plugin.buildStart.call(ctx);
     // Nothing to read means nothing to improve on, and the generated code
-    // imports the helpers itself — so this is a warning, not a broken build.
+    // imports the helpers itself, so this is a warning, not a broken build.
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("could not load");
     expect(warnings[0]).toContain("Deno's precompile transform");
@@ -132,19 +132,19 @@ describe("the vite adapter", () => {
 
   /**
    * What the build does with a runtime it could read is decided by the dialect
-   * that runtime declares — not by an option, and not by an inventory of its
+   * that runtime declares, not by an option, and not by an inventory of its
    * exports. A foreign runtime is the normal case, not a failure; a runtime
    * claiming the `"vincle"` dialect without the helpers to back it is the
    * failure, because nothing else could produce the output it promises.
    */
   describe("what the declared dialect decides", () => {
-    // A data: URL is the module — no fixture file to write or clean up.
+    // A data: URL supplies the module, so no fixture file needs cleanup.
     const moduleOf = (source: string): string =>
       `data:text/javascript,${encodeURIComponent(source)}`;
 
     const buildWith = async (source: string): Promise<{ error?: string; warnings: string[] }> => {
       const plugin = precompile({ runtimeSource: moduleOf(source) });
-      // @ts-expect-error — calling internal hook with minimal config for testing
+      // @ts-expect-error: calling internal hook with minimal config for testing
       plugin.configResolved.call({}, { esbuild: {} });
       const warnings: string[] = [];
       const ctx = {
@@ -156,7 +156,7 @@ describe("the vite adapter", () => {
         },
       };
       try {
-        // @ts-expect-error — calling internal hook with a fake plugin context
+        // @ts-expect-error: calling internal hook with a fake plugin context
         await plugin.buildStart.call(ctx);
         return { warnings };
       } catch (err) {
@@ -166,7 +166,7 @@ describe("the vite adapter", () => {
 
     it("takes a foreign runtime as it is, silently", async () => {
       // No dialect declared: Deno's output, which is what its helpers expect.
-      // Not a warning either — this is the documented majority case.
+      // Not a warning either: this is the documented majority case.
       const { error, warnings } = await buildWith(`export const jsxTemplate = () => "";`);
       expect(error).toBeUndefined();
       expect(warnings).toEqual([]);
@@ -201,16 +201,16 @@ describe("the vite adapter", () => {
   });
 
   describe("runtime probe", () => {
-    // @ts-expect-error — internal virtual module resolved ID
+    // @ts-expect-error: internal virtual module resolved ID
     const RID = "\0virtual:vincle-precompile-runtime";
 
     it("uses preact/jsx-runtime when jsxImportSource is preact (compatible)", async () => {
       const plugin = precompile();
-      // @ts-expect-error — internal hook
+      // @ts-expect-error: internal hook
       plugin.configResolved({ esbuild: { jsxImportSource: "preact" } });
-      // @ts-expect-error — internal hook
+      // @ts-expect-error: internal hook
       await plugin.buildStart.call(errorCtx());
-      // @ts-expect-error — internal hook
+      // @ts-expect-error: internal hook
       const vm = plugin.load(RID);
       expect(vm).toContain("preact/jsx-runtime");
     });
@@ -218,19 +218,19 @@ describe("the vite adapter", () => {
     it("throws when jsxImportSource module has no jsxTemplate export", async () => {
       const plugin = precompile();
       // node:path/jsx-runtime doesn't exist → import fails → error
-      // @ts-expect-error — internal hook
+      // @ts-expect-error: internal hook
       plugin.configResolved({ esbuild: { jsxImportSource: "node:path" } });
-      // @ts-expect-error — internal hook
+      // @ts-expect-error: internal hook
       await expect(plugin.buildStart.call(errorCtx())).rejects.toThrow(/failed to probe/);
     });
 
     it("defaults to @vincle/core/jsx-runtime when no jsxImportSource is set", async () => {
       const plugin = precompile();
-      // @ts-expect-error — internal hook
+      // @ts-expect-error: internal hook
       plugin.configResolved({ esbuild: {} });
-      // @ts-expect-error — internal hook
+      // @ts-expect-error: internal hook
       await plugin.buildStart.call(errorCtx());
-      // @ts-expect-error — internal hook
+      // @ts-expect-error: internal hook
       const vm = plugin.load(RID);
       expect(vm).toContain("@vincle/core/jsx-runtime");
     });
@@ -238,7 +238,7 @@ describe("the vite adapter", () => {
     // The two halves of the default path are written in different files: the
     // transform decides which helpers the output imports, the virtual module
     // decides which ones it re-exports. Nothing compared them, and a helper
-    // added on one side only is a build that fails with "not exported by" — for
+    // added on one side only is a build that fails with "not exported by": for
     // every app that does not set `runtimeSource`.
     it("re-exports every helper the transform can emit", async () => {
       const shapes = [
@@ -251,11 +251,11 @@ describe("the vite adapter", () => {
 
       for (const compatibility of [true, false]) {
         const plugin = precompile({ compatibility });
-        // @ts-expect-error — internal hook
+        // @ts-expect-error: internal hook
         plugin.configResolved({ esbuild: {} });
-        // @ts-expect-error — internal hook
+        // @ts-expect-error: internal hook
         await plugin.buildStart.call(errorCtx());
-        // @ts-expect-error — internal hook
+        // @ts-expect-error: internal hook
         expect(plugin.load(RID)).toContain('export * from "@vincle/core/jsx-runtime"');
         const reExported = new Set([
           "jsxTemplate",
@@ -266,7 +266,7 @@ describe("the vite adapter", () => {
         ]);
 
         for (const code of shapes) {
-          // @ts-expect-error — internal hook
+          // @ts-expect-error: internal hook
           const out = (await plugin.transform.call({}, code, "/src/app.tsx")) as {
             code: string;
           } | null;
@@ -317,18 +317,18 @@ describe("plugin config", () => {
 });
 
 // A build that never reached the transform renders the same document as one that
-// did — the warning is the only way that shows.
+// did: the warning is the only way that shows.
 describe("declared but never applied", () => {
   function build(config?: PluginConfig) {
     const plugin = precompile(config);
     const warnings: string[] = [];
-    // @ts-expect-error — Vite plugin lifecycle hooks are not on the public type
+    // @ts-expect-error: Vite plugin lifecycle hooks are not on the public type
     plugin.configResolved?.({ command: "build", esbuild: {} });
     return {
       transform: (code: string, id: string) =>
-        // @ts-expect-error — same
+        // @ts-expect-error: same
         plugin.transform!.call({ warn: () => {} }, code, id),
-      // @ts-expect-error — same
+      // @ts-expect-error: same
       end: () => (plugin.buildEnd!.call({ warn: (m: string) => warnings.push(m) }), warnings),
     };
   }
@@ -357,9 +357,9 @@ describe("declared but never applied", () => {
   it("stays quiet in dev, where the hook fires at server close", () => {
     const plugin = precompile({ runtimeSource: "@vincle/core/jsx-precompile-runtime" });
     const warnings: string[] = [];
-    // @ts-expect-error — Vite plugin lifecycle hooks are not on the public type
+    // @ts-expect-error: Vite plugin lifecycle hooks are not on the public type
     plugin.configResolved?.({ command: "serve", esbuild: {} });
-    // @ts-expect-error — same
+    // @ts-expect-error: same
     plugin.buildEnd!.call({ warn: (m: string) => warnings.push(m) });
     expect(warnings).toEqual([]);
   });

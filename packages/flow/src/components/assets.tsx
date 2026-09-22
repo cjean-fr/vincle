@@ -4,7 +4,7 @@ import { markEmitted, registerAsset } from "../assets.js";
 import { Flow } from "../context.js";
 
 // `<Style>` and `<Script>` emit their tag at their own position, once per
-// name — "first occurrence wins" needs no bookkeeping beyond a `Set`, since
+// name: "first occurrence wins" needs no bookkeeping beyond a `Set`, since
 // components run in document order.
 
 interface BaseAssetProps {

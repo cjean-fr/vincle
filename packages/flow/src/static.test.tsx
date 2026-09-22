@@ -33,7 +33,7 @@ describe("renderToStatic", () => {
             </body>
           </html>
         ));
-        // The shell is complete before any flush — that's what this suite checks.
+        // The shell is complete before any flush: that's what this suite checks.
         const ids: string[] = [];
         await ctx.emitFragments((id) => void ids.push(id));
         return { html, ids };
@@ -45,7 +45,7 @@ describe("renderToStatic", () => {
     expect(result.ids).toEqual(["content"]);
   });
 
-  it("applies adapter.transformShell — polyfill injected when fragments exist", async () => {
+  it("applies adapter.transformShell: polyfill injected when fragments exist", async () => {
     const AsyncContent = async () => (<span>x</span>) as VNode;
     const result = await renderToStatic(
       async (ctx) =>
@@ -168,7 +168,7 @@ describe("renderToStatic", () => {
     expect(files["/esi/content.html"]).toContain("<span>real</span>");
   });
 
-  describe("SSG stress — concurrency (regression: initFlowAssets race)", () => {
+  describe("SSG stress: concurrency (regression: initFlowAssets race)", () => {
     const PAGE_COUNT = 50;
 
     it("renders many pages concurrently without cross-contamination", async () => {
@@ -297,14 +297,14 @@ describe("renderToStatic", () => {
       { adapter: NativeAdapter },
     );
     expect(html).toContain('<?start name="content">'); // Native placeholder marker
-    expect(html).toContain("MutationObserver"); // polyfill injected — a fragment exists
+    expect(html).toContain("MutationObserver"); // polyfill injected: a fragment exists
   });
 });
 
 describe("emitFragments across pages", () => {
   // The site-generator shape: render a page, write its fragments, next page.
   // `flushFragments` tracks processed ids per call, so the store used to keep
-  // every earlier page's templates — page N re-emitted N fragments and replayed
+  // every earlier page's templates: page N re-emitted N fragments and replayed
   // each lazy factory, which for a `(signal) => fetch(...)` means one refetch
   // per remaining page.
   it("emits only the current page's fragments, and runs each factory once", async () => {

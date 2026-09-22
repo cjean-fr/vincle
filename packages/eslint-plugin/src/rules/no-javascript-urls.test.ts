@@ -22,7 +22,7 @@ ruleTester.run("no-javascript-urls", noJavascriptUrls, {
     // "javascript" not at the scheme position → safe
     '<a href="/path?x=javascript:foo">ok</a>',
     '<img src="https://cdn/x.png" />',
-    // Dynamic value the rule can't judge statically — left to the runtime
+    // Dynamic value the rule can't judge statically: left to the runtime
     "<a href={userUrl}>x</a>",
     // Not a URL attribute
     '<div title="javascript:alert(1)">x</div>',
@@ -37,7 +37,7 @@ ruleTester.run("no-javascript-urls", noJavascriptUrls, {
       code: '<a href="JAVASCRIPT:void(0)">Click me</a>',
       errors: [{ messageId: "noJavascriptUrl" }],
     },
-    // Leading whitespace bypass — browsers strip it and still execute
+    // Leading whitespace bypass: browsers strip it and still execute
     {
       code: '<a href=" javascript:alert(1)">x</a>',
       errors: [{ messageId: "noJavascriptUrl" }],
@@ -79,7 +79,7 @@ ruleTester.run("no-javascript-urls", noJavascriptUrls, {
       code: '<use xlink:href="javascript:alert(1)" />',
       errors: [{ messageId: "noJavascriptUrl" }],
     },
-    // camelCase JSX form — the runtime resolves it to `xlink:href`; the lint
+    // camelCase JSX form: the runtime resolves it to `xlink:href`; the lint
     // must ask the same resolution or it misses the very case it exists for.
     {
       code: '<use xlinkHref="javascript:alert(1)" />',
@@ -96,7 +96,7 @@ ruleTester.run("no-javascript-urls", noJavascriptUrls, {
  * imagination, and that is exactly how `isSafeScheme` in `@vincle/core` shipped
  * with four live bypasses while this rule already handled them. So the oracle is
  * not a list: it is `new URL`, which runs the same algorithm the browser runs.
- * Whatever it resolves to an executable scheme, the rule must report — and
+ * Whatever it resolves to an executable scheme, the rule must report, and
  * whatever it resolves to an inert one, the rule must not.
  *
  * Scope is deliberately narrower than the runtime's. This rule is
@@ -124,7 +124,7 @@ const BASES = [
 /** Every character a URL parser removes before it reads the scheme. */
 const NOISE = ["\t", "\n", "\r", "\0", "\x01", "\x1f", " "];
 
-/** `<a href={"…"}>` — an expression container so escapes survive the JSX parser. */
+/** `<a href={"…"}>`: an expression container so escapes survive the JSX parser. */
 const ATTRS = ["href", "src", "action", "formaction", "data"];
 
 function inputs(): string[] {
@@ -146,7 +146,7 @@ function isExecutable(url: string): boolean {
   try {
     return EXECUTABLE.has(new URL(url, "https://example.test/").protocol);
   } catch {
-    return false; // not a URL at all — nothing to execute
+    return false; // not a URL at all: nothing to execute
   }
 }
 
@@ -167,7 +167,7 @@ if (invalid.length === 0 || valid.length === 0) {
   throw new Error(`degenerate corpus: ${invalid.length} executable, ${valid.length} inert`);
 }
 
-ruleTester.run("no-javascript-urls — differential vs WHATWG URL", noJavascriptUrls, {
+ruleTester.run("no-javascript-urls: differential vs WHATWG URL", noJavascriptUrls, {
   valid,
   invalid,
 });

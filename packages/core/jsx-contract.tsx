@@ -1,9 +1,9 @@
 /**
- * The JSX attribute contract — checked by `bun run check`, not by `bun test`.
+ * The JSX attribute contract: checked by `bun run check`, not by `bun test`.
  *
  * The counterpart of `type-contract.tsx` (which locks what a component may
  * return): this file locks what an intrinsic element accepts, and the two
- * extension points users have — augmenting `DOMAttributes` for library
+ * extension points users have: augmenting `DOMAttributes` for library
  * attributes (htmx here) and declaring custom elements. If a line compiles,
  * the shape it pins is guaranteed; each `@ts-expect-error` fails the check the
  * day its error disappears.
@@ -26,7 +26,7 @@ declare module "./src/jsx-runtime.js" {
   }
 }
 
-// A named interface cannot satisfy the custom-element index signature — the
+// A named interface cannot satisfy the custom-element index signature: the
 // props type would need an implicit index signature, which interfaces do not
 // have. Type literals work; interfaces are a compile error (TS2411).
 interface TurboNamed {
@@ -60,7 +60,7 @@ export const ok5 = (
 );
 export const ok6 = <div style="color:red">x</div>;
 export const ok7 = <label htmlFor={Promise.resolve("l")}>x</label>;
-// Inline handlers are text — any `on*` spelling, camelCase included.
+// Inline handlers are text: any `on*` spelling, camelCase included.
 export const ok8 = (
   <div onCustom="alert(1)" onFoo="x">
     x
@@ -79,7 +79,7 @@ export const ok16 = (
   </svg>
 );
 export const ok17 = <input autoComplete="section-credit-card cc-number" />;
-// (string & {}) escape in HTMLInputTypeAttribute — accepted, same as React
+// (string & {}) escape in HTMLInputTypeAttribute: accepted, same as React
 export const ok18 = <input type="emal" />;
 // CSS variables pass through the `--${string}` index signature
 export const ok19 = <div style={{ "--brand": 1 }}>x</div>;
@@ -110,7 +110,7 @@ export const e10 = <div style={42}>x</div>;
 // Pin the alias-derived unions (HTMLInputTypeAttribute, Booleanish,
 // HTMLAttributeAnchorTarget, CrossOrigin). If the generated table ever loses
 // its `type` aliases again, these attributes silently become `any` and the
-// expect-error lines below go unused — which fails the check.
+// expect-error lines below go unused, which fails the check.
 // @ts-expect-error
 export const e11 = <input type={42} />;
 // @ts-expect-error
