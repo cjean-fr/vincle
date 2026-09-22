@@ -1,7 +1,7 @@
 import type { Renderable } from "./types.js";
 
 import { resolveAsyncLocalStorage } from "./als.js";
-import { ERR_SCOPE_COLLISION, noAlsHint, vincleError } from "./errors.js";
+import { ERR_CONTEXT_CHILDREN, ERR_SCOPE_COLLISION, noAlsHint, vincleError } from "./errors.js";
 
 interface Frame {
   readonly context: Context<unknown>;
@@ -75,12 +75,19 @@ export class SyncTreeStore implements Store {
   }
 }
 
-export interface Context<T> {
-  readonly Provider: (props: { value: T; children?: Renderable }) => Renderable;
-  readonly defaultValue: T;
+export interface ContextProvider<T> {
+  (props: { value: T; children?: any }): any;
+}
+
+export interface Context<T> extends ContextProvider<T> {
+  /** The provider — the context itself, as in React 19 (`ctx.Provider === ctx`). */
+  readonly Provider: ContextProvider<T>;
+  readonly Consumer: (props: { children: (value: T) => any }) => any;
 }
 
 export const providerMarker = Symbol("vincle.provider");
+/** The default, kept out of the public surface — React 19's context object does not expose it. */
+const defaultValueKey = Symbol("vincle.context.default");
 let store: Store | undefined;
 let initializing: Promise<Store> | undefined;
 
@@ -107,10 +114,38 @@ function warnSyncTreeFallback(): void {
   );
 }
 
+/**
+ * A tree context, tracking React 19's modern surface: the context object is the
+ * provider — `<MyContext value>` and `<MyContext.Provider value>` are the same
+ * element because `MyContext.Provider === MyContext` — and `MyContext.Consumer`
+ * is the render-prop reader. The declared default is not part of the surface
+ * (React 19 removed the mutable `defaultValue` property); it is captured at
+ * creation and read by `useContext` when no Provider matches.
+ *
+ * The `any` boundaries mirror `VNode.tag`: strict `Renderable` there would make
+ * a `React.Context<T>` unassignable to this type, which is the one direction of
+ * interoperability this package exists to allow.
+ */
 export function createContext<T>(defaultValue: T): Context<T> {
-  const Provider = ({ children }: { value: T; children?: Renderable }): Renderable => children;
-  const context: Context<T> = { Provider, defaultValue };
-  Object.defineProperty(Provider, providerMarker, { value: context });
+  // The value is read from the element's attrs by the tree walk, never here —
+  // this body only keeps the context callable.
+  function Provider(props: { value: T; children?: Renderable }): Renderable {
+    return props.children;
+  }
+  function Consumer(props: { children: (value: T) => Renderable }): Renderable {
+    if (typeof props.children !== "function") {
+      throw vincleError(
+        "[vincle/core] a Consumer was given a children prop that is not a function. " +
+          "Pass one function of the value: <MyContext.Consumer>{(value) => ...}</MyContext.Consumer>.",
+        ERR_CONTEXT_CHILDREN,
+      );
+    }
+    return props.children(useContext(context));
+  }
+  const context = Provider as Context<T>;
+  Object.assign(context, { Provider: context, Consumer });
+  Object.defineProperty(context, providerMarker, { value: context });
+  Object.defineProperty(context, defaultValueKey, { value: defaultValue });
   return context;
 }
 
@@ -118,7 +153,7 @@ export function useContext<T>(context: Context<T>): T {
   for (let frame = store?.getStore(); frame; frame = frame.parent) {
     if (frame.context === context) return frame.value as T;
   }
-  return context.defaultValue;
+  return (context as unknown as { [defaultValueKey]?: T })[defaultValueKey] as T;
 }
 
 export function renderProvider<T>(
