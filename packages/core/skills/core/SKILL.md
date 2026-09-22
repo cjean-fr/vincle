@@ -67,10 +67,10 @@ If the user wants browser DOM updates, hydration, hooks, event handlers, or clie
 ```typescript
 import { renderToString, raw } from "@vincle/core";
 
-// renderToString ALWAYS returns Promise<string> — even for sync components
+// renderToString ALWAYS returns Promise<string>: even for sync components
 const plain = await renderToString(<div>Hello</div>);
 
-// Trusted HTML — bypasses escaping. Never use raw() or dangerouslySetInnerHTML with untrusted input.
+// Trusted HTML: bypasses escaping. Never use raw() or dangerouslySetInnerHTML with untrusted input.
 const trusted = await renderToString(<div>{raw("<b>Bold</b>")}</div>);
 
 // Or via dangerouslySetInnerHTML with pre-sanitized content only
@@ -88,13 +88,13 @@ child, a component's return value, an array element, an attribute _value_,
 `dangerouslySetInnerHTML.__html`, or an async iterable.
 
 **Components execute in document order.** A sibling starts once the one to its left
-is done, so what renders before you in the markup ran before you — and the rendered
+is done, so what renders before you in the markup ran before you, and the rendered
 document never depends on how long any component took. To overlap independent I/O,
 either `await Promise.all` inside one component (below), or use `<Defer>` /
 `<Slot>` from `@vincle/flow`, which puts the boundary in the markup.
 
 ```tsx
-// ✅ Async component — await inside, return JSX
+// ✅ Async component: await inside, return JSX
 const UserCard = async ({ id }: { id: string }) => {
   const user = await fetchUser(id);
   return <div>{user.name}</div>;
@@ -105,16 +105,16 @@ const Dashboard = async ({ userId }: { userId: string }) => {
   const [user, posts] = await Promise.all([fetchUser(userId), fetchPosts(userId)]);
   return (
     <div>
-      {user.name} — {posts.length} posts
+      {user.name}: {posts.length} posts
     </div>
   );
 };
 
-// ✅ Promise as child — resolved automatically
+// ✅ Promise as child: resolved automatically
 const resolved = await renderToString(<div>{Promise.resolve("async text")}</div>);
 // => <div>async text</div>
 
-// ❌ Rendering a Promise without await on renderToString — will hang.
+// ❌ Rendering a Promise without await on renderToString: will hang.
 // It returns a Promise<string>; the caller must await it, never treat it as a string.
 const notHtml = renderToString(<AsyncComponent />); // missing await
 ```
@@ -134,7 +134,7 @@ export const AuthContext = createContext({ user: "Guest", locale: "en" });
 ```
 
 ```tsx
-// Read it under a Provider — the context itself, or its .Provider alias
+// Read it under a Provider: the context itself, or its .Provider alias
 const Header = () => {
   const { user, locale } = useContext(AuthContext);
   return <header lang={locale}>Hello {user}</header>;
@@ -162,7 +162,7 @@ const Request = Scope.key<{ user: string }>("app:request");
 await Scope.with(async () => {
   Scope.set(Request, { user: "Alice" });
 
-  // Child scope inherits parent data via snapshot(), passed as-is —
+  // Child scope inherits parent data via snapshot(), passed as-is,
   // the second argument IS the ScopeMap, not an options object.
   await Scope.with(async () => {
     Scope.get(Request).user; // ✅ "Alice"
@@ -244,7 +244,7 @@ await Promise.all(
 
 ## Security (Built-in)
 
-No opt-in required — output is OWASP-aligned by default when content is escaped. `raw()` and `dangerouslySetInnerHTML` bypass escaping and must only be used with pre-sanitized, trusted HTML. If the input is untrusted, refuse to use `raw()` or `dangerouslySetInnerHTML` and explain that escaping is required to keep the output safe.
+No opt-in required: output is OWASP-aligned by default when content is escaped. `raw()` and `dangerouslySetInnerHTML` bypass escaping and must only be used with pre-sanitized, trusted HTML. If the input is untrusted, refuse to use `raw()` or `dangerouslySetInnerHTML` and explain that escaping is required to keep the output safe.
 
 ```tsx
 // Text content escaped
@@ -256,7 +256,7 @@ No opt-in required — output is OWASP-aligned by default when content is escape
 // => <a href="#blocked">link</a>
 ```
 
-String event handlers are supported. A function value **throws** — it is not
+String event handlers are supported. A function value **throws**. It is not
 dropped, and there is no warning: a function cannot be serialized to HTML, and
 TypeScript refuses it before the renderer ever sees it.
 
@@ -271,7 +271,7 @@ TypeScript refuses it before the renderer ever sees it.
 sides worth knowing:
 
 ```tsx
-// In content position, raw() is verbatim — that is the whole point.
+// In content position, raw() is verbatim: that is the whole point.
 <div>{raw(sanitizedHtml)}</div>;
 
 // In ATTRIBUTE position it is verbatim except `"`, which is escaped so a value
@@ -286,7 +286,7 @@ sides worth knowing:
 
 ## Inline `<script>` and `<style>`
 
-Children of `<script>` and `<style>` are **not** HTML-escaped — they reach the
+Children of `<script>` and `<style>` are **not** HTML-escaped. They reach the
 JavaScript and CSS engines as written. Only the sequence that would end the
 element is neutralised, in the form the sub-language reads back
 (`\u003c/script>`, `<\/style>`), so real code and JSON data blocks need no
@@ -372,13 +372,13 @@ describe("Component", () => {
 
 ## Troubleshooting
 
-| Problem                            | Solution                                                                            |
-| ---------------------------------- | ----------------------------------------------------------------------------------- |
-| TypeScript errors on JSX           | Check `tsconfig.json` has `"jsxImportSource": "@vincle/core"`                       |
-| `[object Promise]` in output       | Missing `await` on `renderToString()`                                               |
-| `Scope.get` throws                 | Enter `Scope.with()` and set the key first                                          |
-| Style not applied                  | Use camelCase: `borderTopColor`, not `border-top-color`                             |
-| `class` not working                | Both `class` and `className` are accepted                                           |
-| JSX in test file not resolved      | Add `// @jsxImportSource @vincle/core` at top of `.tsx` test file                   |
-| Render throws on an event handler  | The value is a function; handlers are strings (vincle renders on the server)        |
-| Inline script arrives HTML-escaped | It doesn't — `<script>` children are rawtext; check nothing wrapped them in `raw()` |
+| Problem                            | Solution                                                                           |
+| ---------------------------------- | ---------------------------------------------------------------------------------- |
+| TypeScript errors on JSX           | Check `tsconfig.json` has `"jsxImportSource": "@vincle/core"`                      |
+| `[object Promise]` in output       | Missing `await` on `renderToString()`                                              |
+| `Scope.get` throws                 | Enter `Scope.with()` and set the key first                                         |
+| Style not applied                  | Use camelCase: `borderTopColor`, not `border-top-color`                            |
+| `class` not working                | Both `class` and `className` are accepted                                          |
+| JSX in test file not resolved      | Add `// @jsxImportSource @vincle/core` at top of `.tsx` test file                  |
+| Render throws on an event handler  | The value is a function; handlers are strings (vincle renders on the server)       |
+| Inline script arrives HTML-escaped | It doesn't: `<script>` children are rawtext; check nothing wrapped them in `raw()` |

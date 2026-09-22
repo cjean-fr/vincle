@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       # `contents: read` for checkout, `id-token: write` for npm provenance.
-      # Nothing writes to the repository — no tag, no release.
+      # Nothing writes to the repository: no tag, no release.
       contents: read
       id-token: write
     steps:
@@ -56,7 +56,7 @@ jobs:
       # `bun pm pack`, not `npm pack`: only bun resolves the `workspace:` protocol
       # to a real version. Going through npm would publish `workspace:^` as is.
       #
-      # `--quiet` prints only the tarball name, which is published by name — a
+      # `--quiet` prints only the tarball name, which is published by name: a
       # `*.tgz` would publish whichever came first if the directory held another.
       - name: Publish to NPM
         run: |
@@ -65,6 +65,6 @@ jobs:
           # `--access public` explicitly, and not only via each package's
           # `publishConfig`: every package here is scoped, and npm defaults a
           # scoped package to `restricted`. Relying on the manifest alone means
-          # one package missing the field fails its *first* publish — the one
+          # one package missing the field fails its *first* publish: the one
           # release that cannot be retried into an already-public name.
           npm publish "$TARBALL" --provenance --access public

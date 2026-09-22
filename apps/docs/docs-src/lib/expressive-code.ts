@@ -17,7 +17,7 @@ export const EC_THEMES: ThemeObjectOrShikiThemeName[] = ["github-light", "github
  * Bind the dark variant to the site's `dark` class instead of the OS.
  *
  * The selector is concatenated onto `:root` and onto `.expressive-code`, so it
- * must be a compound suffix — `.dark`, never a combinator. The light theme is
+ * must be a compound suffix: `.dark`, never a combinator. The light theme is
  * first in `EC_THEMES` and is emitted unscoped, hence `false`. The media query
  * has to go: `theme/client.ts` already folds the OS preference into the class,
  * and leaving it on would override an explicit choice.
@@ -48,7 +48,7 @@ export async function getSharedRenderer(): Promise<SatteriExpressiveCodeRenderer
   return { ...renderer, baseStyles: "", themeStyles: "", jsModules: [] };
 }
 
-/** Base rules, then theme variables — cascade order matters. */
+/** Base rules, then theme variables: cascade order matters. */
 export async function expressiveCodeStyles(): Promise<string> {
   const { baseStyles, themeStyles } = await getRenderer();
   return baseStyles + themeStyles;

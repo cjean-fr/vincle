@@ -18,7 +18,7 @@ const COMPILED_ROOT = path.resolve(import.meta.dirname, "../pages/.compiled");
  * One directory per run, named by pid.
  *
  * `turbo run test build` runs `@vincle/docs:test` and `@vincle/docs:build` side
- * by side — neither depends on the other — and each calls `rebuildAll()`, which
+ * by side: neither depends on the other, and each calls `rebuildAll()`, which
  * `rm -rf`s its own directory. A shared one has each wipe what the other just
  * wrote, between the `writeFile` and the `import`.
  *
@@ -27,7 +27,7 @@ const COMPILED_ROOT = path.resolve(import.meta.dirname, "../pages/.compiled");
  */
 export const COMPILED_DIR = path.join(COMPILED_ROOT, String(process.pid));
 
-/** `kill(pid, 0)` kills nothing — it asks whether the process is still there. */
+/** `kill(pid, 0)` kills nothing: it asks whether the process is still there. */
 function isRunning(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -42,7 +42,7 @@ function isRunning(pid: number): boolean {
  * Drop the directories left behind by runs that are over.
  *
  * The `exit` handler below covers a clean shutdown and nothing else: a process
- * ended by a signal — Ctrl+C on the dev server — never runs it, and a pid does
+ * ended by a signal, such as Ctrl+C on the dev server, never runs it. A pid does
  * not come back (`pid_max` is in the millions), so each of those runs leaks its
  * directory for good. Sweeping on the way in is what makes the cleanup total,
  * `kill -9` included, which no handler can reach.

@@ -69,7 +69,7 @@ function renderTocLink(entry: TocEntry): string {
   const padding = entry.level === 3 ? "pl-6" : "pl-3";
   const size = entry.level === 3 ? "text-xs" : "text-sm";
   // `entry.id` is captured from `id="([^"]+)"` in already-rendered HTML, so it
-  // cannot carry a quote and cannot break out of this attribute — but it can
+  // cannot carry a quote and cannot break out of this attribute, but it can
   // carry `&`, which belongs escaped. The text beside it has always been
   // escaped; the href was the one value here trusting its own provenance.
   return `<a href="#${escapeAttr(entry.id)}" class="docs-toc-link block py-1 ${padding} ${size} text-[var(--docs-color-text-secondary)] hover:text-[var(--docs-color-text)] transition-colors">${escapeContent(entry.text)}</a>`;

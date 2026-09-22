@@ -46,7 +46,7 @@ async function renderPage(meta: PageMeta = { title: "Test page" }): Promise<stri
     setVite(null, { base: "/" });
     setDocs(docsContext(meta));
     const body: JSX.Element = <main>body</main>;
-    // Called as a function, like `config.layout(...)` in the build pipeline —
+    // Called as a function, like `config.layout(...)` in the build pipeline,
     // an async component returning `Promise<JSX.Element>` is not accepted by
     // `JSX.ElementType` (double-`Awaitable`), so the JSX form can't be used here.
     return renderToString(Layout({ children: body }));
@@ -81,7 +81,7 @@ describe("Layout CSP", () => {
 
     expect(scriptSrc).not.toContain("'unsafe-inline'");
 
-    // The browser hashes the script's exact text content — the CSP must carry
+    // The browser hashes the script's exact text content: the CSP must carry
     // the digest of what the page actually emits, not of a different string.
     const themeScript = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
     expect(themeScript, "the theme script must be emitted inline").toBeDefined();
@@ -102,11 +102,11 @@ describe("Layout CSP", () => {
     }
   });
 
-  it("does not emit frame-ancestors — it is ignored in a meta CSP", async () => {
+  it("does not emit frame-ancestors: it is ignored in a meta CSP", async () => {
     expect(cspOf(await renderPage())).not.toContain("frame-ancestors");
   });
 
-  it("keeps style-src 'unsafe-inline' — expressive-code emits per-token style attributes", async () => {
+  it("keeps style-src 'unsafe-inline': expressive-code emits per-token style attributes", async () => {
     expect(directive(cspOf(await renderPage()), "style-src")).toContain("'unsafe-inline'");
   });
 

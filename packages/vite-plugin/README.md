@@ -13,9 +13,9 @@ A @vincle/core + Vite project typically hardcodes asset paths in its layout:
 
 Three problems:
 
-- **Dev/prod drift** — Vite serves sources directly in dev (`/src/styles/main.css`), bundles them with hashes in build (`/assets/main-Bx7k.css`). Most projects work around this with string replaces.
-- **No cache-busting** — to keep the hardcoded paths working, you turn off Vite's content hashing.
-- **No transitive preloading** — production bundles split chunks but the layout doesn't see those splits.
+- **Dev/prod drift**: Vite serves sources directly in dev (`/src/styles/main.css`), bundles them with hashes in build (`/assets/main-Bx7k.css`). Most projects work around this with string replaces.
+- **No cache-busting**: to keep the hardcoded paths working, you turn off Vite's content hashing.
+- **No transitive preloading**: production bundles split chunks but the layout doesn't see those splits.
 
 This package solves all three with one component.
 
@@ -62,7 +62,7 @@ setVite(manifest, { base: "/" });
 setVite(null);
 ```
 
-`loadViteManifest` returns `null` if the file is absent — same behavior dev setups rely on, so you can write:
+`loadViteManifest` returns `null` if the file is absent: same behavior dev setups rely on, so you can write:
 
 ```ts
 const manifest = await loadViteManifest("dist/.vite/manifest.json");
@@ -106,7 +106,7 @@ Resolution rules:
 // → <script type="module" src="/src/main.ts">
 ```
 
-The Vite HMR client (`/@vite/client`) is **not** emitted here — pipe your output through `server.transformIndexHtml()` to let Vite inject it (and apply its other dev-mode transforms). Any setup that bypasses `transformIndexHtml` must add `<script type="module" src="/@vite/client">` manually.
+The Vite HMR client (`/@vite/client`) is **not** emitted here: pipe your output through `server.transformIndexHtml()` to let Vite inject it (and apply its other dev-mode transforms). Any setup that bypasses `transformIndexHtml` must add `<script type="module" src="/@vite/client">` manually.
 
 **Production mode** (manifest provided):
 
@@ -124,7 +124,7 @@ CSS-only entries:
 // → <link rel="stylesheet" href="/assets/main-only-d4f6.css">
 ```
 
-If the entry is not in the manifest, `<Asset>` throws a clear error listing the available entries — typos surface immediately.
+If the entry is not in the manifest, `<Asset>` throws a clear error listing the available entries: typos surface immediately.
 
 ## Vite configuration
 
@@ -148,7 +148,7 @@ The manifest will be written to `<outDir>/.vite/manifest.json`.
 | Export                         | Description                                                                                                   |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | `Asset`                        | Component that resolves an entry to `<link>` / `<script>` / `<link rel="modulepreload">` tags (CSS / JS only) |
-| `assetUrl(entry)`              | Function that resolves an entry to a URL string — use inside arbitrary tags (images, fonts, favicons, …)      |
+| `assetUrl(entry)`              | Function that resolves an entry to a URL string: use inside arbitrary tags (images, fonts, favicons, …)       |
 | `setVite(manifest, { base? })` | Configure the render scope. Call once per render.                                                             |
 | `loadViteManifest(path)`       | Load a Vite manifest from disk. Returns `null` if the file does not exist.                                    |
 | `ViteManifest`                 | Type mirroring Vite's `manifest.json` shape                                                                   |
@@ -156,9 +156,9 @@ The manifest will be written to `<outDir>/.vite/manifest.json`.
 
 ## Notes
 
-- `setVite()` uses `Scope.set()` from @vincle/core — call it inside `Scope.with()` (`@vincle/flow`'s `renderToStatic` / `renderToStream` establish one).
-- `loadViteManifest()` uses `node:fs/promises` — works in Node ≥ 20, Bun, and Deno.
-- The package has no dependency on `vite` itself — only on `@vincle/core`.
+- `setVite()` uses `Scope.set()` from @vincle/core: call it inside `Scope.with()` (`@vincle/flow`'s `renderToStatic` / `renderToStream` establish one).
+- `loadViteManifest()` uses `node:fs/promises`: works in Node ≥ 20, Bun, and Deno.
+- The package has no dependency on `vite` itself: only on `@vincle/core`.
 
 ## License
 

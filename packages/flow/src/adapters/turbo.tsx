@@ -4,7 +4,7 @@ import { createAdapter } from "./shared.js";
 
 // Every merge but `morph` is a Turbo Stream action of the same name. Turbo has
 // no `morph` action: morphing is `method="morph"` layered on `replace`, which
-// Turbo 8 added — `merge="morph"` needs Turbo >= 8 on the client.
+// Turbo 8 added: `merge="morph"` needs Turbo >= 8 on the client.
 const ACTION: Record<MergeType, string> = {
   replace: "replace",
   append: "append",

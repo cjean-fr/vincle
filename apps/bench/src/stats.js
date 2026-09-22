@@ -1,5 +1,5 @@
 /**
- * Repeated-run benchmark harness — N runs in fresh processes, mean ± standard
+ * Repeated-run benchmark harness: N runs in fresh processes, mean ± standard
  * deviation, and a delta expressed in standard errors of the difference.
  *
  * Usage:
@@ -55,7 +55,7 @@ function parseArgs(argv) {
  *
  * Both, on demand rather than by default: an effect present under JSC **and** V8
  * is structural, one present under a single engine is that engine's own
- * deoptimisation — but the daily question is "did I break something", and paying
+ * deoptimisation, but the daily question is "did I break something", and paying
  * two engines for it doubles the wait.
  */
 const ENGINES = {
@@ -156,7 +156,7 @@ function printTable(stats) {
       s.name === REF
         ? "ref"
         : s.ratio === undefined
-          ? "—"
+          ? "-"
           : `×${s.ratio.toFixed(2)} ± ${s.ratioSd.toFixed(2)}`;
     console.log(
       `${(s.case === currentCase && s.name === REF ? s.case : "").padEnd(11)}` +
@@ -181,7 +181,7 @@ function printComparison(now, before) {
     const b = before.get(key);
     if (b === undefined) {
       console.log(
-        `${s.case.padEnd(11)}${s.name.padEnd(31)}${"—".padStart(11)}${num(s.mean).padStart(11)}${"".padStart(17)}  new case`,
+        `${s.case.padEnd(11)}${s.name.padEnd(31)}${"-".padStart(11)}${num(s.mean).padStart(11)}${"".padStart(17)}  new case`,
       );
       continue;
     }
@@ -189,7 +189,7 @@ function printComparison(now, before) {
     const sigmas = se === 0 ? Infinity : Math.abs(s.mean - b.mean) / se;
     const delta = ((s.mean - b.mean) / b.mean) * 100;
     const verdict =
-      sigmas < SIGNIFICANCE_SIGMAS ? "noise — not a finding" : delta > 0 ? "faster" : "SLOWER";
+      sigmas < SIGNIFICANCE_SIGMAS ? "noise, not a finding" : delta > 0 ? "faster" : "SLOWER";
     console.log(
       `${s.case.padEnd(11)}${s.name.padEnd(31)}${num(b.mean).padStart(11)}${num(s.mean).padStart(11)}` +
         `${(delta >= 0 ? "+" : "") + delta.toFixed(1)}%`.padStart(9) +
@@ -223,7 +223,7 @@ if (opts.ab !== undefined) {
     process.exit(1);
   }
   if (opts.engines !== "bun") {
-    console.error("--ab runs under the bun engine only — it spawns a bun process per run");
+    console.error("--ab runs under the bun engine only: it spawns a bun process per run");
     process.exit(1);
   }
   await abMain(opts.ab[0], opts.ab[1], opts.control, opts.runs, opts.calibrate, opts.save);

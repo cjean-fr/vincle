@@ -10,7 +10,7 @@ import precompileTransform, {
 export type { PluginConfig };
 
 /**
- * The shape of Bun's plugin API this depends on, nothing more — declared here so
+ * The shape of Bun's plugin API this depends on, nothing more: declared here so
  * the package type-checks without Bun's globals, which the Vite adapter next to
  * it has no use for.
  */
@@ -33,7 +33,7 @@ const JSX_FILE = /\.[jt]sx$/;
 /**
  * The transform as a Bun plugin, for a server with no Vite in front of it.
  *
- * A page rendered per request is where precompiling pays — and a server that
+ * A page rendered per request is where precompiling pays, and a server that
  * imports its own modules never reaches a Vite plugin, whatever the config says.
  * Load this from a preload script instead:
  *
@@ -53,7 +53,7 @@ const JSX_FILE = /\.[jt]sx$/;
  * there is no virtual module, so the helpers are imported from `runtimeSource`
  * (`@vincle/core/jsx-runtime` unless you say otherwise), and there is no
  * end-of-build hook, so nothing warns when this plugin never matches a file. On
- * Bun the check is direct — a transformed module imports `jsxTemplate`.
+ * Bun the check is direct: a transformed module imports `jsxTemplate`.
  */
 export default function precompileBun(config?: PluginConfig): BunPrecompilePlugin {
   const runtimeSource = config?.runtimeSource ?? RUNTIME_SOURCE;

@@ -11,14 +11,14 @@ import { Scope } from "./scope.js";
  * here rather than left to be inferred from the implementation.
  *
  * `renderToString` used to start every remaining sibling before awaiting any of
- * them, overlapping their I/O. The overlap was deliberate and it was free — right
+ * them, overlapping their I/O. The overlap was deliberate and it was free: right
  * up until a component mutated the context. Then the document depended on how long
  * each sibling took: a reader that awaited 1 ms saw the old value, the same reader
  * awaiting 20 ms saw the new one. Same tree, same code, two documents.
  *
  * The rule replaces all of that with something a developer can hold in their head:
  * **what runs before you in the document ran before you.** Overlapping I/O is
- * still available where it can be seen in the markup — `<Defer>` / `<Slot>` in
+ * still available where it can be seen in the markup: `<Defer>` / `<Slot>` in
  * `@vincle/flow`.
  */
 

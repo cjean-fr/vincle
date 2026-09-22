@@ -3,7 +3,7 @@ import { describe, it, expect } from "bun:test";
 import { renderToString } from "./index.js";
 import { jsx } from "./src/jsx-runtime.js";
 
-// The JSX transform has no semantic spec — every toolchain reimplemented it,
+// The JSX transform has no semantic spec: every toolchain reimplemented it,
 // aligning on Babel by testing. vincle's escaping/validation only makes sense
 // if certain behaviors actually hold across those toolchains. These tests pin
 // the ones the runtime *relies on*: if a future compiler changes them, the
@@ -20,7 +20,7 @@ const tsx = new Bun.Transpiler({
   } as any,
 });
 
-describe("JSX compiler contract — invariants the runtime depends on", () => {
+describe("JSX compiler contract: invariants the runtime depends on", () => {
   it("DECODES HTML entities in text → static text can carry a raw <script>", () => {
     // The single reason escaping static text is not redundant.
     const out = tsx.transformSync(`export const a = <div>a &amp; b &lt;script&gt;</div>;`);

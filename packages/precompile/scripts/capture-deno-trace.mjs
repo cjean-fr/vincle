@@ -1,5 +1,5 @@
 /**
- * Regenerate `test-fixtures/deno-precompile-trace.json` — the reference output
+ * Regenerate `test-fixtures/deno-precompile-trace.json`: the reference output
  * of Deno's own `jsx: "precompile"` transform, which `compatibility: true` is
  * measured against.
  *
@@ -14,8 +14,8 @@
  * change in Deno arrives as a reviewable diff rather than a red build on an
  * unrelated commit.
  *
- * The trace is what the transform *did* — every helper call in order, with the
- * names it chose, plus the static fragments — not just the rendered HTML. A
+ * The trace is what the transform *did*: every helper call in order, with the
+ * names it chose, plus the static fragments, not just the rendered HTML. A
  * name resolved differently is a divergence even when the page looks the same.
  */
 import { execFileSync } from "node:child_process";
@@ -63,7 +63,7 @@ const CASES = [
 ];
 
 const SPY = `export const seen: string[] = [];
-export const mark = (i: number): number => (seen.push(\`— case \${i}\`), i);
+export const mark = (i: number): number => (seen.push(\`- case \${i}\`), i);
 export function jsxTemplate(templates: string[], ...values: unknown[]): string {
   seen.push(\`tpl \${JSON.stringify(templates)} holes=\${values.length}\`);
   return "T";
@@ -117,7 +117,7 @@ const trace = JSON.parse(raw.trim().split("\n").at(-1));
 const byCase = new Map();
 let current = -1;
 for (const line of trace) {
-  const marker = /^— case (\d+)$/.exec(line);
+  const marker = /^- case (\d+)$/.exec(line);
   if (marker) {
     current = Number(marker[1]);
     byCase.set(current, []);
@@ -149,7 +149,7 @@ if (drifted.length === 0) {
   console.log(
     pinned.source === version
       ? `${version} matches the fixture.`
-      : `${version} matches the fixture, captured with ${pinned.source} — bump the recorded version.`,
+      : `${version} matches the fixture, captured with ${pinned.source}: bump the recorded version.`,
   );
   process.exit(0);
 }

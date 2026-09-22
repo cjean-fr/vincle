@@ -171,9 +171,9 @@ describe("Scope", () => {
 
     it("rejects empty or non-string keys", () => {
       expect(() => Scope.key<string>("")).toThrow(/non-empty string key/);
-      // @ts-expect-error — intentionally wrong type at runtime
+      // @ts-expect-error: intentionally wrong type at runtime
       expect(() => Scope.key<string>(123)).toThrow(/non-empty string key/);
-      // @ts-expect-error — intentionally wrong type at runtime
+      // @ts-expect-error: intentionally wrong type at runtime
       expect(() => Scope.key<string>()).toThrow(/non-empty string key/);
     });
 
@@ -186,7 +186,7 @@ describe("Scope", () => {
     });
   });
 
-  describe("createContextStore — alternate ALS sources", () => {
+  describe("createContextStore: alternate ALS sources", () => {
     const OrigALS = (globalThis as any).AsyncLocalStorage;
 
     class MockALS {
@@ -231,12 +231,12 @@ describe("Scope", () => {
 
   // ── Synchronous fallback ──────────────────────────────────────────────────
   //
-  // GOAL promises a fallback that is "correct — never silent" where
+  // GOAL promises a fallback that is "correct: never silent" where
   // `AsyncLocalStorage` doesn't exist. It can't be reached through
   // `ensureStore` here (bun *has* ALS), so it's the class that's tested
-  // directly — it's the one carrying the guarantee.
+  // directly: it's the one carrying the guarantee.
 
-  describe("SyncContextStore — fallback without AsyncLocalStorage", () => {
+  describe("SyncContextStore: fallback without AsyncLocalStorage", () => {
     it("carries a synchronous scope", () => {
       const store = new SyncContextStore();
       const ctx: ScopeMap = new Map();
@@ -308,11 +308,11 @@ describe("Scope", () => {
     });
   });
 
-  describe("context(key) — leak guard", () => {
+  describe("context(key): leak guard", () => {
     afterAll(() => resetNamedContexts());
 
     it("keeps the key → symbol identity, and refuses a key built per request", () => {
-      // The cap can't just stop memoizing — that would make
+      // The cap can't just stop memoizing: that would make
       // `context(k) !== context(k)` silently true. It throws instead.
       const before = Scope.key<string>("test:identity");
       expect(Scope.key<string>("test:identity")).toBe(before);

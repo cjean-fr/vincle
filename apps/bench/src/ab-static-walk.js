@@ -2,9 +2,9 @@
  * What the walk costs, apart from the static path. Three variants of one document, same
  * bytes, same process:
  *
- *   flat        — elements only, all of it serialized at construction. The floor.
- *   components  — the static path stops at every boundary. What a page really is.
- *   kitajs      — the reference, on both trees.
+ *   flat       : elements only, all of it serialized at construction. The floor.
+ *   components : the static path stops at every boundary. What a page really is.
+ *   kitajs     : the reference, on both trees.
  *
  * The flat → components gap is the price of the two passes.
  */
@@ -18,7 +18,7 @@ const ROWS = Array.from({ length: 1000 }, (_, i) => ({
   qty: i % 7,
 }));
 
-/** One item, elements only — serializable end to end. */
+/** One item, elements only: serializable end to end. */
 const flatItem = (h, r) =>
   h("div", {
     class: "purchase purchase-card",
@@ -43,7 +43,7 @@ const componentPage = (h) => {
 };
 
 // Equivalence before measurement: three identical documents, or what is compared
-// is two different workloads — the mistake that once produced a false 3.7×.
+// is two different workloads: the mistake that once produced a false 3.7×.
 const outs = await Promise.all([
   renderToString(flatPage(jsx)),
   renderToString(componentPage(jsx)),
@@ -55,12 +55,12 @@ for (const o of outs.slice(1)) {
 }
 console.error(`document: ${(outs[0].length / 1024).toFixed(1)} KB, ${ROWS.length} items\n`);
 
-group("flat tree — elements only (the static path does everything)", () => {
+group("flat tree: elements only (the static path does everything)", () => {
   bench("vincle", async () => await renderToString(flatPage(jsx)));
   bench("kitajs", () => String(flatPage(kjsx)));
 });
 
-group("component tree — one boundary per item (the static path stops)", () => {
+group("component tree: one boundary per item (the static path stops)", () => {
   bench("vincle", async () => await renderToString(componentPage(jsx)));
   bench("kitajs", () => String(componentPage(kjsx)));
 });

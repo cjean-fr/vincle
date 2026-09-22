@@ -8,9 +8,9 @@ import {
 } from "./errors.js";
 
 describe("error codes", () => {
-  it("are the stable published codes (API — never renamed, never emptied)", () => {
-    // Pinned to the literal values: these are public API. A rename — or an
-    // accidental emptying — would silently break anyone matching on a code,
+  it("are the stable published codes (API: never renamed, never emptied)", () => {
+    // Pinned to the literal values: these are public API. A rename, or an
+    // accidental emptying: would silently break anyone matching on a code,
     // with no error at the throw site to point at.
     expect(ERR_PRECOMPILE_CONFIG).toBe("ERR_VINCLE_PRECOMPILE_CONFIG");
     expect(ERR_PRECOMPILE_HELPER).toBe("ERR_VINCLE_PRECOMPILE_HELPER");

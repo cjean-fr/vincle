@@ -7,7 +7,7 @@ import { runFragment } from "./fragment-runner.js";
  * Await all promises via `allSettled`, then throw the first rejection found.
  * Unlike `Promise.all`, this waits for every promise to settle before throwing,
  * so in-flight work isn't orphaned. Rejection reasons come from emit failures
- * (output channel broken) — they are fatal for the entire flush.
+ * (output channel broken): they are fatal for the entire flush.
  */
 async function settleOrThrow(promises: Promise<void>[]): Promise<void> {
   if (promises.length === 0) return;
@@ -43,20 +43,20 @@ function serializeEmit(emit: (ev: FlowEvent) => Promise<void>): {
  * `emit`. Each entry's content is classified at drain time:
  *
  * - an `AsyncIterable` (returned synchronously, or passed directly) is a
- *   **stream** — one patch per item, run in its own `for await` loop so a slow
+ *   **stream**: one patch per item, run in its own `for await` loop so a slow
  *   one never blocks the rest;
  * - anything else is a **one-shot** patch, rendered once.
  *
- * Fragments are emitted as they complete — concurrent work, completion order.
+ * Fragments are emitted as they complete: concurrent work, completion order.
  *
  * One-shots drain generation by generation, so a nested `<Defer>` registered
- * while its parent renders is picked up and emitted after its parent — the
+ * while its parent renders is picked up and emitted after its parent: the
  * order the client patch mechanism needs. The loop continues until full
  * quiescence: streams may register new work while they run, so it only exits
  * once no entry is unprocessed AND every live stream has finished.
  *
  * The primitive owns the drain only: asset policy and fragment framing belong to
- * the caller — `adapter.Patch` plus dedupe against the shell's own `ctx.assets`
+ * the caller: `adapter.Patch` plus dedupe against the shell's own `ctx.assets`
  * for streaming, `adapter.Frame` plus `suppressFlowAssets()` for static output.
  * A previous `assets` parameter tried to own them here too; no caller ever
  * passed it, and the branch it fed was dead.

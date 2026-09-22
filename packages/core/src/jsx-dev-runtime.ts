@@ -1,5 +1,5 @@
 /**
- * JSX dev runtime — a gateway to `jsx-runtime`.
+ * JSX dev runtime: a gateway to `jsx-runtime`.
  * The `react-jsxdev` transform imports this module in development mode.
  * All the dev-only parameters (`_key`, `_isStaticChildren`, `_source`, `_self`)
  * are ignored: behavior is identical to `jsx`.

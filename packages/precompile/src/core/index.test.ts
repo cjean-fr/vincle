@@ -221,7 +221,7 @@ describe("core", () => {
     // Regression guard for the bundler: the `./html` subpath is a pure
     // re-export barrel. The previous bundler (bunup/Bun splitting) emitted a
     // broken module that re-exported names it never imported, so every symbol
-    // resolved to `undefined` at runtime — invisible to tests that read the
+    // resolved to `undefined` at runtime: invisible to tests that read the
     // source via tsconfig paths. This imports the *published* entry point
     // (resolved to dist through the package `exports` map) and asserts every
     // named export is actually wired up.

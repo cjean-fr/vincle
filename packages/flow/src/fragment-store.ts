@@ -14,7 +14,7 @@ import { assertFragmentId } from "./utils.js";
 /**
  * A unit of deferred content, keyed by its target DOM `id`. The renderer
  * decides at drain time whether `content` is a one-shot patch or a live
- * stream — see `flushFragments`.
+ * stream: see `flushFragments`.
  */
 export type FragmentEntry = {
   content: DeferContent;
@@ -37,7 +37,7 @@ export type FragmentEntry = {
  * lives here rather than in `flushFragments`.
  */
 export type FragmentStore = {
-  /** Register an entry for `id`. One target is registered once per render — a second registration throws. Validates id, timeout, adapter and merge support. */
+  /** Register an entry for `id`. One target is registered once per render: a second registration throws. Validates id, timeout, adapter and merge support. */
   register(id: string, entry: FragmentEntry): void;
   /** Retrieve a registered entry by id. */
   get(id: string): FragmentEntry | undefined;
@@ -60,7 +60,7 @@ export function createFragmentStore(config: FlowConfig): FragmentStore {
       assertTimeout(entry.timeout, `<Defer target="${id}">`);
       if (!config.adapter) {
         throw vincleError(
-          `${PREFIX} <Defer target="${id}">: Defer requires an adapter — without one there ` +
+          `${PREFIX} <Defer target="${id}">: Defer requires an adapter: without one there ` +
             "is no placeholder to render and no patch to emit. Pass { adapter: ... } to renderToStatic, " +
             "or render through renderToStream/serve with an adapter " +
             "(TurboAdapter, NativeAdapter, HtmxAdapter, WebPlatformAdapter, EsiAdapter).",
@@ -74,14 +74,14 @@ export function createFragmentStore(config: FlowConfig): FragmentStore {
             : "it supports no merges (static output only)";
         throw vincleError(
           `${PREFIX} <Defer target="${id}" merge="${entry.merge}">: ` +
-            `merge="${entry.merge}" is not supported by this adapter — ${supported}. ` +
+            `merge="${entry.merge}" is not supported by this adapter: ${supported}. ` +
             `Pick one of those, or use an adapter that supports "${entry.merge}".`,
           ERR_FLOW_MERGE_UNSUPPORTED,
         );
       }
       if (map.has(id)) {
         throw vincleError(
-          `${PREFIX} <Defer target="${id}">: target is already registered — a target is ` +
+          `${PREFIX} <Defer target="${id}">: target is already registered: a target is ` +
             `registered once per render. Two <Defer> on the same target would emit two ` +
             `placeholders with the same DOM id, and only the second fragment would be patched. ` +
             `Give the second fragment a different target, or omit target to get a generated one.`,

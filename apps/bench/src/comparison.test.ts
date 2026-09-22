@@ -17,7 +17,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 const EVIL = `<img src=x onerror="alert(1)">`;
 const escaped = (html: string): boolean => !html.includes("<img");
 
-describe("escaping a text child — comparison page, first table", () => {
+describe("escaping a text child: comparison page, first table", () => {
   it("@vincle/core escapes", async () => {
     expect(escaped(await renderToString(jsx("div", { children: EVIL })))).toBe(true);
   });
@@ -30,13 +30,13 @@ describe("escaping a text child — comparison page, first table", () => {
   });
 
   it("@kitajs/html does not, and does when asked", () => {
-    // Their documented design, backed by ts-html-plugin — pinned, not judged.
+    // Their documented design, backed by ts-html-plugin: pinned, not judged.
     expect(escaped(String(kita("div", null, EVIL)))).toBe(false);
     expect(escaped(String(kita("div", { safe: true }, EVIL)))).toBe(true);
   });
 });
 
-describe("javascript: in href — comparison page, capability table", () => {
+describe("javascript: in href: comparison page, capability table", () => {
   const url = "javascript:alert(1)";
 
   it("Vincle and React neutralize the URL", async () => {
@@ -56,7 +56,7 @@ describe("javascript: in href — comparison page, capability table", () => {
   });
 });
 
-describe("a component returning a promise — comparison page, capability table", () => {
+describe("a component returning a promise: comparison page, capability table", () => {
   const Async = () => Promise.resolve("hello");
 
   it("@vincle/core and @kitajs/html render it", async () => {

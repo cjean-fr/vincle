@@ -5,7 +5,7 @@ import { renderToString } from "@vincle/core";
 type Purchase = { name: string; price: number; quantity: number };
 
 /**
- * The realworld page as genuine JSX — the input the precompile transform starts
+ * The realworld page as genuine JSX: the input the precompile transform starts
  * from. `shared.js` is the same page written as `jsx()` calls; the bench asserts
  * the three renderings (js, tsx, precompiled) emit identical bytes.
  */

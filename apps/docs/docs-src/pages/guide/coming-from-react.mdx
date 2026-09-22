@@ -21,6 +21,36 @@ virtual DOM, no hydration, no client runtime.
 | `style` objects         | `{{ color: "red" }}`      | Same   |
 | TypeScript props        | `interface Props`         | Same   |
 
+### Port a presentational component
+
+A component that only reads props can keep its JSX. Replace React's node
+type with Vincle's renderable type, then set `jsxImportSource` to `@vincle/core`
+for the migrated files:
+
+```tsx
+import type { Renderable } from "@vincle/core";
+
+type CardProps = { title: string; children?: Renderable };
+
+export function Card({ title, children }: CardProps) {
+  return (
+    <section className="card">
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+```
+
+`ReactNode` and `ReactElement` describe values made by React's renderer,
+so replace those annotations with `Renderable` (or `JSX.Element` for a JSX
+result). Replace `React.FC<Props>` with an ordinary function taking `Props`.
+If the component uses context, import `createContext` and `useContext` from
+`@vincle/core` and create the context there too. A context created by React
+cannot be passed to Vincle's `useContext`: the two renderers keep separate
+provider trees. Client hooks, refs, and React library components need a
+behavioral rewrite; changing the JSX compiler does not make them server HTML.
+
 ## What changes
 
 ### No client runtime
@@ -28,19 +58,19 @@ virtual DOM, no hydration, no client runtime.
 React's classic answer ships the full runtime and hydration code to the
 browser for every component. Modern React narrows that with Server
 Components: a component with no `"use client"` directive renders on the
-server and ships no JS of its own — much like Vincle, for content that
-never changes.
+server and ships no JS of its own. For content that never changes, this is
+much like Vincle.
 
 That exception ends the moment a component needs state. `useState` only
 exists in a Client Component, so the runtime and reconciler come back,
 unconditionally, no matter how small the component is. Vincle has no such
-fork — every component renders the same way — and it doesn't answer
+fork: every component renders the same way, and it doesn't answer
 "how do I make this interactive" itself. That's delegated, in the markup,
 to standard HTML or to a purpose-built client library instead of a UI
 framework's runtime:
 
 ```tsx
-// React — needs "use client" the moment state enters the picture; ships
+// React: needs "use client" the moment state enters the picture; ships
 // React + ReactDOM + the reconciler just to run this one counter
 "use client";
 export function Counter() {
@@ -48,7 +78,7 @@ export function Counter() {
   return <button onClick={() => setCount((c) => c + 1)}>{count}</button>;
 }
 
-// Vincle — renders once; the counting is delegated to Alpine.js (a few KB,
+// Vincle: renders once; the counting is delegated to Alpine.js (a few KB,
 // built for exactly this), not to a framework runtime
 export function Counter() {
   return (
@@ -62,15 +92,14 @@ export function Counter() {
 ```
 
 The two components solve the same problem, but Vincle's answer isn't "ship
-less of the same kind of thing" — it's a different kind of thing
+less of the same kind of thing". It's a different kind of thing
 altogether: a small library scoped to this one button, not a framework
 runtime scoped to the whole page.
 
 ### Async is native, not Suspense
 
-Modern React (Server Components) lets an async component `await` directly
-— much like Vincle always has, no `use()` needed for a plain top-level
-fetch. What's still required is a `<Suspense>` boundary above it if you
+Modern React (Server Components) lets an async component `await` directly,
+as Vincle always has. Neither needs `use()` for a plain top-level fetch. What's still required is a `<Suspense>` boundary above it if you
 want the shell to stream while it resolves, and a framework that
 implements the RSC protocol to run any of it at all.
 
@@ -78,7 +107,7 @@ Vincle has no boundary and no protocol: every component can be `async`,
 anywhere, with no framework requirement.
 
 ```tsx
-// React Server Component — awaits directly, but still needs a Suspense
+// React Server Component: awaits directly, but still needs a Suspense
 // ancestor for the fallback to stream, and a framework like Next.js to
 // run it
 async function Comments() {
@@ -93,23 +122,23 @@ function Page() {
   );
 }
 
-// Vincle — the same shape, no boundary, no framework
+// Vincle: the same shape, no boundary, no framework
 async function Comments() {
   const data = await fetchComments();
   return <ul>{data.map(/* … */)}</ul>;
 }
 ```
 
-No `Suspense` boundaries, no fallback declarations — the `await` is the
+No `Suspense` boundaries, no fallback declarations: the `await` is the
 boundary. Sibling async branches run in document order, one at a time; the
 `Promise<string>` resolves when every branch finishes. (React's Client
-Component pattern — reading a promise with `use()` instead of awaiting it
-— still needs that same boundary, plus the promise created above it and
+Component pattern, where a promise is read with `use()` instead of awaited,
+still needs that same boundary, plus the promise created above it and
 passed down as a prop.)
 
 That's the default: `renderToString` simply waits. If you want the
-Suspense-shaped tradeoff instead — ship the shell immediately, patch
-`Comments` in once it resolves — that's opt-in via `@vincle/flow`:
+Suspense-shaped tradeoff instead: ship the shell immediately, patch
+`Comments` in once it resolves. That's opt-in via `@vincle/flow`:
 
 ```tsx
 import { Defer } from "@vincle/flow";
@@ -126,7 +155,7 @@ function Page() {
 By default the patch travels via a ~550 B polyfill (`NativeAdapter`).
 Swap in `WebPlatformAdapter` to use the same
 [WICG declarative partial updates](https://github.com/WICG/declarative-partial-updates)
-proposal with no polyfill at all — on browsers that implement it natively.
+proposal with no polyfill on browsers that implement it natively.
 
 ### Context and Provider
 
@@ -140,9 +169,9 @@ tree. A root Provider works without an outer scope. For mutable request state
 that a plain helper must read, use the separate `Scope` API.
 
 ```tsx
-// React — useContext only works inside a component in the provider's
+// React: useContext only works inside a component in the provider's
 // descendant tree; a plain function can't call it, even mid-render.
-// React 19 renders the context itself as the provider — no `.Provider`.
+// React 19 renders the context itself as the provider: no `.Provider`.
 function App({ user }) {
   return (
     <AuthContext value={{ user }}>
@@ -151,19 +180,19 @@ function App({ user }) {
   );
 }
 function AuditRow({ action }: { action: string }) {
-  const { user } = useContext(AuthContext); // OK — rendered inside <AuthContext>
+  const { user } = useContext(AuthContext); // OK: rendered inside <AuthContext>
   return (
     <li>
-      {user.name} — {action}
+      {user.name}: {action}
     </li>
   );
 }
 function logAction(action: string) {
-  const { user } = useContext(AuthContext); // invalid hook call — not a component
+  const { user } = useContext(AuthContext); // invalid hook call: not a component
   console.log(`${user.name}: ${action}`);
 }
 
-// Vincle — descendants read the nearest Provider.
+// Vincle: descendants read the nearest Provider.
 const Auth = createContext({ user: { name: "Guest" } });
 function Page() {
   return <li>{useContext(Auth).user.name}</li>;
@@ -194,21 +223,20 @@ renders.
 ### Event handlers are strings, not closures
 
 React handlers are closures, captured automatically from the surrounding
-scope. Vincle handlers are attribute strings, evaluated by the browser —
+scope. Vincle handlers are attribute strings evaluated by the browser,
 which also means Vincle never intercepts an attribute it doesn't
 recognize. Nothing gets rewritten into a synthetic event system, so a
 library that reads plain HTML attributes plugs straight in, with nothing
 in between:
 
 ```tsx
-// React — the closure needs the component, and its runtime, in the loop
+// React: the closure needs the component, and its runtime, in the loop
 const onDelete = useCallback(() => handleDelete(id), [id]);
 <DeleteButton onClick={onDelete}>Delete</DeleteButton>;
 
-// Vincle — no handler, no library, not even JavaScript: a standard HTML
-// form, submitted the way forms have worked since before either framework
-// existed. Forms only speak GET/POST natively, so DELETE is a route, not
-// a verb
+// Vincle uses a standard HTML form. It needs no handler, library, or JavaScript.
+// Forms have worked this way since before either framework existed. They
+// support only GET and POST natively, so DELETE is a route, not a verb.
 <form action={`/items/${id}/delete`} method="POST">
   <button type="submit">Delete</button>
 </form>;
@@ -218,7 +246,7 @@ If a full navigation is more than you want, that same passthrough lets a
 progressive-enhancement library swap the response in without one:
 
 ```tsx
-// Vincle + HTMX — no handler to write at all. HTMX reads the attributes,
+// Vincle + HTMX: no handler to write at all. HTMX reads the attributes,
 // issues the request, and swaps the response in; rendering the markup
 // was the framework's whole job
 <button hx-delete={`/api/items/${id}`} hx-target="#item-list" hx-swap="outerHTML">
@@ -226,26 +254,26 @@ progressive-enhancement library swap the response in without one:
 </button>
 ```
 
-The same idea works with any attribute-driven library — Stimulus
+The same idea works with any attribute-driven library: Stimulus
 (`data-action="click->list#delete"`), Turbo, or a hand-written
 `onclick="…"` string when a dependency isn't worth it. What they share is
 the mechanism: an ordinary HTML attribute, not a closure something has to
 reconcile back onto the element later. A function-valued handler prop
-still throws at render time on the server — there is nothing to attach it
+still throws at render time on the server. There is nothing to attach it
 to.
 
-That mechanism matters most once markup arrives _after_ the first render —
+That mechanism matters most once markup arrives _after_ the first render,
 a live feed, infinite scroll, a streamed fragment. A closure can't travel
 inside an HTML string; injected markup has no `onClick` attached, so React
 has to re-render that subtree itself, through the runtime already
 hydrated on the page, to wire one back up. (The one door around that,
-`dangerouslySetInnerHTML`, runs exactly Vincle's model underneath — a
-plain attribute, not a closure — minus the auto-escaping.)
+`dangerouslySetInnerHTML`, uses the same underlying model as Vincle:
+a plain attribute instead of a closure, but without auto-escaping.)
 
-In Vincle, a plain attribute is live the instant the browser parses it —
+In Vincle, a plain attribute is live the instant the browser parses it,
 first response or streamed in later, no reconciliation, no re-hydration
-pass. `@vincle/flow`'s `<Defer>` — the same component from the async
-section above — leans on exactly this:
+pass. The `<Defer>` component from the async section above relies on
+exactly this:
 
 ```tsx
 import { Defer } from "@vincle/flow";
@@ -270,7 +298,7 @@ function Page() {
 
 Whether `CommentForm` renders in the first response or streams in seconds
 later as a `<Defer>` patch, HTMX picks up `hx-post` the moment the
-fragment lands — the behavior never depended on a render pass to begin
+fragment lands: the behavior never depended on a render pass to begin
 with. For updates pushed from the server rather than triggered by a click,
 flow's `HtmxAdapter` speaks HTMX's own out-of-band swap format directly,
 so the same library handles both directions.
@@ -278,15 +306,15 @@ so the same library handles both directions.
 ### Props that only meant something to the reconciler
 
 A handful of React props are not typed at all, because nothing they talk to
-exists here — there is no reconciler, no hydration, no DOM. TypeScript refuses
+exists here. There is no reconciler, no hydration, no DOM. TypeScript refuses
 them at the call site rather than the renderer dropping them silently:
 
 | React prop                                                                 | Why it is gone                              | Write instead      |
 | -------------------------------------------------------------------------- | ------------------------------------------- | ------------------ |
-| `ref`                                                                      | No DOM node to hold                         | —                  |
+| `ref`                                                                      | No DOM node to hold                         | N/A                |
 | `defaultValue`, `defaultChecked`                                           | "Initial" only means something to hydration | `value`, `checked` |
-| `suppressHydrationWarning`, `suppressContentEditableWarning`               | No hydration to warn about                  | —                  |
-| `radioGroup`, `autoSave`, `results`, `security`, `classID`, `unselectable` | Vendor leftovers no HTML parser reads       | —                  |
+| `suppressHydrationWarning`, `suppressContentEditableWarning`               | No hydration to warn about                  | N/A                |
+| `radioGroup`, `autoSave`, `results`, `security`, `classID`, `unselectable` | Vendor leftovers no HTML parser reads       | N/A                |
 
 Everything else React types is kept, including the ones that do reach the
 document and are easy to assume gone: `nonce`, `is`, `inputMode`, `spellCheck`,
@@ -298,13 +326,13 @@ list built for React still compiles.
 
 None of these exist. There is no state, no lifecycle, no re-rendering.
 Every render is a fresh, deterministic function call. Where React reaches
-for a hook to manage something that keeps happening _after_ the render —
-a ticking clock, an interval — Vincle has nothing to reach for on the
+for a hook to manage something that keeps happening _after_ the render,
+such as a ticking clock or an interval, Vincle has nothing to reach for on the
 server, so that job goes to whichever client library is already handling
 interactivity elsewhere on the page:
 
 ```tsx
-// React — hooks for state and effects, ticking in the browser after mount
+// React: hooks for state and effects, ticking in the browser after mount
 function Timer() {
   const [time, setTime] = useState(0);
   useEffect(() => {
@@ -314,7 +342,7 @@ function Timer() {
   return <p>{time}s</p>;
 }
 
-// Vincle — the server renders the starting value; ticking after that is
+// Vincle: the server renders the starting value; ticking after that is
 // Alpine's job, not the framework's
 function Timer({ initialTime }: { initialTime: number }) {
   return (
@@ -327,57 +355,57 @@ function Timer({ initialTime }: { initialTime: number }) {
 }
 ```
 
-This one genuinely ticks — Vincle isn't reproducing the behavior with a
+This one genuinely ticks. Vincle isn't reproducing the behavior with a
 framework of its own, it's handing the one part that needs a client
 runtime to a library built for it. React Compiler now auto-inserts most
-`useMemo`/`useCallback` calls for you, which removes the boilerplate — but
+`useMemo`/`useCallback` calls for you, which removes the boilerplate, but
 it's still optimizing away re-renders that happen. Vincle has none to
 optimize away in the first place, compiler or not.
 
 ## Migration checklist
 
-| React pattern                      | Vincle equivalent                                                                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `useState`                         | Props or context — state lives outside the render                                                                              |
-| `useEffect`                        | Not needed — no client lifecycle                                                                                               |
-| `useRef`                           | Not needed — no DOM access                                                                                                     |
-| `useMemo` / `useCallback`          | Not needed — no re-renders                                                                                                     |
-| `useContext`                       | `useContext` reads the nearest Provider, or its default                                                                        |
-| `createContext`                    | `createContext(defaultValue)` — the context is its own provider (`<Context value>`, `.Provider` is an alias), plus `.Consumer` |
-| `React.memo`                       | Not needed — every render is a fresh call                                                                                      |
-| `Suspense`                         | Async component + `<Defer>` from `@vincle/flow`                                                                                |
-| `ErrorBoundary`                    | No equivalent — try/catch at top level, `onError` in `@vincle/flow` for streaming                                              |
-| `dangerouslySetInnerHTML`          | Same API — also `raw(html)` as child                                                                                           |
-| `onClick={() => fn()}`             | HTML `<form>`, `hx-*`/`data-action`/`x-on:click`, or `onclick="fn()"` (global `fn`)                                            |
-| `className` / `class`              | Both work — HTML name wins if both present, no merge                                                                           |
-| `htmlFor` → `for`                  | `htmlFor` remapped to `for`; `for` wins if both present                                                                        |
-| `@types/react`                     | Built into `@vincle/core` — per-element attribute types, nothing to install                                                    |
-| `defaultValue` / `defaultChecked`  | `value` / `checked` — nothing rehydrates, so there is no "initial" value                                                       |
-| `ref` / `suppressHydrationWarning` | Not typed — no reconciler to talk to (`@vincle/no-refs` flags them)                                                            |
-| `<img>{caption}</img>`             | Refused — no valid HTML form; use `alt`, or a `<figure>`                                                                       |
+| React pattern                      | Vincle equivalent                                                                                                             |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `useState`                         | Props or context: state lives outside the render                                                                              |
+| `useEffect`                        | Not needed: no client lifecycle                                                                                               |
+| `useRef`                           | Not needed: no DOM access                                                                                                     |
+| `useMemo` / `useCallback`          | Not needed: no re-renders                                                                                                     |
+| `useContext`                       | `useContext` reads the nearest Provider, or its default                                                                       |
+| `createContext`                    | `createContext(defaultValue)`: the context is its own provider (`<Context value>`, `.Provider` is an alias), plus `.Consumer` |
+| `React.memo`                       | Not needed: every render is a fresh call                                                                                      |
+| `Suspense`                         | Async component + `<Defer>` from `@vincle/flow`                                                                               |
+| `ErrorBoundary`                    | No equivalent: try/catch at top level, `onError` in `@vincle/flow` for streaming                                              |
+| `dangerouslySetInnerHTML`          | Same API: also `raw(html)` as child                                                                                           |
+| `onClick={() => fn()}`             | HTML `<form>`, `hx-*`/`data-action`/`x-on:click`, or `onclick="fn()"` (global `fn`)                                           |
+| `className` / `class`              | Both work: HTML name wins if both present, no merge                                                                           |
+| `htmlFor` → `for`                  | `htmlFor` remapped to `for`; `for` wins if both present                                                                       |
+| `@types/react`                     | Built into `@vincle/core`: per-element attribute types, nothing to install                                                    |
+| `defaultValue` / `defaultChecked`  | `value` / `checked`: nothing rehydrates, so there is no "initial" value                                                       |
+| `ref` / `suppressHydrationWarning` | Not typed: no reconciler to talk to (`@vincle/no-refs` flags them)                                                            |
+| `<img>{caption}</img>`             | Refused: no valid HTML form; use `alt`, or a `<figure>`                                                                       |
 
 ## What you lose
 
-- **Hydration** — Vincle does not hydrate. If you need interactive components,
+- **Hydration**: Vincle does not hydrate. If you need interactive components,
   pair it with plain HTML forms, HTMX, Turbo, Alpine.js, or a client-side
   framework
-- **React ecosystem** — MUI, Radix, TanStack Table, React Router all require
+- **React ecosystem**: MUI, Radix, TanStack Table, React Router all require
   the React runtime
-- **React Server Components** — not RSC-aware; use Next.js App Router for
+- **React Server Components**: not RSC-aware; use Next.js App Router for
   RSC workloads
 
 ## What you gain
 
-- **A few KB** instead of ~140 KB — zero runtime dependencies
+- **A few KB** instead of ~140 KB: zero runtime dependencies
 - **8–14× faster** than `react-dom/server` in rendering
-- **Security by default** — URL scheme blocking and context-aware content and
-  attribute escaping — no opt-in required
-- **Tree context and execution scopes** — Provider ancestry and per-request isolation
-- **Any runtime** — Node, Bun, Deno, Cloudflare Workers — no DOM shim needed
+- **Security by default**: URL scheme blocking and context-aware content and
+  attribute escaping: no opt-in required
+- **Tree context and execution scopes**: Provider ancestry and per-request isolation
+- **Any runtime**: Node, Bun, Deno, and Cloudflare Workers need no DOM shim
 
 ## Next steps
 
-- [Introduction](/guide/introduction) — the five principles
-- [First render](/guide/getting-started/first-render) — your first component
-- [Elements & attributes](/guide/jsx/elements-attributes) — `class`, `style`, booleans
-- [Security model](/guide/security) — XSS defences in depth
+- [Introduction](/guide/introduction): the five principles
+- [First render](/guide/getting-started/first-render): your first component
+- [Elements & attributes](/guide/jsx/elements-attributes): `class`, `style`, booleans
+- [Security model](/guide/security): XSS defences in depth

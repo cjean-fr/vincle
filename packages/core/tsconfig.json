@@ -6,7 +6,7 @@
     "rootDir": "./",
     "types": ["bun"],
     // `conformance/` refers to itself by package name, which the `exports` map
-    // resolves to `dist/*.d.mts` — a directory `tsdown` wipes before it
+    // resolves to `dist/*.d.mts`: a directory `tsdown` wipes before it
     // regenerates it. That would make `check` depend on `build` and lose the
     // race against it. The type-check reads the sources, which are what `tsdown`
     // derives those same `.d.mts` from. Execution still goes through `exports`,
@@ -17,7 +17,7 @@
     }
   },
   // Everything generated. Without an `include`, the default `**/*` picks up
-  // `dist/` — declarations `tsdown` derives from the very sources being checked
+  // `dist/`: declarations `tsdown` derives from the very sources being checked
   // here, and rewrites under `tsc` whenever the two run at once (`TS6053`, on
   // files that exist). `tmp/` holds the SKILL.md examples `skill-contract.test.ts`
   // extracts and type-checks under their own tsconfig.

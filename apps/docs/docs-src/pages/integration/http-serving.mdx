@@ -4,7 +4,7 @@ title: HTTP serving
 
 # HTTP serving
 
-Serve Vincle-rendered pages over HTTP — with streaming, negotiation, and
+Serve Vincle-rendered pages over HTTP: with streaming, negotiation, and
 minimal boilerplate.
 
 ## Using `serve()`
@@ -25,7 +25,7 @@ Bun.serve({
 ```
 
 The response is a `ReadableStream<Uint8Array>` with `Transfer-Encoding: chunked`.
-The shell is flushed immediately — the browser starts parsing HTML while
+The shell is flushed immediately: the browser starts parsing HTML while
 fragments are still rendering.
 
 ### Signature
@@ -46,14 +46,14 @@ serve(
 
 | Option           | Type                                   | Default  | Description                       |
 | ---------------- | -------------------------------------- | -------- | --------------------------------- |
-| `signal`         | `AbortSignal`                          | —        | Abort all pending renders         |
-| `onError`        | `(error, info) => JSX.Element \| void` | —        | Per-fragment error handler        |
-| `defaultTimeout` | `number`                               | —        | Per-fragment timeout (ms)         |
-| `negotiate`      | `(req: Request) => Negotiation`        | —        | Extract per-request hints         |
+| `signal`         | `AbortSignal`                          | N/A      | Abort all pending renders         |
+| `onError`        | `(error, info) => JSX.Element \| void` | N/A      | Per-fragment error handler        |
+| `defaultTimeout` | `number`                               | N/A      | Per-fragment timeout (ms)         |
+| `negotiate`      | `(req: Request) => Negotiation`        | N/A      | Extract per-request hints         |
 | `mode`           | `"full" \| "fragment"`                 | `"full"` | Render full page or fragment-only |
-| `headers`        | `HeadersInit`                          | —        | Additional response headers       |
+| `headers`        | `HeadersInit`                          | N/A      | Additional response headers       |
 | `status`         | `number`                               | `200`    | Response status code              |
-| `statusText`     | `string`                               | —        | Response status text              |
+| `statusText`     | `string`                               | N/A      | Response status text              |
 
 ## Using Node.js `http`
 
@@ -113,7 +113,7 @@ http
 console.log("Listening on http://localhost:3000");
 ```
 
-The shell is the first chunk — `res.write()` flushes it immediately. Each
+The shell is the first chunk: `res.write()` flushes it immediately. Each
 fragment follows as soon as it resolves.
 
 ## HTMX negotiation
@@ -156,7 +156,7 @@ const negotiateMyLib: Negotiate = (req) => {
 
 ## Static generation
 
-For pre-rendered content, use `renderToStatic` instead of `serve()` —
+For pre-rendered content, use `renderToStatic` instead of `serve()`,
 see [Static generation](/integration/static).
 
 ## Full-page vs fragment mode
@@ -172,5 +172,5 @@ serve(req, () => <Page />, NativeAdapter, { mode: "fragment" });
 ```
 
 When `mode` is set in both `options` and the negotiation result, the value
-passed to `serve()` wins — `opts.mode ?? negotiation.mode` — so options
+passed to `serve()` wins: `opts.mode ?? negotiation.mode`, so options
 override whatever the request header suggests.

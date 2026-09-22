@@ -13,7 +13,7 @@ export type AssetState = {
   emitted: Set<string>;
   /**
    * Suppress every emission, whatever the name. Used for standalone fragment
-   * files, which carry no assets of their own — see `renderToStatic`.
+   * files, which carry no assets of their own: see `renderToStatic`.
    */
   suppressed: boolean;
 };

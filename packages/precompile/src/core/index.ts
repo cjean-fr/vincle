@@ -32,7 +32,7 @@ export const RUNTIME_SOURCE = "@vincle/core/jsx-runtime";
  * (Babel/TS/esbuild/Bun), so precompiled static text matches the string the
  * runtime path receives. Uses strict (semicolon-required) decoding: named
  * references need a trailing `;`, unknown references (`&notreal;`) are left
- * verbatim — verified byte-identical to Bun's JSX transform.
+ * verbatim: verified byte-identical to Bun's JSX transform.
  *
  * Only for **non-rawtext** content: inside `<script>`/`<style>` the HTML
  * parser never decodes entities, and Deno's precompile keeps them literal, so
@@ -98,7 +98,7 @@ export function hasSpreadOrInnerHTML(attrs: Iterable<AttrBrief>): boolean {
 /**
  * Rewrite a JSX attribute name to its HTML form (`className` → `class`, …).
  * Names not in the map are returned unchanged. The transform applies this at
- * build time so static attributes stay inlined — same as Deno's precompile.
+ * build time so static attributes stay inlined: same as Deno's precompile.
  */
 export function remapAttrName(name: string): string {
   return resolveAttrName(name);

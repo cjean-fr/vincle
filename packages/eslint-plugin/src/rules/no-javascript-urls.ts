@@ -5,7 +5,7 @@ import type { RuleModule } from "../types.js";
 /**
  * Lint policy, not security policy: this rule helps a developer catch a
  * `javascript:`/`vbscript:` URL they wrote by accident. `data:text/html` is
- * deliberately left alone — a developer writing one means it — and `buildAttrs`
+ * deliberately left alone: a developer writing one means it, and `buildAttrs`
  * blocks it at render time, where the full security policy lives (`isSafeScheme`).
  *
  * The parsing is delegated to `core/html`'s `schemeOf` so the two layers agree

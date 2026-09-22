@@ -1,5 +1,5 @@
 /**
- * @vincle/core/html — Shared primitives for build-time JSX transforms.
+ * @vincle/core/html: Shared primitives for build-time JSX transforms.
  *
  * Exports the constants and helpers that precompile tools need to replicate
  * the runtime's behavior at build time: attribute name resolution, escaping,

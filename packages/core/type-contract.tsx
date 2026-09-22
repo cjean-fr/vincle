@@ -1,5 +1,5 @@
 /**
- * The JSX type contract — checked by `bun run check`, not by `bun test`.
+ * The JSX type contract: checked by `bun run check`, not by `bun test`.
  *
  * This file has no runtime assertion: it *is* the assertion. If it compiles,
  * `JSX.ElementType` accepts everything the renderers know how to render; each
@@ -81,7 +81,7 @@ export const rejected2 = <BadSymbol />;
 // @ts-expect-error a WeakMap is neither a node nor an iterable of nodes
 export const rejected3 = <BadMap />;
 
-// `JSX.IntrinsicElements` used to accept any attribute on any element — this
+// `JSX.IntrinsicElements` used to accept any attribute on any element: this
 // block locks the opposite, both ways: `<dvi>` is not an element, and
 // `<div clas="x">` is not an attribute.
 
@@ -113,12 +113,12 @@ export const attrsAccepted = [
 
 // Must NOT compile.
 
-// @ts-expect-error `dvi` isn't an element — and has no hyphen, so it isn't a
+// @ts-expect-error `dvi` isn't an element, and has no hyphen, so it isn't a
 // custom element either
 export const attrsRejected1 = <dvi />;
 // @ts-expect-error `clas` isn't an attribute of `div`
 export const attrsRejected2 = <div clas="typo" />;
-// @ts-expect-error a function isn't serializable to HTML — `buildAttrs` throws
+// @ts-expect-error a function isn't serializable to HTML: `buildAttrs` throws
 export const attrsRejected3 = <div onClick={() => {}} />;
 // @ts-expect-error `tabIndex` is a number
 export const attrsRejected4 = <div tabIndex="1" />;
@@ -143,8 +143,8 @@ export const attrsRejected12 = <div unselectable="on" />;
 // ── Must compile: props that do reach the document ────────────────────────
 //
 // The other side of the list above, and the one that broke: `ReactOnlyKeys` was
-// long enough to refuse `<meta property="og:title">` — the canonical Open Graph
-// tag — and nothing noticed until the intrinsic elements were typed. `key` is
+// long enough to refuse `<meta property="og:title">`: the canonical Open Graph
+// tag, and nothing noticed until the intrinsic elements were typed. `key` is
 // accepted here and dropped at serialization, which is what keeps a keyed list
 // written for React compiling.
 export const attrsKept = (

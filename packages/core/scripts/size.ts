@@ -4,9 +4,9 @@
  *
  * The budget is the tarball npm serves, because that is what the docs promise:
  * one package under 100 kB carrying the runtime and the whole attribute table,
- * against the 138 kB `csstype` costs on its own. The table ships twice — as
+ * against the 138 kB `csstype` costs on its own. The table ships twice: as
  * `src/jsx-namespace.ts` for the `bun` condition and as a `.d.mts` for every
- * other resolver — so it, not the runtime, is what moves this figure.
+ * other resolver, so it, not the runtime, is what moves this figure.
  *
  * `npm pack` decides what is published, so the file list comes from it rather
  * than from a second reading of `files` that could disagree with it.
@@ -15,11 +15,11 @@
  * whole stream at once. The raw column is the one that sums.
  *
  * A script, not a test: growth is a judgement call, not a defect, so this never
- * fails the build — and a `test` that cannot fail is one the green bar counts
+ * fails the build, and a `test` that cannot fail is one the green bar counts
  * for nothing. Over budget it emits a GitHub annotation, so the run carries the
  * warning without blocking it.
  *
- * Reads `dist`, so it runs after a build. Missing artefacts *are* an error —
+ * Reads `dist`, so it runs after a build. Missing artefacts *are* an error,
  * a silent skip is how a report stops reporting without anyone noticing.
  */
 import { execFileSync } from "node:child_process";
@@ -89,7 +89,7 @@ for (const { kind, label } of KINDS) {
 if (report.size > BUDGET) {
   const breakdown = KINDS.map(({ kind }) => `${kind} ${kB(totals.get(kind)!.gzip)}`).join(", ");
   const message =
-    `@vincle/core is ${kB(report.size)} gzip, over the ${kB(BUDGET)} budget — ` +
+    `@vincle/core is ${kB(report.size)} gzip, over the ${kB(BUDGET)} budget: ` +
     `the docs promise "under 100 kB gzip". Raise the budget and correct them, or trim. (${breakdown})`;
 
   if (process.env["GITHUB_ACTIONS"] === "true") {

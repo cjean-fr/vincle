@@ -13,7 +13,7 @@ const RT = "@vincle/core/jsx-runtime";
 /**
  * A foreign runtime: no serializer injected, so the output is Deno's.
  *
- * There is no option to pass — the transform emits the reference output for
+ * There is no option to pass: the transform emits the reference output for
  * every runtime but one, and `transformVincle` below is that one.
  */
 function transform(code: string, id = "/src/app.tsx"): string {
@@ -162,7 +162,7 @@ describe("precompileTransform", () => {
     expect(transform(`const a = <div tabIndex="0">x</div>;`)).toContain(
       '<div tabindex="0">x</div>',
     );
-    // stays static — no runtime call
+    // stays static: no runtime call
     expect(transform(`const a = <div className="box">x</div>;`)).not.toContain("jsxAttr");
   });
 
@@ -213,7 +213,7 @@ describe("precompileTransform", () => {
 
     it("escapes static text content using the runtime's own jsxEscape", () => {
       const out = transformVincle(`const a = <div>hello & world</div>;`);
-      // jsxEscape from @vincle/core escapes & < > — same as escapeContent
+      // jsxEscape from @vincle/core escapes & < >: same as escapeContent
       // for Vincle. For other runtimes (Preact, Hono) the escaping differs;
       // using the runtime's own jsxEscape guarantees byte-identity.
       expect(out).toContain("jsxTemplate`<div>hello &amp; world</div>`");
@@ -221,7 +221,7 @@ describe("precompileTransform", () => {
 
     it("decodes rawtext entities then escapeRawText (matches the dynamic runtime)", () => {
       // Default: decode entities (like the JS compiler does) then
-      // escapeRawText — the same path renderChild takes — so `&gt;` becomes
+      // escapeRawText: the same path renderChild takes, so `&gt;` becomes
       // a real `>` and the output is valid CSS/JS. Unlike Deno mode where
       // rawtext entities stay verbatim.
       const style = transformVincle("const a = <style>.a &gt; .b</style>;");
@@ -298,7 +298,7 @@ describe("precompileTransform", () => {
       const lines = result.code.split("\n");
       const lineIdx = lines.findIndex((l) => l.includes(needle));
       if (lineIdx < 0) throw new Error(`"${needle}" not found in output`);
-      // @ts-expect-error — TraceMap accepts EncodedSourceMap but result.map is SourceMap from OXC; they're structurally compatible
+      // @ts-expect-error: TraceMap accepts EncodedSourceMap but result.map is SourceMap from OXC; they're structurally compatible
       const tracer = new TraceMap(result.map);
       return originalPositionFor(tracer, {
         line: lineIdx + 1,
@@ -315,7 +315,7 @@ describe("precompileTransform", () => {
     });
 
     it("maps a dynamic expression back to its source line when the import is prepended", () => {
-      // The injected import shifts every line down by one — the map must
+      // The injected import shifts every line down by one: the map must
       // describe the final code, not the pre-injection code (regression).
       const code = [`const before = 1;`, `const a = <div>{userName}</div>;`].join("\n");
       const pos = tracePosition(code, "userName");
@@ -369,14 +369,14 @@ describe("precompileTransform", () => {
     });
 
     it("keeps rawtext entities verbatim in compatibility mode", () => {
-      // Rawtext entities stay literal — the HTML parser never decodes entities
+      // Rawtext entities stay literal: the HTML parser never decodes entities
       // in <script>/<style> content, so keeping them verbatim is safe and
       // matches Deno's own precompile output.
       const style = transform("const a = <style>.a &gt; .b</style>;");
       expect(style).toContain("jsxTemplate`<style>.a &gt; .b</style>`");
       const script = transform("const a = <script>a &amp;&amp; b</script>;");
       expect(script).toContain("jsxTemplate`<script>a &amp;&amp; b</script>`");
-      // </script> encoded as entities stays safe — browser won't decode
+      // </script> encoded as entities stays safe: browser won't decode
       // entities in rawtext, so no breakout.
       const guard = transform("const a = <script>x &lt;/script&gt; y</script>;");
       expect(guard).toContain("&lt;/script&gt;");
@@ -396,7 +396,7 @@ describe("precompileTransform", () => {
 
   describe("the default mode renders what the runtime renders", () => {
     /**
-     * Toggling the plugin changes no byte — the invariant the default mode
+     * Toggling the plugin changes no byte: the invariant the default mode
      * exists to hold, checked end to end rather than on the shape of the
      * generated code.
      *
@@ -492,7 +492,7 @@ describe("precompileTransform", () => {
   describe("compatibility mode against Deno's own transform", () => {
     /**
      * The fixture is what Deno's `jsx: "precompile"` emitted, captured by
-     * `scripts/capture-deno-trace.mjs` — so this runs without Deno installed,
+     * `scripts/capture-deno-trace.mjs`, so this runs without Deno installed,
      * and regenerating it is a deliberate act with a version recorded in the
      * file. A trace, not rendered HTML: every helper call in order with the
      * names chosen, since a name resolved differently is a divergence even
@@ -518,7 +518,7 @@ describe("precompileTransform", () => {
         spyPath,
         [
           `export const seen: string[] = [];`,
-          `export const mark = (i: number): number => (seen.push(\`— case \${i}\`), i);`,
+          `export const mark = (i: number): number => (seen.push(\`- case \${i}\`), i);`,
           `export function jsxTemplate(templates: ArrayLike<string>, ...values: unknown[]): string {`,
           `  seen.push(\`tpl \${JSON.stringify([...(templates as string[])])} holes=\${values.length}\`);`,
           `  return "T";`,
@@ -564,7 +564,7 @@ describe("precompileTransform", () => {
       const byCase = new Map<number, string[]>();
       let current = -1;
       for (const line of seen) {
-        const marker = /^— case (\d+)$/.exec(line);
+        const marker = /^- case (\d+)$/.exec(line);
         if (marker) {
           current = Number(marker[1]);
           byCase.set(current, []);
@@ -588,7 +588,7 @@ describe("precompileTransform", () => {
     // these was measured against 2.9.2 and 2.9.6.
 
     it("inlines a boolean attribute instead of calling jsxAttr", () => {
-      // `expr ? "name" : ""`, no runtime call at all — which is how the value
+      // `expr ? "name" : ""`, no runtime call at all, which is how the value
       // of `readOnly={"x"}` is lost and `readOnly={""}` becomes no attribute.
       const out = transform("const a = <input readOnly={b} disabled={d} />;");
       expect(out).toContain('${(b) ? "readonly" : ""}');
@@ -598,7 +598,7 @@ describe("precompileTransform", () => {
 
     it("…for the list Deno inlines, and not for the ones it does not", () => {
       // `hidden`, `draggable`, `contentEditable`, `spellCheck` take a value, so
-      // Deno routes them through `jsxAttr` — and so do we.
+      // Deno routes them through `jsxAttr`, and so do we.
       for (const name of ["hidden", "draggable", "contentEditable", "spellCheck"]) {
         expect(transform(`const a = <div ${name}={v} />;`)).toContain("jsxAttr(");
       }
@@ -608,8 +608,8 @@ describe("precompileTransform", () => {
     });
 
     it("precompiles a rawtext element with a hole, escaping it", () => {
-      // The escape is wrong for CSS and JS — an HTML parser decodes nothing in
-      // there — and it is what Deno emits. The default mode declines instead.
+      // The escape is wrong for CSS and JS: an HTML parser decodes nothing in
+      // there, and it is what Deno emits. The default mode declines instead.
       const compat = transform("const a = <style>{css}</style>;");
       expect(compat).toContain("jsxTemplate`<style>${jsxEscape(css)}</style>`");
 
@@ -649,7 +649,7 @@ describe("precompileTransform", () => {
     it("is the HTML name, not the authored one", () => {
       // Remapping belongs to the transform: Deno (2.9.2 and 2.9.6) calls
       // `jsxAttr("class", …)` for `className`, static or dynamic, and a
-      // runtime's own helper need not remap — Preact's does not, it remaps
+      // runtime's own helper need not remap: Preact's does not, it remaps
       // when rendering a VNode. Passing `className` through put
       // `className="box"` in the page, styling nothing.
       const seen: string[] = [];
@@ -691,7 +691,7 @@ describe("precompileTransform", () => {
 
     it("…and only for a text node in last position", () => {
       // A trailing element keeps the space in front of it, and so does a
-      // trailing hole or fragment — Deno emits the same.
+      // trailing hole or fragment: Deno emits the same.
       expect(transform("const a = <div>x <b>y</b></div>;")).toContain("`<div>x <b>y</b></div>`");
       expect(transform("const a = <div>x {y}</div>;")).toContain("`<div>x ${");
       expect(transform("const a = <div>x <>y </></div>;")).toContain("`<div>x y </div>`");
@@ -708,7 +708,7 @@ describe("precompileTransform", () => {
 
   // ── Runtime integration tests ─────────────────────────────────────────────
   // These verify the transformed code actually executes and produces correct
-  // HTML — the same pattern documented on /integration/precompile.
+  // HTML: the same pattern documented on /integration/precompile.
   //
   // Each test creates a custom runtime adapter (simulating the React/Hono/Preact
   // adapter from the docs), writes the transformed output to a temp file, then
@@ -728,7 +728,7 @@ describe("precompileTransform", () => {
     rmSync(TMP, { recursive: true, force: true });
   });
 
-  describe("runtime integration — custom runtimeSource", () => {
+  describe("runtime integration: custom runtimeSource", () => {
     it("executes the precompiled output with a custom runtime adapter", async () => {
       const adapterName = `./adapter-${Math.random().toString(36).slice(2)}.ts`;
       const adapterPath = join(TMP, adapterName.slice(2));
@@ -799,7 +799,7 @@ describe("precompileTransform", () => {
         `export const x = <div title={t} class="c">hi</div>;`,
         `export const y = <input disabled={true} type="text" />;`,
       ].join("\n");
-      // With `jsxAttr` injected — what the plugin does for a runtime declaring the dialect —
+      // With `jsxAttr` injected: what the plugin does for a runtime declaring the dialect,
       // the space comes from the runtime, and the output matches the runtime
       // path byte for byte.
       const result = precompileTransform(code, "/src/app.tsx", { runtimeSource: RT }, jsxAttr);
@@ -842,7 +842,7 @@ describe("precompileTransform", () => {
 
     it("a tab in static text survives the plugin, like every other byte", async () => {
       // `collapseJsxWhitespace` used to turn a tab into a space, which the JSX
-      // compilers do not — so the same source rendered differently with the
+      // compilers do not, so the same source rendered differently with the
       // plugin on, visibly inside `<pre>`.
       const TAB = String.fromCharCode(9);
       const body = [
@@ -876,7 +876,7 @@ describe("precompileTransform", () => {
     it("writes the separating space into the static text, whatever the runtime", () => {
       // The precompile contract: `jsxAttr` returns `name="value"` bare, so the
       // separator is the transform's to write. Verified against the reference
-      // implementation — Deno 2.9.2 and 2.9.6 emits `["<input ", ">"]` for
+      // implementation: Deno 2.9.2 and 2.9.6 emits `["<input ", ">"]` for
       // `<input value={v} />`, and Preact 10.29.7 returns `""` for a nullish
       // value, which is why that pile renders `<input >`.
       //
@@ -906,7 +906,7 @@ describe("precompileTransform", () => {
       expect(result!.code).toContain('jsxAttr("ref", "r1")');
       writeFileSync(outputPath, result!.code);
       const mod = (await import(outputPath)) as { x: { value: string } };
-      // The template has Deno's shape — a space per hole in the static text —
+      // The template has Deno's shape: a space per hole in the static text,
       // and `@vincle/core` takes back the ones its dropped attributes left.
       expect(mod.x.value).toBe('<div title="ok">hi</div>');
     });
@@ -1008,7 +1008,7 @@ describe("precompileTransform", () => {
     it("component holes keep document order under async rendering", async () => {
       // Sibling component holes must render sequentially: a setContext in the
       // left sibling must be visible to the right one. Rendering them with
-      // Promise.all would race — the regression the ordering rule forbids.
+      // Promise.all would race: the regression the ordering rule forbids.
       // `context(id)` is deterministic across module boundaries, so the test
       // can reset the same key the module writes.
       const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
@@ -1120,7 +1120,7 @@ describe("precompileTransform", () => {
       // Escaping a hole for HTML inside rawtext is wrong (a parser decodes
       // nothing there), and escaping it correctly would take a helper the
       // precompile contract does not have. So the element is left as JSX and its
-      // own runtime applies its own rule — which is also why the output must
+      // own runtime applies its own rule, which is also why the output must
       // still compile against a runtime that is not vincle.
       const out = precompileTransform(
         `const css = ".a{color:red}";\nexport const html = <div><style>{css}</style></div>;`,
@@ -1139,8 +1139,8 @@ describe("precompileTransform", () => {
 
   describe("an alias and its HTML name on the same element", () => {
     // Both spellings type-check (`VincleOverrides` declares `class` and
-    // `className`), so this is reachable. The runtime resolves it — the native
-    // name wins — and emitting both let the parser resolve it instead, the other
+    // `className`), so this is reachable. The runtime resolves it: the native
+    // name wins, and emitting both let the parser resolve it instead, the other
     // way round: it keeps the *first* attribute.
     const emit = (code: string): string =>
       precompileTransform(code, "/src/app.tsx", { runtimeSource: RT }, jsxAttr)!.code;
@@ -1161,7 +1161,7 @@ describe("precompileTransform", () => {
     });
 
     it("agrees with the runtime's own answer", async () => {
-      // The same props through the runtime — this is the byte the template has
+      // The same props through the runtime: this is the byte the template has
       // to match, and it is the reason the rule is "native wins" and not
       // "first wins".
       expect(await renderToString(jsx("div", { className: "a", class: "b", children: "x" }))).toBe(
@@ -1183,20 +1183,19 @@ describe("precompileTransform", () => {
   // ── The precompile contract, as the only thing the output may import ──────
 
   /**
-   * `jsxTemplate`, `jsxAttr` and `jsxEscape` — the three helpers Deno's
+   * `jsxTemplate`, `jsxAttr` and `jsxEscape`: the three helpers Deno's
    * precompile defined and Preact and Hono also export. A generated call to
    * anything else is not a wrong byte, it is a missing import: the build breaks,
    * and only for the runtime that lacks it.
    *
    * This is the check that was missing when a fourth helper was added for
    * rawtext holes: every unit test passed the runtime source explicitly, and the
-   * one module that has to re-export the set — the plugin's virtual module — was
-   * not in the loop.
+   * plugin's virtual module, which must re-export the full set, was not tested.
    */
   const CONTRACT = new Set(["jsxAttr", "jsxEscape", "jsxTemplate"]);
 
   describe("a runtime that answers outside the contract", () => {
-    // The transform accepts whatever shape a runtime's helper returns — a plain
+    // The transform accepts whatever shape a runtime's helper returns: a plain
     // string (Deno, Preact) or a `RawString` (@vincle/core). Anything else has
     // to name itself: this message is the only thing standing between a broken
     // runtime and an attribute serialized as `undefined` into a start tag.

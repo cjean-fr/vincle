@@ -6,7 +6,7 @@ title: Overview
 
 **The shell is instant. Slow parts wait.**
 
-Traditional SSR holds the entire response until every `await` resolves — the
+Traditional SSR holds the entire response until every `await` resolves: the
 slowest query sets your time-to-first-byte. Integration breaks that coupling.
 
 You mark slow subtrees with `<Defer>`. The page shell ships
@@ -23,7 +23,7 @@ framework. No hydration. Just HTML in chunks.
     <div class="space-y-2 p-5">
       <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 dark:border-blue-900 dark:bg-blue-950">
         <p class="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-          Shell — immediate
+          Shell: immediate
         </p>
         <p class="mt-1.5 font-mono text-xs text-gray-600 dark:text-gray-400">
           &lt;nav&gt;, &lt;header&gt;, layout…
@@ -31,7 +31,7 @@ framework. No hydration. Just HTML in chunks.
       </div>
       <div class="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-3 dark:border-amber-800 dark:bg-amber-950/40">
         <p class="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-          Fragment — deferred
+          Fragment: deferred
         </p>
         <p class="mt-1.5 font-mono text-xs text-gray-500 dark:text-gray-500">
           &lt;Slot&gt; placeholder
@@ -39,7 +39,7 @@ framework. No hydration. Just HTML in chunks.
       </div>
       <div class="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-3 dark:border-amber-800 dark:bg-amber-950/40">
         <p class="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-          Fragment — deferred
+          Fragment: deferred
         </p>
         <p class="mt-1.5 font-mono text-xs text-gray-500 dark:text-gray-500">
           &lt;Slot&gt; placeholder
@@ -172,8 +172,8 @@ Integration ships five built-in adapters:
 
 ```ts
 import {
-  TurboAdapter, // Turbo Streams — <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
-  HtmxAdapter, // HTMX — hx-get / hx-swap-oob, morph on htmx >= 4
+  TurboAdapter, // Turbo Streams: <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
+  HtmxAdapter, // HTMX: hx-get / hx-swap-oob, morph on htmx >= 4
   NativeAdapter, // <template for> + inline polyfill, all 5 positions
   WebPlatformAdapter, // WICG declarative partial updates, replace only
   EsiAdapter, // CDN edge composition via esi:include

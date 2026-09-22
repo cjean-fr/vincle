@@ -5,7 +5,7 @@
 // import keeps the dependency acyclic.
 
 /**
- * One element of the tree: a tag, its props, its children. Pure representation —
+ * One element of the tree: a tag, its props, its children. Pure representation,
  * the tag is validated at the door (`jsx()`), so the tree walk trusts what it finds.
  */
 export class VNode {
@@ -24,7 +24,7 @@ export class VNode {
   }
 }
 
-/** Trusted, already-escaped HTML — rendered verbatim. Build one with {@link raw}. */
+/** Trusted, already-escaped HTML: rendered verbatim. Build one with {@link raw}. */
 export class RawString {
   readonly value: string;
   constructor(value: string) {
@@ -64,7 +64,7 @@ export class TemplateNode implements Promise<RawString> {
 
 /**
  * Mark a string as trusted HTML: rendered verbatim, unescaped. The only way to
- * bypass escaping, and deliberately greppable — audit `raw(` call sites to audit safety.
+ * bypass escaping, and deliberately greppable: audit `raw(` call sites to audit safety.
  */
 export const raw = (value: string): RawString => new RawString(value);
 
@@ -72,7 +72,7 @@ export const raw = (value: string): RawString => new RawString(value);
 export type Awaitable<T> = T | Promise<T>;
 
 /**
- * What a component may *return* — much wider than `JSX.Element` (only what `jsx()`
+ * What a component may *return*: much wider than `JSX.Element` (only what `jsx()`
  * produces). Keeping the two apart is what removes the casts.
  */
 export type Renderable = Awaitable<

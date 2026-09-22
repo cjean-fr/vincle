@@ -75,7 +75,7 @@ html {
   text-decoration: none;
 }
 
-/* No hover on touch devices — keep the permalink discoverable */
+/* No hover on touch devices: keep the permalink discoverable */
 @media (hover: none) {
   .docs-heading-anchor {
     opacity: 0.4;
@@ -135,7 +135,7 @@ html {
     display: none !important;
   }
 
-  /* Reset backgrounds, shadows, gradients — ink is expensive */
+  /* Reset backgrounds, shadows, gradients: ink is expensive */
   * {
     background: transparent !important;
     box-shadow: none !important;

@@ -6,10 +6,10 @@ import { ALL_MERGES, type AdapterCapabilities, type MergeType } from "../types.j
 type Child = JSX.Element | RawString | string | null;
 
 /**
- * What `transformShell` sees of the flow state — not the full `FlowContext`.
+ * What `transformShell` sees of the flow state, not the full `FlowContext`.
  * A shell transform has exactly one legitimate reason to look at flow state:
  * deciding whether fragments are pending. The full context also carries
- * `assets`, `nextId`, and `registerFragment`/the rest of `FragmentStore` —
+ * `assets`, `nextId`, and `registerFragment`/the rest of `FragmentStore`,
  * mutation hooks a *shell transform* has no business reaching, so it isn't
  * handed the context that owns them.
  */
@@ -26,7 +26,7 @@ export type Adapter = {
   /**
    * Post-process the shell before it enters the stream. Receives a
    * `ShellContext`, so an adapter can decide based on the real fragment
-   * count — e.g. inject a client runtime only when `ctx.fragments.size >
+   * count: e.g. inject a client runtime only when `ctx.fragments.size >
    * 0` (fragments exist). Always called inside the flow scope, after the
    * shell node renders.
    */
@@ -50,7 +50,7 @@ export function createAdapter<const C extends AdapterCapabilities = typeof DEFAU
     capabilities: spec.capabilities ?? (DEFAULT_CAPABILITIES as unknown as C),
   };
   // A mistyped adapter (a missing slot, a bad merge list) fails here, at
-  // definition time — not when the first fragment tries to use it.
+  // definition time, not when the first fragment tries to use it.
   assertAdapter(adapter, "createAdapter");
   return adapter;
 }

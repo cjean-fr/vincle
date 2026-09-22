@@ -104,7 +104,7 @@ describe("Script", () => {
     });
   });
 
-  it("keeps real JavaScript readable — no entity escaping", async () => {
+  it("keeps real JavaScript readable: no entity escaping", async () => {
     await inFlow(async () => {
       const html = await renderToString(
         <Script name="cmp">{async () => "if (a < b && c > d) { go() }"}</Script>,
@@ -160,7 +160,7 @@ describe("deduplication happens at render time, in document order", () => {
   });
 
   // The reason the post-render pass could be removed: the walk already runs
-  // components in markup order, so "first occurrence" needs no re-derivation —
+  // components in markup order, so "first occurrence" needs no re-derivation,
   // even when the first one is async and the second is not.
   it("document order holds when the first occurrence is async", async () => {
     await inFlow(async () => {

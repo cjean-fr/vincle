@@ -72,7 +72,7 @@ export async function resolveSidebar(
   currentUrl: string,
 ): Promise<ResolvedSidebar> {
   const tab = tabFor(config.tabs, currentUrl);
-  // A page outside any tab (`/privacy`) has no navigation — falling back to the
+  // A page outside any tab (`/privacy`) has no navigation: falling back to the
   // guide's sidebar would show it with no active tab to explain why.
   if (!tab) return { groups: [] };
   const pagesDir = path.resolve(config.pages);
@@ -96,7 +96,7 @@ export async function resolveSidebar(
   return { groups: [{ label: null, items }] };
 }
 
-/** The tab a URL belongs to — the one rule, for every caller. */
+/** The tab a URL belongs to: the one rule, for every caller. */
 export function tabFor(tabs: readonly TabConfig[], url: string): TabConfig | null {
   const top = url.split("/").find(Boolean) ?? "";
   return tabs.find((t) => t.slug === top) ?? null;

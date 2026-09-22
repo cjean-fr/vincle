@@ -3,10 +3,10 @@
 Compares `@vincle/core` with `@kitajs/html`, React, Preact and `hono/jsx` on
 three page shapes: `text`, `stack`, `realworld`.
 
-A fourth case, `precompile`, has no competitor — nobody else has that path. Its
+A fourth case, `precompile`, has no competitor: nobody else has that path. Its
 second term is **our other path**: the same document rendered by the tree walk,
 then by what the transform emits. A case with no second term has no ratio, so
-nothing divides the machine out, so no delta under 10% means anything there —
+nothing divides the machine out, so no delta under 10% means anything there,
 which is what took async rendering out of the bench: half of what it measured
 was the engine's promise machinery, not our code. Its correctness is held by the
 tests, not by a measurement.
@@ -14,18 +14,18 @@ tests, not by a measurement.
 ## The rule
 
 **One run is not a measurement.** The noise between two runs of the same binary
-on the same code is 2 to 6% depending on the case — the order of magnitude of
+on the same code is 2 to 6% depending on the case: the order of magnitude of
 most optimisations considered here. A delta read off one run, or even three,
 does not tell a code change apart from the machine's mood.
 
-The procedure below is what makes that binding — a baseline BEFORE the change,
+The procedure below is what makes that binding: a baseline BEFORE the change,
 `--against` after, and a delta under 3σ is a verdict. Read it before quoting a
 number.
 
 ## Commands
 
 ```bash
-# a glance — cannot be quoted as a delta
+# a glance: cannot be quoted as a delta
 bun run bench
 ```
 
@@ -42,14 +42,14 @@ bun run bench:stats -- --runs 8 --against results/baseline.json
 Options: `--runs <n>` (default 8, minimum 2), `--save <file>`,
 `--against <file>`, `--engines bun|node|both` (default `bun`), and
 `--ab <A> <B>` for pre-built package roots. The everyday way to ask "is this
-revision faster than that one" is `bun run compare [a] [b]` — see
+revision faster than that one" is `bun run compare [a] [b]`: see
 [A/B](#ab--is-this-build-faster-than-that-one).
 
-A delta under **3σ** is reported as `noise — not a finding`. That is a verdict:
+A delta under **3σ** is reported as `noise, not a finding`. That is a verdict:
 either raise `--runs` until it settles, or accept that the change is not
 measurable and decide on other grounds.
 
-**Absolute** baselines are not versioned — they belong to one machine at one
+**Absolute** baselines are not versioned. They belong to one machine at one
 moment. Record your own locally, right before changing the code.
 
 ## What a measurement costs
@@ -67,7 +67,7 @@ Over 8 runs this setting gives a median inter-run cv of 2.0%, where mitata's
 defaults give 3.1% in 134 s: sensitivity is not what was traded for the time.
 
 What does change is the scale. Measured on the same `dist`, **absolute** values
-drop by 3 to 14% — competitors included, whose code did not move: `run()`'s empty
+drop by 3 to 14%: competitors included, whose code did not move: `run()`'s empty
 calibrations were warming the process before the first case. And the **ratios**
 are not spared either: they shift by −5.5% to +7.0%, because that warm-up was
 not worth the same to every implementation. A ratio divides out the machine, not
@@ -92,7 +92,7 @@ Two things learned along the way, and still true:
   competitors. Polluted inline caches are what an application looks like.
 - **What actually found the regression** was a hand-run A/B: the `dist` from
   before and the one from after, on the same machine, in the same session, once
-  a line is already suspected. Reproducible — commit or stash first, the second
+  a line is already suspected. Reproducible: commit or stash first, the second
   checkout discards whatever is uncommitted under `packages/core/src`:
 
 ```bash
@@ -105,13 +105,13 @@ CI does not measure. Eight processes inside one runner job share a VM for its
 whole duration, so the spread they print is jitter inside that VM and not the
 uncertainty of the number: over four runs the ratio against kitajs on
 `realworld` moved between 0.53 and 0.64 while every run printed ±0.02, and
-kitajs's own throughput moved 42% — which no commit here can cause. What decides
+kitajs's own throughput moved 42%, which no commit here can cause. What decides
 is the comparison above, on one machine.
 
-## A/B — is this build faster than that one?
+## A/B: is this build faster than that one?
 
 `bench:stats` answers "did the current code change". `compare` answers a
-different question — "is build A faster than build B" — and the two are not the
+different question: "is build A faster than build B", and the two are not the
 same measurement. The daily path records a baseline in one session and the
 candidate in another, and the drift between the two sessions is part of the
 noise (it has cost a verdict: five rows leaning the wrong way, the machine
@@ -122,13 +122,13 @@ interleaved in one session, in adjacent processes.
 # the plain invocation: the working tree (your change) against main
 bun run compare
 
-# any two revisions — branches, tags, hashes, origin/main … ("." = working tree)
+# any two revisions: branches, tags, hashes, origin/main … ("." = working tree)
 bun run compare f96edaa 3580cb7
 ```
 
-Each side is built by a **mini CI**, never taken from the local dist: the two
-source folders the build needs — `packages/core` and `packages/typescript-config`,
-the tsconfig base its `tsconfig.json` extends — are copied _without_
+Each side is built by a **mini CI**, never taken from the local dist. The build
+copies the two source folders it needs, `packages/core` and
+`packages/typescript-config` (which supplies the base tsconfig), _without_
 `node_modules` into a throwaway workspace, then `bun install` and
 `bun run build`, the way CI builds them. What is measured is what a clean
 checkout of that revision would publish, whatever the local `node_modules` has
@@ -137,41 +137,41 @@ each build from a throwaway sandbox where `@vincle/core` resolves to that
 build and the competitors to the workspace.
 
 `bench:stats -- --ab <A> <B>` is the same crossover with two **pre-built
-package roots** (package.json + dist/) instead of revisions — for the days the
+package roots** (package.json + dist/) instead of revisions: for the days the
 builds already exist and the git dance is not what you want.
 
-What the number is: per pair — two adjacent fresh processes, the order
-alternating A-then-B / B-then-A — the ratio of vincle to a **control** is
+Each pair uses two adjacent fresh processes in alternating A-then-B /
+B-then-A order. The ratio of vincle to a **control** is
 taken _inside each process_ (the geometric mean of the competitors;
 `--control <name>` for one of them, `--control none` for none), then A is
 divided by B. The machine's mood divides out inside the process; the
-alternation keeps a position bias — warm CPU, ramping governor — from being
-confounded with the build; the verdict is a bootstrap 95% CI on the
+alternation prevents position effects, such as a warming CPU or ramping
+governor, from being confounded with the build; the verdict is a bootstrap 95% CI on the
 **median of the paired ratios**, which excludes 1 or it does not.
 
 The control is what the frozen-build A/B above lacked, and it shows: on
 `realworld` the per-pair noise fell from about 3% to 1.3%. Before the pairs,
 `--calibrate` A/A pairs (default 3) measure that noise floor (σ_pair), and the
-`resolvable` column is the smallest delta 3σ can separate at `--runs` pairs —
+`resolvable` column is the smallest delta 3σ can separate at `--runs` pairs,
 it falls as 1/√n, so a delta under it is either measured with more pairs or
 accepted as not measurable. The `precompile` case has no competitor, so no
 control: its rows are marked `(raw)` and are a glance, not a verdict.
 
 Cost: two mini CIs (a `bun install` and a build each, about a minute the first
 time, less once the bun cache is warm), then two warm-up runs plus
-(calibrate + runs) × 2 processes — about three minutes at the defaults.
+(calibrate + runs) × 2 processes: about three minutes at the defaults.
 `--save` keeps the paired ratios, so the verdict can be re-read without
 re-measuring. A/B runs under the bun engine only.
 
 What it does **not** divide out: if build B changes the engine's state, the
-control — measured in the same process, _after_ vincle — partly follows it,
+control, measured in the same process _after_ vincle, partly follows it,
 and the verdict is pulled toward 1. Second order at the sizes measured here;
 for a change that restructures the hot path, read it with that caution.
 
 ## Locating a cost
 
 `bench:stats` says _whether_ something changed, not _where_ the time goes. For
-that, a profile — attribution there is reliable, because it is internal to one
+that, a profile: attribution there is reliable, because it is internal to one
 process.
 
 `src/profile.js` renders **one** implementation on **one** case, in a tight
@@ -187,7 +187,7 @@ NODE_ENV=production bun --conditions=dist --cpu-prof src/profile.js kitajs realw
 
 Profile the **reference too**, on the same tree. "Where vincle spends its time"
 reads poorly on its own; "what vincle does that kitajs does not" reads straight
-away — and part of the gap turned out to be work kitajs does not do at all (URL
+away, and part of the gap turned out to be work kitajs does not do at all (URL
 scheme filtering, React→HTML attribute name resolution).
 
 A profile does not say what is **removable**: the time of unavoidable work is
@@ -209,7 +209,7 @@ node --conditions=dist --print-opt-code --print-opt-code-filter=serializeElement
 ```
 
 ```bash
-# why a function fell back out of optimised code — reasons in plain words
+# why a function fell back out of optimised code: reasons in plain words
 node --conditions=dist --trace-deopt src/profile.js vincle realworld 400
 ```
 
@@ -230,7 +230,7 @@ Each line names a function and the tier it reached: LLInt → Baseline → DFG �
 FTL. Anything hot that stops below FTL is worth more than a rearrangement.
 
 Size comes out of a second option. Its disassembly is the part that is missing,
-not its bookkeeping — every compiled function is announced with the address range
+not its bookkeeping: every compiled function is announced with the address range
 its code occupies, and the size is the difference:
 
 ```bash
@@ -257,7 +257,7 @@ Measure in both directions before believing a delta. Record the baseline, measur
 the candidate, then record a baseline _on the candidate_ and measure the original
 against it. A real effect changes sign; drift does not. Five rows all leaning the
 same way survived one direction and vanished in the other, on a change that
-removes work — the machine had moved between the two recordings.
+removes work: the machine had moved between the two recordings.
 
 Two things this has already settled:
 
@@ -265,7 +265,7 @@ Two things this has already settled:
   deopt. What is left per element is the work, not a missed optimisation.
 - Under V8 a template literal emits a `ToString` call per substitution that `+`
   does not; under JSC the two compile the same. Writing `serializeElement`'s two
-  literals as `+` measures +4% on V8 and −4% on JSC — a choice of engine, not a
+  literals as `+` measures +4% on V8 and −4% on JSC: a choice of engine, not a
   gain.
 
 ## Both engines

@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   mutation:
-    name: Mutation testing — ${{ inputs.package }}
+    name: Mutation testing (${{ inputs.package }})
     runs-on: ubuntu-latest
     # `core` alone takes ~6 min on this machine; the default of 360 would let
     # a stuck run tie up a runner for an hour.

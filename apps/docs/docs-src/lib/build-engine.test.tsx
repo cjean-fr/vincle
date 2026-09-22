@@ -89,7 +89,7 @@ describe("SSG build", () => {
     const css = await readFile(path.join(PROJECT_DIR, "docs-src/styles/main.css"), "utf-8");
     const match = /content: " \((https:\/\/[^"]*?)" attr\(href\)/.exec(css);
     expect(match, "no absolute-URL rule in the print stylesheet").not.toBeNull();
-    expect(config.site, "config.site is unset — nothing to agree with").toBeTruthy();
+    expect(config.site, "config.site is unset: nothing to agree with").toBeTruthy();
     expect(match![1]).toBe(config.site!);
   });
 
@@ -352,7 +352,7 @@ describe("page footer", () => {
     expect(date.getTime()).toBeLessThanOrEqual(Date.now());
   });
 
-  it("error pages have no footer — they have no source file", async () => {
+  it("error pages have no footer: they have no source file", async () => {
     for (const file of ["404.html", "500.html"]) {
       const html = await readFile(path.join(DIST_DIR, file), "utf-8");
       expect(html, file).not.toContain("/edit/main/");

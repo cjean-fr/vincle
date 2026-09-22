@@ -3,11 +3,11 @@
  *
  * Same reasoning as `@vincle/core`'s: these are programmer errors nobody catches
  * to recover from, so they stay plain `Error`s rather than a class hierarchy.
- * What `code` adds is the discrimination the type cannot carry — `onError`
+ * What `code` adds is the discrimination the type cannot carry: `onError`
  * receives whatever a fragment threw, and a refusal from flow has to be tellable
  * from a fault in the component without matching a prefix in a message.
  *
- * These are API — the set may grow, an existing code may not be renamed.
+ * These are API: the set may grow, an existing code may not be renamed.
  *
  * @module
  */
@@ -36,11 +36,11 @@ export type ErrorCode =
  * Build an error already stamped, so a throw stays one expression.
  *
  * `Error.captureStackTrace` drops this frame, which keeps the throw site at the
- * top of the trace — the reason a factory can replace stamping the error at the
+ * top of the trace: the reason a factory can replace stamping the error at the
  * call site. It is not standard (V8's, implemented by JSC too); a runtime
  * without it costs one extra frame, not a crash.
  *
- * The `code` property is enumerable, like Node's own — a logger that spreads an
+ * The `code` property is enumerable, like Node's own: a logger that spreads an
  * error carries the code with it, which is the point.
  */
 export function vincleError(message: string, code: ErrorCode): Error {

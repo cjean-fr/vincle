@@ -10,7 +10,7 @@ import { ERR_FLOW_FORBIDDEN_SCHEME, vincleError } from "../errors.js";
 //
 // The types below are the *compile-time* mirror of `isAllowedUrl`; the runtime
 // authority is `schemeOf` in `@vincle/core/html`. TypeScript cannot call it, so
-// the rule is restated in the type system — and only there.
+// the rule is restated in the type system, and only there.
 type SchemeOf<S extends string> = S extends `${infer Head}:${string}`
   ? Head extends `${string}${"/" | "?" | "#"}${string}`
     ? null
@@ -25,7 +25,7 @@ type FetchUrl<S extends string> =
     : Lowercase<SchemeOf<S> & string> extends "http" | "https"
       ? S
       : {
-          __error: "Include needs an HTML URL — only http(s): or a relative path";
+          __error: "Include needs an HTML URL: only http(s): or a relative path";
         };
 
 export interface IncludeProps<S extends string = string> {
@@ -37,8 +37,8 @@ export interface IncludeProps<S extends string = string> {
  * Delegates to `schemeOf` (`@vincle/core/html`) rather than a private
  * `indexOf(":")` re-implementation, which diverged from the WHATWG parser on
  * two fronts: it never normalised tabs/newlines/C0 controls, and it looked for
- * `?` after the colon instead of before it, rejecting `?a:b` — a scheme-less
- * relative reference — as forbidden. Both were fail-closed on a whitelist
+ * `?` after the colon instead of before it, rejecting `?a:b`: a scheme-less
+ * relative reference: as forbidden. Both were fail-closed on a whitelist
  * policy, so nothing broke, but a second copy of the rule is still to avoid.
  */
 function isAllowedUrl(url: string): boolean {
@@ -56,7 +56,7 @@ export function Include<const S extends string>(props: IncludeProps<S>): JSX.Ele
     throw vincleError(
       `${PREFIX} <Include src="${props.src}">: forbidden scheme${
         scheme !== undefined ? ` ${JSON.stringify(scheme)}` : ""
-      } — only http(s): or relative paths are allowed. ` +
+      }: only http(s): or relative paths are allowed. ` +
         'Use an absolute http(s) URL or a path relative to the page, e.g. src="/fragments/hero.html".',
       ERR_FLOW_FORBIDDEN_SCHEME,
     );

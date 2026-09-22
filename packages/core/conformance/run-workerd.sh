@@ -3,7 +3,7 @@
 # Conformance under workerd.
 #
 # A Worker does not run from the command line: it is served. So this script does
-# what no `package.json` line does legibly — start the runtime, wait for it to
+# what no `package.json` line does legibly: start the runtime, wait for it to
 # answer, query it, stop it whatever happens.
 #
 # `--fail` is what carries the verdict: `worker.ts` answers 500 as soon as a case
@@ -31,7 +31,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Polling rather than a fixed `sleep`: the first start downloads wrangler and
-# later ones do not — the gap runs from a few seconds to a minute.
+# later ones do not: the gap runs from a few seconds to a minute.
 for _ in $(seq 1 90); do
   if curl -fsS -m 5 -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null; then break; fi
   if ! kill -0 "$WRANGLER_PID" 2>/dev/null; then

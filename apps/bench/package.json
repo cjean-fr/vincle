@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "bench": "NODE_ENV=production bun --conditions=dist run src/bench.js",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && bun run gen:precompile --check",
     "compare": "bun run src/compare.ts",
     "format": "oxfmt",
     "gen:precompile": "NODE_ENV=production bun src/gen-precompile.mjs",
@@ -23,6 +23,7 @@
     "@types/react-dom": "^19.3.0",
     "hono": "^4.13.8",
     "mitata": "^1.0.34",
+    "oxfmt": "catalog:",
     "preact": "^10.29.8",
     "preact-render-to-string": "^6.7.0",
     "react": "^19.3.0",

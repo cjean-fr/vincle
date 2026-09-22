@@ -15,14 +15,14 @@ interface Store {
 }
 
 /**
- * Synchronous fallback for runtimes with no `AsyncLocalStorage` — correct for
+ * Synchronous fallback for runtimes with no `AsyncLocalStorage` - correct for
  * one render at a time, but unable to tell a second concurrent render from the
  * one it serves, since both enter `run()` while the first is still in flight.
  * It refuses the second case rather than returning the wrong value: a render
  * leaking another request's context is a cross-request data leak no test would
  * catch, while a named error is a one-line runtime config fix.
  *
- * @internal Exported for `provider.test.tsx` — `initialize` never reaches this
+ * @internal Exported for `provider.test.tsx` - `initialize` never reaches this
  * on a runtime that actually has `AsyncLocalStorage`.
  */
 export class SyncTreeStore implements Store {
@@ -56,7 +56,7 @@ export class SyncTreeStore implements Store {
     }
 
     // A synchronous callback closes its frame right away, so nesting works.
-    // An async one keeps the frame installed until it settles — otherwise
+    // An async one keeps the frame installed until it settles - otherwise
     // `useContext` after the first `await` would see nothing.
     if (result instanceof Promise) {
       this.#pending = true;
@@ -80,13 +80,15 @@ export interface ContextProvider<T> {
 }
 
 export interface Context<T> extends ContextProvider<T> {
-  /** The provider — the context itself, as in React 19 (`ctx.Provider === ctx`). */
+  /** The provider - the context itself, as in React 19 (`ctx.Provider === ctx`). */
   readonly Provider: ContextProvider<T>;
   readonly Consumer: (props: { children: (value: T) => any }) => any;
+  /** @internal A React context has the same surface but cannot be rendered by vincle. */
+  readonly [defaultValueKey]: T;
 }
 
 export const providerMarker = Symbol("vincle.provider");
-/** The default, kept out of the public surface — React 19's context object does not expose it. */
+/** The default, kept out of the public surface - React 19's context object does not expose it. */
 const defaultValueKey = Symbol("vincle.context.default");
 let store: Store | undefined;
 let initializing: Promise<Store> | undefined;
@@ -101,13 +103,13 @@ function initialize(): Promise<Store> {
 }
 
 /**
- * Never silent — the fallback changes a guarantee (isolation between concurrent
+ * Never silent - the fallback changes a guarantee (isolation between concurrent
  * renders), which should surface at startup, not in production. Once per
  * process: a runtime property, not a per-render one.
  */
 function warnSyncTreeFallback(): void {
   console.warn(
-    "[vincle/core] AsyncLocalStorage is not available on this runtime — " +
+    "[vincle/core] AsyncLocalStorage is not available on this runtime - " +
       "falling back to a synchronous tree context. One render at a time works, " +
       "even async; a Provider entered while another render is still in flight " +
       "will throw. See https://vincle.cjean.fr/api/core/scope",
@@ -116,18 +118,17 @@ function warnSyncTreeFallback(): void {
 
 /**
  * A tree context, tracking React 19's modern surface: the context object is the
- * provider — `<MyContext value>` and `<MyContext.Provider value>` are the same
- * element because `MyContext.Provider === MyContext` — and `MyContext.Consumer`
+ * provider - `<MyContext value>` and `<MyContext.Provider value>` are the same
+ * element because `MyContext.Provider === MyContext` - and `MyContext.Consumer`
  * is the render-prop reader. The declared default is not part of the surface
  * (React 19 removed the mutable `defaultValue` property); it is captured at
  * creation and read by `useContext` when no Provider matches.
  *
- * The `any` boundaries mirror `VNode.tag`: strict `Renderable` there would make
- * a `React.Context<T>` unassignable to this type, which is the one direction of
- * interoperability this package exists to allow.
+ * The private default-value key also brands the type: React contexts share the
+ * visible surface, but vincle's renderer cannot read or provide their values.
  */
 export function createContext<T>(defaultValue: T): Context<T> {
-  // The value is read from the element's attrs by the tree walk, never here —
+  // The value is read from the element's attrs by the tree walk, never here,
   // this body only keeps the context callable.
   function Provider(props: { value: T; children?: Renderable }): Renderable {
     return props.children;
@@ -153,7 +154,7 @@ export function useContext<T>(context: Context<T>): T {
   for (let frame = store?.getStore(); frame; frame = frame.parent) {
     if (frame.context === context) return frame.value as T;
   }
-  return (context as unknown as { [defaultValueKey]?: T })[defaultValueKey] as T;
+  return context[defaultValueKey];
 }
 
 export function renderProvider<T>(

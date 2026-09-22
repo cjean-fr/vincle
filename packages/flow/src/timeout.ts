@@ -25,7 +25,7 @@ export function createTimeoutSignal(
     () =>
       timer.abort(
         new Error(
-          `${PREFIX} Fragment "${id}" timed out after ${ms}ms — its content did not finish in time. ` +
+          `${PREFIX} Fragment "${id}" timed out after ${ms}ms: its content did not finish in time. ` +
             "Increase the timeout (the fragment's timeout prop or defaultTimeout), or make the " +
             "content finish faster, e.g. by forwarding the abort signal to fetch().",
         ),

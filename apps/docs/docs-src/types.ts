@@ -11,7 +11,7 @@ export interface PageMeta {
 
 // No `sidebar` here: label, order, grouping and hiding are decided by each
 // directory's `_meta.json` (see `lib/sidebar.ts`). A page-level copy was
-// declared and never read, and the two had already drifted — two pages claiming
+// declared and never read, and the two had already drifted: two pages claiming
 // `order: 2`, and a third order the sidebar did not use.
 
 export interface ResolvedSidebar {
@@ -52,7 +52,7 @@ export interface ResolvedSidebarCategory {
 
 /**
  * A top-level navigation tab, mapping a content root folder (e.g. `guide/`) to
- * a labelled tab in the header. `href` is optional — when omitted, it resolves
+ * a labelled tab in the header. `href` is optional, when omitted, it resolves
  * to the first page of the tab in reading order.
  */
 export interface TabConfig {
@@ -76,7 +76,7 @@ export interface MetaEntry {
   hidden?: boolean;
   /** Collapse this category's children by default. */
   collapsed?: boolean;
-  /** Render as a separator (heading only, no children) — reserved. */
+  /** Render as a separator (heading only, no children): reserved. */
   separated?: boolean;
 }
 
@@ -109,7 +109,7 @@ export interface DocsConfig {
   image?: string;
   sitemap?: boolean;
   handlers?: Record<string, HandlerEntry>;
-  /** Override the default page shell (Layout). Receives children already wrapped by the handler's prose wrapper. May be async — `renderDocument` awaits it. */
+  /** Override the default page shell (Layout). Receives children already wrapped by the handler's prose wrapper. May be async: `renderDocument` awaits it. */
   layout?: (props: {
     children: import("@vincle/core").JSX.Element;
   }) => import("@vincle/core").Awaitable<import("@vincle/core").JSX.Element>;

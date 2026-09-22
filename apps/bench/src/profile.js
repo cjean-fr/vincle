@@ -9,8 +9,8 @@
  * Args: <impl: vincle|kitajs> <case: realworld|text> [iterations]
  */
 
-// `render` already returns final HTML: wrapping it again would escape it — +28%
-// and a slowdown that is not there.
+// `render` already returns final HTML. Wrapping it again would escape the
+// output and introduce an artificial 28% slowdown.
 import { NAME, generatePurchases } from "./realworld/data.js";
 import { render as realworldKita } from "./realworld/kitajs.js";
 import { render as realworldVincle } from "./realworld/vincle.js";

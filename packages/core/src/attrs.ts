@@ -3,7 +3,7 @@ import { escapeAttr, URL_ATTRIBUTES, isSafeScheme } from "./escape.js";
 import { raw, RawString } from "./types.js";
 
 // ── camelCase → kebab-case ──────────────────────────────────────────
-// Shared by SVG attribute names and style property names — the same boundary
+// Shared by SVG attribute names and style property names: the same boundary
 // rule, applied to two vocabularies. Declared here because the SVG table below
 // is built from it at module load.
 
@@ -20,7 +20,7 @@ const camelToKebab = (name: string): string =>
 /**
  * SVG attributes that are hyphenated in the spec, listed under the camelCase
  * name `@types/react` declares. The values are derived, not typed out, so the table
- * cannot contain a mistyped target — `attrs.test.ts` checks a sample against the
+ * cannot contain a mistyped target: `attrs.test.ts` checks a sample against the
  * spec by hand, which is the part a derivation cannot verify about itself.
  */
 const SVG_HYPHENATED: ReadonlyMap<string, string> = new Map(
@@ -184,7 +184,7 @@ export function resolveAttrName(key: string): string {
     case "xmlSpace":
       return "xml:space";
     // The whole `xlink:` family: lowercasing any of these gives `xlinkactuate`,
-    // `xlinktitle`, … — attributes with no meaning at all.
+    // `xlinktitle`, …: attributes with no meaning at all.
     case "xlinkActuate":
       return "xlink:actuate";
     case "xlinkArcrole":
@@ -245,7 +245,7 @@ const BOOLEAN_ATTRIBUTES = new Set([
 const RE_HAS_UPPER = /[A-Z]/;
 
 // Reject attribute names that can break out of a tag: whitespace, `"`, `'`,
-// `<`, `>`, `/`, `=`, control chars — the HTML spec's forbidden set. A backtick
+// `<`, `>`, `/`, `=`, control chars: the HTML spec's forbidden set. A backtick
 // is *not* in it: it is legal in a name, and only ever acted as a quote in
 // attribute *values*, in browsers no longer shipped. `isValidTag` is stricter
 // (it also rejects `` ` `` and `\`) because a tag name is a wider surface.
@@ -253,13 +253,13 @@ const RE_INVALID_ATTR_NAME = /[\s"'<>/=\p{C}]/u;
 
 export function isValidAttrName(name: string): boolean {
   // The empty name emits ` ="v"`, which a parser reads as an attribute called
-  // `="v"` — no injection, but nothing anyone wrote either.
+  // `="v"`: no injection, but nothing anyone wrote either.
   return name.length > 0 && !RE_INVALID_ATTR_NAME.test(name);
 }
 
 // Resolving a name means four lookups depending only on the key (alias gate,
 // alias table, validity regex, URL-attribute set), recomputed per element from
-// a small closed vocabulary. `attrMeta` collapses them into one Map hit — worth
+// a small closed vocabulary. `attrMeta` collapses them into one Map hit: worth
 // it mainly because `\p{C}` under `/u` forces Unicode table lookups and alone
 // costs about a third of `buildAttrs`.
 export interface AttrMeta {
@@ -272,19 +272,19 @@ export interface AttrMeta {
 const ATTR_META = new Map<string, AttrMeta>();
 
 // Keys can come from a caller-controlled `{...spread}`, so the cache must not
-// grow without bound. Past the cap, resolution still happens — just uncached.
+// grow without bound. Past the cap, resolution still happens: just uncached.
 const ATTR_META_MAX = 1024;
 
 /**
  * @internal Shared with vincle's own tooling (`@vincle/precompile`,
- * `@vincle/eslint-plugin`) via `@vincle/core/html` — not app-level API.
+ * `@vincle/eslint-plugin`) via `@vincle/core/html`, not app-level API.
  *
  * Everything about an attribute *name*, memoized.
  *
  * Shared with `jsxAttr`: `resolveAttrName`, `isValidAttrName` and
- * `URL_ATTRIBUTES.has` — the `\p{C}` regex among them — are asked once per
- * name here instead of per attribute at each call site. One question, one
- * place, one cache.
+ * `URL_ATTRIBUTES.has` are evaluated once per name here. That includes the
+ * `\p{C}` regex, which would otherwise run for every attribute at each
+ * call site. One question, one place, one cache.
  */
 export function attrMeta(key: string): AttrMeta {
   let meta = ATTR_META.get(key);
@@ -306,7 +306,7 @@ export function attrMeta(key: string): AttrMeta {
  * attribute means and how to fix it.
  */
 function functionAttrMessage(key: string): string {
-  return `[vincle/core] Attribute "${key}" got a function — not serializable to HTML. Pass a string, or drop it.`;
+  return `[vincle/core] Attribute "${key}" got a function, not serializable to HTML. Pass a string, or drop it.`;
 }
 
 /**
@@ -314,9 +314,9 @@ function functionAttrMessage(key: string): string {
  *
  * `raw()` means "trusted markup", which is not the same promise as "trusted
  * attribute value": the one character a double-quoted value cannot hold is the
- * quote that ends it — `title={raw('" onmouseover="alert(1)')}` would close the
+ * quote that ends it: `title={raw('" onmouseover="alert(1)')}` would close the
  * attribute and reopen the tag. Escaping only that one keeps `raw()` verbatim
- * where it counts — an attribute value is entity-decoded before it reaches CSS,
+ * where it counts: an attribute value is entity-decoded before it reaches CSS,
  * JS or the DOM, so `style={raw('font-family:"Foo"')}` still means what it says.
  */
 function rawAttrValue(value: string): string {
@@ -326,21 +326,21 @@ function rawAttrValue(value: string): string {
 /**
  * The attribute *value* taxonomy: one value, already past its caller's gates, to
  * the text that carries it into a start tag. `prefix` is the separator the
- * caller needs — a space inside a tag, nothing for a standalone fragment — and
+ * caller needs: a space inside a tag, nothing for a standalone fragment, and
  * is emitted only when the attribute is, so a value that serializes to nothing
  * leaves no stray space behind.
  *
  * Both serialization paths call this, rather than each stating the taxonomy. The
  * order of these branches is load-bearing (a `RawString` is an object and must
  * be recognised before the style bag), and two copies of an order can drift the
- * same way on the same day — which an equivalence test, comparing them only to
+ * same way on the same day, which an equivalence test, comparing them only to
  * each other, would not see.
  *
  * It returns text, not a `RawString`: the 13–16% that once paid for the copy was
  * an object allocated per attribute, not the call. A string fragment is what the
  * caller was building anyway.
  *
- * @throws on a function value — a function cannot be serialized to HTML.
+ * @throws on a function value: a function cannot be serialized to HTML.
  */
 function attrFragment(key: string, meta: AttrMeta, value: unknown, prefix: string): string {
   const attrName = meta.name;
@@ -374,7 +374,7 @@ function attrFragment(key: string, meta: AttrMeta, value: unknown, prefix: strin
     return `${prefix}${attrName}="${rawAttrValue(value.value)}"`;
   }
 
-  // Only a plain object is a style bag — a class instance (`style={new Date()}`)
+  // Only a plain object is a style bag: a class instance (`style={new Date()}`)
   // isn't, and falls through to `String(value)` like any other attribute.
   if (attrName === "style" && isPlainObject(value)) {
     const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
@@ -417,8 +417,8 @@ export function buildAttrs(attrs: Record<string, unknown>): string | Promise<str
 
   for (const key in attrs) {
     // Own properties only. `for…in` walks the prototype, so an enumerable
-    // property on `Object.prototype` — what a prototype-pollution bug in the
-    // application writes — would be an attribute on every element rendered.
+    // property on `Object.prototype`: what a prototype-pollution bug in the
+    // application writes: would be an attribute on every element rendered.
     if (!Object.hasOwn(attrs, key)) continue;
     if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
       continue;
@@ -434,8 +434,8 @@ export function buildAttrs(attrs: Record<string, unknown>): string | Promise<str
     if (!meta.valid) continue;
 
     // The one shape the fragment taxonomy does not answer, because the answer is
-    // not a fragment: restart fully async rather than resume the loop — two
-    // passes on a rare case beats one more branch on every element, and it is
+    // not a fragment. Restart fully async rather than resume the loop. Two
+    // passes on a rare case beat one more branch on every element, and that is
     // what keeps the fallback from stringifying a pending promise to
     // `[object Promise]`.
     if (value instanceof Promise) return buildAttrsAsync(attrs);
@@ -449,9 +449,9 @@ export function buildAttrs(attrs: Record<string, unknown>): string | Promise<str
 /**
  * Await every promised attribute value, then serialize normally.
  *
- * Resolving into a copy and re-entering `buildAttrs` — rather than resuming the
- * loop — is what guarantees the bytes are the same whether or not an attribute
- * happened to be a promise: there is one serializer, and it is the one above.
+ * Resolve into a copy and re-enter `buildAttrs` instead of resuming the loop.
+ * This produces the same bytes whether or not an attribute was a promise,
+ * because both paths use the serializer above.
  * Sequential awaits, like the child walk in `render.ts`: attribute order is
  * document order.
  */
@@ -462,7 +462,7 @@ async function buildAttrsAsync(attrs: Record<string, unknown>): Promise<string> 
     const value = attrs[key];
     resolved[key] = value instanceof Promise ? await value : value;
   }
-  // `resolved` holds no promise, so this cannot ask to be awaited again — and
+  // `resolved` holds no promise, so this cannot ask to be awaited again, and
   // `await` says so without a cast having to be believed.
   return await buildAttrs(resolved);
 }
@@ -496,11 +496,11 @@ function isPlainObject(value: unknown): boolean {
 // No script, but arbitrary CSS (clickjacking) once keys come from data.
 const RE_INVALID_STYLE_PROP = /[;:{}<>"'\s]|\p{C}/u;
 
-// A *value* carrying `;` injects them just the same — `{ color: data }` with
+// A *value* carrying `;` injects them just the same: `{ color: data }` with
 // `data = "red;position:fixed"`. Values are repaired rather than dropped:
 // `url(data:image/png;base64,…)` is a legitimate value, and CSS reads `\;`
 // back as `;`, so escaping changes nothing a browser parses. The backslash is
-// escaped by the same pass — otherwise a smuggled `red\;` would survive as a
+// escaped by the same pass: otherwise a smuggled `red\;` would survive as a
 // live separator. Control characters have no business in a value at all and
 // are dropped, like invalid names.
 const RE_UNSAFE_STYLE_VALUE = /[\\;\p{Cc}]/u;
@@ -508,7 +508,7 @@ const RE_STYLE_VALUE_CONTROLS = /\p{Cc}/u;
 const RE_STYLE_VALUE_ESCAPE = /[\\;]/g;
 
 /**
- * A style property name, kebab-cased — with the one vendor prefix `camelToKebab`
+ * A style property name, kebab-cased: with the one vendor prefix `camelToKebab`
  * cannot reach: `ms` is the only one spelled lowercase, so `msFlexAlign` kebabs to
  * `ms-flex-align` and needs the leading hyphen back. Same rule as React's
  * `hyphenateStyleName`; `WebkitBoxOrient` and `--custom-prop` are already right.

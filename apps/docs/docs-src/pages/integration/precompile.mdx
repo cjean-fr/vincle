@@ -5,12 +5,12 @@ title: Precompile transform
 # Precompile transform
 
 We've ported Deno's precompile, making precompilation available on any JS
-runtime — Node, Bun, Deno, Edge, browser — through a Vite plugin, a Bun plugin,
+runtime: Node, Bun, Deno, Edge, browser: through a Vite plugin, a Bun plugin,
 or the transform on its own.
 
 `@vincle/precompile` transforms JSX at build time. Instead of
 emitting `jsx()` calls that create intermediate objects, it rewrites JSX into
-tagged template literals — less allocations, less GC pressure, faster
+tagged template literals: less allocations, less GC pressure, faster
 rendering.
 
 ```ts
@@ -22,7 +22,7 @@ jsxTemplate`<div ${jsxAttr("class", cls)}><span>${jsxEscape(text)}</span></div>`
 ```
 
 The plugin auto-detects your `jsxImportSource` and wires the helpers through a
-virtual module (`virtual:vincle-precompile-runtime`) — no physical adapter
+virtual module (`virtual:vincle-precompile-runtime`): no physical adapter
 file is needed. The three helpers (`jsxTemplate`, `jsxAttr`, `jsxEscape`) are
 provided by a [**Deno-precompile-compatible**](https://docs.deno.com/runtime/reference/jsx/)
 runtime – Preact, Hono, or @vincle/core.
@@ -32,7 +32,7 @@ generated call to a helper your runtime does not export is not a wrong byte, it
 is a build that fails to resolve an import.
 
 `jsxAttr` returns `name="value"` bare, so the separating space in front of a
-hole is the transform's — that is the contract, and it is what makes a template
+hole is the transform's. That is the contract, and it is what makes a template
 compiled here run on any runtime holding it, and Deno's own templates run on
 `@vincle/core`. The space an attribute leaves behind when the runtime drops it
 (`<input value={null} />`) is taken back at assembly time by `jsxTemplate`,
@@ -58,8 +58,8 @@ See [`renderToString`](/api/core/renderToString) for the rendering contract.
 
 ## What it buys
 
-The same 100-row list rendered both ways in one process — `jsx()` per element
-against what the transform emits — with the two documents asserted byte-identical
+The same 100-row list rendered both ways in one process: `jsx()` per element
+against what the transform emits: with the two documents asserted byte-identical
 before anything is timed, over 8 runs in fresh processes (Bun 1.4.2,
 16 September 2026):
 
@@ -69,17 +69,17 @@ before anything is timed, over 8 runs in fresh processes (Bun 1.4.2,
 | precompile (`jsxTemplate`) | 83,628 ± 1,970 |
 
 **About 1.50×**, on a row that mixes what a template really carries: literal
-markup (`<li class="item">`) and holes for what the transform cannot know — an
+markup (`<li class="item">`) and holes for what the transform cannot know: an
 attribute and the text.
 
 What it saves is exactly what it can inline. On the same list with nothing
-literal, every attribute a hole, the two paths were level — 3% in a separate
+literal, every attribute a hole, the two paths were level: 3% in a separate
 measurement. With the class literal, the current measurement is about 50%
 faster. A page with mostly literal markup should benefit more than a table
 where every value comes from data.
 
 It pays **per render repeated**. A statically generated page is rendered once,
-and there is nothing to amortise — precompile is for a server answering
+and there is nothing to amortise: precompile is for a server answering
 requests, not for a build that writes files.
 
 Reproduce:
@@ -91,22 +91,23 @@ bun run --filter=@vincle/bench bench:stats -- --runs 8
 ## What is guaranteed
 
 There is nothing to configure: **the runtime decides which output the transform
-emits.** For `@vincle/core` it corrects Deno's transform — bug fixes,
+emits.** For `@vincle/core` it corrects Deno's transform: bug fixes,
 sanitization, one less allocation; for every other runtime it reproduces Deno
 byte for byte, defects included.
 
 That is the whole rule, and each half is checked.
 
-**`@vincle/core`** — or any runtime declaring the `"vincle"` precompile dialect
-— gets the corrected output, and with it the promise that precompiled or not,
-the page is the same bytes. Tested, not asserted: every shape that has ever
-diverged (boolean attributes with each kind of value, a hole inside `<script>`,
-tabs, trailing text, the attribute names with two spellings, the elements the
-transform declines) is rendered twice, plugin off and plugin on, and the two
-must match.
+**`@vincle/core`**, or any runtime declaring the `"vincle"` precompile dialect
+
+- gets the corrected output, and with it the promise that precompiled or not,
+  the page is the same bytes. Tested, not asserted: every shape that has ever
+  diverged (boolean attributes with each kind of value, a hole inside `<script>`,
+  tabs, trailing text, the attribute names with two spellings, the elements the
+  transform declines) is rendered twice, plugin off and plugin on, and the two
+  must match.
 
 **Any other runtime** gets Deno's output, checked against a trace captured from
-Deno itself — not the rendered page, but every helper call in order and the
+Deno itself, not the rendered page, but every helper call in order and the
 names chosen, because a name resolved differently is a divergence even when the
 page looks the same. Deno's defects are part of that output:
 
@@ -126,22 +127,22 @@ Correcting those for a foreign runtime would mean guessing how it serializes,
 and the guess would be wrong: Preact's dynamic path escapes rawtext too, so
 "fixing" the escape would make its precompiled page differ from its own dynamic
 one. A runtime that does promise byte-identity can declare the dialect and get
-the corrections — the line is drawn at the promise, not at the package name.
+the corrections: the line is drawn at the promise, not at the package name.
 
 An adapter keeps its runtime's dialect by re-exporting it whole:
 
 ```ts
-// vincle-runtime.ts — keeps the dialect
+// vincle-runtime.ts: keeps the dialect
 export * from "@vincle/core/jsx-precompile-runtime";
 ```
 
 Naming only the three helpers drops the dialect, and the build then treats the
-target as a foreign runtime — the conservative direction.
+target as a foreign runtime: the conservative direction.
 
 ## What is left to the runtime
 
 Two element shapes are handed back as ordinary JSX rather than serialized into the
-template — the same treatment a component gets, so your runtime renders them
+template: the same treatment a component gets, so your runtime renders them
 with its own rules:
 
 - **`<script>` / `<style>` with a dynamic hole.** HTML escaping is wrong inside
@@ -169,10 +170,10 @@ relies on. If your project targets React, the plugin throws a build error.
 
 ## Two layers of independence
 
-| Layer                      | What it means                                                                                                        |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **JS runtime agnostic**    | The helpers are pure functions — no platform imports. The generated output runs on Node, Bun, Deno, Edge, browser.   |
-| **JSX framework agnostic** | The plugin auto-detects your runtime and wires the helpers. Works with Preact, Hono, Vincle — no adapter, no config. |
+| Layer                      | What it means                                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **JS runtime agnostic**    | The helpers are pure functions: no platform imports. The generated output runs on Node, Bun, Deno, Edge, browser.   |
+| **JSX framework agnostic** | The plugin auto-detects your runtime and wires the helpers. Works with Preact, Hono, Vincle: no adapter, no config. |
 
 ## Usage
 
@@ -193,7 +194,7 @@ No adapter file, no extra config. The plugin detects the runtime from your
 ### Without Vite
 
 A server that imports its own modules never reaches a Vite plugin, whatever the
-config says — and that is most SSR setups. On Bun, load the transform from a
+config says, and that is most SSR setups. On Bun, load the transform from a
 preload script instead:
 
 ```ts
@@ -212,7 +213,7 @@ Two differences, both from what Bun's plugin API offers: there is no virtual
 module, so the helpers are imported from `runtimeSource`
 (`@vincle/core/jsx-runtime` unless you set another), and there is no
 end-of-build hook, so nothing warns when the plugin matches no file. The direct
-check works everywhere — a transformed module imports `jsxTemplate`.
+check works everywhere: a transformed module imports `jsxTemplate`.
 
 Any other pipeline calls the transform itself, which is what both adapters do:
 
@@ -222,17 +223,17 @@ import precompileTransform from "@vincle/precompile";
 const result = precompileTransform(code, "/src/App.tsx", {
   runtimeSource: "@vincle/core/jsx-runtime",
 });
-// → { code, map } | null — null when there was nothing to rewrite
+// → { code, map } | null: null when there was nothing to rewrite
 ```
 
 ### Knowing it runs
 
-A precompiled module and a runtime-rendered one emit the same document — that is
+A precompiled module and a runtime-rendered one emit the same document. That is
 the guarantee above, and it is also what makes a misconfiguration silent: if the
 plugin never sees your JSX, nothing in the output says so, and only the speed
 differs. It happens for an ordinary reason: **a page rendered by an SSG, or by a
 server that imports its own modules, never goes through Vite**, so no Vite plugin
-can touch it. Declaring the plugin in `vite.config.ts` is not enough on its own —
+can touch it. Declaring the plugin in `vite.config.ts` is not enough on its own,
 the build that renders your JSX has to be the one Vite runs.
 
 The plugin says so at the end of a build it did nothing in:
@@ -242,8 +243,8 @@ The plugin says so at the end of a build it did nothing in:
 .jsx/.tsx module passed through it at all (11 module(s) seen). …
 ```
 
-If that build is not the one that renders your JSX — a client bundle with no JSX
-in it, say — the plugin does not belong in it. Otherwise the modules are not
+If that build is not the one that renders your JSX: a client bundle with no JSX
+in it, say: the plugin does not belong in it. Otherwise the modules are not
 reaching Vite, and the transform is not running.
 
 ### Custom runtime
@@ -261,11 +262,11 @@ precompile({
 
 **Enabled by default.** Static attribute values are hardened at build time
 using the runtime's own attribute serializer (`jsxAttr`). This catches XSS
-vectors that are invisible to type-checking — a literal `href="javascript:…"`
+vectors that are invisible to type-checking: a literal `href="javascript:…"`
 in your source passes any linter but is a real vulnerability:
 
 ```ts
-// Static string — looks harmless, linter passes
+// Static string: looks harmless, linter passes
 <a href="javascript:alert(1)">click</a>
 
 // Targeting a foreign runtime → inlined verbatim in the bundle
@@ -276,13 +277,13 @@ in your source passes any linter but is a real vulnerability:
 ```
 
 The same URL-scheme blocking, style-declaration confinement, and name remapping
-that the runtime applies to _dynamic_ values also applies to static ones — but
+that the runtime applies to _dynamic_ values also applies to static ones, but
 resolved before the browser runs a single byte.
 
 A runtime that declares the `"vincle"` dialect has to back it with both
 `jsxAttr` and `jsxEscape`, or the build fails: a build that quietly stopped
 filtering would look like one that never filtered. A runtime that declares
-nothing is the ordinary case and builds without any of this — that is the
+nothing is the ordinary case and builds without any of this. That is the
 reference output, not a failure.
 
 ### How it works
@@ -290,10 +291,10 @@ reference output, not a failure.
 The plugin loads `jsxAttr` from your runtime module at build time and runs
 every static attribute value through it. The serialized result is inlined
 directly into the generated template literal, so **there is zero runtime
-cost** — no wrapper objects, no deferred calls, no extra branching.
+cost**: no wrapper objects, no deferred calls, no extra branching.
 
 ```ts
-// vite.config.ts — build-time sanitization is ON by default
+// vite.config.ts: build-time sanitization is ON by default
 import precompile from "@vincle/precompile/vite";
 import { defineConfig } from "vite";
 
@@ -308,7 +309,7 @@ The table is `@vincle/core`'s policy, applied at build time. Target another
 runtime and you get _its_ policy: Preact's `jsxAttr` does not block
 `javascript:`, so a static one is inlined as written. What the plugin
 guarantees is that a static value gets the same treatment as a dynamic one on
-the runtime you ship — not that the runtime you ship filters anything.
+the runtime you ship, not that the runtime you ship filters anything.
 
 | Attack surface           | Example                                   | `@vincle/core` output     |
 | ------------------------ | ----------------------------------------- | ------------------------- |
@@ -322,7 +323,7 @@ the runtime you ship — not that the runtime you ship filters anything.
 
 An `on*` attribute is emitted as written: its value is escaped for the
 attribute, so it cannot break out of the tag, but nothing judges the script
-inside it — `<button onclick="alert(1)">` stays. Same for the content of a
+inside it: `<button onclick="alert(1)">` stays. Same for the content of a
 `style` value: a declaration you write is kept whatever it says, and what is
 confined is only the number of declarations, one key and one value each. Both
 hold on the dynamic path too, so this is the runtime's policy, not a gap in the
@@ -336,11 +337,11 @@ precompiled page renders what a dynamic one renders. `@vincle/core` makes that
 promise and is tested against it.
 
 Preact and Hono export `jsxAttr` too, and running static values through it
-would filter nothing they do not already filter — while the corrections that
+would filter nothing they do not already filter, while the corrections that
 come with it would push their precompiled output away from their own dynamic
 output. Their rawtext escape is the clearest case: Preact escapes it on both
 paths, so decoding it would be the divergence, not the fix.
 
-The line is therefore the promise, not the package name — any runtime making it
+The line is therefore the promise, not the package name: any runtime making it
 can declare the dialect. Attribute _names_ are remapped by the transform either
 way, since a runtime's `jsxAttr` need not do it and Preact's does not.

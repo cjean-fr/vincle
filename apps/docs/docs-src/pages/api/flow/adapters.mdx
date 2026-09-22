@@ -8,8 +8,8 @@ An adapter controls how placeholders and patches are encoded in the HTML shell. 
 
 ```ts
 import {
-  TurboAdapter, // Turbo Streams — <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
-  HtmxAdapter, // HTMX — hx-get / hx-swap-oob, morph on htmx >= 4
+  TurboAdapter, // Turbo Streams: <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
+  HtmxAdapter, // HTMX: hx-get / hx-swap-oob, morph on htmx >= 4
   NativeAdapter, // <template for> + inline polyfill, all 5 positions
   WebPlatformAdapter, // WICG declarative partial updates, replace only
   EsiAdapter, // CDN edge composition via esi:include
@@ -21,15 +21,15 @@ import {
 | Adapter              | Target                                             | Merge support                           | Size           |
 | -------------------- | -------------------------------------------------- | --------------------------------------- | -------------- |
 | `NativeAdapter`      | Inline polyfill via `<template for>`               | replace, append, prepend, before, after | ~550B polyfill |
-| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | the five above + morph (Turbo >= 8)     | —              |
-| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | the five above + morph (htmx >= 4)      | —              |
-| `WebPlatformAdapter` | WICG declarative partial updates                   | replace only                            | —              |
-| `EsiAdapter`         | CDN edge composition via `esi:include`             | replace                                 | —              |
+| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | the five above + morph (Turbo >= 8)     | N/A            |
+| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | the five above + morph (htmx >= 4)      | N/A            |
+| `WebPlatformAdapter` | WICG declarative partial updates                   | replace only                            | N/A            |
+| `EsiAdapter`         | CDN edge composition via `esi:include`             | replace                                 | N/A            |
 
 ## Usage
 
 Pass an adapter to `renderToStream` or `renderToStatic`. It is a required
-second argument — there is no implicit default:
+second argument. There is no implicit default:
 
 ```tsx
 import { renderToStream } from "@vincle/flow";
@@ -49,6 +49,6 @@ const stream = renderToStream(() => <Page />, NativeAdapter);
 | `"after"`   | Content inserted as next sibling          |
 | `"morph"`   | Target is diffed against content in place |
 
-The first five say **where** content goes; `"morph"` says **how** it is applied — the client diffs the target instead of swapping it, so focus, scroll position and form state survive.
+The first five say **where** content goes; `"morph"` says **how** it is applied: the client diffs the target instead of swapping it, so focus, scroll position and form state survive.
 
-Not every adapter supports all merge types — an unsupported merge is rejected at registration with a clear error.
+Not every adapter supports all merge types: an unsupported merge is rejected at registration with a clear error.

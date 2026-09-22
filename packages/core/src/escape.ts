@@ -4,7 +4,7 @@ import { RawString, VNode } from "./types.js";
 const RE_ESCAPE_HTML = /[&<>]/;
 
 /**
- * Escape a string for HTML *text* content — `&`, `<`, `>`. Quotes are left
+ * Escape a string for HTML *text* content: `&`, `<`, `>`. Quotes are left
  * alone: they carry no meaning outside an attribute.
  *
  * `renderToString` applies this to every text child already; reach for it only
@@ -45,7 +45,7 @@ export function escapeContent(str: string): string {
  * Does this tag hold rawtext (`<script>` / `<style>`)?
  *
  * Two literal comparisons rather than a `Set.has` lookup. Tag names arrive
- * interned from the JSX transform, and this runs once per element — a
+ * interned from the JSX transform, and this runs once per element: a
  * per-element hash is worth the same order of magnitude as the tag-name
  * validation on the same path, which is what pays for keeping both.
  * `RAWTEXT_LANG` remains the source of truth for everything else.
@@ -54,21 +54,21 @@ export function isRawtextTag(tag: string): boolean {
   return tag === "script" || tag === "style";
 }
 
-// `<style>` (RAWTEXT) closes only on `</style`, escaped with `<\` — CSS reads a
+// `<style>` (RAWTEXT) closes only on `</style`, escaped with `<\`: CSS reads a
 // `\` before a non-hex character as that character, so `"<\/style>"` reads back
 // `</style>`.
 //
 // `<script>` (SCRIPT_DATA) needs more: neutralizing `</script` alone isn't
 // enough, because `<!--` followed by `<script` enters *script data double
-// escaped*, a state where `</script>` no longer closes the element — so
+// escaped*, a state where `</script>` no longer closes the element, so
 // `<script` itself must break too. It's escaped with the unicode form `<`
 // rather than `<\`, because a `<script>` block can hold JSON (`ld+json`,
 // `importmap`) as well as JS, and `<` is the one escape both languages read
-// back as `<` — `<\` is valid JS (`\s` → `s`) but a JSON parse error.
+// back as `<`: `<\` is valid JS (`\s` → `s`) but a JSON parse error.
 //
 // Neither escape is universal: a literal `\` right before the `<` still reaches
 // the sub-language unescaped. A third language with no such escape at all (e.g.
-// Mustache in `<script type="text/template">`) can't go through this path —
+// Mustache in `<script type="text/template">`) can't go through this path,
 // that content belongs behind `raw()`, caller-owned (see guide/security).
 //
 // @see https://html.spec.whatwg.org/multipage/scripting.html#restrictions-for-contents-of-script-elements
@@ -78,7 +78,7 @@ const RAWTEXT_LANG = {
 } as const;
 
 // Per tag: a non-global matcher for the no-match fast path, and a global one to
-// iterate matches once one is found — avoids a lowercased copy of the body just
+// iterate matches once one is found: avoids a lowercased copy of the body just
 // to do a case-insensitive scan.
 interface RawtextRule {
   readonly detect: RegExp;
@@ -105,14 +105,14 @@ const RE_ESCAPE_ATTR = /[&<"]/;
 // Attribute values repeat: the same `class` / `title` literal is re-escaped on
 // every render of every element that carries it. `search` under V8 and the
 // splice loop below re-pay that per call, so the answer is memoized like
-// `attrMeta` in `attrs.ts` — same function, same value, same bytes. Values can
+// `attrMeta` in `attrs.ts`: same function, same value, same bytes. Values can
 // come from a caller-controlled `{...spread}`, so the cache is capped; past the
 // cap escaping still happens, just uncached.
 const ESCAPED_ATTR = new Map<string, string>();
 const ESCAPED_ATTR_MAX = 1024;
 
 /**
- * Escape a string for a double-quoted attribute value — `&`, `<`, `"`.
+ * Escape a string for a double-quoted attribute value: `&`, `<`, `"`.
  *
  * `>` is deliberately left alone: it cannot end a double-quoted value.
  *
@@ -155,7 +155,7 @@ export function escapeAttr(str: string): string {
 
 /**
  * Escape content for a rawtext element (`<script>`, `<style>`), where HTML
- * entities are *not* decoded — only the closing sequence may be neutralised.
+ * entities are *not* decoded: only the closing sequence may be neutralised.
  *
  * The escape is the one the element's sub-language reads back as the original
  * text: a unicode escape under `<script>`, valid in both JS and JSON, and a
@@ -255,11 +255,11 @@ const RE_URL_TAB_NEWLINE = /[\t\n\r]/g;
 
 /**
  * @internal Shared with vincle's own tooling (`@vincle/eslint-plugin`,
- * `@vincle/precompile`, `@vincle/flow`) via `@vincle/core/html` — not
+ * `@vincle/precompile`, `@vincle/flow`) via `@vincle/core/html`: not
  * app-level API.
  *
  * The scheme a WHATWG URL parser would read, or `undefined` when the input
- * carries none — in which case it is a relative reference and there is no
+ * carries none: in which case it is a relative reference and there is no
  * scheme to judge.
  *
  * Deriving the scheme instead of pattern-matching the raw string is what makes
@@ -317,7 +317,7 @@ export function isSafeScheme(url: string): boolean {
   // that can: they skip the scan and the lowercased copy it ends with.
   const c0 = url.charCodeAt(0);
   if (c0 === 47 || c0 === 35 || c0 === 63) return true; // '/', '#', '?'
-  // "http" (case-insensitive). Safe even though it also admits "httpx:" — an
+  // "http" (case-insensitive). Safe even though it also admits "httpx:": an
   // unknown scheme does not execute; only the schemes named below do.
   if (
     (c0 | 32) === 104 &&
@@ -328,7 +328,7 @@ export function isSafeScheme(url: string): boolean {
     return true;
 
   const scheme = schemeOf(url);
-  if (scheme === undefined) return true; // relative reference — nothing to judge
+  if (scheme === undefined) return true; // relative reference: nothing to judge
   if (scheme === "javascript" || scheme === "vbscript") return false;
   // Only image payloads: `data:text/html` is a document, and a document that the
   // page links to runs script. The parser's own normalization is applied first,
@@ -345,7 +345,7 @@ export function isSafeScheme(url: string): boolean {
  *
  * One definition, two escaping policies. `rawtextTag` names the sub-language
  * when the leaf sits inside `<script>` or `<style>`, where HTML-escaping would
- * corrupt it, and is `undefined` in ordinary content — a tag name rather than an
+ * corrupt it, and is `undefined` in ordinary content: a tag name rather than an
  * escape function, because `escapeRawTagContent` needs the tag and a function
  * parameter would mean a closure allocated per text node.
  *
@@ -369,12 +369,12 @@ export function renderLeaf(v: unknown, rawtextTag: string | undefined): string {
 
 export function valueToText(v: unknown): string {
   // A VNode is not a text value: stringifying one would emit `[object Object]`
-  // silently. The message says what to do instead — naming only what the reader
+  // silently. The message says what to do instead: naming only what the reader
   // can act on: `valueToText` and `renderNode` are internal, and sending someone
   // looking for a symbol they cannot import is worse than saying less.
   if (v instanceof VNode) {
     throw vincleError(
-      "[vincle/core] A VNode reached a text position — use it as JSX (<Comp />), not interpolated as {comp}.",
+      "[vincle/core] A VNode reached a text position: use it as JSX (<Comp />), not interpolated as {comp}.",
       ERR_VNODE_AS_TEXT,
     );
   }

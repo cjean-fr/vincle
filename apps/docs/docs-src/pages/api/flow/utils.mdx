@@ -8,7 +8,7 @@ Helpers for shell post-processing and fragment ids. Imported from `@vincle/flow/
 
 ## composeShell
 
-Chains several `transformShell` functions into one, left to right — each
+Chains several `transformShell` functions into one, left to right: each
 transform receives the output of the previous one. Falsy entries are skipped,
 so an adapter's own (possibly `undefined`) transform can be spliced in
 cleanly.
@@ -70,7 +70,7 @@ function injectIntoHead(html: string, content: string): string;
 
 ## assertFragmentId
 
-Validates a fragment id against `/^[a-zA-Z][a-zA-Z0-9_-]*$/` — letters,
+Validates a fragment id against `/^[a-zA-Z][a-zA-Z0-9_-]*$/`: letters,
 digits, hyphens and underscores, starting with a letter. `Defer` and
 `Include` call it when registering; call it yourself when accepting ids from
 untrusted input.

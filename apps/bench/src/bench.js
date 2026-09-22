@@ -1,10 +1,10 @@
 /**
- * bench.js — realistic SSR benchmark (JS port of bench.ts)
+ * bench.js: realistic SSR benchmark (JS port of bench.ts)
  *
  * Suites ported from the official benchmarks:
- *   - text      : 1000× two-span text block (wide tree) — preact-render-to-string bench
- *   - stack     : 10× 1000-deep recursive tree (deep tree) — preact-render-to-string bench
- *   - realworld : full layout/head/header/footer/purchases/sidebar page —
+ *   - text: 1000× two-span text blocks (wide tree), from the preact-render-to-string bench
+ *   - stack: 10× 1000-deep recursive trees, from the preact-render-to-string bench
+ *   - realworld : full layout/head/header/footer/purchases/sidebar page,
  *                 a port of @kitajs/html's RealWorldPage
  *
  * Run: `NODE_ENV=production bun run src/bench.js`
@@ -47,7 +47,7 @@ const STACK_DEPTH = 1_000;
 // Purchases for the realworld page
 const PURCHASES = generatePurchases(1_000);
 
-// 1. Text bench — 1000× Bavaria block (preact bench port)
+// 1. Text bench: 1000× Bavaria block (preact bench port)
 
 const bavariaVincle = () =>
   jsx("div", {
@@ -125,7 +125,7 @@ function textAppHono() {
   return honoJsx("div", {}, children);
 }
 
-// 2. Stack bench — 10× 1000-deep recursive tree (preact bench port)
+// 2. Stack bench: 10× 1000-deep recursive tree (preact bench port)
 
 function stackVincle(depth) {
   if (depth <= 0) {
@@ -183,16 +183,16 @@ function stackAppHono() {
   return honoJsx("div", {}, children);
 }
 
-// 4. Precompile — the same list, both ways
+// 4. Precompile: the same list, both ways
 //
 // A second renderer, with hot loops of its own that no case above exercises, and
 // the one case where the two terms are both ours: what the precompile transform
 // emits against the tree walk it replaces. The shape is what the transform
-// actually emits, and the bytes are asserted equal below — a ratio between two
+// actually emits, and the bytes are asserted equal below: a ratio between two
 // documents would be a ratio between two workloads.
 
 // A row the way a template really comes out: literal markup the transform inlines,
-// and holes for what it cannot know. The mix is the measurement — with nothing
+// and holes for what it cannot know. The mix is the measurement: with nothing
 // literal the transform has nothing to inline and the two paths are level (3% on
 // this list), with a literal class it is 35%. A fixture at either end would
 // answer a question nobody has.
@@ -201,7 +201,7 @@ const PRECOMPILE_LI = ['<li class="item" ', ">", "</li>"];
 const PRECOMPILE_UL = ['<ul class="list">', "</ul>"];
 const precompileData = Array.from({ length: PRECOMPILE_ROWS }, (_, i) => ({
   index: i,
-  text: `Item ${i} — a & b < c`,
+  text: `Item ${i}: a & b < c`,
 }));
 
 // Provider fixtures: one source with ten literal paragraphs and one with many
@@ -296,13 +296,13 @@ function runtimeList() {
 // for a result to come out under the right name.
 
 const CASES = {
-  text: `text — ${TEXT_REPEATS}× Bavaria block (preact bench port)`,
-  stack: `stack — ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
-  realworld: `realworld — full page, ${PURCHASES.length} purchases (kitajs port)`,
-  precompile: `precompile — ${PRECOMPILE_ROWS}-row list, tree walk vs jsxTemplate (vincle only)`,
-  "realworld-precompile": `realworld-precompile — full page, ${PURCHASES.length} purchases, tree walk vs the real precompile transform (vincle only)`,
-  "provider-static": "provider-static — root Provider, mostly literal markup",
-  "provider-translations": "provider-translations — root Provider, 100 readers",
+  text: `text: ${TEXT_REPEATS}× Bavaria block (preact bench port)`,
+  stack: `stack: ${STACK_REPEATS}× ${STACK_DEPTH}-deep tree (preact bench port)`,
+  realworld: `realworld: full page, ${PURCHASES.length} purchases (kitajs port)`,
+  precompile: `precompile: ${PRECOMPILE_ROWS}-row list, tree walk vs jsxTemplate (vincle only)`,
+  "realworld-precompile": `realworld-precompile: full page, ${PURCHASES.length} purchases, tree walk vs the real precompile transform (vincle only)`,
+  "provider-static": "provider-static: root Provider, mostly literal markup",
+  "provider-translations": "provider-translations: root Provider, 100 readers",
 };
 
 // Build the pages outside the bench so that only the render is measured
@@ -315,7 +315,7 @@ const rwKita = () => realworldKita(NAME, PURCHASES);
 
 // The order is the order of measurement: every line inherits the inline caches
 // the ones before it left behind, and that context is what resembles an
-// application. `@vincle/core` opens each case — the ratio reads against it.
+// application. `@vincle/core` opens each case: the ratio reads against it.
 
 /** @type {[keyof typeof CASES, string, () => unknown][]} */
 const BENCHES = [
@@ -370,7 +370,7 @@ if (Locale) {
 //
 // Neither can be chosen on the spread, which is what the protocol decides on.
 // Three batches of 25 runs at one warm-up setting give a between-run cv of 2.1%,
-// 3.1% and 9.2% — at that sample size a single unlucky process triples a standard
+// 3.1% and 9.2%: at that sample size a single unlucky process triples a standard
 // deviation, so the estimate moves further than the settings do. The
 // interquartile range is no steadier. A tuned budget therefore has nothing to
 // show for itself, and the default is the value nobody has to defend.
@@ -424,7 +424,7 @@ if (Locale) {
 // `--json` emits one machine-readable line and nothing else: a single run of
 // this benchmark is not a measurement (between-run spread is 2–4%), so the
 // aggregation belongs to `stats.js`, which runs this many times. See
-// apps/bench/README.md — the measurement protocol lives there.
+// apps/bench/README.md: the measurement protocol lives there.
 if (process.argv.includes("--json")) {
   console.log(JSON.stringify(results));
 } else {
@@ -445,8 +445,8 @@ if (process.argv.includes("--json")) {
     }
   }
   console.log(
-    "\n  One run is not a measurement — use `bun run bench:stats` before claiming a delta.\n" +
+    "\n  One run is not a measurement: use `bun run bench:stats` before claiming a delta.\n" +
       "  ops/s belong to this harness. The × ratios divide out the machine, but not a\n" +
-      "  change of harness — the last one moved them by up to 7%. Re-record, don't compare.",
+      "  change of harness: the last one moved them by up to 7%. Re-record, don't compare.",
   );
 }
