@@ -121,16 +121,20 @@ const notHtml = renderToString(<AsyncComponent />); // missing await
 
 ## Context API
 
-Create a typed tree Context once. The nearest Provider supplies a value to its
+Create a typed tree context once. The nearest Provider supplies a value to its
 descendants; outside one, `useContext` returns the declared default. Concurrent
 renders stay isolated across `await`.
+
+The surface matches React 19: the context object **is** the provider
+(`AuthContext.Provider === AuthContext`), and `AuthContext.Consumer` is the
+render-prop reader. The default is the `createContext` argument, not a property.
 
 ```ts
 export const AuthContext = createContext({ user: "Guest", locale: "en" });
 ```
 
 ```tsx
-// Read it under a Provider
+// Read it under a Provider — the context itself, or its .Provider alias
 const Header = () => {
   const { user, locale } = useContext(AuthContext);
   return <header lang={locale}>Hello {user}</header>;
@@ -140,6 +144,11 @@ const html = await renderToString(
   <AuthContext.Provider value={{ user: "Alice", locale: "fr" }}>
     <Header />
   </AuthContext.Provider>,
+);
+
+// The render-prop form
+const html2 = await renderToString(
+  <AuthContext.Consumer>{({ user }) => <span>{user}</span>}</AuthContext.Consumer>,
 );
 ```
 
