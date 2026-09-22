@@ -1,3 +1,5 @@
+import type { Renderable } from "@vincle/core";
+
 import { renderToString } from "@vincle/core";
 
 type Purchase = { name: string; price: number; quantity: number };
@@ -116,7 +118,7 @@ function PageContent() {
   );
 }
 
-function Main({ children, name }: { children?: unknown; name: string }) {
+function Main({ children, name }: { children?: Renderable; name: string }) {
   return (
     <div>
       <Header name={name} />
