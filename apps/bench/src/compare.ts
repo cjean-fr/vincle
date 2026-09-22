@@ -73,6 +73,7 @@ function parseArgs(argv: string[]) {
   const flags = new Map<string, string>();
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
+    if (a === undefined) continue;
     if (a.startsWith("--")) flags.set(a.slice(2), argv[++i] ?? "");
     else positional.push(a);
   }
