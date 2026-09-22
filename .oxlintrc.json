@@ -24,7 +24,8 @@
     {
       "files": ["apps/bench/**"],
       "rules": {
-        "@vincle/no-react-imports": "off"
+        "@vincle/no-react-imports": "off",
+        "@vincle/no-context": "off"
       }
     },
     {
