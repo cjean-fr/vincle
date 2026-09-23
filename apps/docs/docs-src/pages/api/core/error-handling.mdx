@@ -35,6 +35,10 @@ try {
 }
 ```
 
+The `try` block catches errors both while `<Page />` is constructed and while
+`renderToString` walks it. Attaching `.catch()` to the returned promise would
+not catch an error thrown before the call begins.
+
 An `Error` thrown by a component is annotated with that component's name,
 once: the innermost one, not the whole chain:
 

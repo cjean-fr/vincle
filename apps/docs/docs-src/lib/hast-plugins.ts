@@ -151,7 +151,7 @@ export const fenceTabs = defineHastPlugin({
               "data-docs-tab-panel": "",
               className: ["docs-tab-panel", ...(i === 0 ? ["active"] : [])],
             },
-            children: [pre],
+            children: [JSON.parse(JSON.stringify(pre)) as HastElement],
           })),
         ],
       };

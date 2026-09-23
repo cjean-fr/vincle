@@ -37,31 +37,32 @@ reparents the content, so the document stops being the one you wrote. Vincle
 throws instead:
 
 ```
-[vincle/core] <img> is a void element and cannot have children, but content was
-rendered into it. …
+[vincle/core] <img> is a void element and cannot have children: move the content next to it, not inside.
 ```
 
-The refusal is about the element having been _written_ with children, not about
-what they turn out to render. `<br>{items.length > 0 && <b>x</b>}</br>` throws on
-an empty list too: whether the content is empty belongs to this render's data,
-and an element that only fails once real data arrives fails in production rather
-than on the first page load. `undefined` is the one value that means no child, so
-`<img children={undefined} />` renders `<img>`. Move the content out:
+Vincle rejects any `children` value other than `undefined`, even if it would
+render nothing. `<br>{items.length > 0 && <b>x</b>}</br>` therefore throws on an
+empty list too. An element that failed only when real data arrived could work in
+development and fail in production. `undefined` means no child, so
+`<img children={undefined} />` renders `<img>`. Move content outside the void tag:
 
 ```tsx
-<img src={src}>{caption}</img>       // ❌ throws
-<img src={src} alt={caption} />      // ✅
-<figure><img src={src} /><figcaption>{caption}</figcaption></figure>  // ✅
+<img src={src}>Caption</img>       // ❌ throws
+<img src={src} alt="Caption" />    // ✅
+<figure><img src={src} /><figcaption>Caption</figcaption></figure>  // ✅
 ```
 
-The refusal lands at render time, on the page carrying the mistake. To be told
-while writing instead, enable
+Vincle rejects the invalid element as soon as it is constructed. For JSX
+created inside a component, that happens during rendering; direct JSX can
+throw before `renderToString` is called. To catch the mistake while writing,
+enable
 [`void-dom-elements-no-children`](https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/void-dom-elements-no-children.md)
 from `eslint-plugin-react`; oxlint carries a port under the same name. The rule
-reads a tag and its children and nothing else, so it applies to any JSX. It is
-stricter than the renderer. It reports `<img>{caption}</img>` whatever
-`caption` turns out to hold, which is what you want from a question asked
-before the page exists.
+reports explicit children on a void tag without evaluating their value. For
+example, it reports `<img>{caption}</img>` even when `caption` is `undefined`,
+which Vincle accepts. It is an early warning for JSX you write, not a substitute
+for the renderer's runtime check: children hidden in a props spread can escape
+this lint rule.
 
 ## Attributes
 

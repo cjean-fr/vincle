@@ -57,6 +57,8 @@ describe("SSG build", () => {
     expect(data[0]).toHaveProperty("text");
     const hasBodyText = data.some((d: { text: string }) => d.text && d.text.length > 50);
     expect(hasBodyText).toBe(true);
+    const adapters = data.find((d: { url: string }) => d.url === "/integration/adapters");
+    expect(adapters?.text).toContain("Browsers with declarative partial updates");
   });
 
   it("builds all page files", async () => {
