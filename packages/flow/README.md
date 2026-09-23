@@ -238,7 +238,7 @@ A per-request **nonce** is intentionally not offered: it would break the static-
 
 #### `WebPlatformAdapter`
 
-Pure WICG spec: no JS at all. Requires `chrome://flags/#enable-experimental-web-platform-features` until the spec ships. `"replace"` only.
+Emits the [WICG Declarative Partial Updates](https://developer.chrome.com/docs/web-platform/declarative-partial-updates) wire format without a client-side runtime. It supports `"replace"` only and requires native browser support, which is not universal. Use `NativeAdapter` for a polyfilled fallback.
 
 #### `EsiAdapter`: CDN-level composition
 

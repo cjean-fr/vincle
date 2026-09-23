@@ -125,15 +125,14 @@ merge into it (e.g. `hx-*` attributes, Turbo's `turbo-frame`).
 
 - **No error-boundary component.** Errors reject; there is no component-level
   recovery here.
-- `renderToString` never throws synchronously: every failure arrives as a
-  rejection, so one `try`/`catch` around the await is enough. **One exception**,
-  at the root of the tree: a static subtree is serialized during `jsx()`, so what
-  that refuses: an unserializable attribute, an invalid tag name, content in a
-  void element: throws where the JSX is _written_, before `renderToString` is
-  ever called. `renderToString(<div onClick={fn}>text</div>)` throws;
-  `renderToString(<div onClick={fn}><Comp/></div>)` rejects. Inside a component
-  the distinction disappears: `jsx()` then runs during the walk, which converts
-  the throw.
+- `renderToString` returns a promise and turns errors during its tree walk into
+  rejections. JSX passed as its argument is constructed before the call. If that
+  construction fails, for example because a void element has children, the
+  error is thrown synchronously. JSX created inside a component is constructed
+  during the walk, so its error rejects the promise. Wrap
+  `await renderToString(<Page />)` in `try`/`catch` to handle both; a `.catch()`
+  on the returned promise cannot catch an error thrown while constructing the
+  argument.
 - A failing sibling stops the ones after it.
 - **`Error` messages are annotated with the throwing component's name**, once:
   `[Profile] not found`. Only the innermost component: an ancestor that
