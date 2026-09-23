@@ -94,6 +94,12 @@ const headingIds = defineHastPlugin({
 
 const compileOptions: MdxCompileOptions = {
   jsxImportSource: "@vincle/core",
+  optimizeStatic: {
+    component: "RawHtml",
+    prop: "html",
+    // Preserve Vincle's serialization for elements carrying special attributes.
+    ignoreElements: ["button", "th", "td", "a", "section"],
+  },
   providerImportSource: pathToFileURL(path.resolve(import.meta.dirname, "../mdx-components.jsx"))
     .href,
   hastPlugins: [

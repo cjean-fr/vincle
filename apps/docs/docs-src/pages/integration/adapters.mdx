@@ -15,7 +15,7 @@ import {
   TurboAdapter, // Turbo Streams: <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
   HtmxAdapter, // HTMX: hx-get / hx-swap-oob, morph on htmx >= 4
   NativeAdapter, // <template for> + inline polyfill, all 5 positions
-  WebPlatformAdapter, // WICG declarative partial updates, replace only
+  WebPlatformAdapter, // WICG declarative partial updates, native support required
   EsiAdapter, // CDN edge composition via esi:include
 } from "@vincle/flow/adapters";
 ```
@@ -70,7 +70,7 @@ import {
       <td>
         <strong>WebPlatformAdapter</strong>
       </td>
-      <td>None (WICG spec)</td>
+      <td>None (native browser support required)</td>
       <td>
         <CheckIcon />
       </td>
@@ -151,13 +151,26 @@ HTMX negotiation is available via `negotiateHtmx`: see
 
 ### WebPlatformAdapter
 
-Implements the [WICG declarative partial updates](https://github.com/WICG/declarative-partial-updates)
-spec using `<?start?>` / `<?end?>` processing instructions and
-`<template for="id">` elements.
+Uses the [WICG Declarative Partial Updates](https://github.com/WICG/declarative-partial-updates)
+wire format for out-of-order HTML streaming. WICG is the Web Incubator Community
+Group, where this browser feature was developed. Google explains the motivation,
+markup and browser support in its
+[Declarative partial updates article](https://developer.chrome.com/docs/web-platform/declarative-partial-updates).
 
-- No client runtime required (native browser support)
-- `replace` merge only
-- Best for browsers that implement the spec natively
+The initial HTML contains a named range with fallback content. When a deferred
+fragment is ready, Vincle streams a matching `<template for="…">` later in the
+response. A browser with native support replaces the fallback as it parses the
+template, without a client-side runtime:
+
+```html
+<?start name="comments">Loading comments…<?end>
+<!-- Later in the same HTML stream: -->
+<template for="comments"><p>First comment</p></template>
+```
+
+`WebPlatformAdapter` supports only `replace` and requires native browser support;
+that support is not universal. For the same wire format with a small automatically
+injected polyfill and additional merge positions, use `NativeAdapter`.
 
 ```tsx
 import { WebPlatformAdapter } from "@vincle/flow/adapters";

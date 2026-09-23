@@ -390,6 +390,10 @@ html {
 }
 
 /* === Content tabs: state driven by aria-selected, toggled in tabs/client.ts === */
+.docs-tabs [data-docs-tab-target] {
+  cursor: pointer;
+}
+
 .docs-tab-panel:not(.active) {
   display: none;
 }
