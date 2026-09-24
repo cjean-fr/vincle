@@ -1,4 +1,6 @@
+import { renderToString } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { MdxCache } from "./mdx-cache.js";
@@ -27,6 +29,26 @@ describe("MdxCache", () => {
 
     expect(first.Component).toBe(second.Component);
     expect(first.meta).toBe(second.meta);
+  });
+
+  it("renders new content after an MDX file changes", async () => {
+    const sourceRoot = path.join(PAGES_DIR, ".compiled");
+    await mkdir(sourceRoot, { recursive: true });
+    const directory = await mkdtemp(path.join(sourceRoot, "mdx-cache-test-"));
+    const file = path.join(directory, "page.mdx");
+    try {
+      const cache = freshCache();
+      await writeFile(file, "---\ntitle: Edited page\n---\n# Before edit\n");
+      const before = await cache.load(file);
+      expect(await renderToString(before.Component({}))).toContain("Before edit");
+
+      await writeFile(file, "---\ntitle: Edited page\n---\n# After edit\n");
+      const after = await cache.load(file);
+      expect(await renderToString(after.Component({}))).toContain("After edit");
+      expect(await renderToString(after.Component({}))).not.toContain("Before edit");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("treats different files as different cache entries", async () => {

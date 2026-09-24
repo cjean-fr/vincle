@@ -4,16 +4,9 @@ import { serve } from "bun";
 import { watch } from "node:fs";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { join, extname, relative, resolve } from "node:path";
+import { join, extname, resolve } from "node:path";
 
-import config from "../docs.config.js";
-import {
-  initBuild,
-  rebuildAll,
-  rebuildPages,
-  refreshPages,
-  getAllPages,
-} from "./lib/build-engine.js";
+import { initBuild, rebuildAll, refreshPages } from "./lib/build-engine.js";
 
 const PORT = Number(process.env["PORT"] ?? 3000);
 const APP_ROOT = resolve(import.meta.dirname!, "..");
@@ -34,22 +27,7 @@ ws.onclose=function(){setTimeout(function(){location.reload()},1000)}})()
   return html.slice(0, idx) + script + "\n" + html.slice(idx);
 }
 
-const watcherExtensions = new Set(Object.keys(config.handlers));
-const pagesDir = resolve(config.pages);
 const configFile = resolve(APP_ROOT, "docs.config.ts");
-
-function isPageFile(filePath: string): boolean {
-  return filePath.startsWith(pagesDir) && watcherExtensions.has(extname(filePath));
-}
-
-function fileToUrl(filePath: string): string | null {
-  if (!filePath.startsWith(pagesDir)) return null;
-  const rel = relative(pagesDir, filePath);
-  let route = rel.replace(extname(rel), "");
-  if (route.endsWith("/index")) route = route.slice(0, -6);
-  if (route === "index") route = "";
-  return "/" + route;
-}
 
 function notifyClients(): void {
   for (const ws of clients) {
@@ -62,8 +40,10 @@ function notifyClients(): void {
 }
 
 let rebuilding = false;
+const pendingChanges = new Set<string>();
+let rebuildTimer: ReturnType<typeof setTimeout> | undefined;
 
-async function onSourceChange(filePath: string): Promise<void> {
+function scheduleRebuild(filePath: string): void {
   if (
     filePath.includes("node_modules") ||
     filePath.includes("/dist/") ||
@@ -71,35 +51,35 @@ async function onSourceChange(filePath: string): Promise<void> {
     filePath.includes(".compiled")
   )
     return;
-  if (rebuilding) return;
+  pendingChanges.add(filePath);
+  if (rebuildTimer) clearTimeout(rebuildTimer);
+  rebuildTimer = setTimeout(() => void rebuildChangedSources(), 60);
+}
 
+async function rebuildChangedSources(): Promise<void> {
+  rebuildTimer = undefined;
+  if (rebuilding || pendingChanges.size === 0) return;
   rebuilding = true;
   try {
-    if (filePath === configFile) {
-      console.log("[dev] Config changed, full rebuild...");
-      watcher.close();
-      process.exit(0); // Restart required for config changes
-    }
+    while (pendingChanges.size > 0) {
+      const changedFiles = [...pendingChanges];
+      pendingChanges.clear();
 
-    if (isPageFile(filePath)) {
-      const url = fileToUrl(filePath);
-      if (url) {
-        const known = getAllPages().find((p) => p.url === url);
-        if (known) {
-          await rebuildPages([url]);
-        } else {
-          await refreshPages();
-        }
-        notifyClients();
-        return;
+      if (changedFiles.includes(configFile)) {
+        console.log("[dev] Config changed, full rebuild...");
+        watcher.close();
+        process.exit(0); // Restart required for config changes
       }
-    }
 
-    // Fallback: full page refresh for layout/component changes
-    await refreshPages();
-    notifyClients();
+      // Rediscover pages so changed MDX is recompiled and page metadata stays current.
+      await refreshPages();
+      notifyClients();
+    }
   } finally {
     rebuilding = false;
+    if (pendingChanges.size > 0 && !rebuildTimer) {
+      rebuildTimer = setTimeout(() => void rebuildChangedSources(), 60);
+    }
   }
 }
 
@@ -132,7 +112,7 @@ async function main(): Promise<void> {
   console.log(`[dev] Serving http://localhost:${PORT}`);
 
   watcher = watch(APP_ROOT, { recursive: true }, (_event, filename) => {
-    if (filename) onSourceChange(resolve(APP_ROOT, filename));
+    if (filename) scheduleRebuild(resolve(APP_ROOT, filename));
   });
 
   process.on("SIGINT", () => {

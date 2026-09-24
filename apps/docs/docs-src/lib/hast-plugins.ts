@@ -43,6 +43,8 @@ function isBlankText(node: unknown): boolean {
   return el?.type === "text" && typeof el.value === "string" && el.value.trim() === "";
 }
 
+const tabGroupCounters = new WeakMap<object, number>();
+
 /**
  * Consecutive fences carrying a `tab="label"` meta become one tab group:
  *
@@ -92,6 +94,11 @@ export const fenceTabs = defineHastPlugin({
       }
       if (run.length < 2) return; // A lone tab is just a code block.
 
+      const parentKey = parent as object;
+      const groupNumber = (tabGroupCounters.get(parentKey) ?? 0) + 1;
+      tabGroupCounters.set(parentKey, groupNumber);
+      const groupId = `docs-tabs-${groupNumber}`;
+
       let sync: string | undefined;
       for (const pre of run) {
         sync = SYNC_META.exec(metaOf(pre) ?? "")?.[1];
@@ -117,15 +124,23 @@ export const fenceTabs = defineHastPlugin({
                 "border-gray-200",
                 "dark:border-gray-800",
               ],
+              role: "tablist",
+              ariaLabel: "Code example alternatives",
             },
             children: run.map((pre, i) => {
               const label = tabLabel(pre)!;
               const active = i === 0;
+              const tabId = `${groupId}-tab-${i}`;
+              const panelId = `${groupId}-panel-${i}`;
               return {
                 type: "element" as const,
                 tagName: "button",
                 properties: {
                   type: "button",
+                  id: tabId,
+                  role: "tab",
+                  tabIndex: active ? 0 : -1,
+                  ariaControls: [panelId],
                   "data-docs-tab-target": String(i),
                   "data-docs-tab-label": label,
                   "aria-selected": active ? "true" : "false",
@@ -148,7 +163,11 @@ export const fenceTabs = defineHastPlugin({
             type: "element" as const,
             tagName: "div",
             properties: {
+              id: `${groupId}-panel-${i}`,
+              role: "tabpanel",
+              ariaLabelledby: [`${groupId}-tab-${i}`],
               "data-docs-tab-panel": "",
+              hidden: i !== 0,
               className: ["docs-tab-panel", ...(i === 0 ? ["active"] : [])],
             },
             children: [JSON.parse(JSON.stringify(pre)) as HastElement],
