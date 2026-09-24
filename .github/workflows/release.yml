@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - core
+          - create-vincle
           - flow
           - eslint-plugin
           - vite-plugin
@@ -53,6 +54,12 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
 
+      - name: Verify bootstrap dependency
+        if: github.event.inputs.package == 'create-vincle'
+        run: |
+          CORE_VERSION="$(jq -r '.version' packages/core/package.json)"
+          npm view "@vincle/core@${CORE_VERSION}" version
+
       # `bun pm pack`, not `npm pack`: only bun resolves the `workspace:` protocol
       # to a real version. Going through npm would publish `workspace:^` as is.
       #
@@ -63,8 +70,8 @@ jobs:
           cd "${{ steps.meta.outputs.package_dir }}"
           TARBALL="$(bun pm pack --quiet | tail -n1)"
           # `--access public` explicitly, and not only via each package's
-          # `publishConfig`: every package here is scoped, and npm defaults a
-          # scoped package to `restricted`. Relying on the manifest alone means
-          # one package missing the field fails its *first* publish: the one
-          # release that cannot be retried into an already-public name.
+          # `publishConfig`: scoped packages default to `restricted`. Relying
+          # on the manifest alone means one package missing the field fails its
+          # *first* publish: the one release that cannot be retried into an
+          # already-public name.
           npm publish "$TARBALL" --provenance --access public
