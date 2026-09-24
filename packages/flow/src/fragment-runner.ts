@@ -1,4 +1,4 @@
-import { renderToString, type JSX } from "@vincle/core";
+import { renderToString, type Awaitable, type JSX } from "@vincle/core";
 // The protocol test is core's: same predicate the tree walk dispatches on, so
 // "what counts as a stream" cannot mean one thing here and another there. The
 // local copy it replaces needed an `as any` to ask the question at all.
@@ -11,13 +11,11 @@ import { createTimeoutSignal } from "./timeout.js";
 
 const isLazyFactory = (
   c: DeferContent,
-): c is
-  | ((signal: AbortSignal) => JSX.Element)
-  | ((signal: AbortSignal) => AsyncIterable<JSX.Element>) => typeof c === "function";
+): c is Extract<DeferContent, (signal: AbortSignal) => unknown> => typeof c === "function";
 
 type ClassificationResult =
-  | { kind: "value"; value: JSX.Element | string }
-  | { kind: "stream"; iterable: AsyncIterable<JSX.Element> }
+  | { kind: "value"; value: Awaitable<JSX.Element> | string }
+  | { kind: "stream"; iterable: AsyncIterable<JSX.Element | string> }
   | { kind: "sync-error"; error: unknown };
 
 function classifyEntry(entry: FragmentEntry, signal: AbortSignal): ClassificationResult {
@@ -135,7 +133,7 @@ function runFragmentInScope(
  */
 async function runValue(
   id: string,
-  value: JSX.Element | string,
+  value: Awaitable<JSX.Element> | string,
   merge: MergeType,
   emit: Emit,
   onError: FlowOptions["onError"],
@@ -170,14 +168,14 @@ async function runValue(
 
 async function runStream(
   id: string,
-  iterable: AsyncIterable<JSX.Element>,
+  iterable: AsyncIterable<JSX.Element | string>,
   merge: MergeType,
   emit: Emit,
   onError: FlowOptions["onError"],
   signal: AbortSignal,
 ): Promise<void> {
   const it = iterable[Symbol.asyncIterator]();
-  const aborted = new Promise<IteratorResult<JSX.Element>>((resolve) => {
+  const aborted = new Promise<IteratorResult<JSX.Element | string>>((resolve) => {
     const onAbort = () => resolve({ done: true, value: undefined });
     if (signal.aborted) onAbort();
     else signal.addEventListener("abort", onAbort, { once: true });

@@ -3522,10 +3522,12 @@ export namespace JSX {
     style?: Awaitable<string | CSSProperties | RawString | null | undefined>;
     dangerouslySetInnerHTML?: { __html: string | null | undefined };
     htmlFor?: Awaitable<string | null | undefined>;
+    for?: Awaitable<string | null | undefined>;
     [K: `on${string}`]: Awaitable<string> | undefined;
   }
   export interface HTMLAttributes extends AriaAttributes, DOMAttributes {
     accessKey?: Awaitable<string | undefined | RawString>;
+    accesskey?: Awaitable<string | undefined | RawString>;
     autoCapitalize?: Awaitable<
       | "off"
       | "none"
@@ -3537,12 +3539,29 @@ export namespace JSX {
       | (string & {})
       | RawString
     >;
+    autocapitalize?: Awaitable<
+      | "off"
+      | "none"
+      | "on"
+      | "sentences"
+      | "words"
+      | "characters"
+      | undefined
+      | (string & {})
+      | RawString
+    >;
     autoFocus?: Awaitable<boolean | undefined | RawString>;
+    autofocus?: Awaitable<boolean | undefined | RawString>;
     contentEditable?: Awaitable<Booleanish | "inherit" | "plaintext-only" | undefined | RawString>;
+    contenteditable?: Awaitable<Booleanish | "inherit" | "plaintext-only" | undefined | RawString>;
     contextMenu?: Awaitable<string | undefined | RawString>;
+    contextmenu?: Awaitable<string | undefined | RawString>;
     dir?: Awaitable<string | undefined | RawString>;
     draggable?: Awaitable<Booleanish | undefined | RawString>;
     enterKeyHint?: Awaitable<
+      "enter" | "done" | "go" | "next" | "previous" | "search" | "send" | undefined | RawString
+    >;
+    enterkeyhint?: Awaitable<
       "enter" | "done" | "go" | "next" | "previous" | "search" | "send" | undefined | RawString
     >;
     hidden?: Awaitable<boolean | undefined | RawString>;
@@ -3551,7 +3570,9 @@ export namespace JSX {
     nonce?: Awaitable<string | undefined | RawString>;
     slot?: Awaitable<string | undefined | RawString>;
     spellCheck?: Awaitable<Booleanish | undefined | RawString>;
+    spellcheck?: Awaitable<Booleanish | undefined | RawString>;
     tabIndex?: Awaitable<number | undefined | RawString>;
+    tabindex?: Awaitable<number | `${bigint}` | RawString>;
     title?: Awaitable<string | undefined | RawString>;
     translate?: Awaitable<"yes" | "no" | undefined | RawString>;
     role?: Awaitable<AriaRole | undefined | RawString>;
@@ -3567,17 +3588,37 @@ export namespace JSX {
     typeof?: Awaitable<string | undefined | RawString>;
     vocab?: Awaitable<string | undefined | RawString>;
     autoCorrect?: Awaitable<string | undefined | RawString>;
+    autocorrect?: Awaitable<string | undefined | RawString>;
     color?: Awaitable<string | undefined | RawString>;
     itemProp?: Awaitable<string | undefined | RawString>;
+    itemprop?: Awaitable<string | undefined | RawString>;
     itemScope?: Awaitable<boolean | undefined | RawString>;
+    itemscope?: Awaitable<boolean | undefined | RawString>;
     itemType?: Awaitable<string | undefined | RawString>;
+    itemtype?: Awaitable<string | undefined | RawString>;
     itemID?: Awaitable<string | undefined | RawString>;
+    itemid?: Awaitable<string | undefined | RawString>;
     itemRef?: Awaitable<string | undefined | RawString>;
+    itemref?: Awaitable<string | undefined | RawString>;
     popover?: Awaitable<"" | "auto" | "manual" | "hint" | undefined | RawString>;
     popoverTargetAction?: Awaitable<"toggle" | "show" | "hide" | undefined | RawString>;
+    popovertargetaction?: Awaitable<"toggle" | "show" | "hide" | undefined | RawString>;
     popoverTarget?: Awaitable<string | undefined | RawString>;
+    popovertarget?: Awaitable<string | undefined | RawString>;
     inert?: Awaitable<boolean | undefined | RawString>;
     inputMode?: Awaitable<
+      | "none"
+      | "text"
+      | "tel"
+      | "url"
+      | "email"
+      | "numeric"
+      | "decimal"
+      | "search"
+      | undefined
+      | RawString
+    >;
+    inputmode?: Awaitable<
       | "none"
       | "text"
       | "tel"
@@ -3595,13 +3636,18 @@ export namespace JSX {
   }
   export interface MediaHTMLAttributes extends HTMLAttributes {
     autoPlay?: Awaitable<boolean | undefined | RawString>;
+    autoplay?: Awaitable<boolean | undefined | RawString>;
     controls?: Awaitable<boolean | undefined | RawString>;
     controlsList?: Awaitable<string | undefined | RawString>;
+    controlslist?: Awaitable<string | undefined | RawString>;
     crossOrigin?: Awaitable<CrossOrigin | RawString>;
+    crossorigin?: Awaitable<CrossOrigin | RawString>;
     loop?: Awaitable<boolean | undefined | RawString>;
     mediaGroup?: Awaitable<string | undefined | RawString>;
+    mediagroup?: Awaitable<string | undefined | RawString>;
     muted?: Awaitable<boolean | undefined | RawString>;
     playsInline?: Awaitable<boolean | undefined | RawString>;
+    playsinline?: Awaitable<boolean | undefined | RawString>;
     preload?: Awaitable<string | undefined | RawString>;
     src?: Awaitable<string | undefined | RawString>;
   }
@@ -3613,11 +3659,13 @@ export namespace JSX {
     download?: Awaitable<any | RawString>;
     href?: Awaitable<string | undefined | RawString>;
     hrefLang?: Awaitable<string | undefined | RawString>;
+    hreflang?: Awaitable<string | undefined | RawString>;
     media?: Awaitable<string | undefined | RawString>;
     ping?: Awaitable<string | undefined | RawString>;
     target?: Awaitable<HTMLAttributeAnchorTarget | undefined | RawString>;
     type?: Awaitable<string | undefined | RawString>;
     referrerPolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
+    referrerpolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
   }
   export interface AreaHTMLAttributes extends HTMLAttributes {
     alt?: Awaitable<string | undefined | RawString>;
@@ -3625,8 +3673,10 @@ export namespace JSX {
     download?: Awaitable<any | RawString>;
     href?: Awaitable<string | undefined | RawString>;
     hrefLang?: Awaitable<string | undefined | RawString>;
+    hreflang?: Awaitable<string | undefined | RawString>;
     media?: Awaitable<string | undefined | RawString>;
     referrerPolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
+    referrerpolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
     shape?: Awaitable<string | undefined | RawString>;
     target?: Awaitable<string | undefined | RawString>;
   }
@@ -3640,10 +3690,17 @@ export namespace JSX {
     formAction?: Awaitable<
       string | ((formData: FormData) => void | Promise<void>) | undefined | RawString
     >;
+    formaction?: Awaitable<
+      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString
+    >;
     formEncType?: Awaitable<string | undefined | RawString>;
+    formenctype?: Awaitable<string | undefined | RawString>;
     formMethod?: Awaitable<string | undefined | RawString>;
+    formmethod?: Awaitable<string | undefined | RawString>;
     formNoValidate?: Awaitable<boolean | undefined | RawString>;
+    formnovalidate?: Awaitable<boolean | undefined | RawString>;
     formTarget?: Awaitable<string | undefined | RawString>;
+    formtarget?: Awaitable<string | undefined | RawString>;
     name?: Awaitable<string | undefined | RawString>;
     type?: Awaitable<"submit" | "reset" | "button" | undefined | RawString>;
     value?: Awaitable<string | readonly string[] | number | undefined | RawString>;
@@ -3665,6 +3722,7 @@ export namespace JSX {
   export interface DelHTMLAttributes extends HTMLAttributes {
     cite?: Awaitable<string | undefined | RawString>;
     dateTime?: Awaitable<string | undefined | RawString>;
+    datetime?: Awaitable<string | undefined | RawString>;
   }
   export interface DetailsHTMLAttributes extends HTMLAttributes {
     open?: Awaitable<boolean | undefined | RawString>;
@@ -3687,14 +3745,18 @@ export namespace JSX {
   }
   export interface FormHTMLAttributes extends HTMLAttributes {
     acceptCharset?: Awaitable<string | undefined | RawString>;
+    "accept-charset"?: Awaitable<string | undefined | RawString>;
     action?: Awaitable<
       string | undefined | ((formData: FormData) => void | Promise<void>) | RawString
     >;
     autoComplete?: Awaitable<string | undefined | RawString>;
+    autocomplete?: Awaitable<string | undefined | RawString>;
     encType?: Awaitable<string | undefined | RawString>;
+    enctype?: Awaitable<string | undefined | RawString>;
     method?: Awaitable<string | undefined | RawString>;
     name?: Awaitable<string | undefined | RawString>;
     noValidate?: Awaitable<boolean | undefined | RawString>;
+    novalidate?: Awaitable<boolean | undefined | RawString>;
     target?: Awaitable<string | undefined | RawString>;
   }
   export interface HtmlHTMLAttributes extends HTMLAttributes {
@@ -3703,39 +3765,52 @@ export namespace JSX {
   export interface IframeHTMLAttributes extends HTMLAttributes {
     allow?: Awaitable<string | undefined | RawString>;
     allowFullScreen?: Awaitable<boolean | undefined | RawString>;
+    allowfullscreen?: Awaitable<boolean | undefined | RawString>;
     allowTransparency?: Awaitable<boolean | undefined | RawString>;
+    allowtransparency?: Awaitable<boolean | undefined | RawString>;
     frameBorder?: Awaitable<number | string | undefined | RawString>;
+    frameborder?: Awaitable<number | `${number}` | string | undefined | RawString>;
     height?: Awaitable<number | string | undefined | RawString>;
     loading?: Awaitable<"eager" | "lazy" | undefined | RawString>;
     marginHeight?: Awaitable<number | undefined | RawString>;
+    marginheight?: Awaitable<number | `${number}` | undefined | RawString>;
     marginWidth?: Awaitable<number | undefined | RawString>;
+    marginwidth?: Awaitable<number | `${number}` | undefined | RawString>;
     name?: Awaitable<string | undefined | RawString>;
     referrerPolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
+    referrerpolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
     sandbox?: Awaitable<string | undefined | RawString>;
     scrolling?: Awaitable<string | undefined | RawString>;
     seamless?: Awaitable<boolean | undefined | RawString>;
     src?: Awaitable<string | undefined | RawString>;
     srcDoc?: Awaitable<string | undefined | RawString>;
+    srcdoc?: Awaitable<string | undefined | RawString>;
     width?: Awaitable<number | string | undefined | RawString>;
   }
   export interface ImgHTMLAttributes extends HTMLAttributes {
     alt?: Awaitable<string | undefined | RawString>;
     crossOrigin?: Awaitable<CrossOrigin | RawString>;
+    crossorigin?: Awaitable<CrossOrigin | RawString>;
     decoding?: Awaitable<"async" | "auto" | "sync" | undefined | RawString>;
     fetchPriority?: Awaitable<"high" | "low" | "auto" | undefined | RawString>;
+    fetchpriority?: Awaitable<"high" | "low" | "auto" | undefined | RawString>;
     height?: Awaitable<number | string | undefined | RawString>;
     loading?: Awaitable<"eager" | "lazy" | undefined | RawString>;
     referrerPolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
+    referrerpolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
     sizes?: Awaitable<string | undefined | RawString>;
     src?: Awaitable<string | undefined | RawString>;
     srcSet?: Awaitable<string | undefined | RawString>;
+    srcset?: Awaitable<string | undefined | RawString>;
     useMap?: Awaitable<string | undefined | RawString>;
+    usemap?: Awaitable<string | undefined | RawString>;
     width?: Awaitable<number | string | undefined | RawString>;
   }
   export interface InputHTMLAttributes extends HTMLAttributes {
     accept?: Awaitable<string | undefined | RawString>;
     alt?: Awaitable<string | undefined | RawString>;
     autoComplete?: Awaitable<HTMLInputAutoCompleteAttribute | undefined | RawString>;
+    autocomplete?: Awaitable<HTMLInputAutoCompleteAttribute | undefined | RawString>;
     capture?: Awaitable<boolean | "user" | "environment" | undefined | RawString>;
     checked?: Awaitable<boolean | undefined | RawString>;
     disabled?: Awaitable<boolean | undefined | RawString>;
@@ -3743,21 +3818,31 @@ export namespace JSX {
     formAction?: Awaitable<
       string | ((formData: FormData) => void | Promise<void>) | undefined | RawString
     >;
+    formaction?: Awaitable<
+      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString
+    >;
     formEncType?: Awaitable<string | undefined | RawString>;
+    formenctype?: Awaitable<string | undefined | RawString>;
     formMethod?: Awaitable<string | undefined | RawString>;
+    formmethod?: Awaitable<string | undefined | RawString>;
     formNoValidate?: Awaitable<boolean | undefined | RawString>;
+    formnovalidate?: Awaitable<boolean | undefined | RawString>;
     formTarget?: Awaitable<string | undefined | RawString>;
+    formtarget?: Awaitable<string | undefined | RawString>;
     height?: Awaitable<number | string | undefined | RawString>;
     list?: Awaitable<string | undefined | RawString>;
     max?: Awaitable<number | string | undefined | RawString>;
     maxLength?: Awaitable<number | undefined | RawString>;
+    maxlength?: Awaitable<number | `${number}` | undefined | RawString>;
     min?: Awaitable<number | string | undefined | RawString>;
     minLength?: Awaitable<number | undefined | RawString>;
+    minlength?: Awaitable<number | `${number}` | undefined | RawString>;
     multiple?: Awaitable<boolean | undefined | RawString>;
     name?: Awaitable<string | undefined | RawString>;
     pattern?: Awaitable<string | undefined | RawString>;
     placeholder?: Awaitable<string | undefined | RawString>;
     readOnly?: Awaitable<boolean | undefined | RawString>;
+    readonly?: Awaitable<boolean | undefined | RawString>;
     required?: Awaitable<boolean | undefined | RawString>;
     size?: Awaitable<number | undefined | RawString>;
     src?: Awaitable<string | undefined | RawString>;
@@ -3769,13 +3854,16 @@ export namespace JSX {
   export interface InsHTMLAttributes extends HTMLAttributes {
     cite?: Awaitable<string | undefined | RawString>;
     dateTime?: Awaitable<string | undefined | RawString>;
+    datetime?: Awaitable<string | undefined | RawString>;
   }
   export interface KeygenHTMLAttributes extends HTMLAttributes {
     challenge?: Awaitable<string | undefined | RawString>;
     disabled?: Awaitable<boolean | undefined | RawString>;
     form?: Awaitable<string | undefined | RawString>;
     keyType?: Awaitable<string | undefined | RawString>;
+    keytype?: Awaitable<string | undefined | RawString>;
     keyParams?: Awaitable<string | undefined | RawString>;
+    keyparams?: Awaitable<string | undefined | RawString>;
     name?: Awaitable<string | undefined | RawString>;
   }
   export interface LabelHTMLAttributes extends HTMLAttributes {
@@ -3788,17 +3876,24 @@ export namespace JSX {
     as?: Awaitable<string | undefined | RawString>;
     blocking?: Awaitable<"render" | (string & {}) | undefined | RawString>;
     crossOrigin?: Awaitable<CrossOrigin | RawString>;
+    crossorigin?: Awaitable<CrossOrigin | RawString>;
     fetchPriority?: Awaitable<"high" | "low" | "auto" | undefined | RawString>;
+    fetchpriority?: Awaitable<"high" | "low" | "auto" | undefined | RawString>;
     href?: Awaitable<string | undefined | RawString>;
     hrefLang?: Awaitable<string | undefined | RawString>;
+    hreflang?: Awaitable<string | undefined | RawString>;
     integrity?: Awaitable<string | undefined | RawString>;
     media?: Awaitable<string | undefined | RawString>;
     imageSrcSet?: Awaitable<string | undefined | RawString>;
+    imagesrcset?: Awaitable<string | undefined | RawString>;
     imageSizes?: Awaitable<string | undefined | RawString>;
+    imagesizes?: Awaitable<string | undefined | RawString>;
     referrerPolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
+    referrerpolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
     sizes?: Awaitable<string | undefined | RawString>;
     type?: Awaitable<string | undefined | RawString>;
     charSet?: Awaitable<string | undefined | RawString>;
+    charset?: Awaitable<string | undefined | RawString>;
     precedence?: Awaitable<string | undefined | RawString>;
   }
   export interface MapHTMLAttributes extends HTMLAttributes {
@@ -3809,8 +3904,10 @@ export namespace JSX {
   }
   export interface MetaHTMLAttributes extends HTMLAttributes {
     charSet?: Awaitable<string | undefined | RawString>;
+    charset?: Awaitable<string | undefined | RawString>;
     content?: Awaitable<string | undefined | RawString>;
     httpEquiv?: Awaitable<string | undefined | RawString>;
+    "http-equiv"?: Awaitable<string | undefined | RawString>;
     media?: Awaitable<string | undefined | RawString>;
     name?: Awaitable<string | undefined | RawString>;
   }
@@ -3830,6 +3927,7 @@ export namespace JSX {
     name?: Awaitable<string | undefined | RawString>;
     type?: Awaitable<string | undefined | RawString>;
     useMap?: Awaitable<string | undefined | RawString>;
+    usemap?: Awaitable<string | undefined | RawString>;
     width?: Awaitable<number | string | undefined | RawString>;
     wmode?: Awaitable<string | undefined | RawString>;
   }
@@ -3870,17 +3968,23 @@ export namespace JSX {
     async?: Awaitable<boolean | undefined | RawString>;
     blocking?: Awaitable<"render" | (string & {}) | undefined | RawString>;
     charSet?: Awaitable<string | undefined | RawString>;
+    charset?: Awaitable<string | undefined | RawString>;
     crossOrigin?: Awaitable<CrossOrigin | RawString>;
+    crossorigin?: Awaitable<CrossOrigin | RawString>;
     defer?: Awaitable<boolean | undefined | RawString>;
     fetchPriority?: Awaitable<"high" | "low" | "auto" | undefined | RawString>;
+    fetchpriority?: Awaitable<"high" | "low" | "auto" | undefined | RawString>;
     integrity?: Awaitable<string | undefined | RawString>;
     noModule?: Awaitable<boolean | undefined | RawString>;
+    nomodule?: Awaitable<boolean | undefined | RawString>;
     referrerPolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
+    referrerpolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
     src?: Awaitable<string | undefined | RawString>;
     type?: Awaitable<string | undefined | RawString>;
   }
   export interface SelectHTMLAttributes extends HTMLAttributes {
     autoComplete?: Awaitable<string | undefined | RawString>;
+    autocomplete?: Awaitable<string | undefined | RawString>;
     disabled?: Awaitable<boolean | undefined | RawString>;
     form?: Awaitable<string | undefined | RawString>;
     multiple?: Awaitable<boolean | undefined | RawString>;
@@ -3895,6 +3999,7 @@ export namespace JSX {
     sizes?: Awaitable<string | undefined | RawString>;
     src?: Awaitable<string | undefined | RawString>;
     srcSet?: Awaitable<string | undefined | RawString>;
+    srcset?: Awaitable<string | undefined | RawString>;
     type?: Awaitable<string | undefined | RawString>;
     width?: Awaitable<number | string | undefined | RawString>;
   }
@@ -3911,7 +4016,9 @@ export namespace JSX {
     bgcolor?: Awaitable<string | undefined | RawString>;
     border?: Awaitable<number | undefined | RawString>;
     cellPadding?: Awaitable<number | string | undefined | RawString>;
+    cellpadding?: Awaitable<number | `${number}` | string | undefined | RawString>;
     cellSpacing?: Awaitable<number | string | undefined | RawString>;
+    cellspacing?: Awaitable<number | `${number}` | string | undefined | RawString>;
     frame?: Awaitable<boolean | undefined | RawString>;
     rules?: Awaitable<"none" | "groups" | "rows" | "columns" | "all" | undefined | RawString>;
     summary?: Awaitable<string | undefined | RawString>;
@@ -3920,8 +4027,10 @@ export namespace JSX {
   export interface TdHTMLAttributes extends HTMLAttributes {
     align?: Awaitable<"left" | "center" | "right" | "justify" | "char" | undefined | RawString>;
     colSpan?: Awaitable<number | undefined | RawString>;
+    colspan?: Awaitable<number | `${number}` | undefined | RawString>;
     headers?: Awaitable<string | undefined | RawString>;
     rowSpan?: Awaitable<number | undefined | RawString>;
+    rowspan?: Awaitable<number | `${number}` | undefined | RawString>;
     scope?: Awaitable<string | undefined | RawString>;
     abbr?: Awaitable<string | undefined | RawString>;
     height?: Awaitable<number | string | undefined | RawString>;
@@ -3930,15 +4039,20 @@ export namespace JSX {
   }
   export interface TextareaHTMLAttributes extends HTMLAttributes {
     autoComplete?: Awaitable<string | undefined | RawString>;
+    autocomplete?: Awaitable<string | undefined | RawString>;
     cols?: Awaitable<number | undefined | RawString>;
     dirName?: Awaitable<string | undefined | RawString>;
+    dirname?: Awaitable<string | undefined | RawString>;
     disabled?: Awaitable<boolean | undefined | RawString>;
     form?: Awaitable<string | undefined | RawString>;
     maxLength?: Awaitable<number | undefined | RawString>;
+    maxlength?: Awaitable<number | `${number}` | undefined | RawString>;
     minLength?: Awaitable<number | undefined | RawString>;
+    minlength?: Awaitable<number | `${number}` | undefined | RawString>;
     name?: Awaitable<string | undefined | RawString>;
     placeholder?: Awaitable<string | undefined | RawString>;
     readOnly?: Awaitable<boolean | undefined | RawString>;
+    readonly?: Awaitable<boolean | undefined | RawString>;
     required?: Awaitable<boolean | undefined | RawString>;
     rows?: Awaitable<number | undefined | RawString>;
     value?: Awaitable<string | readonly string[] | number | undefined | RawString>;
@@ -3947,13 +4061,16 @@ export namespace JSX {
   export interface ThHTMLAttributes extends HTMLAttributes {
     align?: Awaitable<"left" | "center" | "right" | "justify" | "char" | undefined | RawString>;
     colSpan?: Awaitable<number | undefined | RawString>;
+    colspan?: Awaitable<number | `${number}` | undefined | RawString>;
     headers?: Awaitable<string | undefined | RawString>;
     rowSpan?: Awaitable<number | undefined | RawString>;
+    rowspan?: Awaitable<number | `${number}` | undefined | RawString>;
     scope?: Awaitable<string | undefined | RawString>;
     abbr?: Awaitable<string | undefined | RawString>;
   }
   export interface TimeHTMLAttributes extends HTMLAttributes {
     dateTime?: Awaitable<string | undefined | RawString>;
+    datetime?: Awaitable<string | undefined | RawString>;
   }
   export interface TrackHTMLAttributes extends HTMLAttributes {
     default?: Awaitable<boolean | undefined | RawString>;
@@ -3961,17 +4078,22 @@ export namespace JSX {
     label?: Awaitable<string | undefined | RawString>;
     src?: Awaitable<string | undefined | RawString>;
     srcLang?: Awaitable<string | undefined | RawString>;
+    srclang?: Awaitable<string | undefined | RawString>;
   }
   export interface VideoHTMLAttributes extends MediaHTMLAttributes {
     height?: Awaitable<number | string | undefined | RawString>;
     playsInline?: Awaitable<boolean | undefined | RawString>;
+    playsinline?: Awaitable<boolean | undefined | RawString>;
     poster?: Awaitable<string | undefined | RawString>;
     width?: Awaitable<number | string | undefined | RawString>;
     disablePictureInPicture?: Awaitable<boolean | undefined | RawString>;
+    disablepictureinpicture?: Awaitable<boolean | undefined | RawString>;
     disableRemotePlayback?: Awaitable<boolean | undefined | RawString>;
+    disableremoteplayback?: Awaitable<boolean | undefined | RawString>;
   }
   export interface WebViewHTMLAttributes extends HTMLAttributes {
     allowFullScreen?: Awaitable<boolean | undefined | RawString>;
+    allowfullscreen?: Awaitable<boolean | undefined | RawString>;
     allowpopups?: Awaitable<boolean | undefined | RawString>;
     autosize?: Awaitable<boolean | undefined | RawString>;
     blinkfeatures?: Awaitable<string | undefined | RawString>;

@@ -1,4 +1,4 @@
-import type { JSX } from "@vincle/core";
+import type { Awaitable, JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 
@@ -16,17 +16,19 @@ export interface AdapterCapabilities {
 
 /**
  * Content renderable as a deferred fragment:
- * - `JSX.Element`: one-shot sync/async render
- * - `string`: **escaped text**; for real HTML, wrap with `raw()`
- * - `(signal) => JSX.Element`: lazy factory; `signal` = request abort + fragment timeout
- * - `AsyncIterable<JSX.Element>`: streaming
+ * - `JSX.Element | string`: one-shot sync/async render; strings are escaped
+ *   text. For real HTML, wrap with `raw()`.
+ * - `(signal) => JSX.Element | string`: lazy factory; `signal` = request abort + fragment timeout
+ * - `AsyncIterable<JSX.Element | string>`: streaming; each string is escaped
  */
+type DeferValue = Awaitable<JSX.Element> | string;
+type DeferStream = AsyncIterable<JSX.Element | string>;
+
 export type DeferContent =
-  | JSX.Element
-  | string
-  | ((signal: AbortSignal) => JSX.Element)
-  | AsyncIterable<JSX.Element>
-  | ((signal: AbortSignal) => AsyncIterable<JSX.Element>);
+  | DeferValue
+  | ((signal: AbortSignal) => DeferValue | DeferStream)
+  | DeferStream
+  | ((signal: AbortSignal) => DeferStream);
 
 export interface Shell {
   type: "shell";

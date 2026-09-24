@@ -21,7 +21,7 @@
 
 ## Layout & toolchain
 
-- `packages/`: 6: `core`, `flow`, `vite-plugin`, `precompile`, `eslint-plugin`, `typescript-config`
+- `packages/`: 7: `core`, `flow`, `vite-plugin`, `precompile`, `eslint-plugin`, `typescript-config`, `create-vincle`
 - `@vincle/core`'s intrinsic element table is generated: **never hand-edit the `@generated` regions of `src/jsx-namespace.ts`**. After touching `@types/react` or `csstype` (catalog) or `scripts/codegen.ts`, run `bun run codegen` in `packages/core`; `codegen:check` (part of `check`) fails CI if the committed file is stale
 - `apps/`: internal: `docs`, `bench` · `dist/`: built output (consumed by conformance tests)
 - `turbo.json`: single source of task deps/caching; `build` depends on `^build`
