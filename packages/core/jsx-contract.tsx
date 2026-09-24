@@ -102,6 +102,8 @@ export const e6 = <a ref={() => {}}>x</a>;
 export const e7 = <div hx-get={42}>x</div>;
 // @ts-expect-error
 export const e8 = <label htmlFor={42}>x</label>;
+// @ts-expect-error the native spelling keeps the same value type
+export const e8Native = <label for={42}>x</label>;
 // @ts-expect-error
 export const e9 = <circle r={true} />;
 // @ts-expect-error

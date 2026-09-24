@@ -101,6 +101,12 @@ export const attrsAccepted = [
     <path d="M0 0h10v10z" strokeWidth={2} />
   </svg>,
   <label htmlFor="field">label</label>,
+  <label for="field">label</label>,
+  <meta charset="utf-8" />,
+  <div tabindex={0} contenteditable={false}>
+    text
+  </div>,
+  <input readonly autocomplete="off" />,
   <div dangerouslySetInnerHTML={{ __html: "<b>x</b>" }} />,
   // Custom elements stay open: a hyphen, and nobody knows their attributes.
   // `data-*` / `aria-*` pass everywhere (TypeScript doesn't check non-identifier
@@ -149,6 +155,16 @@ export const attrsRejected12 = <div unselectable="on" />;
 // written for React compiling.
 export const attrsKept = (
   <>
+    <div tabindex={0} />
+    <div tabindex="0" />
+    {/* @ts-expect-error native numeric aliases accept numeric strings only */}
+    <div tabindex="toto" />
+    <div tabIndex={0} />
+    {/* @ts-expect-error React alias remains number-only */}
+    <div tabIndex="0" />
+    <td rowspan="2" />
+    {/* @ts-expect-error other native numeric aliases reject non-numbers */}
+    <td rowspan="toto" />
     <script nonce="abc123" />
     <meta property="og:title" content="x" />
     <div about="#me" typeof="Person" vocab="https://schema.org/" />

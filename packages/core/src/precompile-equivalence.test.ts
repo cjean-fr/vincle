@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsxEscape, jsxTemplate, jsx, Fragment } from "./jsx-runtime.js";
+import { jsxEscape, jsxTemplate, jsxTemplateDeferred, jsx, Fragment } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
 import { raw, RawString, VNode } from "./types.js";
 
@@ -8,10 +8,10 @@ import { raw, RawString, VNode } from "./types.js";
  * Path-equivalence fuzzer for the **third** renderer.
  *
  * `path-equivalence.test.ts` proves the static path and the tree walk emit the same
- * bytes. It says nothing about the precompile runtime: `jsxEscape` /
- * `jsxTemplate`, the helpers the Deno/Bun-style transform calls, which is a
- * third traversal of the same value taxonomy, and was pinned only by a
- * hand-written case list.
+ * bytes. It says nothing about the precompile runtime: `jsxEscape`,
+ * `jsxTemplate`, and Vincle's context-preserving `jsxTemplateDeferred`.
+ * These helpers traverse the same value taxonomy through a third rendering
+ * path that was pinned only by a hand-written case list.
  *
  * The hole such a list leaves is the class this kind of fuzzer exists to catch:
  * a value kind one path handles and the other mishandles. An array of VNodes is
@@ -22,11 +22,11 @@ import { raw, RawString, VNode } from "./types.js";
  * wants the precompilation brick to serve any runtime that exposes one.
  *
  * So the comparison here is per *value*, not per tree: for every shape a hole
- * can hold, the three ways to turn it into HTML must agree byte for byte.
+ * can hold, the walk and all three precompile helpers must agree byte for byte.
  *
  * Values are regenerated from the seed for each path, never shared: a generator
- * and an async generator are consumed once, and handing the same one to three
- * renderers would measure exhaustion instead of equivalence.
+ * and an async generator are consumed once, and handing the same one to several
+ * paths would measure exhaustion instead of equivalence.
  */
 
 // Seeded PRNG (mulberry32): same seed ⇒ same sequence ⇒ same logical value.
@@ -159,11 +159,15 @@ function genValue(r: () => number, depth: number): unknown {
     })();
   }
 
+  // A nested compiled template exercises jsxTemplateDeferred's TemplateNode
+  // branch, including the render-time boundary around component holes.
+  if (roll < 0.93) return jsxTemplateDeferred(["<i>", "</i>"], genValue(r, depth - 1));
+
   // Promise of anything: including a promise of a container.
   return Promise.resolve(genValue(r, depth - 1));
 }
 
-// ── The three ways to turn one value into HTML ──────────────────────────────
+// ── The paths from one value to HTML ────────────────────────────────────────
 
 const viaWalk = (v: unknown): Promise<string> => renderToString(v);
 
@@ -178,6 +182,9 @@ async function viaTemplate(v: unknown): Promise<string> {
   const out = await jsxTemplate(["", ""], v);
   return out.value;
 }
+
+const viaDeferredTemplate = (v: unknown): Promise<string> =>
+  renderToString(jsxTemplateDeferred(["", ""], v));
 
 // ── The same comparison, inside a rawtext element ───────────────────────────
 
@@ -257,19 +264,34 @@ const viaTemplateMulti = async ({
   vals: unknown[];
 }): Promise<string> => (await jsxTemplate(frags, ...vals)).value;
 
+const viaDeferredTemplateMulti = ({
+  frags,
+  vals,
+}: {
+  frags: string[];
+  vals: unknown[];
+}): Promise<string> => renderToString(jsxTemplateDeferred(frags, ...vals));
+
 describe("path equivalence: precompile ≡ tree-walk", () => {
   test(`byte-identical output across ${SEEDS.length} random values`, async () => {
-    const failures: { seed: number; walk: string; escape: string; template: string }[] = [];
+    const failures: {
+      seed: number;
+      walk: string;
+      escape: string;
+      template: string;
+      deferred: string;
+    }[] = [];
 
     for (const seed of SEEDS) {
       // One fresh value per path: generators are single-use.
-      const [walk, escape, template] = await Promise.all([
+      const [walk, escape, template, deferred] = await Promise.all([
         viaWalk(genValue(mulberry32(seed), 4)),
         viaEscape(genValue(mulberry32(seed), 4)),
         viaTemplate(genValue(mulberry32(seed), 4)),
+        viaDeferredTemplate(genValue(mulberry32(seed), 4)),
       ]);
-      if (walk !== escape || walk !== template) {
-        failures.push({ seed, walk, escape, template });
+      if (walk !== escape || walk !== template || walk !== deferred) {
+        failures.push({ seed, walk, escape, template, deferred });
       }
     }
 
@@ -279,21 +301,23 @@ describe("path equivalence: precompile ≡ tree-walk", () => {
         `${failures.length}/${SEEDS.length} values diverged. First failing seed=${f.seed}\n` +
           `  tree-walk:   ${JSON.stringify(f.walk)}\n` +
           `  jsxEscape:   ${JSON.stringify(f.escape)}\n` +
-          `  jsxTemplate: ${JSON.stringify(f.template)}`,
+          `  jsxTemplate: ${JSON.stringify(f.template)}\n` +
+          `  deferred:    ${JSON.stringify(f.deferred)}`,
       );
     }
     expect(failures.length).toBe(0);
   });
 
   test(`byte-identical across ${SEEDS.length} multi-hole templates`, async () => {
-    const failures: { seed: number; walk: string; template: string }[] = [];
+    const failures: { seed: number; walk: string; template: string; deferred: string }[] = [];
 
     for (const seed of SEEDS) {
-      const [walk, template] = await Promise.all([
+      const [walk, template, deferred] = await Promise.all([
         viaWalkTemplate(genTemplate(mulberry32(seed), 3)),
         viaTemplateMulti(genTemplate(mulberry32(seed), 3)),
+        viaDeferredTemplateMulti(genTemplate(mulberry32(seed), 3)),
       ]);
-      if (walk !== template) failures.push({ seed, walk, template });
+      if (walk !== template || walk !== deferred) failures.push({ seed, walk, template, deferred });
     }
 
     if (failures.length > 0) {
@@ -301,7 +325,8 @@ describe("path equivalence: precompile ≡ tree-walk", () => {
       throw new Error(
         `${failures.length}/${SEEDS.length} templates diverged. First failing seed=${f.seed}\n` +
           `  tree-walk:   ${JSON.stringify(f.walk)}\n` +
-          `  jsxTemplate: ${JSON.stringify(f.template)}`,
+          `  jsxTemplate: ${JSON.stringify(f.template)}\n` +
+          `  deferred:    ${JSON.stringify(f.deferred)}`,
       );
     }
     expect(failures.length).toBe(0);
@@ -356,6 +381,20 @@ describe("path equivalence: precompile ≡ tree-walk", () => {
     expect(await viaWalk(build())).toBe(expected);
     expect(await viaEscape(build())).toBe(expected);
     expect(await viaTemplate(build())).toBe(expected);
+    expect(await viaDeferredTemplate(build())).toBe(expected);
+  });
+
+  test("a nested deferred template keeps its markup through every path", async () => {
+    const build = () =>
+      jsxTemplateDeferred(
+        ["<i>", "</i>"],
+        jsx(() => "a & b", {}),
+      );
+    const expected = "<i>a &amp; b</i>";
+    expect(await viaWalk(build())).toBe(expected);
+    expect(await viaEscape(build())).toBe(expected);
+    expect(await viaTemplate(build())).toBe(expected);
+    expect(await viaDeferredTemplate(build())).toBe(expected);
   });
 
   test("jsxTemplate interleaves its static fragments around every hole shape", async () => {

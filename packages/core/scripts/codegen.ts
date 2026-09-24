@@ -423,8 +423,18 @@ const BASE_OVERRIDES: string[] = [
   "style?: Awaitable<string | CSSProperties | RawString | null | undefined>;",
   "dangerouslySetInnerHTML?: { __html: string | null | undefined };",
   "htmlFor?: Awaitable<string | null | undefined>;",
+  "for?: Awaitable<string | null | undefined>;",
   "[K: `on${string}`]: Awaitable<string> | undefined;",
 ];
+
+// React supplies the source vocabulary, but Vincle renders HTML. Expose the
+// native spelling alongside each React spelling so examples can use HTML names.
+function nativeHTMLName(name: string): string | undefined {
+  if (!/[A-Z]/.test(name)) return undefined;
+  if (name === "acceptCharset") return "accept-charset";
+  if (name === "httpEquiv") return "http-equiv";
+  return name.toLowerCase();
+}
 
 const SVG_KEEP = new Set([
   "x",
@@ -587,6 +597,22 @@ function emitInterface(name: string): string {
         sf,
       )} | RawString>;`,
     );
+    if (name !== "SVGAttributes") {
+      const nativeName = nativeHTMLName(pn);
+      if (nativeName !== undefined) {
+        // HTML's serialized spelling accepts numeric strings for numeric
+        // React props. Keep the React alias strict, while constraining the
+        // native spelling to strings that actually parse as numbers.
+        const printedType = printer.printNode(ts.EmitHint.Unspecified, t, sf);
+        const nativeType =
+          nativeName === "tabindex"
+            ? "number | `${bigint}`"
+            : printedType.replace(/\bnumber\b/g, "number | `${number}`");
+        props.push(
+          `${JSON.stringify(nativeName)}${m.questionToken ? "?" : ""}: Awaitable<${nativeType} | RawString>;`,
+        );
+      }
+    }
   }
 
   if (name === "SVGAttributes") {
