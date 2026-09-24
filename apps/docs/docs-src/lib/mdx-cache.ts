@@ -132,7 +132,7 @@ export class MdxCache {
     const prev = this.#pending.get(key);
     if (prev) return prev;
 
-    const promise = this.#compileAndLoad(file, raw, key);
+    const promise = this.#compileAndLoad(file, raw, key, hash);
     this.#pending.set(key, promise);
     try {
       return await promise;
@@ -141,7 +141,12 @@ export class MdxCache {
     }
   }
 
-  async #compileAndLoad(file: string, raw: string, key: string): Promise<CompiledMdx> {
+  async #compileAndLoad(
+    file: string,
+    raw: string,
+    key: string,
+    hash: string,
+  ): Promise<CompiledMdx> {
     const { data: frontmatter, content } = grayMatter(raw);
     const { code } = await mdxToJs(content, compileOptions);
 
@@ -154,7 +159,7 @@ export class MdxCache {
     }
     this.#compiled.set(key, code);
 
-    const mod = await this.#importModule(file, code);
+    const mod = await this.#importModule(file, code, hash);
     const Component = mod.default;
     if (typeof Component !== "function") {
       throw new Error(`[@vincle/docs] Compiled MDX ${file} has no default export.`);
@@ -171,11 +176,13 @@ export class MdxCache {
   async #importModule(
     file: string,
     code: string,
+    hash: string,
   ): Promise<{
     default: (props: object) => import("@vincle/core").JSX.Element;
   }> {
     const rel = path.relative(path.resolve(import.meta.dirname, "../pages"), file);
-    const tmpFile = path.join(COMPILED_DIR, rel.replace(/\.mdx$/, ".tsx"));
+    // A new URL is required for each content version: the module loader caches imports.
+    const tmpFile = path.join(COMPILED_DIR, rel.replace(/\.mdx$/, `.${hash}.tsx`));
     // `recursive` is idempotent; checking first would just open a race window.
     await mkdir(path.dirname(tmpFile), { recursive: true });
     await writeFile(tmpFile, code, "utf-8");
