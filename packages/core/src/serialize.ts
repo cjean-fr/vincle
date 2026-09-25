@@ -108,7 +108,7 @@ export function serializeStatic(
   const content = serializeContent(children, childTag);
   if (content === null) return null;
 
-  const attrStr = buildAttrs(props);
+  const attrStr = buildAttrs(props, tag);
   // A promised attribute value does not make a subtree dynamic: it makes the
   // *serialized result* awaitable, which `JSX.Element` has always allowed. Doing
   // it here rather than falling back to a VNode keeps one serializer for one

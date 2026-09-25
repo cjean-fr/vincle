@@ -27,8 +27,37 @@ ruleTester.run("no-javascript-urls", noJavascriptUrls, {
     // Not a URL attribute
     '<div title="javascript:alert(1)">x</div>',
     '<input value="javascript:alert(1)" />',
+    // An animation of something that is not a URL: the value carries no scheme,
+    // so neither the rule nor the runtime has anything to say.
+    '<animate attributeName="opacity" values="0;1;0" />',
+    '<animateTransform attributeName="transform" type="rotate" from="0" to="360" />',
+    // The same names on an element that animates nothing are ordinary data, and
+    // filtering them would be the same category error as filtering `id`.
+    '<div to="javascript:alert(1)" />',
+    '<my-widget from="2019" by="1" values="a;b" />',
+    // A computed target is the runtime's to judge: the rule sees one attribute.
+    '<animate attributeName={target} values="0;1;0" />',
   ],
   invalid: [
+    // A URL in the value position of an animation: `href` one attribute removed,
+    // caught here for the same reason the runtime catches it at render time.
+    {
+      code: '<animate attributeName="href" values="javascript:alert(1)" />',
+      errors: [{ messageId: "noJavascriptUrl" }],
+    },
+    {
+      code: '<set attributeName="xlink:href" to="javascript:alert(1)" />',
+      errors: [{ messageId: "noJavascriptUrl" }],
+    },
+    // Applied item by item, so the second item is a href of its own.
+    {
+      code: '<animate attributeName="href" values="#;javascript:alert(1)" />',
+      errors: [{ messageId: "noJavascriptUrl" }],
+    },
+    {
+      code: '<animateMotion attributeName="href" VALUES="javascript:alert(1)" />',
+      errors: [{ messageId: "noJavascriptUrl" }],
+    },
     {
       code: '<a href="javascript:alert(1)">Click me</a>',
       errors: [{ messageId: "noJavascriptUrl" }],

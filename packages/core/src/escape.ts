@@ -1,5 +1,5 @@
 import { ERR_VNODE_AS_TEXT, vincleError } from "./errors.js";
-import { RawString, VNode } from "./types.js";
+import { RawString, RawUrl, VNode } from "./types.js";
 
 const RE_ESCAPE_HTML = /[&<>]/;
 
@@ -239,17 +239,6 @@ export function joinRawTagContent(left: string, right: string, tag: string): str
 
 const REGEX_IMAGE_DATA_URI = /^data:image\/(?:png|jpeg|gif|webp|avif)(?:[;+]|$)/i;
 
-export const URL_ATTRIBUTES: ReadonlySet<string> = new Set([
-  "href",
-  "src",
-  "action",
-  "formaction",
-  "xlink:href",
-  // `<object data>` / `<embed src>` navigate the same way `<iframe src>` does;
-  // `data` is the only one of the two not already covered by `src`.
-  "data",
-]);
-
 // Tab / LF / CR, removed from anywhere in a URL before it is parsed.
 const RE_URL_TAB_NEWLINE = /[\t\n\r]/g;
 
@@ -312,30 +301,48 @@ export function schemeOf(url: string): string | undefined {
   return undefined; // no ":" at all
 }
 
+/**
+ * Is this URL's scheme one the runtime lets through unvouched?
+ *
+ * An allowlist: a relative reference, `http`, `https`, `mailto`, `tel`, `sms`,
+ * and `data:` carrying an image. Any other scheme is blocked, so one this list
+ * forgets fails closed rather than open, and `rawUrl()` is how an application
+ * vouches for its own (`phpstorm:`, `vscode:`, `geo:`).
+ */
 export function isSafeScheme(url: string): boolean {
   // Fast paths for the shapes that cannot carry a scheme, plus the dominant one
   // that can: they skip the scan and the lowercased copy it ends with.
   const c0 = url.charCodeAt(0);
   if (c0 === 47 || c0 === 35 || c0 === 63) return true; // '/', '#', '?'
-  // "http" (case-insensitive). Safe even though it also admits "httpx:": an
-  // unknown scheme does not execute; only the schemes named below do.
+  // "http:" / "https:" (case-insensitive), spelled out to the colon: "httpx:"
+  // is a different scheme, and falls to the scan below.
   if (
     (c0 | 32) === 104 &&
     (url.charCodeAt(1) | 32) === 116 &&
     (url.charCodeAt(2) | 32) === 116 &&
     (url.charCodeAt(3) | 32) === 112
-  )
-    return true;
+  ) {
+    const c4 = url.charCodeAt(4);
+    if (c4 === 58 || ((c4 | 32) === 115 && url.charCodeAt(5) === 58)) return true;
+  }
 
   const scheme = schemeOf(url);
-  if (scheme === undefined) return true; // relative reference: nothing to judge
-  if (scheme === "javascript" || scheme === "vbscript") return false;
-  // Only image payloads: `data:text/html` is a document, and a document that the
-  // page links to runs script. The parser's own normalization is applied first,
-  // so `data:image/png\t;base64,…` is judged as the browser will read it.
-  if (scheme === "data")
-    return REGEX_IMAGE_DATA_URI.test(url.replace(RE_URL_TAB_NEWLINE, "").trim());
-  return true;
+  switch (scheme) {
+    case undefined: // relative reference: nothing to judge
+    case "http":
+    case "https":
+    case "mailto":
+    case "tel":
+    case "sms":
+      return true;
+    // Only image payloads: `data:text/html` is a document, and a document that
+    // the page links to runs script. The parser's own normalization is applied
+    // first, so `data:image/png\t;base64,…` is judged as the browser will read it.
+    case "data":
+      return REGEX_IMAGE_DATA_URI.test(url.replace(RE_URL_TAB_NEWLINE, "").trim());
+    default:
+      return false;
+  }
 }
 
 // ── Value → text coercion ────────────────────────────────────────────────
@@ -360,6 +367,14 @@ export function renderLeaf(v: unknown, rawtextTag: string | undefined): string {
   if (v === null || v === undefined || typeof v === "boolean") return "";
   if (typeof v === "number" || typeof v === "bigint") return String(v);
   if (v instanceof RawString) return v.value;
+  // A `RawUrl` in content position is text, not markup: `rawUrl` vouches for a
+  // scheme, and a URL has none to vouch for here. Rendered through the ordinary
+  // leaf policy, which is the whole difference between it and `raw()`.
+  if (v instanceof RawUrl) {
+    return rawtextTag === undefined
+      ? escapeContent(v.value)
+      : escapeRawTagContent(v.value, rawtextTag);
+  }
   // Inside rawtext the coercion is `String` under the tag's own escape: an entity
   // is never decoded there, so HTML-escaping would put `&lt;` in the JavaScript.
   return rawtextTag === undefined

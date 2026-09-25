@@ -1,15 +1,21 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  ANIMATED_URL_ATTRIBUTES,
   ATTR_NAME_TABLES,
+  URL_ATTRIBUTES,
+  attrMeta,
   buildAttrs,
+  isEventHandlerName,
   isValidAttrName,
   resolveAttrName,
   serializeAttr,
 } from "./attrs.js";
+import { valueToText } from "./escape.js";
 import { jsx } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { raw } from "./types.js";
+import { isAnimationTag } from "./tag.js";
+import { raw, rawUrl } from "./types.js";
 
 // ── serializeAttr: the value taxonomy, pinned once ─────────────────────────
 //
@@ -91,90 +97,440 @@ describe("serializeAttr: the value taxonomy", () => {
 
 describe("buildAttrs URL safety", () => {
   test("blocks javascript: href", () => {
-    const r = buildAttrs({ href: "javascript:alert(1)" });
+    const r = buildAttrs({ href: "javascript:alert(1)" }, "div");
     expect(r).toContain("#blocked");
   });
 
   test("allows http href", () => {
-    const r = buildAttrs({ href: "https://example.com" });
+    const r = buildAttrs({ href: "https://example.com" }, "div");
     expect(r).toContain("https://example.com");
   });
 
   test("allows relative href", () => {
-    expect(buildAttrs({ href: "/page" })).toContain("/page");
-    expect(buildAttrs({ href: "#section" })).toContain("#section");
+    expect(buildAttrs({ href: "/page" }, "div")).toContain("/page");
+    expect(buildAttrs({ href: "#section" }, "div")).toContain("#section");
   });
 
   test("non-URL attr is not checked", () => {
-    const r = buildAttrs({ id: "javascript:fine" });
+    const r = buildAttrs({ id: "javascript:fine" }, "div");
     expect(r).toContain("javascript:fine");
   });
 
   test("blocks javascript: src", () => {
-    const r = buildAttrs({ src: "javascript:alert(1)" });
+    const r = buildAttrs({ src: "javascript:alert(1)" }, "div");
     expect(r).toContain("#blocked");
   });
 
   test("className is resolved before URL check", () => {
-    const r = buildAttrs({ className: "foo" });
+    const r = buildAttrs({ className: "foo" }, "div");
     expect(r).toContain('class="foo"');
   });
 
   test("blocks vbscript: href", () => {
-    const r = buildAttrs({ href: "vbscript:msgbox(1)" });
+    const r = buildAttrs({ href: "vbscript:msgbox(1)" }, "div");
     expect(r).toContain("#blocked");
   });
 
   test("blocks javascript: action", () => {
-    const r = buildAttrs({ action: "javascript:alert(1)" });
+    const r = buildAttrs({ action: "javascript:alert(1)" }, "div");
     expect(r).toContain("#blocked");
   });
 
   test("blocks javascript: formaction", () => {
-    const r = buildAttrs({ formaction: "javascript:alert(1)" });
+    const r = buildAttrs({ formaction: "javascript:alert(1)" }, "div");
     expect(r).toContain("#blocked");
   });
 
   test("xlink:href is blocked (SVG <a> execution vector)", () => {
-    const r = buildAttrs({ xlinkHref: "javascript:alert(1)" });
+    const r = buildAttrs({ xlinkHref: "javascript:alert(1)" }, "div");
     expect(r).toContain("#blocked");
   });
 
   test("srcset is not checked (no JS execution vector)", () => {
-    const r = buildAttrs({ srcSet: "javascript:alert(1) 1x" });
+    const r = buildAttrs({ srcSet: "javascript:alert(1) 1x" }, "div");
     expect(r).toContain('srcset="javascript:alert(1) 1x"');
   });
 
   test("RawString bypasses URL safety", () => {
-    const r = buildAttrs({ href: raw("javascript:fn()") });
+    const r = buildAttrs({ href: raw("javascript:fn()") }, "div");
     expect(r).toContain('href="javascript:fn()"');
     expect(r).not.toContain("#blocked");
   });
 
   test("mailto: href passes through", () => {
-    const r = buildAttrs({ href: "mailto:user@example.com" });
+    const r = buildAttrs({ href: "mailto:user@example.com" }, "div");
     expect(r).toContain("mailto:user@example.com");
   });
 
   test("data:image href passes through", () => {
-    const r = buildAttrs({ href: "data:image/png;base64,abc" });
+    const r = buildAttrs({ href: "data:image/png;base64,abc" }, "div");
     expect(r).toContain("data:image/png;base64,abc");
   });
 
   test("non-image data: URI is blocked", () => {
-    const r = buildAttrs({ href: "data:text/html,<script>alert(1)</script>" });
+    const r = buildAttrs({ href: "data:text/html,<script>alert(1)</script>" }, "div");
     expect(r).toContain("#blocked");
   });
 
   test("blocks scheme obfuscated with tab / leading NUL", () => {
-    expect(buildAttrs({ href: "java\tscript:alert(1)" })).toContain("#blocked");
-    expect(buildAttrs({ href: "\0javascript:alert(1)" })).toContain("#blocked");
-    expect(buildAttrs({ src: "java\nscript:alert(1)" })).toContain("#blocked");
+    expect(buildAttrs({ href: "java\tscript:alert(1)" }, "div")).toContain("#blocked");
+    expect(buildAttrs({ href: "\0javascript:alert(1)" }, "div")).toContain("#blocked");
+    expect(buildAttrs({ src: "java\nscript:alert(1)" }, "div")).toContain("#blocked");
   });
 
   test("blocks javascript: on <object data>", () => {
-    expect(buildAttrs({ data: "javascript:alert(1)" })).toContain("#blocked");
-    expect(buildAttrs({ data: "/model.json" })).toContain('data="/model.json"');
+    expect(buildAttrs({ data: "javascript:alert(1)" }, "div")).toContain("#blocked");
+    expect(buildAttrs({ data: "/model.json" }, "div")).toContain('data="/model.json"');
+  });
+});
+
+// ── URL_ATTRIBUTES ─────────────────────────────────────────────────────────
+
+describe("URL_ATTRIBUTES", () => {
+  test("contains href, src, action, formaction, xlink:href", () => {
+    expect(URL_ATTRIBUTES.has("href")).toBe(true);
+    expect(URL_ATTRIBUTES.has("src")).toBe(true);
+    expect(URL_ATTRIBUTES.has("action")).toBe(true);
+    expect(URL_ATTRIBUTES.has("formaction")).toBe(true);
+    expect(URL_ATTRIBUTES.has("xlink:href")).toBe(true);
+  });
+
+  // `<object data>` navigates the same way `<iframe src>` does; `src` was
+  // already covered, `data` was the gap.
+  test("contains data (<object data>)", () => {
+    expect(URL_ATTRIBUTES.has("data")).toBe(true);
+  });
+
+  test("does not contain non-URL attributes", () => {
+    expect(URL_ATTRIBUTES.has("id")).toBe(false);
+    expect(URL_ATTRIBUTES.has("class")).toBe(false);
+    expect(URL_ATTRIBUTES.has("style")).toBe(false);
+    expect(URL_ATTRIBUTES.has("srcset")).toBe(false);
+  });
+
+  test("has exactly 6 entries", () => {
+    expect(URL_ATTRIBUTES.size).toBe(6);
+  });
+
+  // The SMIL names are judged too, but kept out of this set: it answers
+  // "always a URL", and these four only carry one on an animation element.
+  test("the SMIL value names are not URL attributes proper", () => {
+    for (const name of ANIMATED_URL_ATTRIBUTES) expect(URL_ATTRIBUTES.has(name)).toBe(false);
+  });
+});
+
+// ── SMIL: a URL, or a handler, written one attribute removed ───────────────
+//
+// `<animate attributeName="href" values="javascript:…">` is a `href` the source
+// never spells. Both halves are asserted here: the value is judged as a URL
+// whatever it animates, and an animation aimed at a handler is refused outright,
+// because `to="alert(1)"` carries no scheme for a URL check to catch.
+
+describe("SMIL animation: the value is URL-judged", () => {
+  for (const name of ["values", "to", "from", "by"]) {
+    test(`${name} carrying javascript: is blocked on an animation`, () => {
+      expect(
+        buildAttrs({ attributeName: "href", [name]: "javascript:alert(1)" }, "animate"),
+      ).toContain("#blocked");
+    });
+
+    test(`${name} carrying a non-image data: is blocked on an animation`, () => {
+      const out = buildAttrs(
+        { attributeName: "href", [name]: "data:text/html,<script>alert(1)</script>" },
+        "set",
+      );
+      expect(out).toContain("#blocked");
+    });
+
+    // A real SMIL value carries no scheme, so `schemeOf` answers `undefined` and
+    // the animation is untouched — which is what makes scoping the check to the
+    // five animation tags free rather than a trade-off.
+    test(`${name} carrying a schemeless value is untouched`, () => {
+      expect(buildAttrs({ attributeName: "opacity", [name]: "1" }, "animate")).toContain('="1"');
+    });
+  }
+
+  test("an obfuscated scheme is caught, like any other URL", () => {
+    expect(
+      buildAttrs({ attributeName: "href", values: "java\tscript:alert(1)" }, "animate"),
+    ).toContain("#blocked");
+  });
+
+  test("each item of a value list is judged, not the list as one URL", () => {
+    // The animation applies `values` item by item: the second item is a href.
+    expect(
+      buildAttrs({ attributeName: "href", values: "#;javascript:alert(1)" }, "animate"),
+    ).toContain('values="#blocked"');
+    expect(buildAttrs({ attributeName: "href", values: "#a; #b" }, "animate")).toContain(
+      'values="#a; #b"',
+    );
+  });
+
+  test("names are judged as serialized, whatever their case", () => {
+    // The parser lowercases both, then adjusts `attributename` in SVG.
+    for (const attrs of [
+      { attributename: "href", values: "javascript:alert(1)" },
+      { attributeName: "href", VALUES: "javascript:alert(1)" },
+    ]) {
+      expect(buildAttrs(attrs, "animate")).toContain('values="#blocked"');
+    }
+  });
+
+  test("the tag is judged whatever its case", () => {
+    for (const tag of ["aNIMATE", "SET", "animateMotion", "animateTransform"]) {
+      expect(buildAttrs({ attributeName: "href", to: "javascript:alert(1)" }, tag)).toContain(
+        "#blocked",
+      );
+    }
+  });
+
+  test("every animation tag is covered, not just animate", () => {
+    for (const tag of ["animate", "set", "animatetransform", "animatemotion", "animatecolor"]) {
+      expect(buildAttrs({ attributeName: "href", to: "javascript:alert(1)" }, tag)).toContain(
+        "#blocked",
+      );
+    }
+  });
+
+  test("the whole pair, as an animation writes it", async () => {
+    const html = await renderToString(
+      jsx("animate", { attributeName: "href", values: "javascript:alert(1)" }),
+    );
+    expect(html).toContain('values="#blocked"');
+    expect(html).not.toContain("javascript:");
+  });
+
+  test("a legitimate animation renders unchanged", async () => {
+    const html = await renderToString(
+      jsx("animate", { attributeName: "opacity", values: "0;1;0", dur: "2s" }),
+    );
+    expect(html).toContain('values="0;1;0"');
+  });
+
+  test("a transform animation keeps its value list", async () => {
+    const html = await renderToString(
+      jsx("animateTransform", {
+        attributeName: "transform",
+        type: "rotate",
+        from: "0",
+        to: "360",
+        dur: "1s",
+      }),
+    );
+    expect(html).toContain('from="0"');
+    expect(html).toContain('to="360"');
+  });
+
+  test("a data: image stays a data: image", () => {
+    expect(
+      buildAttrs({ attributeName: "href", values: "data:image/png;base64,iVBOR" }, "animate"),
+    ).toContain("data:image/png");
+  });
+
+  // The scoping itself, which is the property that makes the check free: these
+  // four names are ordinary data everywhere else, and an inert element carrying
+  // one is as unremarkable as an inert element carrying `id`.
+  test("on an element that animates nothing, the same value is left alone", () => {
+    expect(buildAttrs({ to: "javascript:alert(1)" }, "div")).toBe(' to="javascript:alert(1)"');
+    expect(buildAttrs({ values: "javascript:alert(1)" }, "span")).toBe(
+      ' values="javascript:alert(1)"',
+    );
+    expect(buildAttrs({ from: "2019", by: "1" }, "my-widget")).toBe(' from="2019" by="1"');
+  });
+
+  test("and the names are not URL attributes in their own right", () => {
+    // The reason the check needs the tag: `attrMeta` is a name-only answer, and
+    // the lint rule asks exactly this.
+    for (const name of ANIMATED_URL_ATTRIBUTES) expect(attrMeta(name).isUrl).toBe(false);
+    expect(attrMeta("to").isUrl).toBe(false);
+  });
+});
+
+describe("SMIL animation: a handler target is refused", () => {
+  test("attributeName naming on* throws, with the stable code", () => {
+    expect(() => buildAttrs({ attributeName: "onclick", to: "alert(1)" }, "set")).toThrow(
+      /animates an event handler/,
+    );
+    try {
+      buildAttrs({ attributeName: "onmouseover", to: "alert(1)" }, "set");
+      throw new Error("should have thrown");
+    } catch (e) {
+      expect((e as { code?: string }).code).toBe("ERR_VINCLE_ANIMATED_HANDLER");
+    }
+  });
+
+  test("a target is judged on the text it serializes to", () => {
+    for (const target of [raw("onclick"), rawUrl("onclick"), ["onclick"], " onclick"]) {
+      expect(() => buildAttrs({ attributeName: target, to: "alert(1)" }, "set")).toThrow(
+        /animates an event handler/,
+      );
+    }
+    expect(() => buildAttrs({ attributename: "onclick", to: "alert(1)" }, "set")).toThrow(
+      /animates an event handler/,
+    );
+  });
+
+  test("nothing is emitted for a refused element", () => {
+    // Fail-stop: half a start tag is worse than none.
+    let out: unknown;
+    try {
+      out = buildAttrs({ attributeName: "onclick", to: "alert(1)", id: "x" }, "set");
+    } catch {
+      out = undefined;
+    }
+    expect(out).toBeUndefined();
+  });
+
+  test("a URL target is not refused: it is filtered, and that is enough", () => {
+    expect(buildAttrs({ attributeName: "href", to: "javascript:alert(1)" }, "set")).toContain(
+      "#blocked",
+    );
+  });
+
+  test("a non-handler target passes through", () => {
+    expect(buildAttrs({ attributeName: "fill", to: "red" }, "set")).toContain('to="red"');
+  });
+
+  test("a handler target with nothing to write is inert, and passes", () => {
+    // The same condition `@vincle/precompile` uses to decide whether declining
+    // the element would change anything: no value, no animation, no refusal.
+    expect(buildAttrs({ attributeName: "onclick" }, "set")).toContain('attributeName="onclick"');
+    expect(buildAttrs({ attributeName: "onclick", dur: "1s" }, "set")).toContain(
+      'attributeName="onclick"',
+    );
+  });
+
+  test("every one of the four value attributes is enough to trip it", () => {
+    for (const name of ANIMATED_URL_ATTRIBUTES) {
+      expect(() => buildAttrs({ attributeName: "onclick", [name]: "alert(1)" }, "set")).toThrow(
+        /animates an event handler/,
+      );
+    }
+  });
+
+  // The tag is part of the rule, so an inert element carrying the pair is not a
+  // refused element: `attributeName` is SMIL vocabulary and means nothing here.
+  test("the same pair on an element that animates nothing is inert", () => {
+    expect(buildAttrs({ attributeName: "onclick", to: "alert(1)" }, "div")).toBe(
+      ' attributeName="onclick" to="alert(1)"',
+    );
+  });
+
+  // A polluted prototype must not make every element in the process throw.
+  test("an inherited attributeName is not the element's own", () => {
+    expect(polluted("attributeName", "onclick", () => buildAttrs({ to: "red" }, "set"))).toContain(
+      'to="red"',
+    );
+  });
+});
+
+describe("isAnimationTag", () => {
+  test("the five elements a browser recognises", () => {
+    for (const tag of ["animate", "set", "animatetransform", "animatemotion", "animatecolor"]) {
+      expect(isAnimationTag(tag)).toBe(true);
+    }
+  });
+
+  test("and nothing else animates", () => {
+    expect(isAnimationTag("div")).toBe(false);
+    expect(isAnimationTag("svg")).toBe(false);
+    expect(isAnimationTag("section")).toBe(false);
+    expect(isAnimationTag("animates")).toBe(false);
+    expect(isAnimationTag("animation")).toBe(false);
+    expect(isAnimationTag("")).toBe(false);
+  });
+});
+
+describe("isEventHandlerName", () => {
+  test("matches on* whatever the case", () => {
+    expect(isEventHandlerName("onclick")).toBe(true);
+    expect(isEventHandlerName("ONCLICK")).toBe(true);
+    expect(isEventHandlerName("onanimationstart")).toBe(true);
+  });
+
+  // Over-matching is the safe direction here: a name no QName parser would
+  // accept animates nothing, so refusing it costs nothing either.
+  test("does not match an attribute that merely contains on", () => {
+    expect(isEventHandlerName("font")).toBe(false);
+    expect(isEventHandlerName("action")).toBe(false);
+    expect(isEventHandlerName("icon")).toBe(false);
+  });
+});
+
+describe("attrMeta: the URL question stays a name's own", () => {
+  test("the six navigable names", () => {
+    for (const name of URL_ATTRIBUTES) expect(attrMeta(name).isUrl).toBe(true);
+  });
+
+  test("the four animated names are not among them", () => {
+    // `no-javascript-urls` asks exactly this, and an element is not in reach of
+    // a rule that visits attributes: that is why the animation check lives in
+    // `buildAttrs` rather than here.
+    for (const name of ANIMATED_URL_ATTRIBUTES) expect(attrMeta(name).isUrl).toBe(false);
+  });
+});
+
+describe("rawUrl: a trusted scheme, and nothing else", () => {
+  test("a custom protocol handler passes, which is the whole point", () => {
+    expect(buildAttrs({ href: rawUrl("phpstorm://open?file=src/app.ts") }, "a")).toBe(
+      ' href="phpstorm://open?file=src/app.ts"',
+    );
+  });
+
+  // The two escape hatches answer different questions, and an audit has to be
+  // able to tell which one a call site reached for. So this one keeps escaping:
+  // it is not a way to smuggle markup through an attribute.
+  test("the value is still escaped: it cannot end its attribute", () => {
+    const r = buildAttrs({ href: rawUrl('phpstorm://x" onmouseover="alert(1)') }, "a");
+    expect(r).toBe(' href="phpstorm://x&quot; onmouseover=&quot;alert(1)"');
+  });
+
+  test("`&` in a query string is escaped like any other value", () => {
+    expect(buildAttrs({ href: rawUrl("myapp://go?a=1&b=2") }, "a")).toBe(
+      ' href="myapp://go?a=1&amp;b=2"',
+    );
+  });
+
+  test("a trusted scheme skips the check, as asserted", () => {
+    // The documented consequence: `rawUrl` says "I vouch for this value". What
+    // separates it from `raw()` is that escaping survives.
+    expect(buildAttrs({ href: rawUrl("javascript:alert(1)") }, "a")).toBe(
+      ' href="javascript:alert(1)"',
+    );
+  });
+
+  test("a non-URL attribute takes it as the string it is", () => {
+    expect(buildAttrs({ title: rawUrl("a<b") }, "div")).toBe(' title="a&lt;b"');
+  });
+
+  test("an animation value takes it too", () => {
+    expect(buildAttrs({ values: rawUrl("myapp://x") }, "animate")).toBe(' values="myapp://x"');
+  });
+
+  test("the precompile path agrees, byte for byte", () => {
+    expect(serializeAttr("href", rawUrl("phpstorm://open")).value).toBe('href="phpstorm://open"');
+  });
+});
+
+describe("rawUrl in content position is text, not markup", () => {
+  test("a RawUrl child is escaped", async () => {
+    // The difference from `raw()` the separate type exists for: a URL has no
+    // scheme to vouch for in a text position, so it is escaped like one.
+    const html = await renderToString(jsx("p", { children: rawUrl("<b>x</b>&y") }));
+    expect(html).toBe("<p>&lt;b&gt;x&lt;/b&gt;&amp;y</p>");
+  });
+
+  test("where a RawString is verbatim", async () => {
+    expect(await renderToString(jsx("p", { children: raw("<b>x</b>") }))).toBe("<p><b>x</b></p>");
+  });
+
+  test("inside <script>, the rawtext rule still applies", async () => {
+    const html = await renderToString(jsx("script", { children: rawUrl("</script>x") }));
+    expect(html).toBe("<script>\\u003c/script>x</script>");
+  });
+
+  test("valueToText does not stringify it into [object Object]", () => {
+    expect(valueToText(rawUrl("https://example.com"))).toBe("https://example.com");
   });
 });
 
@@ -182,7 +538,7 @@ describe("buildAttrs URL safety", () => {
 
 describe("buildAttrs alias resolution", () => {
   test("native name wins over its React alias", () => {
-    const r = buildAttrs({ className: "from-alias", class: "from-native" });
+    const r = buildAttrs({ className: "from-alias", class: "from-native" }, "div");
     expect(r).toBe(' class="from-native"');
   });
 
@@ -190,9 +546,9 @@ describe("buildAttrs alias resolution", () => {
   // happens to be an `Object.prototype` key looked like an existing native prop
   // and the attribute was dropped with no output and no error.
   test("a name resolving onto Object.prototype is still emitted", () => {
-    expect(buildAttrs({ Constructor: "x" })).toBe(' constructor="x"');
-    expect(buildAttrs({ __Proto__: "x" })).toBe(' __proto__="x"');
-    expect(buildAttrs({ ToString: "x" })).toBe(' tostring="x"');
+    expect(buildAttrs({ Constructor: "x" }, "div")).toBe(' constructor="x"');
+    expect(buildAttrs({ __Proto__: "x" }, "div")).toBe(' __proto__="x"');
+    expect(buildAttrs({ ToString: "x" }, "div")).toBe(' tostring="x"');
   });
 });
 
@@ -200,24 +556,30 @@ describe("buildAttrs alias resolution", () => {
 
 describe("buildAttrs style", () => {
   test("camelCase is kebab-cased", () => {
-    expect(buildAttrs({ style: { backgroundColor: "red" } })).toBe(' style="background-color:red"');
+    expect(buildAttrs({ style: { backgroundColor: "red" } }, "div")).toBe(
+      ' style="background-color:red"',
+    );
   });
 
   // `ms` is the one vendor prefix spelled lowercase, so the kebab-case rule
   // leaves it without its leading dash: a declaration no browser applies.
   test("the -ms- prefix keeps its leading dash", () => {
-    expect(buildAttrs({ style: { msFlexAlign: "center" } })).toBe(' style="-ms-flex-align:center"');
-    expect(buildAttrs({ style: { WebkitBoxOrient: "vertical" } })).toBe(
+    expect(buildAttrs({ style: { msFlexAlign: "center" } }, "div")).toBe(
+      ' style="-ms-flex-align:center"',
+    );
+    expect(buildAttrs({ style: { WebkitBoxOrient: "vertical" } }, "div")).toBe(
       ' style="-webkit-box-orient:vertical"',
     );
-    expect(buildAttrs({ style: { "--brand-color": "red" } })).toBe(' style="--brand-color:red"');
+    expect(buildAttrs({ style: { "--brand-color": "red" } }, "div")).toBe(
+      ' style="--brand-color:red"',
+    );
   });
 
   // A key carrying `:` or `;` smuggled extra declarations into the attribute.
   test("property names carrying CSS syntax are dropped", () => {
-    expect(buildAttrs({ style: { "color:red;position": "fixed" } })).toBe("");
-    expect(buildAttrs({ style: { color: "red", "a;b": "c" } })).toBe(' style="color:red"');
-    expect(buildAttrs({ style: { "}html{display": "none" } })).toBe("");
+    expect(buildAttrs({ style: { "color:red;position": "fixed" } }, "div")).toBe("");
+    expect(buildAttrs({ style: { color: "red", "a;b": "c" } }, "div")).toBe(' style="color:red"');
+    expect(buildAttrs({ style: { "}html{display": "none" } }, "div")).toBe("");
   });
 
   // A value carrying `;` used to pass through verbatim and inject declarations
@@ -225,27 +587,27 @@ describe("buildAttrs style", () => {
   // `url(data:…;base64,…)` is legitimate. CSS-escaping `\` and `;` in one
   // pass preserves how browsers parse the value.
   test("values carrying CSS syntax are escaped, not passed through", () => {
-    expect(buildAttrs({ style: { color: "red;position:fixed" } })).toBe(
+    expect(buildAttrs({ style: { color: "red;position:fixed" } }, "div")).toBe(
       ' style="color:red\\;position:fixed"',
     );
     // A pre-existing backslash must not survive to re-arm the separator.
-    expect(buildAttrs({ style: { color: "red\\;position:fixed" } })).toBe(
+    expect(buildAttrs({ style: { color: "red\\;position:fixed" } }, "div")).toBe(
       ' style="color:red\\\\\\;position:fixed"',
     );
-    expect(buildAttrs({ style: { background: "url(data:image/png;base64,iVBOR)" } })).toBe(
+    expect(buildAttrs({ style: { background: "url(data:image/png;base64,iVBOR)" } }, "div")).toBe(
       ' style="background:url(data:image/png\\;base64,iVBOR)"',
     );
   });
 
   test("a control character drops its declaration, like an invalid name", () => {
-    expect(buildAttrs({ style: { color: "re\u0000d" } })).toBe("");
-    expect(buildAttrs({ style: { color: "red", background: "bl\u0007ue" } })).toBe(
+    expect(buildAttrs({ style: { color: "re\u0000d" } }, "div")).toBe("");
+    expect(buildAttrs({ style: { color: "red", background: "bl\u0007ue" } }, "div")).toBe(
       ' style="color:red"',
     );
   });
 
   test("custom properties survive", () => {
-    expect(buildAttrs({ style: { "--brand": "#0af" } })).toBe(' style="--brand:#0af"');
+    expect(buildAttrs({ style: { "--brand": "#0af" } }, "div")).toBe(' style="--brand:#0af"');
   });
 });
 
@@ -387,23 +749,23 @@ describe("buildAttrs style: only an object literal is a bag of declarations", ()
   test("a RawString is the developer's escape hatch, not a style bag", () => {
     // Read as a bag, `raw()`'s own `value` property became a declaration:
     // `style="value:color:red"`. `jsxAttr` never had the bug.
-    expect(buildAttrs({ style: raw("color:red") })).toBe(' style="color:red"');
+    expect(buildAttrs({ style: raw("color:red") }, "div")).toBe(' style="color:red"');
   });
 
   test("a class instance falls back to its string form instead of vanishing", () => {
     // Enumerating a Date's own keys yields nothing, so the attribute used to be
     // dropped in silence.
-    const r = buildAttrs({ style: new Date(0) });
+    const r = buildAttrs({ style: new Date(0) }, "div");
     expect(r).toContain(" style=");
   });
 
   test("an object with a null prototype is still a style bag", () => {
     const bag = Object.assign(Object.create(null) as object, { color: "red" });
-    expect(buildAttrs({ style: bag })).toBe(' style="color:red"');
+    expect(buildAttrs({ style: bag }, "div")).toBe(' style="color:red"');
   });
 
   test("an array style is not a bag either", () => {
-    expect(buildAttrs({ style: ["color:red"] })).toBe(' style="color:red"');
+    expect(buildAttrs({ style: ["color:red"] }, "div")).toBe(' style="color:red"');
   });
 });
 
@@ -415,7 +777,7 @@ describe("an attribute name must name something", () => {
   // not a valid attribute name either.
   test("the empty name is not a name", () => {
     expect(isValidAttrName("")).toBe(false);
-    expect(buildAttrs({ "": 'x" onload="alert(1)' })).toBe("");
+    expect(buildAttrs({ "": 'x" onload="alert(1)' }, "div")).toBe("");
   });
 
   test("a backtick is legal in a name, and stays legal", () => {
@@ -438,20 +800,22 @@ const polluted = <T>(key: string, value: unknown, fn: () => T): T => {
 
 describe("buildAttrs: the props object is read, not its prototype", () => {
   test("an inherited property is not an attribute", () => {
-    expect(polluted("onload", "alert(1)", () => buildAttrs({ class: "ok" }))).toBe(' class="ok"');
+    expect(polluted("onload", "alert(1)", () => buildAttrs({ class: "ok" }, "div"))).toBe(
+      ' class="ok"',
+    );
   });
 
   test("…nor on the async path, where the copy would make it an own property", async () => {
     const r = await polluted("onload", "alert(1)", () =>
-      buildAttrs({ class: "ok", title: Promise.resolve("t") }),
+      buildAttrs({ class: "ok", title: Promise.resolve("t") }, "div"),
     );
     expect(r).toBe(' class="ok" title="t"');
   });
 
   test("…nor a declaration in a style bag", () => {
-    expect(polluted("position", "fixed", () => buildAttrs({ style: { color: "red" } }))).toBe(
-      ' style="color:red"',
-    );
+    expect(
+      polluted("position", "fixed", () => buildAttrs({ style: { color: "red" } }, "div")),
+    ).toBe(' style="color:red"');
   });
 });
 
@@ -496,15 +860,15 @@ describe("a RawString attribute value cannot end the attribute", () => {
   // the quote that ends the value is the one character it must not carry.
   test('`"` is escaped, on both serializers', () => {
     const attack = raw('" onmouseover="alert(1)');
-    expect(buildAttrs({ title: attack })).toBe(' title="&quot; onmouseover=&quot;alert(1)"');
+    expect(buildAttrs({ title: attack }, "div")).toBe(' title="&quot; onmouseover=&quot;alert(1)"');
     expect(serializeAttr("title", attack).value).toBe('title="&quot; onmouseover=&quot;alert(1)"');
   });
 
   test("everything else stays verbatim", () => {
     // An entity, a `<`, an `&`: the point of `raw()`, and a CSS string, which
     // the parser decodes back to `"` before the CSS parser ever sees it.
-    expect(buildAttrs({ title: raw("<b>a &amp; b</b>") })).toBe(' title="<b>a &amp; b</b>"');
-    expect(buildAttrs({ style: raw('font-family:"Foo"') })).toBe(
+    expect(buildAttrs({ title: raw("<b>a &amp; b</b>") }, "div")).toBe(' title="<b>a &amp; b</b>"');
+    expect(buildAttrs({ style: raw('font-family:"Foo"') }, "div")).toBe(
       ' style="font-family:&quot;Foo&quot;"',
     );
   });

@@ -5,6 +5,24 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
+// The runtime's own answer to "does this attribute name carry a URL", asked here
+// so the JSX types and the renderer cannot disagree about it: adding a name to
+// `URL_ATTRIBUTES` makes the attribute accept a `rawUrl()` here too, and
+// `codegen:check` fails until the regenerated file is committed. The import is
+// the one place the generator depends on the module it describes, and it buys
+// the property that matters most — a type surface that matches what is enforced.
+import { ANIMATED_URL_ATTRIBUTES, attrMeta } from "../src/attrs.js";
+
+/**
+ * `| RawUrl` on the attributes whose value the runtime may judge as a URL: the
+ * URL names, and the four an animation writes through. The types have no tag to
+ * scope the second set by, and a `RawUrl` where nothing is judged is a string.
+ */
+const trustedUrlArm = (name: string): string => {
+  const meta = attrMeta(name);
+  return meta.isUrl || ANIMATED_URL_ATTRIBUTES.has(meta.name) ? " | RawUrl" : "";
+};
+
 // ── Setup & Constants ───────────────────────────────────────────────────────
 const here: string = dirname(fileURLToPath(import.meta.url));
 const pkgRoot: string = join(here, "..");
@@ -595,7 +613,7 @@ function emitInterface(name: string): string {
         ts.EmitHint.Unspecified,
         t,
         sf,
-      )} | RawString>;`,
+      )} | RawString${trustedUrlArm(pn)}>;`,
     );
     if (name !== "SVGAttributes") {
       const nativeName = nativeHTMLName(pn);
@@ -609,7 +627,7 @@ function emitInterface(name: string): string {
             ? "number | `${bigint}`"
             : printedType.replace(/\bnumber\b/g, "number | `${number}`");
         props.push(
-          `${JSON.stringify(nativeName)}${m.questionToken ? "?" : ""}: Awaitable<${nativeType} | RawString>;`,
+          `${JSON.stringify(nativeName)}${m.questionToken ? "?" : ""}: Awaitable<${nativeType} | RawString${trustedUrlArm(nativeName)}>;`,
         );
       }
     }

@@ -15,7 +15,14 @@
  */
 
 import type { VNode } from "./jsx-runtime.js";
-import type { Awaitable, ClassValue, RawString, Renderable, TemplateNode } from "./types.js";
+import type {
+  Awaitable,
+  ClassValue,
+  RawString,
+  RawUrl,
+  Renderable,
+  TemplateNode,
+} from "./types.js";
 
 // @generated:start
 type CSSGlobals = "-moz-initial" | "inherit" | "initial" | "revert" | "revert-layer" | "unset";
@@ -3649,15 +3656,15 @@ export namespace JSX {
     playsInline?: Awaitable<boolean | undefined | RawString>;
     playsinline?: Awaitable<boolean | undefined | RawString>;
     preload?: Awaitable<string | undefined | RawString>;
-    src?: Awaitable<string | undefined | RawString>;
+    src?: Awaitable<string | undefined | RawString | RawUrl>;
   }
   export interface BaseHTMLAttributes extends HTMLAttributes {
-    href?: Awaitable<string | undefined | RawString>;
+    href?: Awaitable<string | undefined | RawString | RawUrl>;
     target?: Awaitable<string | undefined | RawString>;
   }
   export interface AnchorHTMLAttributes extends HTMLAttributes {
     download?: Awaitable<any | RawString>;
-    href?: Awaitable<string | undefined | RawString>;
+    href?: Awaitable<string | undefined | RawString | RawUrl>;
     hrefLang?: Awaitable<string | undefined | RawString>;
     hreflang?: Awaitable<string | undefined | RawString>;
     media?: Awaitable<string | undefined | RawString>;
@@ -3671,7 +3678,7 @@ export namespace JSX {
     alt?: Awaitable<string | undefined | RawString>;
     coords?: Awaitable<string | undefined | RawString>;
     download?: Awaitable<any | RawString>;
-    href?: Awaitable<string | undefined | RawString>;
+    href?: Awaitable<string | undefined | RawString | RawUrl>;
     hrefLang?: Awaitable<string | undefined | RawString>;
     hreflang?: Awaitable<string | undefined | RawString>;
     media?: Awaitable<string | undefined | RawString>;
@@ -3688,10 +3695,10 @@ export namespace JSX {
     disabled?: Awaitable<boolean | undefined | RawString>;
     form?: Awaitable<string | undefined | RawString>;
     formAction?: Awaitable<
-      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString
+      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString | RawUrl
     >;
     formaction?: Awaitable<
-      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString
+      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString | RawUrl
     >;
     formEncType?: Awaitable<string | undefined | RawString>;
     formenctype?: Awaitable<string | undefined | RawString>;
@@ -3734,7 +3741,7 @@ export namespace JSX {
   }
   export interface EmbedHTMLAttributes extends HTMLAttributes {
     height?: Awaitable<number | string | undefined | RawString>;
-    src?: Awaitable<string | undefined | RawString>;
+    src?: Awaitable<string | undefined | RawString | RawUrl>;
     type?: Awaitable<string | undefined | RawString>;
     width?: Awaitable<number | string | undefined | RawString>;
   }
@@ -3747,7 +3754,7 @@ export namespace JSX {
     acceptCharset?: Awaitable<string | undefined | RawString>;
     "accept-charset"?: Awaitable<string | undefined | RawString>;
     action?: Awaitable<
-      string | undefined | ((formData: FormData) => void | Promise<void>) | RawString
+      string | undefined | ((formData: FormData) => void | Promise<void>) | RawString | RawUrl
     >;
     autoComplete?: Awaitable<string | undefined | RawString>;
     autocomplete?: Awaitable<string | undefined | RawString>;
@@ -3782,7 +3789,7 @@ export namespace JSX {
     sandbox?: Awaitable<string | undefined | RawString>;
     scrolling?: Awaitable<string | undefined | RawString>;
     seamless?: Awaitable<boolean | undefined | RawString>;
-    src?: Awaitable<string | undefined | RawString>;
+    src?: Awaitable<string | undefined | RawString | RawUrl>;
     srcDoc?: Awaitable<string | undefined | RawString>;
     srcdoc?: Awaitable<string | undefined | RawString>;
     width?: Awaitable<number | string | undefined | RawString>;
@@ -3799,7 +3806,7 @@ export namespace JSX {
     referrerPolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
     referrerpolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
     sizes?: Awaitable<string | undefined | RawString>;
-    src?: Awaitable<string | undefined | RawString>;
+    src?: Awaitable<string | undefined | RawString | RawUrl>;
     srcSet?: Awaitable<string | undefined | RawString>;
     srcset?: Awaitable<string | undefined | RawString>;
     useMap?: Awaitable<string | undefined | RawString>;
@@ -3816,10 +3823,10 @@ export namespace JSX {
     disabled?: Awaitable<boolean | undefined | RawString>;
     form?: Awaitable<string | undefined | RawString>;
     formAction?: Awaitable<
-      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString
+      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString | RawUrl
     >;
     formaction?: Awaitable<
-      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString
+      string | ((formData: FormData) => void | Promise<void>) | undefined | RawString | RawUrl
     >;
     formEncType?: Awaitable<string | undefined | RawString>;
     formenctype?: Awaitable<string | undefined | RawString>;
@@ -3845,7 +3852,7 @@ export namespace JSX {
     readonly?: Awaitable<boolean | undefined | RawString>;
     required?: Awaitable<boolean | undefined | RawString>;
     size?: Awaitable<number | undefined | RawString>;
-    src?: Awaitable<string | undefined | RawString>;
+    src?: Awaitable<string | undefined | RawString | RawUrl>;
     step?: Awaitable<number | string | undefined | RawString>;
     type?: Awaitable<HTMLInputTypeAttribute | undefined | RawString>;
     value?: Awaitable<string | readonly string[] | number | undefined | RawString>;
@@ -3879,7 +3886,7 @@ export namespace JSX {
     crossorigin?: Awaitable<CrossOrigin | RawString>;
     fetchPriority?: Awaitable<"high" | "low" | "auto" | undefined | RawString>;
     fetchpriority?: Awaitable<"high" | "low" | "auto" | undefined | RawString>;
-    href?: Awaitable<string | undefined | RawString>;
+    href?: Awaitable<string | undefined | RawString | RawUrl>;
     hrefLang?: Awaitable<string | undefined | RawString>;
     hreflang?: Awaitable<string | undefined | RawString>;
     integrity?: Awaitable<string | undefined | RawString>;
@@ -3921,7 +3928,7 @@ export namespace JSX {
     value?: Awaitable<string | readonly string[] | number | undefined | RawString>;
   }
   export interface ObjectHTMLAttributes extends HTMLAttributes {
-    data?: Awaitable<string | undefined | RawString>;
+    data?: Awaitable<string | undefined | RawString | RawUrl>;
     form?: Awaitable<string | undefined | RawString>;
     height?: Awaitable<number | string | undefined | RawString>;
     name?: Awaitable<string | undefined | RawString>;
@@ -3979,7 +3986,7 @@ export namespace JSX {
     nomodule?: Awaitable<boolean | undefined | RawString>;
     referrerPolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
     referrerpolicy?: Awaitable<HTMLAttributeReferrerPolicy | undefined | RawString>;
-    src?: Awaitable<string | undefined | RawString>;
+    src?: Awaitable<string | undefined | RawString | RawUrl>;
     type?: Awaitable<string | undefined | RawString>;
   }
   export interface SelectHTMLAttributes extends HTMLAttributes {
@@ -3997,7 +4004,7 @@ export namespace JSX {
     height?: Awaitable<number | string | undefined | RawString>;
     media?: Awaitable<string | undefined | RawString>;
     sizes?: Awaitable<string | undefined | RawString>;
-    src?: Awaitable<string | undefined | RawString>;
+    src?: Awaitable<string | undefined | RawString | RawUrl>;
     srcSet?: Awaitable<string | undefined | RawString>;
     srcset?: Awaitable<string | undefined | RawString>;
     type?: Awaitable<string | undefined | RawString>;
@@ -4008,7 +4015,7 @@ export namespace JSX {
     media?: Awaitable<string | undefined | RawString>;
     scoped?: Awaitable<boolean | undefined | RawString>;
     type?: Awaitable<string | undefined | RawString>;
-    href?: Awaitable<string | undefined | RawString>;
+    href?: Awaitable<string | undefined | RawString | RawUrl>;
     precedence?: Awaitable<string | undefined | RawString>;
   }
   export interface TableHTMLAttributes extends HTMLAttributes {
@@ -4076,7 +4083,7 @@ export namespace JSX {
     default?: Awaitable<boolean | undefined | RawString>;
     kind?: Awaitable<string | undefined | RawString>;
     label?: Awaitable<string | undefined | RawString>;
-    src?: Awaitable<string | undefined | RawString>;
+    src?: Awaitable<string | undefined | RawString | RawUrl>;
     srcLang?: Awaitable<string | undefined | RawString>;
     srclang?: Awaitable<string | undefined | RawString>;
   }
@@ -4106,7 +4113,7 @@ export namespace JSX {
     partition?: Awaitable<string | undefined | RawString>;
     plugins?: Awaitable<boolean | undefined | RawString>;
     preload?: Awaitable<string | undefined | RawString>;
-    src?: Awaitable<string | undefined | RawString>;
+    src?: Awaitable<string | undefined | RawString | RawUrl>;
     useragent?: Awaitable<string | undefined | RawString>;
     webpreferences?: Awaitable<string | undefined | RawString>;
   }
@@ -4143,7 +4150,7 @@ export namespace JSX {
     baseFrequency?: Awaitable<number | string | undefined | RawString>;
     baselineShift?: Awaitable<number | string | undefined | RawString>;
     begin?: Awaitable<number | string | undefined | RawString>;
-    by?: Awaitable<number | string | undefined | RawString>;
+    by?: Awaitable<number | string | undefined | RawString | RawUrl>;
     calcMode?: Awaitable<number | string | undefined | RawString>;
     clipPath?: Awaitable<string | undefined | RawString>;
     clipPathUnits?: Awaitable<number | string | undefined | RawString>;
@@ -4187,12 +4194,12 @@ export namespace JSX {
     fontSize?: Awaitable<number | string | undefined | RawString>;
     fontStyle?: Awaitable<number | string | undefined | RawString>;
     fontWeight?: Awaitable<number | string | undefined | RawString>;
-    from?: Awaitable<number | string | undefined | RawString>;
+    from?: Awaitable<number | string | undefined | RawString | RawUrl>;
     fx?: Awaitable<number | string | undefined | RawString>;
     fy?: Awaitable<number | string | undefined | RawString>;
     gradientTransform?: Awaitable<string | undefined | RawString>;
     gradientUnits?: Awaitable<string | undefined | RawString>;
-    href?: Awaitable<string | undefined | RawString>;
+    href?: Awaitable<string | undefined | RawString | RawUrl>;
     imageRendering?: Awaitable<number | string | undefined | RawString>;
     in2?: Awaitable<number | string | undefined | RawString>;
     in?: Awaitable<string | undefined | RawString>;
@@ -4253,9 +4260,9 @@ export namespace JSX {
     textDecoration?: Awaitable<number | string | undefined | RawString>;
     textLength?: Awaitable<number | string | undefined | RawString>;
     textRendering?: Awaitable<number | string | undefined | RawString>;
-    to?: Awaitable<number | string | undefined | RawString>;
+    to?: Awaitable<number | string | undefined | RawString | RawUrl>;
     transform?: Awaitable<string | undefined | RawString>;
-    values?: Awaitable<string | undefined | RawString>;
+    values?: Awaitable<string | undefined | RawString | RawUrl>;
     vectorEffect?: Awaitable<number | string | undefined | RawString>;
     viewBox?: Awaitable<string | undefined | RawString>;
     visibility?: Awaitable<number | string | undefined | RawString>;

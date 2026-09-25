@@ -211,6 +211,73 @@ describe("precompileTransform", () => {
       expect(out).toContain("a&quot;b");
     });
 
+    // An animation's value is a URL decided by two attributes and the tag, and
+    // `jsxAttr` carries one attribute and no tag. So the element goes back to
+    // JSX and the runtime judges it: nesting it in an eligible parent is what
+    // gives the transform something to emit, and is the shape that keeps the
+    // parent's own output static.
+    it("declines an animation writing a value, so the runtime judges it", () => {
+      const out = transformVincle(
+        `const a = <div><animate attributeName="href" values="javascript:alert(1)" /></div>;`,
+      );
+      expect(out).toContain("jsxTemplateDeferred");
+      expect(out).toContain('<animate attributeName="href" values="javascript:alert(1)" />');
+      // Not inlined with the URL live: the bytes are the runtime's to produce.
+      expect(out).not.toContain('values="#blocked"');
+    });
+
+    it("declines it whatever the case of its names", () => {
+      for (const src of [
+        `const a = <div><animate attributename="href" values="javascript:alert(1)" /></div>;`,
+        `const a = <div><animate attributeName="href" VALUES="javascript:alert(1)" /></div>;`,
+      ]) {
+        expect(transformVincle(src)).toContain("jsxTemplateDeferred");
+      }
+    });
+
+    it("declines one aimed at a handler, which the runtime refuses", () => {
+      const out = transformVincle(
+        `const a = <div><set attributeName="onclick" to="alert(1)" /></div>;`,
+      );
+      expect(out).toContain("jsxTemplateDeferred");
+      expect(out).toContain('<set attributeName="onclick" to="alert(1)" />');
+    });
+
+    it("declines one whose target is computed, since the runtime cannot trust it", () => {
+      const out = transformVincle(
+        `const a = <div><animate attributeName={t} values="javascript:alert(1)" /></div>;`,
+      );
+      expect(out).toContain("jsxTemplateDeferred");
+    });
+
+    it("leaves an animation with no target, or no value, inlined", () => {
+      // Both are animations of nothing, which is the same condition the runtime
+      // answers on: if the two disagreed, the same element would be judged
+      // twice differently.
+      expect(transformVincle(`const a = <div><animate values="0;1;0" /></div>;`)).toContain(
+        'values="0;1;0"',
+      );
+      expect(
+        transformVincle(`const a = <div><animate attributeName="opacity" /></div>;`),
+      ).toContain('attributeName="opacity"');
+    });
+
+    it("leaves the same attributes inlined on an element that animates nothing", () => {
+      const out = transformVincle(`const a = <div to="2020" from="2019" />;`);
+      expect(out).toContain('<div to="2020" from="2019">');
+    });
+
+    it("leaves an ordinary animation of a property inlined, with its value list", () => {
+      // Declined on the shape, not on the verdict: an animation of `opacity` is
+      // harmless and stays static. What reaches the runtime is a check, not a
+      // verdict, and a check that blocks nothing has cost only the inlining.
+      const out = transformVincle(
+        `const a = <div><animate attributeName="opacity" values="0;1;0" dur="2s" /></div>;`,
+      );
+      expect(out).toContain('values="0;1;0"');
+      expect(out).toContain("jsxTemplateDeferred");
+    });
+
     it("escapes static text content using the runtime's own jsxEscape", () => {
       const out = transformVincle(`const a = <div>hello & world</div>;`);
       // jsxEscape from @vincle/core escapes & < >: same as escapeContent
@@ -446,6 +513,25 @@ describe("precompileTransform", () => {
       ["innerHTML", `<div dangerouslySetInnerHTML={{ __html: html }} />`],
       ["imbrication", `<div><span class="y">{s}</span></div>`],
       ["img void", `<img src={s} alt="a" />`],
+      // The animation shapes: the element, not the attribute, decides whether
+      // the value is a URL, so these are the cases where a per-attribute
+      // transform and a per-element runtime could disagree. Wrapped in a
+      // component so the element is built at render time: a refusal is one of
+      // the two outcomes, and a module-level expression would throw on import,
+      // before there is anything to compare.
+      ["animate url", `() => <svg><a><animate attributeName="href" values={bad} /></a></svg>`],
+      ["animate handler", `() => <svg><a><set attributeName="onclick" to="alert(1)" /></a></svg>`],
+      [
+        "animate property",
+        `() => <svg><animate attributeName="opacity" values="0;1;0" dur="2s" /></svg>`,
+      ],
+      ["animate computed target", `() => <svg><animate attributeName={s} values={bad} /></svg>`],
+      ["animate no target", `() => <svg><animate values="0;1;0" /></svg>`],
+      [
+        "animate data image",
+        `() => <svg><a><animate attributeName="href" values="data:image/png;base64,iVBO" /></a></svg>`,
+      ],
+      ["to-from on a div", `() => <div to={bad} from={bad} />`],
     ];
 
     it("renders identically with and without the plugin, on all of them", async () => {
@@ -475,10 +561,25 @@ describe("precompileTransform", () => {
       writeFileSync(outputPath, `/** @jsxImportSource @vincle/core */\n${result!.code}`);
       const preMod = (await import(outputPath)) as Record<string, unknown>;
 
+      // The contract is the same *outcome*, and a refusal is one of them: an
+      // animation aimed at an event handler throws on both paths, and comparing
+      // bytes alone would call that a divergence (or crash the harness on the
+      // throw) rather than the agreement it is.
+      const outcome = async (v: unknown): Promise<string> => {
+        try {
+          // Called here, not above: a component case builds its element when it
+          // runs, so that is where a refusal happens, and it has to land inside
+          // the same `try` to be an outcome rather than a crash.
+          return await renderToString(typeof v === "function" ? (v as () => unknown)() : v);
+        } catch (e) {
+          return `THREW ${(e as { code?: string }).code ?? (e as Error).message}`;
+        }
+      };
+
       const divergences: string[] = [];
       for (const [i, [label]] of CASES.entries()) {
-        const runtime = await renderToString(rtMod[`c${i}`]);
-        const precompiled = await renderToString(preMod[`c${i}`]);
+        const runtime = await outcome(rtMod[`c${i}`]);
+        const precompiled = await outcome(preMod[`c${i}`]);
         if (runtime !== precompiled) {
           divergences.push(
             `${label}\n  runtime:     ${JSON.stringify(runtime)}\n  precompiled: ${JSON.stringify(precompiled)}`,
