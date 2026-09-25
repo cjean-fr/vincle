@@ -7,6 +7,32 @@ title: Security
 Vincle's security model has one job: **prevent HTML injection (XSS) at
 every possible surface**. You do not need to opt in, configure, or remember
 to escape. It happens automatically for every string, attribute, and URL.
+Where an attribute's purpose _is_ to carry HTML or JavaScript, the guarantee
+narrows to escaping — see [The rule](#the-rule).
+
+## The rule
+
+Two sentences, and every case below is one of them.
+
+**1. Escaping is unconditional. Sanitizing is not the job.** Some tags and
+attributes exist to _carry_ HTML or JavaScript — that is their purpose, not a
+mistake: `on*` event handlers, `<iframe srcdoc>` (a whole document),
+`<script>`/`<style>` bodies, `<script type="text/template">`, a `style`
+declaration list. Vincle never blocks you from writing them, and never tries to
+guess whether the code you wrote is hostile. It only guarantees the value is
+**escaped**: it cannot end its attribute, reopen the tag, or close its element
+early. Code you wrote is your code; the boundary around it is not yours to
+cross by accident.
+
+**2. `raw()` is the one thing that turns escaping off.** Not "off for
+attributes" or "off for URLs" — off. A `RawString` is emitted verbatim, and
+where its position has a further check (a URL scheme, say), that check is
+skipped too. That is the deal: `raw()` is an assertion of trust, not an
+escaping helper.
+
+Everything else in this page is a consequence of those two. The
+[table below](#security-boundaries) lists the surfaces rule 1 deliberately
+does not inspect.
 
 ## Auto-escaping
 
@@ -48,7 +74,7 @@ is the only mode.
     <tr>
       <td>URL attributes</td>
       <td>
-        Executable schemes replaced with <code>#blocked</code>
+        Schemes off the allowlist replaced with <code>#blocked</code>
       </td>
       <td>
         <code>isSafeScheme</code>
@@ -155,6 +181,14 @@ is trusted HTML by definition, so nothing is neutralised. It is the React idiom
 for inline scripts _because React entity-escapes script children_; vincle does
 not, so the plain child form is both simpler and safer here.
 
+"Off" is worth taking literally: the rawtext rule above defends the element
+_boundary_, and this path skips it, so the content can close the `<script>` and
+land markup outside it — `<!--` plus `<script` puts the HTML parser in
+script-data-double-escaped state, where the first `</script>` stops closing and
+the second one closes for real. The plain child form emits the same bytes fully
+neutralised. It is a `RawString`, so rule 2 applies: you are vouching for the
+whole string, element boundary included.
+
 ## What the compiler guarantees (and what it doesn't)
 
 A common question: if the JSX compiler already turned `<div>` into a `jsx()`
@@ -236,6 +270,40 @@ const result = await renderToString(<p>{raw(trustedHtml)}</p>);
 <p><strong>Hello</strong></p>
 ```
 
+### `rawUrl()`: a trusted scheme, and nothing else
+
+The scheme filter is an allowlist: a relative URL, `http:`, `https:`, `mailto:`,
+`tel:`, `sms:`, and `data:` carrying an image. Any other scheme is replaced with
+`#blocked`, so one the list does not know fails closed rather than open.
+
+That includes URLs that are neither executable nor documents, which no filter
+can tell from a dangerous one without being told: a custom protocol handler —
+`phpstorm://`, `vscode://`, `slack://`, `obsidian://` — or `geo:`. The
+application tells it with `rawUrl()`, and the opt-out is narrower than `raw()` on
+purpose: a false positive in a security control is only as safe as its
+workaround, and `raw()` would hand a single value every guarantee at once:
+
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString, rawUrl } from "@vincle/core";
+
+const html = await renderToString(
+  <a href={rawUrl("phpstorm://open?file=src/app.ts")}>open in the IDE</a>,
+);
+```
+
+```html
+<a href="phpstorm://open?file=src/app.ts">open in the IDE</a>
+```
+
+What `rawUrl` gives up is the scheme check, and nothing else: the value is still
+escaped, so unlike `raw()` it cannot end its attribute, and in content position
+it is text like any other. That is why it is a separate type and not a flag on
+`raw()` — an audit can tell which one a call site reached for, and a `RawUrl`
+handed to a plain `title` by mistake is inert rather than an injection primitive.
+The type surface agrees: `rawUrl()` is accepted on the attributes whose value is
+judged as a URL, and on no others.
+
 ### `raw()` in an attribute
 
 `raw()` promises trusted _markup_, which is not the same promise as a trusted
@@ -284,40 +352,119 @@ quotes by construction; it belongs in element content, not in a `title`.
 
 ## Defense in Depth
 
-Eight independent layers protect your output. Only `raw()` bypasses
+Ten independent layers protect your output. Only `raw()` bypasses
 all of them.
 
-|   # | Layer                   | Mechanism                                          | Stops                                                  |
-| --: | ----------------------- | -------------------------------------------------- | ------------------------------------------------------ |
-|   1 | Type System             | `RawString` branded type: explicit trust boundary  | Accidental trust of untrusted strings                  |
-|   2 | HTML Escaping           | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>` in text; `&`, `<`, `"` in attributes     |
-|   3 | URL Filtering           | `isSafeScheme`: blocks executable schemes          | `javascript:`, `vbscript:`, unsafe `data:` URIs        |
-|   4 | Build-time Sanitization | `@vincle/precompile` sanitizes static attributes   | Literal `javascript:` and unsafe `data:` URLs          |
-|     |                         | static attributes run through the same `jsxAttr`   | at build time, before the browser parses any           |
-|     |                         | as dynamic values, at build time, not at runtime   | HTML                                                   |
-|   5 | Tag & Attr Validation   | `isValidTag` / `isValidAttrName`                   | Injection through malformed tag or attribute names     |
-|   6 | Rawtext Escaping        | `escapeRawTagContent`: sub-language, not entities  | `</script>`/`</style>` breakout: unlike Preact/React   |
-|   7 | Own properties only     | Props and style bags are read with `Object.hasOwn` | A polluted `Object.prototype` adding an attribute or a |
-|     |                         |                                                    | declaration to every element rendered                  |
-|   8 | Attribute delimiter     | A `RawString` attribute value is verbatim but `"`  | A trusted value ending its attribute and reopening the |
-|     |                         | is escaped                                         | tag                                                    |
+|   # | Layer                   | Mechanism                                          | Stops                                                    |
+| --: | ----------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+|   1 | Type System             | `RawString` branded type: explicit trust boundary  | Accidental trust of untrusted strings                    |
+|   2 | HTML Escaping           | `escapeContent` / `escapeAttr`                     | `&`, `<`, `>` in text; `&`, `<`, `"` in attributes       |
+|   3 | URL Filtering           | `isSafeScheme`: an allowlist of schemes            | `javascript:`, `vbscript:`, unsafe `data:`, any unknown  |
+|   4 | Build-time Sanitization | `@vincle/precompile` sanitizes static attributes   | Literal `javascript:` and unsafe `data:` URLs            |
+|     |                         | static attributes run through the same `jsxAttr`   | at build time, before the browser parses any             |
+|     |                         | as dynamic values, at build time, not at runtime   | HTML                                                     |
+|   5 | Tag & Attr Validation   | `isValidTag` / `isValidAttrName`                   | Injection through malformed tag or attribute names       |
+|   6 | Rawtext Escaping        | `escapeRawTagContent`: sub-language, not entities  | `</script>`/`</style>` breakout: unlike Preact/React     |
+|   7 | Own properties only     | Props and style bags are read with `Object.hasOwn` | A polluted `Object.prototype` adding an attribute or a   |
+|     |                         |                                                    | declaration to every element rendered                    |
+|   8 | Attribute delimiter     | A `RawString` attribute value is verbatim but `"`  | A trusted value ending its attribute and reopening the   |
+|     |                         | is escaped                                         | tag                                                      |
+|   9 | Animated URLs           | On an animation element, `values`/`to`/`from`/`by` | A `javascript:` URL reaching `href` one attribute late   |
+|     |                         | are URL-judged                                     |                                                          |
+|  10 | Animated handlers       | `attributeName` naming `on*` is refused outright   | A value becoming a handler the moment the animation runs |
 
 Each layer is independently verifyable: see [Invariants](#invariants).
 
 ## Security Boundaries
 
-What Vincle protects and what it does not:
+What Vincle protects and what it does not. Every row on the right is rule 1
+above: a surface whose purpose is to carry HTML or JavaScript, where the value
+is escaped but not inspected.
 
-| Protected                                                                                             | Not covered                                                                                                                                  |
-| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| HTML injection via text content, attributes, URLs                                                     | Input sanitization (use DOMPurify for untrusted HTML)                                                                                        |
-| Malformed tag / attribute names                                                                       | CSRF tokens, authentication, session management                                                                                              |
-| A polluted `Object.prototype` reaching props or a style bag                                           | The pollution itself: fix the merge that allows it                                                                                           |
-| CSS injection through a `style` **object**: names carrying syntax are dropped, values are CSS-escaped | CSS injection through a `style` **string**: `style={untrusted}` is an author-written declaration list, escaped for the attribute, not parsed |
-| `</script>` / `</style>` breakout, whatever shape the child is                                        | The JavaScript you built: `` `"${untrusted}"` `` inside `<script>`: serialize with `JSON.stringify`                                          |
-|                                                                                                       | Inline event-handler JavaScript: `on*` strings are serialized like any other attribute and their code is not inspected or sanitized          |
-| Every ordinary attribute value                                                                        | `<iframe srcdoc={untrusted}>`: the value is decoded _and then parsed as a document_, so escaping it is not enough                            |
-|                                                                                                       | `<meta http-equiv="refresh" content={untrusted}>`: the URL lives inside `content`, which is not a URL attribute                              |
+| Protected                                                                                                                                                                                               | Not covered                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTML injection via text content, attributes, URLs                                                                                                                                                       | Input sanitization (use DOMPurify for untrusted HTML)                                                                                             |
+| Malformed tag / attribute names                                                                                                                                                                         | CSRF tokens, authentication, session management                                                                                                   |
+| A polluted `Object.prototype` reaching props or a style bag                                                                                                                                             | The pollution itself: fix the merge that allows it                                                                                                |
+| CSS injection through a `style` **object**: names carrying syntax are dropped, values are CSS-escaped                                                                                                   | CSS injection through a `style` **string**: `style={untrusted}` is an author-written declaration list, escaped for the attribute, not parsed      |
+| `</script>` / `</style>` breakout, whatever shape the child is                                                                                                                                          | The JavaScript you built: `` `"${untrusted}"` `` inside `<script>`: serialize with `JSON.stringify`                                               |
+| A value cannot end its own attribute, whatever the attribute is for                                                                                                                                     | Inline event-handler JavaScript: `on*` strings are serialized like any other attribute and their code is not inspected or sanitized               |
+| Every ordinary attribute value                                                                                                                                                                          | `<iframe srcdoc={untrusted}>`: the value is decoded _and then parsed as a document_, so escaping it is not enough                                 |
+| A URL, or a handler, reached through an SVG animation: `values`/`to`/`from`/`by` are URL-judged, and an `on*` target is refused (see [below](#svg-animation-a-url-and-a-handler-one-attribute-removed)) | `<meta http-equiv="refresh" content={untrusted}>`: the URL lives inside `content`, which is not a URL attribute                                   |
+|                                                                                                                                                                                                         | `<script type="text/template">` and other third-language data blocks: no escape exists to borrow (see [above](#escaping-inside-script-and-style)) |
+
+### SVG animation: a URL, and a handler, one attribute removed
+
+`<animate attributeName="href" values="javascript:…">` is a `href` the source
+never spells: the URL lands on a navigable attribute when the animation runs
+rather than when the page is parsed, and every browser honours it.
+
+That is not a name question, it is an element one: `values`/`to`/`from`/`by` are
+ordinary data everywhere else — `<div to="…">` is as inert as `<div id="…">` —
+and only on the five elements a browser animates with do they carry the URL of
+whatever `attributeName` names. So the check is scoped to those five, which is
+also what makes it free: no real SMIL value (`"0;1;0"`, `"rotate(0,360)"`,
+`"M0,0 L10,10"`) carries a scheme, so a value that is not a URL is untouched.
+
+The value is judged item by item: `values` is a `;`-separated list the
+animation applies in turn, so `"#;javascript:…"` is blocked whole. Tags and
+names are matched without regard to case, as the browser's parser does:
+`<animateMotion>`, `attributename` and `VALUES` get the same check.
+
+A target that is not a literal is judged as a URL too, rather than skipped: the
+element says it is animating _something_, and treating the unknown target as the
+dangerous one is the direction a bypass would not take.
+
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString } from "@vincle/core";
+
+const html = await renderToString(
+  <svg>
+    <a>
+      <animate attributeName="href" values={untrusted} />
+      <text>click me</text>
+    </a>
+  </svg>,
+);
+```
+
+```html
+<svg>
+  <a>
+    <animate attributeName="href" values="#blocked"></animate>
+    <text>click me</text>
+  </a>
+</svg>
+```
+
+The other half cannot be judged from a name: `to="alert(1)"` has no scheme, so
+it passes every URL gate while becoming a handler the moment the animation runs
+— and `attributeName="onmouseover"` is the only trace of it. That one needs two
+attributes to answer, so `buildAttrs` refuses the pair:
+
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString } from "@vincle/core";
+
+await renderToString(
+  <svg>
+    <a>
+      <set attributeName="onclick" to="alert(1)" />
+    </a>
+  </svg>,
+);
+// Error: attributeName="onclick" animates an event handler
+```
+
+A handler written as a literal (`<div onclick="alert(1)" />`) is still yours,
+escaped like any other attribute. The distinction is provenance, and it is
+visible: one is code in the source, the other is a value indistinguishable from
+a field of user data by the time it arrives.
+
+`@vincle/precompile` asks the same question before inlining such an element, and
+leaves it to the runtime when the answer is yes — so the two paths cannot
+disagree about it.
 
 If you need to render untrusted user-generated HTML, run it through a
 sanitizer first, then pass the result via `raw()`: in element content, never
@@ -370,7 +517,7 @@ Each invariant is enforced by property-based (fuzz) or unit tests:
 |  #   | Guarantee                                                        | Enforced by                                     |
 | :--: | ---------------------------------------------------------------- | ----------------------------------------------- |
 | I-01 | No raw `<` or `>` from untrusted input                           | `escape.test.ts`                                |
-| I-02 | No executable URL scheme passes through, obfuscated or not       | `escape.test.ts`: differential vs `new URL()`   |
+| I-02 | No scheme off the allowlist passes through, obfuscated or not    | `escape.test.ts`: differential vs `new URL()`   |
 | I-04 | Precompile ≡ VNode path, value kind by value kind                | `precompile-equivalence.test.ts` (1000 values)  |
 | I-05 | Static path ≡ tree walk: byte-identical                          | `path-equivalence.test.ts` (1000 trees)         |
 | I-06 | Concurrent renders isolated: no cross-request leakage            | `context.test.ts`, `execution-order.test.ts`    |
@@ -381,6 +528,7 @@ Each invariant is enforced by property-based (fuzz) or unit tests:
 | I-11 | An inherited property is never an attribute or a declaration     | `attrs.test.ts`                                 |
 | I-12 | A `RawString` attribute value cannot end its attribute           | `attrs.test.ts`                                 |
 | I-13 | Children on a void element are refused, never reparented         | `serialize.test.ts`, `path-equivalence.test.ts` |
+| I-14 | An SVG animation cannot deliver a URL or a handler               | `attrs.test.ts`, `no-javascript-urls.test.ts`   |
 
 ## ASVS Compliance
 

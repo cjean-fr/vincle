@@ -111,7 +111,7 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     // twice.
     const { tag, attrs, children } = vnode;
 
-    const attrStr = buildAttrs(attrs);
+    const attrStr = buildAttrs(attrs, tag);
     const childTag = isRawtextTag(tag) ? tag : undefined;
 
     // A promised attribute value (`<a href={resolveUrl()}>`): the only reason

@@ -78,6 +78,45 @@ export function isVoidElement(tag: string): boolean {
 }
 
 /**
+ * Does this element write one attribute's value onto another?
+ *
+ * A switch, for the same reason and with the same measurement as
+ * {@link isVoidElement} above: a per-element tag question must not hash, and
+ * this one is asked on every element `buildAttrs` serializes.
+ *
+ * Case-insensitive, as the browser is: the tokenizer lowercases a tag name
+ * before foreign content adjusts it, so `<aNIMATE>` and `<animateMotion>` are
+ * the same element as `<animate>` and `<animatemotion>`. The first character and
+ * the length reject almost every tag before the lowercased copy is made.
+ *
+ * A closed list, and the only one a browser recognises: an element outside it
+ * does not animate anything, whatever its attributes say. That closedness is
+ * what lets the URL check be scoped to these five names instead of applied
+ * everywhere — `<div to="javascript:…">` is as inert as `<div id="javascript:…">`,
+ * and filtering it would be the same category error as filtering that.
+ *
+ * @see https://www.w3.org/TR/SVG11/animate.html
+ */
+export function isAnimationTag(tag: string): boolean {
+  const c0 = tag.charCodeAt(0) | 32;
+  if (c0 !== 97 && c0 !== 115) return false; // 'a', 's'
+  const n = tag.length;
+  if (n !== 7 && n !== 3 && n !== 12 && n !== 13 && n !== 16) return false;
+  switch (tag.toLowerCase()) {
+    case "animate":
+    case "set":
+    case "animatetransform":
+    case "animatemotion":
+    // SVG 1.1 only, dropped from SVG 2, still parsed by every engine: listed so
+    // that forgetting it cannot be the way through.
+    case "animatecolor":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
  * A void element was given children. One message for both paths, and
  * for whichever of the two the caller happens to hit first.
  */

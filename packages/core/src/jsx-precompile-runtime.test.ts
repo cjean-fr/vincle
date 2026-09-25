@@ -211,9 +211,16 @@ describe("jsxAttr: the async wrapper", () => {
 // copy honest.
 
 describe("buildAttrs ≡ serializeAttr", () => {
-  /** `buildAttrs` emits ` name="v"`; `serializeAttr` emits `name="v"`. */
+  /**
+   * `buildAttrs` emits ` name="v"`; `serializeAttr` emits `name="v"`.
+   *
+   * The tag is one that animates nothing: an animation judges `values`/`to`/
+   * `from`/`by` as URLs, which is the one shape where the two paths are allowed
+   * to differ — and it cannot reach `serializeAttr`, since `@vincle/precompile`
+   * declines those elements rather than inlining them.
+   */
   const viaBuildAttrs = async (key: string, value: unknown): Promise<string> =>
-    (await buildAttrs({ [key]: value })).trimStart();
+    (await buildAttrs({ [key]: value }, "div")).trimStart();
   const viaSerializeAttr = (key: string, value: unknown): string => serializeAttr(key, value).value;
 
   const CASES: [string, unknown][] = [

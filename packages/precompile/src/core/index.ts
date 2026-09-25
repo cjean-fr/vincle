@@ -1,6 +1,8 @@
 import {
   URL_ATTRIBUTES,
+  ANIMATED_URL_ATTRIBUTES,
   isRawtextTag,
+  isAnimationTag,
   resolveAttrName,
   escapeContent,
   escapeAttr,
@@ -16,7 +18,9 @@ export { isVoidElement } from "@vincle/core/html";
 
 export {
   URL_ATTRIBUTES,
+  ANIMATED_URL_ATTRIBUTES,
   isRawtextTag,
+  isAnimationTag,
   resolveAttrName,
   escapeContent,
   escapeAttr,
@@ -49,16 +53,16 @@ export function isLowercaseTag(name: string): boolean {
 }
 
 /**
- * Collapse the whitespace of a JSX text child the way the standard JSX
- * transform (Babel/TS/esbuild) does, so precompiled output matches what the
- * runtime path would render:
+ * Collapse the whitespace of a JSX text child the way the JSX compilers
+ * (Bun/TS/esbuild/SWC/oxc) do, so precompiled output matches what the runtime
+ * path would render:
  *   - lines are split on newlines;
  *   - leading whitespace is stripped from every line but the first;
  *   - trailing whitespace is stripped from every line but the last;
  *   - blank lines are dropped, non-blank lines are joined with a single space;
  *   - a tab counts as whitespace for those trims, and is kept where it
- *     survives them: the JSX compilers do not turn one into a space, and
- *     `<pre>` is where the difference is visible.
+ *     survives them, visibly inside `<pre>`. Babel alone turns it into a
+ *     space; the compilers above keep it.
  * A text node that is entirely whitespace spanning a newline collapses to "".
  */
 export function collapseJsxWhitespace(text: string): string {
@@ -93,6 +97,41 @@ export function hasSpreadOrInnerHTML(attrs: Iterable<AttrBrief>): boolean {
     if (a.name === "dangerouslySetInnerHTML") return true;
   }
   return false;
+}
+
+/**
+ * Does this element have to be left to the runtime?
+ *
+ * An animation writing a value: `<animate attributeName="href" values="…">`.
+ * Two attributes decide what its values mean, and inlining emits them one
+ * attribute at a time — `jsxAttr("values", …)` has no tag to judge against, and
+ * that is not a parameter this transform may add: the two-argument form is the
+ * contract every precompile transform is written against, Deno's included. The
+ * tag *is* known here, so the way to deliver it to the decision is to hand the
+ * element back as ordinary JSX. `buildAttrs` then sees the tag, the bag and the
+ * sibling, and is the only place in the runtime that holds all three.
+ *
+ * Declined whether `attributeName` is a literal or not: a computed target is
+ * exactly the case the runtime cannot take on trust either, and it judges it as
+ * a URL for that reason. `attrMeta` staying a name-only answer is what makes
+ * this necessary — the same split `animationWritesUrls` documents.
+ */
+export function animationNeedsRuntime(tag: string, attrs: Iterable<AttrBrief>): boolean {
+  if (!isAnimationTag(tag)) return false;
+  let hasTarget = false;
+  let hasValue = false;
+  for (const a of attrs) {
+    if (a.kind !== "attribute" || a.name === undefined) continue;
+    // Resolved, as the runtime judges them: `VALUES` is `values`, and
+    // `attributename` is the `attributeName` the parser adjusts it to.
+    const name = attrMeta(a.name).name;
+    if (ANIMATED_URL_ATTRIBUTES.has(name)) hasValue = true;
+    else if (name.toLowerCase() === "attributename") hasTarget = true;
+  }
+  // No value to write is an animation of nothing, which is also what
+  // `animationWritesUrls` answers on the runtime side: the two must agree, or
+  // the same element would be judged twice differently.
+  return hasTarget && hasValue;
 }
 
 /**

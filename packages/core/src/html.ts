@@ -9,17 +9,24 @@
  */
 
 export { isVoidElement, isValidTag } from "./serialize.js";
+export { isAnimationTag } from "./tag.js";
 
 export {
   isRawtextTag,
   escapeContent,
   escapeAttr,
   escapeRawTagContent,
-  URL_ATTRIBUTES,
   schemeOf,
   isIterable,
   isAsyncIterable,
 } from "./escape.js";
 
-export { resolveAttrName, isValidAttrName, attrMeta } from "./attrs.js";
+export {
+  URL_ATTRIBUTES,
+  ANIMATED_URL_ATTRIBUTES,
+  isEventHandlerName,
+  resolveAttrName,
+  isValidAttrName,
+  attrMeta,
+} from "./attrs.js";
 export type { AttrMeta } from "./attrs.js";

@@ -187,7 +187,7 @@ encoding and URL filtering:
 
 - **Text content**: `&`, `<`, `>` escaped
 - **Attribute values**: `&`, `<`, `"` escaped (`>` isn't needed: it can't end a double-quoted value)
-- **URL attributes**: `javascript:` and `vbscript:` blocked; `data:` is blocked too, except image data URIs (`data:image/png`, `/jpeg`, `/gif`, `/webp`, `/avif`)
+- **URL attributes**: an allowlist of schemes: relative URLs, `http:`, `https:`, `mailto:`, `tel:`, `sms:`, and image data URIs (`data:image/png`, `/jpeg`, `/gif`, `/webp`, `/avif`). Anything else is blocked; `rawUrl()` vouches for a scheme off the list
 - **CSS values**: HTML-escaped but not validated. A style _value_ can still carry arbitrary declarations (`color: red; position: fixed`). Only property _names_ are checked. Don't pass untrusted data into `style`.
 
 The only escape hatch is `raw()`, which is explicit and opt-in. See the

@@ -33,10 +33,15 @@ export { createContext, useContext } from "./src/provider.js";
 export { snapshotContext } from "./src/provider.js";
 export type { Context } from "./src/provider.js";
 
-// ── Trusted HTML ───────────────────────────────────────────────────────────
+// ── Trusted values ──────────────────────────────────────────────────────────
+//
+// `raw` vouches for markup, `rawUrl` for a scheme: two greppable escape hatches
+// with different promises, so an audit can tell which one a call site reached
+// for. Both types are exported type-only: they are built by their factory, never
+// by the caller.
 
-export { raw } from "./src/types.js";
-export type { RawString } from "./src/types.js";
+export { raw, rawUrl } from "./src/types.js";
+export type { RawString, RawUrl } from "./src/types.js";
 
 // ── JSX namespace ──────────────────────────────────────────────────────────
 //

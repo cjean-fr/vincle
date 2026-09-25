@@ -14,6 +14,7 @@ import MagicString from "magic-string";
 import { parseSync, visitorKeys } from "oxc-parser";
 
 import {
+  animationNeedsRuntime,
   collapseJsxWhitespace,
   decodeJsxEntities,
   escapeAttr,
@@ -259,16 +260,16 @@ function isEligibleElement(node: JSXElement, ctx: TransformContext): boolean {
   if (name.type !== "JSXIdentifier") return false;
   const tag = name.name;
   if (!isLowercaseTag(tag)) return false;
-  if (
-    hasSpreadOrInnerHTML(
-      node.openingElement.attributes.map((a) => {
-        if (a.type === "JSXSpreadAttribute") return { kind: "spread" as const };
-        return { kind: "attribute" as const, name: attrName(a) };
-      }),
-    )
-  ) {
-    return false;
-  }
+  const briefs = node.openingElement.attributes.map((a) =>
+    a.type === "JSXSpreadAttribute"
+      ? { kind: "spread" as const }
+      : { kind: "attribute" as const, name: attrName(a) },
+  );
+  if (hasSpreadOrInnerHTML(briefs)) return false;
+  // An animation writing a value (`<animate attributeName="href" values="…">`).
+  // Same reason as the two shapes below: the answer needs the tag and two
+  // attributes, and `jsxAttr` carries one attribute and no tag.
+  if (animationNeedsRuntime(tag, briefs)) return false;
   // Two element shapes the transform declines rather than answer for. Both are
   // handed back as ordinary JSX: the same treatment a component gets, so the
   // runtime that the app compiles against decides, with its own rules.

@@ -6,7 +6,6 @@ import {
   escapeRawTagContent,
   isRawtextTag,
   isSafeScheme,
-  URL_ATTRIBUTES,
   valueToText,
 } from "./escape.js";
 import { jsxEscape } from "./jsx-runtime.js";
@@ -235,8 +234,20 @@ describe("isSafeScheme", () => {
   test("a real scheme is still judged, whatever follows it", () => {
     expect(isSafeScheme("javascript:alert('café')")).toBe(false);
     expect(isSafeScheme("JavaScript:alert(1)")).toBe(false);
-    expect(isSafeScheme("view-source:https://x")).toBe(true);
-    expect(isSafeScheme("web+app:x")).toBe(true);
+  });
+
+  test("an allowlist: tel and sms pass, any scheme off the list is blocked", () => {
+    expect(isSafeScheme("tel:+33100000000")).toBe(true);
+    expect(isSafeScheme("sms:+33100000000")).toBe(true);
+    // Off the list fails closed; `rawUrl()` is the way through.
+    expect(isSafeScheme("view-source:https://x")).toBe(false);
+    expect(isSafeScheme("web+app:x")).toBe(false);
+    expect(isSafeScheme("intent://x#Intent;end")).toBe(false);
+    expect(isSafeScheme("geo:48.85,2.35")).toBe(false);
+    // The http fast path reads to the colon: a longer scheme is not http.
+    expect(isSafeScheme("httpx:x")).toBe(false);
+    expect(isSafeScheme("https-evil:x")).toBe(false);
+    expect(isSafeScheme("ht\ttp://x")).toBe(true);
   });
 
   // ── Scheme obfuscation ──
@@ -306,35 +317,6 @@ describe("isSafeScheme", () => {
     }
 
     expect(missed).toEqual([]);
-  });
-});
-
-// ── URL_ATTRIBUTES ─────────────────────────────────────────────────────────
-
-describe("URL_ATTRIBUTES", () => {
-  test("contains href, src, action, formaction, xlink:href", () => {
-    expect(URL_ATTRIBUTES.has("href")).toBe(true);
-    expect(URL_ATTRIBUTES.has("src")).toBe(true);
-    expect(URL_ATTRIBUTES.has("action")).toBe(true);
-    expect(URL_ATTRIBUTES.has("formaction")).toBe(true);
-    expect(URL_ATTRIBUTES.has("xlink:href")).toBe(true);
-  });
-
-  // `<object data>` navigates the same way `<iframe src>` does; `src` was
-  // already covered, `data` was the gap.
-  test("contains data (<object data>)", () => {
-    expect(URL_ATTRIBUTES.has("data")).toBe(true);
-  });
-
-  test("does not contain non-URL attributes", () => {
-    expect(URL_ATTRIBUTES.has("id")).toBe(false);
-    expect(URL_ATTRIBUTES.has("class")).toBe(false);
-    expect(URL_ATTRIBUTES.has("style")).toBe(false);
-    expect(URL_ATTRIBUTES.has("srcset")).toBe(false);
-  });
-
-  test("has exactly 6 entries", () => {
-    expect(URL_ATTRIBUTES.size).toBe(6);
   });
 });
 
