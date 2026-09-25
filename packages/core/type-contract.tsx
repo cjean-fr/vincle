@@ -13,7 +13,7 @@
  */
 import type { JSX, Renderable } from "./index.js";
 
-import { Fragment, raw } from "./index.js";
+import { Fragment, raw, rawUrl } from "./index.js";
 
 // ── Must compile: everything `renderNode` knows how to render ─────────────
 
@@ -94,6 +94,12 @@ export const attrsAccepted = [
   <li key="k">key picked up by the transform, not an attribute</li>,
   <input disabled readOnly maxLength={3} autoFocus />,
   <a href={Promise.resolve("/tard")} title={raw("d&eacute;j&agrave;")} />,
+  // `rawUrl` is accepted where a scheme is judged, and only there: the type
+  // surface asks `attrMeta`, the same question the renderer asks.
+  <a href={rawUrl("phpstorm://open?file=src/app.ts")}>open</a>,
+  <form action={rawUrl("myapp://submit")} />,
+  <object data={rawUrl("myapp://doc")} />,
+  <animate attributeName="href" values={rawUrl("myapp://doc")} />,
   // A handler is inline script, so it's a string.
   <button onclick="submit()" onClick="submit()" />,
   <img src="/a.png" alt="" width={16} height={16} />,
@@ -145,6 +151,10 @@ export const attrsRejected10 = <input radioGroup="g" />;
 export const attrsRejected11 = <input autoSave="x" />;
 // @ts-expect-error unselectable
 export const attrsRejected12 = <div unselectable="on" />;
+// @ts-expect-error `rawUrl` vouches for a scheme, and `title` carries none: the
+// type surface asks `attrMeta`, so the arm lands only on the names the runtime
+// judges. (It would work in fact — but the type exists to say so.)
+export const attrsRejected13 = <div title={rawUrl("phpstorm://x")} />;
 
 // ── Must compile: props that do reach the document ────────────────────────
 //

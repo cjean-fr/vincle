@@ -33,6 +33,48 @@ export class RawString {
   toString(): string {
     return this.value;
   }
+
+  /**
+   * Makes this class nominally distinct from {@link RawUrl}. Both declare the
+   * same public members, so structural typing alone would let either stand in
+   * for the other — while the renderer, which tests `instanceof`, treats them in
+   * opposite ways: `raw()` is emitted verbatim, a `RawUrl` is escaped. A private
+   * member on *both* sides is what says "two promises, not one shape twice", so
+   * handing a `RawUrl` to a `RawString` parameter is a type error rather than a
+   * value that quietly stops being markup.
+   */
+  declare private readonly __raw: undefined;
+}
+
+/**
+ * A URL whose scheme this runtime will not judge. Build one with {@link rawUrl}.
+ *
+ * A separate type from {@link RawString} because the promise is narrower, and
+ * the difference shows in every position: a `RawString` is markup, so it is
+ * emitted verbatim, while a `RawUrl` is a URL, so it is escaped like any other
+ * value and only the scheme check is skipped. That is what makes it harmless to
+ * hand a `RawUrl` to a plain `title` by mistake, and what keeps it from
+ * becoming an HTML injection primitive the way `raw()` is.
+ */
+export class RawUrl {
+  readonly value: string;
+  constructor(value: string) {
+    this.value = value;
+  }
+  toString(): string {
+    return this.value;
+  }
+
+  /**
+   * Makes this class nominally distinct from {@link RawString}, which it would
+   * otherwise be interchangeable with: the two have identical members, so
+   * structural typing would let a `RawUrl` be passed wherever a `RawString` is
+   * declared — and the runtime, which tests `instanceof`, treats them in opposite
+   * ways. A `private` member is the standard way to say "these are two classes,
+   * not one shape twice": neither is assignable to the other, so a mistake here
+   * is a type error instead of a silently escaped `raw()`.
+   */
+  declare private readonly __url: undefined;
 }
 
 /** Markup whose component holes must be evaluated at render time. */
@@ -67,6 +109,26 @@ export class TemplateNode implements Promise<RawString> {
  * bypass escaping, and deliberately greppable: audit `raw(` call sites to audit safety.
  */
 export const raw = (value: string): RawString => new RawString(value);
+
+/**
+ * Mark a URL as trusted: its scheme is not judged, and nothing else changes.
+ *
+ * The narrow escape hatch for a scheme off the filter's allowlist (relative,
+ * `http`, `https`, `mailto`, `tel`, `sms`, image `data:`): a custom protocol
+ * handler (`phpstorm://`, `vscode://`, `slack://`) or `geo:` is blocked unless
+ * the application vouches for it here.
+ *
+ * The value is still escaped, so it cannot end its attribute or reopen the tag,
+ * and in content position it is text like any other — `raw()` gives all of that
+ * up along with the check. Reach for `raw()` when the value is markup; for a
+ * URL, this says exactly what is being vouched for.
+ *
+ * @example
+ * ```tsx
+ * <a href={rawUrl("phpstorm://open?file=src/app.ts")}>open in the IDE</a>
+ * ```
+ */
+export const rawUrl = (value: string): RawUrl => new RawUrl(value);
 
 /** A value, or a promise of that value. */
 export type Awaitable<T> = T | Promise<T>;

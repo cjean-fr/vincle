@@ -49,7 +49,7 @@
 - Conformance tests `dist`, not source: source-only changes can hide regressions
 - `sequenceFrom` drives async rendering: never `Promise.all` for component execution order
 - `raw()` is the only trusted-HTML escape hatch; default escaping is always on
-- URL scheme filter blocks `javascript:`, `vbscript:`, non-image `data:`
+- URL scheme filter is an allowlist (relative, `http`, `https`, `mailto`, `tel`, `sms`, image `data:`); `rawUrl()` vouches for any other
 - `type: "module"` + granular `exports`: consume via `"import"`/`"bun"` entries, not `"default"`, unless you know why
 
 ## When in doubt

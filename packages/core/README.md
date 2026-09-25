@@ -97,8 +97,9 @@ each one was, at some point, quietly untrue.
   `<script>{await getCode()}</script>` reaches the JavaScript engine as written.
   The escape form follows the element's sub-language, so a JSON data block,
   `<script type="application/ld+json">{JSON.stringify(data)}</script>`: stays
-  parseable without `raw()`. `javascript:`, `vbscript:` and non-image `data:` URLs are
-  replaced with `#blocked` in URL attributes. Scheme detection follows the WHATWG
+  parseable without `raw()`. URL attributes keep an allowlist of schemes (relative,
+  `http:`, `https:`, `mailto:`, `tel:`, `sms:`, image `data:`); any other is replaced
+  with `#blocked`, and `rawUrl()` vouches for one off the list. Scheme detection follows the WHATWG
   parser, so obfuscation with tabs or control characters does not get through, and
   a relative URL is not mistaken for a scheme.
 
