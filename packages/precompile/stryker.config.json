@@ -29,7 +29,9 @@
   },
   "concurrency": 4,
   "coverageAnalysis": "off",
-  "reporters": ["html", "clear-text", "progress"],
+  "reporters": ["html", "clear-text", "progress", "json"],
+  "htmlReporter": { "fileName": "mutation/index.html" },
+  "jsonReporter": { "fileName": "mutation/mutation-result.json" },
   "timeoutMS": 30000,
   "thresholds": {
     "high": 85,
