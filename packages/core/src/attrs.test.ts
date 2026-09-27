@@ -6,7 +6,6 @@ import {
   URL_ATTRIBUTES,
   attrMeta,
   buildAttrs,
-  isEventHandlerName,
   isValidAttrName,
   resolveAttrName,
   serializeAttr,
@@ -219,12 +218,10 @@ describe("URL_ATTRIBUTES", () => {
   });
 });
 
-// ── SMIL: a URL, or a handler, written one attribute removed ───────────────
+// ── SMIL: a URL written one attribute removed ──────────────────────────────
 //
 // `<animate attributeName="href" values="javascript:…">` is a `href` the source
-// never spells. Both halves are asserted here: the value is judged as a URL
-// whatever it animates, and an animation aimed at a handler is refused outright,
-// because `to="alert(1)"` carries no scheme for a URL check to catch.
+// never spells: the value is judged as a URL whatever it animates.
 
 describe("SMIL animation: the value is URL-judged", () => {
   for (const name of ["values", "to", "from", "by"]) {
@@ -341,86 +338,25 @@ describe("SMIL animation: the value is URL-judged", () => {
   test("and the names are not URL attributes in their own right", () => {
     // The reason the check needs the tag: `attrMeta` is a name-only answer, and
     // the lint rule asks exactly this.
-    for (const name of ANIMATED_URL_ATTRIBUTES) expect(attrMeta(name).isUrl).toBe(false);
-    expect(attrMeta("to").isUrl).toBe(false);
+    for (const name of ANIMATED_URL_ATTRIBUTES) expect(attrMeta(name).isUrlAttribute).toBe(false);
+    expect(attrMeta("to").isUrlAttribute).toBe(false);
   });
 });
 
-describe("SMIL animation: a handler target is refused", () => {
-  test("attributeName naming on* throws, with the stable code", () => {
-    expect(() => buildAttrs({ attributeName: "onclick", to: "alert(1)" }, "set")).toThrow(
-      /animates an event handler/,
-    );
-    try {
-      buildAttrs({ attributeName: "onmouseover", to: "alert(1)" }, "set");
-      throw new Error("should have thrown");
-    } catch (e) {
-      expect((e as { code?: string }).code).toBe("ERR_VINCLE_ANIMATED_HANDLER");
-    }
-  });
-
-  test("a target is judged on the text it serializes to", () => {
-    for (const target of [raw("onclick"), rawUrl("onclick"), ["onclick"], " onclick"]) {
-      expect(() => buildAttrs({ attributeName: target, to: "alert(1)" }, "set")).toThrow(
-        /animates an event handler/,
-      );
-    }
-    expect(() => buildAttrs({ attributename: "onclick", to: "alert(1)" }, "set")).toThrow(
-      /animates an event handler/,
-    );
-  });
-
-  test("nothing is emitted for a refused element", () => {
-    // Fail-stop: half a start tag is worse than none.
-    let out: unknown;
-    try {
-      out = buildAttrs({ attributeName: "onclick", to: "alert(1)", id: "x" }, "set");
-    } catch {
-      out = undefined;
-    }
-    expect(out).toBeUndefined();
-  });
-
-  test("a URL target is not refused: it is filtered, and that is enough", () => {
-    expect(buildAttrs({ attributeName: "href", to: "javascript:alert(1)" }, "set")).toContain(
-      "#blocked",
-    );
-  });
-
-  test("a non-handler target passes through", () => {
-    expect(buildAttrs({ attributeName: "fill", to: "red" }, "set")).toContain('to="red"');
-  });
-
-  test("a handler target with nothing to write is inert, and passes", () => {
-    // The same condition `@vincle/precompile` uses to decide whether declining
-    // the element would change anything: no value, no animation, no refusal.
-    expect(buildAttrs({ attributeName: "onclick" }, "set")).toContain('attributeName="onclick"');
-    expect(buildAttrs({ attributeName: "onclick", dur: "1s" }, "set")).toContain(
-      'attributeName="onclick"',
-    );
-  });
-
-  test("every one of the four value attributes is enough to trip it", () => {
-    for (const name of ANIMATED_URL_ATTRIBUTES) {
-      expect(() => buildAttrs({ attributeName: "onclick", [name]: "alert(1)" }, "set")).toThrow(
-        /animates an event handler/,
-      );
-    }
-  });
-
-  // The tag is part of the rule, so an inert element carrying the pair is not a
-  // refused element: `attributeName` is SMIL vocabulary and means nothing here.
-  test("the same pair on an element that animates nothing is inert", () => {
-    expect(buildAttrs({ attributeName: "onclick", to: "alert(1)" }, "div")).toBe(
+describe("SMIL animation: the target is the author's", () => {
+  // A handler target is code the author wrote, as `onclick="…"` is: emitted as
+  // written, never refused.
+  test("a handler target is emitted as written", () => {
+    expect(buildAttrs({ attributeName: "onclick", to: "alert(1)" }, "set")).toBe(
       ' attributeName="onclick" to="alert(1)"',
     );
   });
 
-  // A polluted prototype must not make every element in the process throw.
+  // A polluted prototype must not make every animation in the process judged.
   test("an inherited attributeName is not the element's own", () => {
-    expect(polluted("attributeName", "onclick", () => buildAttrs({ to: "red" }, "set"))).toContain(
-      'to="red"',
-    );
+    expect(
+      polluted("attributeName", "href", () => buildAttrs({ to: "javascript:x" }, "set")),
+    ).toContain('to="javascript:x"');
   });
 });
 
@@ -441,32 +377,16 @@ describe("isAnimationTag", () => {
   });
 });
 
-describe("isEventHandlerName", () => {
-  test("matches on* whatever the case", () => {
-    expect(isEventHandlerName("onclick")).toBe(true);
-    expect(isEventHandlerName("ONCLICK")).toBe(true);
-    expect(isEventHandlerName("onanimationstart")).toBe(true);
-  });
-
-  // Over-matching is the safe direction here: a name no QName parser would
-  // accept animates nothing, so refusing it costs nothing either.
-  test("does not match an attribute that merely contains on", () => {
-    expect(isEventHandlerName("font")).toBe(false);
-    expect(isEventHandlerName("action")).toBe(false);
-    expect(isEventHandlerName("icon")).toBe(false);
-  });
-});
-
 describe("attrMeta: the URL question stays a name's own", () => {
   test("the six navigable names", () => {
-    for (const name of URL_ATTRIBUTES) expect(attrMeta(name).isUrl).toBe(true);
+    for (const name of URL_ATTRIBUTES) expect(attrMeta(name).isUrlAttribute).toBe(true);
   });
 
   test("the four animated names are not among them", () => {
     // `no-javascript-urls` asks exactly this, and an element is not in reach of
     // a rule that visits attributes: that is why the animation check lives in
     // `buildAttrs` rather than here.
-    for (const name of ANIMATED_URL_ATTRIBUTES) expect(attrMeta(name).isUrl).toBe(false);
+    for (const name of ANIMATED_URL_ATTRIBUTES) expect(attrMeta(name).isUrlAttribute).toBe(false);
   });
 });
 
