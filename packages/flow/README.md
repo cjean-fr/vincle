@@ -374,6 +374,62 @@ const MyAdapter = createAdapter({
 });
 ```
 
+#### `ShellContext`
+
+`transformShell` receives a `ShellContext` with one field:
+
+```ts
+interface ShellContext {
+  fragments: { size: number };
+}
+```
+
+The fragment count is the number of registered `<Defer>` / `<Slot>` entries after the shell rendered. Use it to conditionally inject client runtime only when fragments exist:
+
+```ts
+const SmartAdapter = {
+  ...NativeAdapter,
+  transformShell: (shell: string, ctx) => (ctx.fragments.size > 0 ? injectPolyfill(shell) : shell),
+};
+```
+
+### Fragment timeouts
+
+`renderToStream`, `serve`, and `renderToStatic` accept `defaultTimeout` on their options:
+
+```ts
+renderToStream(() => <Page />, NativeAdapter, { defaultTimeout: 5000 });
+```
+
+It is a fallback for any `<Defer>` that has no `timeout` prop. A fragment that exceeds its timeout aborts and routes to `onError` (or logs and skips). Per-fragment `timeout` overrides the default:
+
+```tsx
+<Defer target="page" timeout={2000}>
+  {/* This fragment has a 2s timeout, not the 5s default */}
+  <SlowComponent />
+</Defer>
+```
+
+### Custom negotiation
+
+Write a custom `negotiate` function for any client library that uses custom headers:
+
+```ts
+import type { Negotiate } from "@vincle/flow";
+
+const negotiateMyLib: Negotiate = (req) => {
+  const fragment = req.headers.get("X-Fragment-Id") ?? undefined;
+  return {
+    headers: { Vary: "X-Fragment-Id" },
+    target: fragment,
+  };
+};
+```
+
+The `Vary` header is **unioned** with existing `Vary` values (not overwritten), so multiple negotiators or manual headers never corrupt shared-cache keys.
+
+```
+
 ## API
 
 All exports are importable from `@vincle/flow` unless noted otherwise.
@@ -454,3 +510,4 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 ## License
 
 MIT © Christophe Jean
+```
