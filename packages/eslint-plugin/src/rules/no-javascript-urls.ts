@@ -58,7 +58,7 @@ function elementTag(node: any): string | undefined {
  */
 function urlCheck(node: any, name: string): "none" | "one" | "list" {
   const meta = attrMeta(name);
-  if (meta.isUrl) return "one";
+  if (meta.isUrlAttribute) return "one";
   const tag = elementTag(node);
   return tag !== undefined && isAnimationTag(tag) && ANIMATED_URL_ATTRIBUTES.has(meta.name)
     ? "list"

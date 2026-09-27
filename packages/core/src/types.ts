@@ -24,7 +24,7 @@ export class VNode {
   }
 }
 
-/** Trusted, already-escaped HTML: rendered verbatim. Build one with {@link raw}. */
+/** Trusted, already-escaped HTML: rendered trusted (unescaped). Build one with {@link raw}. */
 export class RawString {
   readonly value: string;
   constructor(value: string) {
@@ -38,7 +38,7 @@ export class RawString {
    * Makes this class nominally distinct from {@link RawUrl}. Both declare the
    * same public members, so structural typing alone would let either stand in
    * for the other — while the renderer, which tests `instanceof`, treats them in
-   * opposite ways: `raw()` is emitted verbatim, a `RawUrl` is escaped. A private
+   * opposite ways: `raw()` is emitted trusted (unescaped), a `RawUrl` is escaped. A private
    * member on *both* sides is what says "two promises, not one shape twice", so
    * handing a `RawUrl` to a `RawString` parameter is a type error rather than a
    * value that quietly stops being markup.
@@ -51,7 +51,7 @@ export class RawString {
  *
  * A separate type from {@link RawString} because the promise is narrower, and
  * the difference shows in every position: a `RawString` is markup, so it is
- * emitted verbatim, while a `RawUrl` is a URL, so it is escaped like any other
+ * emitted trusted, while a `RawUrl` is a URL, so it is escaped like any other
  * value and only the scheme check is skipped. That is what makes it harmless to
  * hand a `RawUrl` to a plain `title` by mistake, and what keeps it from
  * becoming an HTML injection primitive the way `raw()` is.
@@ -105,7 +105,7 @@ export class TemplateNode implements Promise<RawString> {
 }
 
 /**
- * Mark a string as trusted HTML: rendered verbatim, unescaped. The only way to
+ * Mark a string as trusted HTML: rendered as trusted output, unescaped. The only way to
  * bypass escaping, and deliberately greppable: audit `raw(` call sites to audit safety.
  */
 export const raw = (value: string): RawString => new RawString(value);

@@ -20,7 +20,7 @@ import { ANIMATED_URL_ATTRIBUTES, attrMeta } from "../src/attrs.js";
  */
 const trustedUrlArm = (name: string): string => {
   const meta = attrMeta(name);
-  return meta.isUrl || ANIMATED_URL_ATTRIBUTES.has(meta.name) ? " | RawUrl" : "";
+  return meta.isUrlAttribute || ANIMATED_URL_ATTRIBUTES.has(meta.name) ? " | RawUrl" : "";
 };
 
 // ── Setup & Constants ───────────────────────────────────────────────────────

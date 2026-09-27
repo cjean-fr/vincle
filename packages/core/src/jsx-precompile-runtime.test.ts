@@ -545,3 +545,107 @@ describe("jsxTemplate: VNode holes", () => {
     expect(a).toBe("<p>W|w</p>");
   });
 });
+
+// ── An animation under a third-party precompile ─────────────────────────────
+//
+// Deno's transform inlines static attributes into the template and calls
+// `jsxAttr` with one attribute and no tag, so the element is only known to
+// `jsxTemplate`. Each case is the template such a transform emits, set against
+// the same element rendered through `jsx`: the two must agree, refusal included.
+
+describe("jsxTemplate judges an animation from its start tag, as jsx does", () => {
+  const bad = "javascript:alert(1)";
+  const outcome = async (build: () => unknown): Promise<string> => {
+    try {
+      return await renderToString(build());
+    } catch (e) {
+      return `throws ${(e as { code?: string }).code}`;
+    }
+  };
+
+  const CASES: [string, () => unknown, () => unknown][] = [
+    [
+      "a static target, a dynamic value",
+      () => jsxTemplate(['<animate attributeName="href" ', "></animate>"], jsxAttr("values", bad)),
+      () => jsx("animate", { attributeName: "href", values: bad }),
+    ],
+    [
+      "a value list",
+      () =>
+        jsxTemplate(
+          ['<animate attributeName="href" ', "></animate>"],
+          jsxAttr("values", `#;${bad}`),
+        ),
+      () => jsx("animate", { attributeName: "href", values: `#;${bad}` }),
+    ],
+    [
+      "the target after the value",
+      () => jsxTemplate(["<animate ", ' attributeName="href"></animate>'], jsxAttr("to", bad)),
+      () => jsx("animate", { to: bad, attributeName: "href" }),
+    ],
+    [
+      "a '>' in a static value before the hole",
+      () =>
+        jsxTemplate(
+          ['<animate title="a>b" attributeName="href" ', "></animate>"],
+          jsxAttr("to", bad),
+        ),
+      () => jsx("animate", { title: "a>b", attributeName: "href", to: bad }),
+    ],
+    [
+      "a handler target, a dynamic value",
+      () => jsxTemplate(['<set attributeName="onclick" ', "></set>"], jsxAttr("to", "alert(1)")),
+      () => jsx("set", { attributeName: "onclick", to: "alert(1)" }),
+    ],
+    [
+      "a promised target",
+      () =>
+        jsxTemplate(
+          ["<animate ", " ", "></animate>"],
+          jsxAttr("attributeName", Promise.resolve("href")),
+          jsxAttr("values", bad),
+        ),
+      () => jsx("animate", { attributeName: Promise.resolve("href"), values: bad }),
+    ],
+    [
+      "a property animation",
+      () =>
+        jsxTemplate(
+          ["<animate ", " ", "></animate>"],
+          jsxAttr("attributeName", "opacity"),
+          jsxAttr("values", "0;1;0"),
+        ),
+      () => jsx("animate", { attributeName: "opacity", values: "0;1;0" }),
+    ],
+    [
+      "an animation of nothing",
+      () => jsxTemplate(["<animate ", "></animate>"], jsxAttr("values", bad)),
+      () => jsx("animate", { values: bad }),
+    ],
+    [
+      "the same names off an animation",
+      () => jsxTemplate(['<div attributeName="href" ', "></div>"], jsxAttr("to", "user:1")),
+      () => jsx("div", { attributeName: "href", to: "user:1" }),
+    ],
+  ];
+
+  for (const [name, template, element] of CASES) {
+    test(name, async () => {
+      expect(await outcome(template)).toBe(await outcome(element));
+    });
+  }
+
+  test("the URL case is the one judged", async () => {
+    expect(await outcome(CASES[0]![1])).toBe(
+      '<animate attributeName="href" values="#blocked"></animate>',
+    );
+    expect(await outcome(CASES[4]![1])).toBe('<set attributeName="onclick" to="alert(1)"></set>');
+    expect(await outcome(CASES[8]![1])).toBe('<div attributeName="href" to="user:1"></div>');
+  });
+
+  test("a hole whose start tag cannot be read is judged as the worst element", async () => {
+    expect(await outcome(() => jsxTemplate(["", ""], jsxAttr("values", bad)))).toBe(
+      'values="#blocked"',
+    );
+  });
+});
