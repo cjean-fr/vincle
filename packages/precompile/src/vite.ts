@@ -200,7 +200,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         this.error(
           `[vincle/precompile] "${source}" declares the "vincle" precompile dialect ` +
             "but does not export both jsxAttr and jsxEscape, so build-time sanitization cannot " +
-            'run: a literal href="javascript:…" would reach the bundle verbatim. Re-export ' +
+            'run: a literal href="javascript:…" would reach the bundle unfiltered. Re-export ' +
             "the runtime whole (`export * from`) rather than naming a subset.",
         );
       }

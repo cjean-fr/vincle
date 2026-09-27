@@ -125,22 +125,22 @@ describe("core", () => {
 
   describe("URL attribute rule (delegated to core/html attrMeta)", () => {
     it("is true for URL-bearing attributes", () => {
-      expect(attrMeta("href").isUrl).toBe(true);
-      expect(attrMeta("src").isUrl).toBe(true);
-      expect(attrMeta("action").isUrl).toBe(true);
-      expect(attrMeta("formaction").isUrl).toBe(true);
-      expect(attrMeta("xlink:href").isUrl).toBe(true);
+      expect(attrMeta("href").isUrlAttribute).toBe(true);
+      expect(attrMeta("src").isUrlAttribute).toBe(true);
+      expect(attrMeta("action").isUrlAttribute).toBe(true);
+      expect(attrMeta("formaction").isUrlAttribute).toBe(true);
+      expect(attrMeta("xlink:href").isUrlAttribute).toBe(true);
     });
 
     it("resolves the camelCase JSX form the runtime resolves", () => {
-      expect(attrMeta("xlinkHref").isUrl).toBe(true);
-      expect(attrMeta("formAction").isUrl).toBe(true);
+      expect(attrMeta("xlinkHref").isUrlAttribute).toBe(true);
+      expect(attrMeta("formAction").isUrlAttribute).toBe(true);
     });
 
     it("is false for ordinary attributes", () => {
-      expect(attrMeta("class").isUrl).toBe(false);
-      expect(attrMeta("id").isUrl).toBe(false);
-      expect(attrMeta("alt").isUrl).toBe(false);
+      expect(attrMeta("class").isUrlAttribute).toBe(false);
+      expect(attrMeta("id").isUrlAttribute).toBe(false);
+      expect(attrMeta("alt").isUrlAttribute).toBe(false);
     });
   });
 
