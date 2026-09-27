@@ -4,11 +4,9 @@ title: renderToFlowEvents
 
 # renderToFlowEvents
 
-Low-level streaming primitive: returns a `ReadableStream<FlowEvent>` of raw
-events instead of adapter-encoded HTML. `renderToStream` is exactly this
-primitive piped through the adapter's own encoding: reach for it when you need
-the shell, fragments, and close as separate events (custom wire format, custom
-framing, or a client protocol the built-in adapters don't cover).
+The primitive under `renderToStream`: a `ReadableStream<FlowEvent>` of raw
+events instead of adapter-encoded HTML, for a wire format the built-in adapters
+don't cover.
 
 ## Signature
 
@@ -22,9 +20,8 @@ function renderToFlowEvents(
 ): ReadableStream<FlowEvent>;
 ```
 
-The adapter is a required second argument, as in `renderToStream`. A
-non-streaming adapter (`EsiAdapter`) is rejected at compile time and at
-runtime.
+Same arguments as [renderToStream](/api/flow/renderToStream); a non-streaming
+adapter (`EsiAdapter`) is rejected at compile time and at runtime.
 
 ## Events
 
@@ -36,10 +33,9 @@ runtime.
 | `fragment` | `{ type: "fragment"; id: string; html: string; merge: MergeType }` | A deferred fragment is ready; `html` is the raw inner content, `merge` is that template's merge type |
 | `close`    | `{ type: "close"; html: string }`                                  | The closing `</body></html>` tags, after all fragments                                               |
 
-The shell is rendered completely before its event is emitted. It is never
-streamed progressively. Fragments follow as they resolve, one event each
-(streaming templates emit one event per yielded item). `opts.mode: "fragment"`
-suppresses the `shell` and `close` events entirely.
+The shell is one event, emitted once fully rendered; fragments follow as they
+resolve, one event each (one per yielded item for an `AsyncIterable`).
+`mode: "fragment"` suppresses the `shell` and `close` events.
 
 ## Consuming the events
 
@@ -64,13 +60,5 @@ for await (const ev of stream) {
 }
 ```
 
-Backpressure and cancellation are handled by the stream: cancelling it (or
-passing `opts.signal`) aborts pending renders and releases the producer.
-
-## Options
-
-Same `FlowOptions` as `renderToStream`: `signal`, `onError`,
-`defaultTimeout`, plus `mode: "full" | "fragment"`.
-
-See [renderToStream](/api/flow/renderToStream) for the ready-made encoding, or
-[Adapters](/api/flow/adapters) for the built-in wire formats.
+The stream handles backpressure; cancelling it (or aborting `opts.signal`)
+aborts pending renders.

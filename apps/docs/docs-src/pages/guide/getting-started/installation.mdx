@@ -19,8 +19,7 @@ bun add @vincle/core
 
 ## TypeScript configuration
 
-Set `jsxImportSource` in your `tsconfig.json` so that JSX files don't need any
-explicit import:
+Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import:
 
 ```json
 {
@@ -31,45 +30,39 @@ explicit import:
 }
 ```
 
-## Attribute types
-
-Every HTML and SVG element is typed per element: `src` on `<img>`, `href` on
-`<a>`. The types are part of `@vincle/core`: nothing to install, and a typo is
-a compile error.
-
 ## What you get
 
 ### Runtime
 
-| Export                            | Purpose                                   |
-| --------------------------------- | ----------------------------------------- |
-| `renderToString(node)`            | Renders a JSX tree to an HTML string      |
-| `raw(str)`                        | Marks a trusted HTML string (no escaping) |
-| `Fragment`                        | Standard JSX fragment (`<>…</>`)          |
-| `createContext`, `useContext`     | Share a value with a Provider subtree     |
-| `Scope`                           | Per-execution state and isolated scopes   |
-| `jsx-runtime` / `jsx-dev-runtime` | JSX transform entry points (auto-wired)   |
+| Export                            | Purpose                                    |
+| --------------------------------- | ------------------------------------------ |
+| `renderToString(node)`            | Renders a JSX tree to an HTML string       |
+| `raw(str)`                        | Marks a trusted HTML string (no escaping)  |
+| `rawUrl(url)`                     | Marks a trusted URL scheme (still escaped) |
+| `Fragment`                        | Standard JSX fragment (`<>…</>`)           |
+| `createContext`, `useContext`     | Share a value with a Provider subtree      |
+| `Scope`                           | Per-execution state and isolated scopes    |
+| `jsx-runtime` / `jsx-dev-runtime` | JSX transform entry points (auto-wired)    |
 
 ### Types
 
-| Export         | Purpose                                                           |
-| -------------- | ----------------------------------------------------------------- |
-| `Renderable`   | Everything the renderers can render                               |
-| `VNode`        | The engine's element representation: a class, exported as a value |
-| `RawString`    | Branded type for pre-escaped HTML                                 |
-| `Awaitable<T>` | `T` or a promise of `T`                                           |
-| `ClassValue`   | What a `class` attribute accepts                                  |
-| `JSX`          | The JSX namespace                                                 |
-| `Context<T>`   | Tree context with a typed Provider                                |
-| `ScopeKey<T>`  | Branded execution-context key type                                |
-| `ScopeMap`     | Execution-context map type                                        |
+| Export          | Purpose                                      |
+| --------------- | -------------------------------------------- |
+| `Renderable`    | Everything the renderers can render          |
+| `VNode`         | What `jsx()` produces (a type only)          |
+| `RawString`     | Branded type for pre-escaped HTML            |
+| `RawUrl`        | Branded type for a URL with a trusted scheme |
+| `CSSProperties` | What a `style` object accepts                |
+| `Awaitable<T>`  | `T` or a promise of `T`                      |
+| `ClassValue`    | What a `class` attribute accepts             |
+| `JSX`           | The JSX namespace                            |
+| `Context<T>`    | Tree context with a typed Provider           |
+| `ScopeKey<T>`   | Branded execution-context key type           |
+| `ScopeMap`      | Execution-context map type                   |
 
-Element attributes are typed per element, by the table generated into
-`@vincle/core`: see
-[JSX types](/api/core/jsx-types).
-
-Everything else is internal. There is no plugin registry or
-config object to maintain.
+Attributes are typed per element (`src` on `<img>`, `href` on `<a>`), with
+nothing extra to install: see [JSX types](/api/core/jsx-types). Everything else
+is internal.
 
 ## Where to next
 

@@ -8,9 +8,9 @@ How JSX elements and attributes map to HTML.
 
 ## Lowercase elements are HTML
 
-Any lowercase tag is rendered as an HTML element. Vincle knows which tags are
-[void elements](https://developer.mozilla.org/en-US/docs/Glossary/Void_element)
-(`img`, `br`, `input`, …) and renders them without a closing tag.
+A lowercase tag is an HTML element; an uppercase one is a **component**.
+[Void elements](https://developer.mozilla.org/en-US/docs/Glossary/Void_element)
+(`img`, `br`, `input`, …) render without a closing tag.
 
 ```tsx
 import { renderToString } from "@vincle/core";
@@ -27,24 +27,16 @@ const html = await renderToString(
 <input type="text" /><br />
 ```
 
-Uppercase tags are treated as **components** (functions).
+### A void element takes no children
 
-### Content in a void element is refused
-
-`<img>{caption}</img>` type-checks: the element types do not forbid children on
-a void tag, but it has no valid HTML form: a parser drops the closing tag and
-reparents the content, so the document stops being the one you wrote. Vincle
-throws instead:
+HTML has no form for content inside a void element: a parser would move it.
+So any `children` other than `undefined` throws, even a value that renders
+nothing (`{list.length > 0 && <b>x</b>}` throws on an empty list too), and the
+mistake shows in development, not only when real data arrives.
 
 ```
 [vincle/core] <img> is a void element and cannot have children: move the content next to it, not inside.
 ```
-
-Vincle rejects any `children` value other than `undefined`, even if it would
-render nothing. `<br>{items.length > 0 && <b>x</b>}</br>` therefore throws on an
-empty list too. An element that failed only when real data arrived could work in
-development and fail in production. `undefined` means no child, so
-`<img children={undefined} />` renders `<img>`. Move content outside the void tag:
 
 ```tsx
 <img src={src}>Caption</img>       // ❌ throws
@@ -52,23 +44,17 @@ development and fail in production. `undefined` means no child, so
 <figure><img src={src} /><figcaption>Caption</figcaption></figure>  // ✅
 ```
 
-Vincle rejects the invalid element as soon as it is constructed. For JSX
-created inside a component, that happens during rendering; direct JSX can
-throw before `renderToString` is called. To catch the mistake while writing,
+The error is thrown when the element is created, so JSX built outside a
+component throws before `renderToString` is called. To catch it while writing,
 enable
 [`void-dom-elements-no-children`](https://github.com/jsx-eslint/eslint-plugin-react/blob/master/docs/rules/void-dom-elements-no-children.md)
-from `eslint-plugin-react`; oxlint carries a port under the same name. The rule
-reports explicit children on a void tag without evaluating their value. For
-example, it reports `<img>{caption}</img>` even when `caption` is `undefined`,
-which Vincle accepts. It is an early warning for JSX you write, not a substitute
-for the renderer's runtime check: children hidden in a props spread can escape
-this lint rule.
+(`eslint-plugin-react`, ported by oxlint). It flags explicit children only:
+children passed through a spread still reach the runtime check.
 
 ## Attributes
 
-Attributes become HTML attributes. Most names pass through unchanged. A few
-camelCase names are remapped to match the HTML spec, so you can use the names
-you're used to from React:
+Most names pass through unchanged. The React spellings map to their HTML
+names:
 
 | JSX name        | HTML attribute   |
 | --------------- | ---------------- |
@@ -81,49 +67,25 @@ you're used to from React:
 | `httpEquiv`     | `http-equiv`     |
 | `acceptCharset` | `accept-charset` |
 
-### Conflict resolution: HTML name wins
-
-When both the React-style name (`className`, `htmlFor`, `tabIndex`, …) and the
-HTML-native name (`class`, `for`, `tabindex`, …) appear on the same element,
-the **HTML name wins** and the React name is silently dropped: no merge, no
-warning. This holds for every entry in the remapping table above.
-
-Writing both is only possible for `class`/`className`, the one pair typed in
-both spellings. For the others, only the camelCase name is typed, so a
-conflict reaches an element through a spread, where the same rule applies.
+When both spellings reach one element, the **HTML name wins** and the React
+one is dropped: no merge, no warning. Prefer the HTML names: they match the
+output.
 
 ```tsx
 import { renderToString } from "@vincle/core";
 
-// `class` wins, `className` is dropped
-const classes = await renderToString(<div className="foo" class="bar" />);
-
-// No conflict: only one name given
-const single = await renderToString(<label htmlFor="email">Email</label>);
-
-// `class`/`className` is the only pair typed in both spellings. Every other
-// HTML name reaches an element through a spread, and the same rule applies:
-const spread = await renderToString(<label {...{ htmlFor: "a", for: "b" }}>Label</label>);
+const html = await renderToString(<div className="foo" class="bar" />);
 ```
 
 ```html
 <div class="bar"></div>
-<label for="email">Email</label>
-<label for="b">Label</label>
 ```
-
-The rationale: Vincle renders HTML, not React: the HTML-native form is the
-canonical output. React merges both values (classNames together, etc.), but
-Vincle does not. If you use both by accident, the HTML name silently wins.
-
-> **Prefer the HTML-native name** (`class`, `for`, `tabindex`, …) in your
-> codebase. The React aliases are accepted for migration convenience, but the
-> HTML names are unambiguous and match the output.
 
 ## Boolean and falsy values
 
-Falsy attribute values (`false`, `null`, `undefined`) are omitted entirely.
-The literal `true` renders the attribute as a bare name (HTML boolean syntax).
+`null` and `undefined` omit the attribute. On an HTML boolean attribute
+(`disabled`, `hidden`, `checked`…), `false` omits it and `true` renders the bare
+name; on any other attribute, `true` and `false` render as text.
 
 ```tsx
 <button disabled={isBusy}>Save</button>
@@ -146,29 +108,24 @@ const html1 = await renderToString(<p style="color: red; font-size: 1.5rem;">Hel
 const html2 = await renderToString(<p style={{ color: "red", fontFamily: "sans-serif" }}>Hello</p>);
 ```
 
-CSS values are HTML-escaped (`&`, `<`, `>`, `"`) to prevent attribute
-breakout. CSS syntax is not additionally validated: the attack
-vectors that motivated CSS value filtering (`expression()`,
-`url(javascript:)`) are no longer relevant on modern browsers.
-See the [security model](/guide/security).
+A string is your declaration list, escaped for the attribute and otherwise
+emitted as written. An object is data: names carrying CSS syntax are dropped
+and values are CSS-escaped, so a value cannot add a declaration. See the
+[security model](/guide/security).
 
 ## Event handlers
 
-A function-valued attribute **throws** at render time: a function has no HTML
-form, and there is no client runtime to attach it to. Nothing is special-cased
-about `on*`: `title={fn}` fails the same way, with the same message. The
+A function has no HTML form, and there is no client runtime to attach it to:
+any function-valued attribute **throws** at render time, `on*` or not. A string
+handler (`onClick="doThing()"`) is escaped, but the JavaScript inside is yours:
+never interpolate user data there. The
 [`no-unsafe-event-handlers`](https://github.com/cjean-fr/vincle/tree/main/packages/eslint-plugin)
-rule flags the practice at the source, before a render can.
-
-String-valued handlers (`onClick="doThing()"`) are allowed and HTML-escaped,
-but the JavaScript inside is **not** sanitized: never interpolate user data
-there.
+rule flags the practice at the source.
 
 ## Custom attributes
 
-Unknown attribute names are allowed and rendered as-is, as long as they are
-valid (no whitespace, quotes, `<`, `>`, `/`, `=`, or control characters). This
-covers `data-*`, `aria-*`, and framework-specific attributes like `hx-get`.
+Any name renders as written (`data-*`, `aria-*`, `hx-get`), as long as it is
+valid: no whitespace, quote, `<`, `>`, `/`, `=` or control character.
 
 ## Where to next
 

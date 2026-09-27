@@ -5,19 +5,9 @@ title: Error handling
 # Error handling
 
 Errors throw or reject bare. There is no component-level boundary that catches
-them mid-tree.
-
-## Rationale
-
-Server-side rendering is fundamentally different from client-side React, and a
-boundary component has little to catch:
-
-- **No recovery after output**: once HTML is sent, a boundary can't
-  retroactively replace it. The server's only choice is what to send next.
-- **SSR errors are exceptional**: a server error usually means a 500, not
-  a graceful partial fallback.
-- **Streaming recovery is per-fragment**: `@vincle/flow` provides `onError`
-  for the streaming case, which is more granular than a boundary.
+them mid-tree: once HTML is sent, nothing can replace it, so a server error is a
+500 or a fallback page. For streaming, `@vincle/flow` recovers per fragment with
+`onError`.
 
 ## Top-level errors
 
@@ -35,59 +25,34 @@ try {
 }
 ```
 
-The `try` block catches errors both while `<Page />` is constructed and while
-`renderToString` walks it. Attaching `.catch()` to the returned promise would
-not catch an error thrown before the call begins.
+The `try` catches errors both while `<Page />` is constructed and while it
+renders; a `.catch()` on the returned promise misses the first kind.
 
-An `Error` thrown by a component is annotated with that component's name,
-once: the innermost one, not the whole chain:
-
-```tsx
-function Profile() {
-  throw new Error("not found");
-}
-
-try {
-  await renderToString(<Profile />);
-} catch (e) {
-  // e.message === "[Profile] not found"
-}
-```
-
-A thrown value that isn't an `Error` (a string, a plain object) is never
-wrapped: `catch` sees exactly what was thrown.
+An `Error` thrown by a component is prefixed with the name of the innermost
+component that threw: `[Profile] not found`. Any other thrown value reaches
+`catch` exactly as thrown.
 
 ## Message format
 
-Every error vincle raises is prefixed and self-contained. It says **where** it
-came from, **what** went wrong (naming the offending value), **why**, and **how
-to fix it**:
+Every error vincle raises says where it came from, what went wrong, why, and
+how to fix it:
 
 ```
 [vincle/<package>] <api or component>: <what happened>. <why>. <how to fix it>
 ```
 
-Real examples:
-
 ```
-[vincle/core] Scope.get("app:theme"): the value was never set in the current scope. Set it above the reader with Scope.set(key, value) inside the same Scope.with()…
 [vincle/flow] <Defer target="hero">: merge="prepend" is not supported by this adapter: it supports: replace, append. Pick one of those, or use an adapter that supports "prepend".
-[vincle/vite-plugin] Vite entry "src/logo.sv" not found in manifest. Did you mean "src/logo.svg"? The manifest only lists files Vite bundles…
 ```
 
-Error messages use the current `Scope.*` names, so a message names the exact
-call to fix.
-
-The prefix is stable and greppable (`[vincle/core]`, `[vincle/flow]`,
-`[vincle/vite-plugin]`, `[vincle/precompile]`), so you can filter
-vincle errors out of a log or match them in CI. To tell them apart _in code_,
-read `error.code` rather than the message: see below.
+The prefix (`[vincle/core]`, `[vincle/flow]`, `[vincle/vite-plugin]`,
+`[vincle/precompile]`) is stable, for filtering logs. In code, read
+`error.code` instead of the message.
 
 ## Error codes
 
-Every error vincle throws carries a `code`, following Node's
-convention. `TypeError` is also what a component throws when it has a bug of its
-own, so the type alone cannot say whether the refusal came from vincle:
+Every error the libraries throw at render or setup carries a stable `code`, following Node's convention.
+The type alone cannot tell a vincle refusal from a bug in your own component:
 
 ```ts
 try {
@@ -99,22 +64,28 @@ try {
 }
 ```
 
-| Code                         | Raised when                                                       |
-| ---------------------------- | ----------------------------------------------------------------- |
-| `ERR_VINCLE_INVALID_TAG`     | a tag name that cannot be written as HTML                         |
-| `ERR_VINCLE_VOID_CHILDREN`   | content inside a void element (`<br>`, `<img>`, …)                |
-| `ERR_VINCLE_DANGEROUS_HTML`  | `dangerouslySetInnerHTML.__html` is not a string                  |
-| `ERR_VINCLE_FUNCTION_ATTR`   | a function passed as an attribute value                           |
-| `ERR_VINCLE_VNODE_AS_TEXT`   | a component interpolated where text belongs                       |
-| `ERR_VINCLE_SCOPE_COLLISION` | overlapping renders or `Scope.with()` with no `AsyncLocalStorage` |
-| `ERR_VINCLE_NO_STORE`        | the Scope store was read before `Scope.with()` ran                |
-| `ERR_VINCLE_NO_SCOPE`        | a Scope call outside any `Scope.with()`                           |
-| `ERR_VINCLE_CONTEXT_KEY`     | `Scope.key()` given something other than a non-empty string       |
-| `ERR_VINCLE_CONTEXT_LIMIT`   | more distinct context keys than the table holds                   |
-| `ERR_VINCLE_CONTEXT_UNSET`   | `Scope.get()` read a value never set in scope                     |
+The codes are not exported: compare against the string, as you would an
+`ENOENT`. The set may grow; an existing code will not be renamed or reused.
 
-The first three are `TypeError`s: an argument that is not what it has to be.
-Every other code in this page, here and below, is a plain `Error`.
+### `@vincle/core`
+
+| Code                          | Raised when                                                       |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `ERR_VINCLE_INVALID_TAG`      | a tag name that cannot be written as HTML                         |
+| `ERR_VINCLE_VOID_CHILDREN`    | content inside a void element (`<br>`, `<img>`, …)                |
+| `ERR_VINCLE_DANGEROUS_HTML`   | `dangerouslySetInnerHTML.__html` is not a string                  |
+| `ERR_VINCLE_FUNCTION_ATTR`    | a function passed as an attribute value                           |
+| `ERR_VINCLE_VNODE_AS_TEXT`    | a component interpolated where text belongs                       |
+| `ERR_VINCLE_SCOPE_COLLISION`  | overlapping renders or `Scope.with()` with no `AsyncLocalStorage` |
+| `ERR_VINCLE_NO_STORE`         | the Scope store was read before `Scope.with()` ran                |
+| `ERR_VINCLE_NO_SCOPE`         | a Scope call outside any `Scope.with()`                           |
+| `ERR_VINCLE_CONTEXT_KEY`      | `Scope.key()` given something other than a non-empty string       |
+| `ERR_VINCLE_CONTEXT_LIMIT`    | more distinct context keys than the table holds                   |
+| `ERR_VINCLE_CONTEXT_UNSET`    | `Scope.get()` read a value never set in scope                     |
+| `ERR_VINCLE_CONTEXT_CHILDREN` | a context `Consumer` whose children is not a function             |
+
+The first three are `TypeError`s; every other code on this page is a plain
+`Error`.
 
 ### `@vincle/flow`
 
@@ -124,6 +95,7 @@ Every other code in this page, here and below, is a plain `Error`.
 | `ERR_VINCLE_FLOW_NO_ADAPTER`        | a placeholder or fragment with no adapter configured |
 | `ERR_VINCLE_FLOW_MERGE_UNSUPPORTED` | a `merge` the adapter cannot express                 |
 | `ERR_VINCLE_FLOW_FRAGMENT_ID`       | a fragment id that cannot be a DOM id or URL segment |
+| `ERR_VINCLE_FLOW_DUP_FRAGMENT`      | two `<Defer>` on the same `target` in one render     |
 | `ERR_VINCLE_FLOW_NO_FRAGMENT`       | `renderFragment` produced nothing for that id        |
 | `ERR_VINCLE_FLOW_NO_STREAMING`      | `renderToStream` given an adapter that cannot stream |
 | `ERR_VINCLE_FLOW_FORBIDDEN_SCHEME`  | an `<Include src>` scheme outside the whitelist      |
@@ -141,27 +113,14 @@ Every other code in this page, here and below, is a plain `Error`.
 | `ERR_VINCLE_PRECOMPILE_HELPER`   | a runtime helper answered a shape the transform cannot use |
 | `ERR_VINCLE_PRECOMPILE_INTERNAL` | an invariant of the transform broke: a bug to report       |
 
-The codes are not exported: compare against the string, as you would an
-`ENOENT`. The set may grow; an existing code will not be renamed or reused.
-
-Config errors fail **fast**, at the entry point that receives the config,
-before a single byte is rendered or a build starts:
-
-- `@vincle/flow`: `renderToStream`, `renderToFlowEvents`, `renderToStatic`,
-  `renderFragment`, `createAdapter`, and the flow config (`mode`, `adapter`,
-  `generatePath`, `idPrefix`) are all validated at call time, as are
-  `defaultTimeout`, `onError`, `signal`, and per-fragment `timeout`.
-- `@vincle/vite-plugin`: `setVite` checks `base`; `loadViteManifest` names the
-  file when it is unreadable, not JSON, or not a manifest.
-- `@vincle/precompile`: `runtimeSource` is checked when the plugin is
-  created; a runtime declaring the `"vincle"` precompile dialect without the
-  helpers to back it fails the build, and an unreadable runtime module warns and
-  falls back to Deno's output.
+Configuration errors fail **fast**, at the entry point that receives the
+option, before anything renders or a build starts. One exception is not an
+error: an unreadable runtime module makes `@vincle/precompile` warn and fall
+back to Deno's output.
 
 ## Per-fragment errors (streaming)
 
-For streaming renders, `@vincle/flow` provides `onError` on the
-`serve()` options and individual `<Defer>`s:
+`@vincle/flow` takes `onError` on the render options and on each `<Defer>`:
 
 ```tsx
 serve(req, () => <Page />, NativeAdapter, {
@@ -172,4 +131,4 @@ serve(req, () => <Page />, NativeAdapter, {
 });
 ```
 
-See the [Flow streaming API](/api/flow/renderToStream) for details.
+See [renderToStream](/api/flow/renderToStream) for details.

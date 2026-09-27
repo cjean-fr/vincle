@@ -4,7 +4,8 @@ title: renderToStatic
 
 # renderToStatic
 
-Build HTML files at compile time. Gives you a context to render all your pages, then emit fragment files if any page uses lazy `Defer`.
+Builds HTML files at compile time: renders your pages, then emits a fragment
+file per lazy `Defer`.
 
 ## Signature
 
@@ -22,55 +23,24 @@ function renderToStatic<T>(fn: (ctx: StaticContext) => T, options: StaticOptions
 
 | Option         | Type                     | Default                              | Description                              |
 | -------------- | ------------------------ | ------------------------------------ | ---------------------------------------- |
-| `adapter`      | `Adapter`                | : (required)                         | Wire-format adapter for fragment framing |
+| `adapter`      | `Adapter`                | Required                             | Wire-format adapter for fragment framing |
 | `generatePath` | `(id: string) => string` | ``(id) => `/fragments/${id}.html` `` | URL path for each fragment               |
 
-**Options are validated up front**: before a single page renders. A missing
-or malformed `adapter`, or a non-function `generatePath`, fails at the call
-with a message prefixed `[vincle/flow]` that names the option, the offending
-value, and the fix. See [Error handling](/api/core/error-handling).
+Options are validated at the call, before anything renders: see
+[Error handling](/api/core/error-handling).
 
 ## Contexts
 
-### PureStaticContext
-
-| Method       | Signature                                      | Description                                   |
-| ------------ | ---------------------------------------------- | --------------------------------------------- |
-| `renderPage` | `(node: () => JSX.Element) => Promise<string>` | Renders a page returning the full HTML string |
-
-### StaticContext
-
 | Method          | Signature                                                                                   | Description                                              |
 | --------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `renderPage`    | `(page: () => VNode) => Promise<string>`                                                    | Renders a page returning the full HTML string            |
+| `renderPage`    | `(node: () => JSX.Element) => Promise<string>`                                              | Renders a page returning the full HTML string            |
 | `emitFragments` | `(emit: (id: string, url: string, html: string) => void \| Promise<void>) => Promise<void>` | Materializes deferred fragments, passes each to callback |
 
-## Pure static
+Called without options, the handler receives a `PureStaticContext`: it has no
+`emitFragments`, so the type system prevents calling it. With `{ adapter }`, it
+receives a `StaticContext`, which has both.
 
-No lazy `Defer` in your pages? Call `renderToStatic` without options (just the handler). The handler receives a `PureStaticContext`: `emitFragments` does not exist, so the type system prevents accidental use.
-
-```tsx
-import type { JSX } from "@vincle/core";
-
-import { renderToStatic } from "@vincle/flow";
-import { writeFile } from "node:fs/promises";
-
-declare const pages: { Component: () => JSX.Element; out: string }[];
-
-// Pure-static: no lazy <Defer>, no adapter needed.
-await renderToStatic(async (ctx) => {
-  await Promise.all(
-    pages.map(async (page) => {
-      const html = await ctx.renderPage(() => <page.Component />);
-      await writeFile(page.out, "<!DOCTYPE html>\n" + html);
-    }),
-  );
-});
-```
-
-## With deferred fragments
-
-Pass `{ adapter }` as the second argument. The handler receives a `StaticContext` with `emitFragments`. Each deferred fragment is rendered and passed to your callback.
+## Usage
 
 ```tsx
 import type { JSX } from "@vincle/core";
@@ -81,7 +51,6 @@ import { writeFile } from "node:fs/promises";
 
 declare const pages: { Component: () => JSX.Element; out: string }[];
 
-// Pages use <Defer> with lazy factories: emit fragment files after rendering all pages.
 await renderToStatic(
   async (ctx) => {
     for (const page of pages) {
@@ -89,12 +58,12 @@ await renderToStatic(
       await writeFile(page.out, "<!DOCTYPE html>\n" + html);
     }
 
-    // One .html file per deferred fragment: already
-    // Frame-wrapped, ready to write.
+    // One .html file per deferred fragment, already Frame-wrapped.
     await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
   },
   { adapter: NativeAdapter },
 );
 ```
 
-The same path must be declared in the page's `Include src` so the browser knows where to find each fragment.
+The page's `Include src` must point at the same path, so the browser finds each
+fragment.

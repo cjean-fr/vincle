@@ -4,39 +4,19 @@ title: renderToString
 
 # renderToString
 
-Renders a JSX tree into an HTML string. Always returns a `Promise<string>`.
+Renders a JSX tree into an HTML string.
 
 ## Signature
-
-Accepts a single JSX node: a component, an element, a fragment, or a
-primitive. The parameter is typed `unknown`: JSX's own typing (`JSX.Element`)
-already constrains what compiles, so `renderToString` doesn't re-narrow it,
-it dispatches at runtime on what it actually receives.
 
 ```ts
 declare function renderToString(node: unknown): Promise<string>;
 ```
 
-## Basic usage
+`node` is a single JSX node: a component, an element, a fragment (`<></>` for
+several siblings), or any [`Renderable`](/api/core/jsx-types#renderable). It is
+typed `unknown` because JSX's own typing already constrains what compiles.
 
-Pass JSX directly. The tree is traversed once, depth-first, and concatenated
-into a string: no virtual DOM, no intermediate allocations.
-
-```tsx
-import { renderToString } from "@vincle/core";
-
-const html = await renderToString(<h1>Hello</h1>);
-```
-
-```html
-<h1>Hello</h1>
-```
-
-## With a page component
-
-Wrap your document layout in a component that receives props. This is the
-recommended pattern for real applications: every page shares the same shell
-while passing different content and metadata.
+## Usage
 
 ```tsx
 import { renderToString } from "@vincle/core";
@@ -55,15 +35,10 @@ const Page = ({ title }: { title: string }) => (
 const html = await renderToString(<Page title="My Site" />);
 ```
 
-Note how `title` and `children` flow as typed props. The layout component is
-just a function; use a Provider when descendants need a shared tree value.
-
 ## Async components
 
-Any component in the tree can be `async`. `renderToString` walks the tree
-depth-first and awaits every async component it encounters. The component that
-needs data is the component that fetches it: no top-level loader, no
-prop-drilling.
+Any component in the tree can be `async`: the component that needs data fetches
+it, and the returned promise resolves once the whole tree has rendered.
 
 ```tsx
 import { renderToString } from "@vincle/core";
@@ -87,76 +62,20 @@ const Feed = async () => {
   );
 };
 
-// renderToString awaits the entire tree, including
-// nested async components
 const html = await renderToString(<Feed />);
 ```
 
-Sibling async branches run in document order, one at a time: never in
-parallel. A sibling never starts before the one before it has finished, so two
-branches that both touch `Scope` can never race.
-The returned `Promise<string>` resolves once every branch has rendered.
-
-This order also applies to components in arrays, iterables, and precompiled
-`@vincle/core` templates. If a component throws or rejects, later components
-in that sequence are not invoked. The synchronous prefix is kept; rendering
-resumes after each awaited component without restarting earlier siblings.
-
-The guarantee concerns component invocation by the renderer. A promise you
-create before rendering has already started its work; the renderer cannot
-postpone it. For explicit concurrent rendering, use
-[`Defer` and `Slot`](/integration/components) from `@vincle/flow`.
+Components run one at a time, in document order, never in parallel, including
+in arrays, iterables and precompiled templates. So two siblings touching `Scope`
+never race, and when one throws or rejects, the ones after it are not invoked.
+A promise you created before rendering is already running; for concurrent
+regions, use [`Defer` and `Slot`](/integration/components) from `@vincle/flow`.
 
 ## Concurrent renders
 
-Multiple concurrent calls to `renderToString` are safe, even when components
-use tree Providers or `Scope.with`. Each Provider render and
-execution scope keeps its own values: no cross-request leakage.
+Concurrent calls are safe, even when components use Providers or `Scope.with`:
+each render keeps its own values, with no cross-request leakage.
 
 ```tsx
-import { renderToString } from "@vincle/core";
-
-const PageA = () => <p>A</p>;
-const PageB = () => <p>B</p>;
-
-// Safe to call concurrently: scopes are fully isolated
 const [pageA, pageB] = await Promise.all([renderToString(<PageA />), renderToString(<PageB />)]);
 ```
-
-This makes Vincle suitable for HTTP servers that handle multiple requests
-in parallel on the same thread, without request-scoped singletons or request
-intermediation.
-
-## VNode vs Renderable
-
-`VNode` is a concrete class: one JSX element, holding its tag, attributes,
-and children. `jsx()` is the only way to make one; it's exported as a **value**
-(not just a type), because the precompile runtime tests for it with
-`instanceof`.
-
-What a component may actually _return_ is broader than a single `VNode`,
-elements, fragments, strings, numbers, bigints, booleans, `null`, `undefined`,
-`RawString` (from `raw()`), promises and (async) iterables of any of those.
-That broader union is `Renderable`, the type `renderToString` really accepts:
-
-```ts
-import type { RawString, VNode } from "@vincle/core";
-
-// `Renderable`: everything a component may return, and everything the
-// renderers know how to render.
-export type Renderable =
-  | VNode
-  | RawString
-  | string
-  | number
-  | bigint
-  | boolean
-  | null
-  | undefined
-  | Iterable<Renderable>
-  | AsyncIterable<Renderable>
-  | Promise<Renderable>;
-```
-
-To render multiple sibling elements without a single wrapping `VNode`, use a
-fragment (`<></>`). It's still one JSX node.

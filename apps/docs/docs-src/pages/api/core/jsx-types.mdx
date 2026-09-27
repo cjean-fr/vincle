@@ -15,10 +15,8 @@ Every HTML and SVG element is typed per element, so a typo is a compile error:
 //  ^ error: 'clas' does not exist on <div>. Did you mean 'class'?
 ```
 
-That typing ships inside `@vincle/core` itself. The table is generated from
-`@types/react` and `csstype` at build time, so the attribute names and value
-unions match what you already know from React: nothing from either is bundled
-or imported at runtime. Every tag and attribute is type-checked, always.
+The types ship inside `@vincle/core`, with the attribute names and value unions
+you know from React. Nothing from React is bundled or imported at runtime.
 
 ## Renderable
 
@@ -28,8 +26,6 @@ render.
 ```ts
 import type { RawString, VNode } from "@vincle/core";
 
-// `Renderable`: everything a component may return, and everything the
-// renderers know how to render.
 export type Renderable =
   | VNode
   | RawString
@@ -44,8 +40,6 @@ export type Renderable =
   | Promise<Renderable>;
 ```
 
-### What each branch means
-
 | Type                             | Example                          | Behaviour                               |
 | -------------------------------- | -------------------------------- | --------------------------------------- |
 | `string`                         | `"a & b"`                        | HTML-escaped and rendered as text       |
@@ -57,59 +51,37 @@ export type Renderable =
 | `Iterable<Renderable>`           | `Set`, `Map.values()`, generator | Drained, then rendered in order         |
 | `AsyncIterable<Renderable>`      | `AsyncGenerator`                 | Awaited per item, flushed between items |
 
-Anything else, such as a plain object, a `Date`, or a `URL`, is rendered through its
-string form. A function or a symbol is a type error.
+Anything else, such as a plain object, a `Date`, or a `URL`, is rendered through
+its string form. A function or a symbol is a type error.
 
 ## VNode
 
-The engine's internal representation of an element: a tag, its props, its
-children. It is exported **as a value** (a class), even though `jsx()` is the
-only way to construct one; the value export is required by the precompile
-contract. Nothing outside the engine needs to build one by hand.
-
-Use it to annotate a value that holds an element built by JSX. To annotate
-something that merely _renders_, `Renderable` is the type you want; it is much
-wider, and it is what a component is allowed to return.
+One element built by JSX: a tag, its props, its children. It is exported as a
+type only: `jsx()` is the only way to construct one. Use `VNode` for a
+value that holds an element; for anything that merely _renders_, use the wider
+`Renderable`.
 
 ## Components
 
-A component is a plain function. There is no `Component<P>` type to apply, and
-nothing to import:
-
-```tsx
-interface GreetingProps {
-  name: string;
-}
-
-const Greeting = ({ name }: GreetingProps) => <h1>Hello, {name}!</h1>;
-```
-
-`async` works with no ceremony: the renderer awaits it:
-
-```tsx
-const AsyncGreeting = async ({ id }: { id: string }) => {
-  const user = await db.users.find(id);
-  return <h1>Hello {user.name}</h1>;
-};
-```
-
-A component may return anything in `Renderable`, not just an element:
-
-```tsx
-const Label = () => "just text";
-const Items = () => [<li>a</li>, <li>b</li>];
-const Rows = async function* () {
-  for await (const row of stream) yield <tr>{row}</tr>;
-};
-```
-
-To accept children, declare them: `Renderable` is the honest type:
+A component is a plain function, possibly `async`, returning anything in
+`Renderable`. There is no `Component<P>` type to apply:
 
 ```tsx
 import type { Renderable } from "@vincle/core";
 
+const Greeting = ({ name }: { name: string }) => <h1>Hello, {name}!</h1>;
+
+const AsyncGreeting = async ({ id }: { id: string }) => {
+  const user = await db.users.find(id);
+  return <h1>Hello {user.name}</h1>;
+};
+
+const Items = () => [<li>a</li>, <li>b</li>];
+
 const Card = ({ children }: { children?: Renderable }) => <div class="card">{children}</div>;
 ```
+
+To accept children, declare them as `Renderable`.
 
 ## Attributes
 
@@ -126,12 +98,12 @@ HTML name.
 | `xlinkHref`   | `xlink:href`         |
 | `viewBox`     | `viewBox`            |
 
-`class` and `style` are accepted under their HTML names too, and any name that is
-not a plain identifier, such as `data-*`, `aria-*`, `http-equiv`, or `xlink:href`,
-can be written directly.
+HTML names (`class`, `style`, `data-*`, `aria-*`, `http-equiv`, `xlink:href`…)
+can be written directly too.
 
 Values may be a string, a number, a boolean, a [`raw()`](/api/core/raw) string, or
-a **promise** of any of those:
+a **promise** of any of those. A boolean attribute renders as the bare name:
+`<input disabled />` becomes `<input disabled>`.
 
 ```tsx
 <a href={resolveUrl(slug)} class={["btn", active && "btn-active"]}>
@@ -139,28 +111,25 @@ a **promise** of any of those:
 </a>
 ```
 
-Boolean HTML attributes render as the bare name: `<input disabled />` becomes
-`<input disabled>`.
-
 ### Event handlers
 
-Handlers are **strings**, not functions: Vincle emits HTML:
+Handlers are **strings**, not functions, since Vincle emits HTML. A function
+throws at render time.
 
 ```tsx
 <button onclick="submit()">Click me</button>
 <button onClick="submit()">Both spellings work</button>
 ```
 
-A function throws at render time, because a function cannot be serialized. The
+The
 [`no-unsafe-event-handlers`](https://github.com/cjean-fr/vincle/tree/main/packages/eslint-plugin)
-rule flags the practice at the source if you would rather avoid inline handlers
-entirely.
+rule flags inline handlers at the source if you would rather avoid them.
 
 ## JSX namespace
 
-Vincle declares its own `JSX` namespace so the compiler knows how to type-check
-JSX. It is re-exported by each JSX runtime entry point, because that is where
-TypeScript looks it up: the module named in your `jsxImportSource`.
+Vincle declares its own `JSX` namespace, re-exported by each JSX runtime entry
+point: TypeScript finds it through the `jsxImportSource` in your
+`tsconfig.json`, so you rarely touch it directly.
 
 | Member                         | Purpose                                                      |
 | ------------------------------ | ------------------------------------------------------------ |
@@ -170,14 +139,10 @@ TypeScript looks it up: the module named in your `jsxImportSource`.
 | `JSX.IntrinsicAttributes`      | Props every element accepts without being attributes (`key`) |
 | `JSX.ElementChildrenAttribute` | Names the prop JSX children are written into                 |
 
-You rarely touch these directly. They are wired by the `jsxImportSource` in your
-`tsconfig.json`.
-
 ### Custom elements
 
-Any name containing a hyphen is a custom element and stays open: it accepts any
-attribute, and its children are checked as `Renderable`. No type can know what a
-custom element accepts, so it is deliberately loose:
+Any name containing a hyphen is a custom element: it accepts any attribute, and
+its children are checked as `Renderable`.
 
 ```tsx
 <my-widget theme="dark" data-id="7">
@@ -185,8 +150,9 @@ custom element accepts, so it is deliberately loose:
 </my-widget>
 ```
 
-To type one properly, augment Vincle's own `JSX.IntrinsicElements`: the same
-interface every element is listed in:
+To type one, augment `JSX.IntrinsicElements`. The props must be a **type
+literal**, not a named `interface` (an interface cannot satisfy the
+custom-element index signature: error TS2411):
 
 ```tsx
 import type { Renderable } from "@vincle/core";
@@ -200,17 +166,9 @@ declare module "@vincle/core/jsx-runtime" {
 }
 ```
 
-`children` is `Renderable`, not `unknown`: a custom element's children are
-checked, and `Renderable` is what the renderers actually accept. This is how
-`@vincle/flow`'s Turbo elements type-check.
-
-One constraint: the props must be a **type literal**, not a named `interface`,
-an interface cannot satisfy the custom-element index signature (error TS2411).
-
 ## CSSProperties
 
-Style objects use camelCase properties, converted to kebab-case on output. The
-type is exported from `@vincle/core`:
+Style objects use camelCase properties, converted to kebab-case on output:
 
 ```tsx
 import type { CSSProperties } from "@vincle/core";
@@ -224,23 +182,14 @@ const styles = {
 
 Property _names_ are validated: one carrying `:`, `;` or `{` is dropped, so keys
 coming from data cannot smuggle extra declarations into the attribute. Values are
-left alone.
+CSS-escaped for the same reason: a `;` in a value stays inside it.
 
 ## ClassValue
 
 What the `class` attribute accepts: a string, or a flat list whose falsy entries
-are dropped, so no helper is needed for a conditional class.
+are dropped.
 
 ```tsx
 <div class={["card", isActive && "card-active", null]} />
 // => <div class="card card-active">
 ```
-
-## When to use each type
-
-| Type            | Use case                                          |
-| --------------- | ------------------------------------------------- |
-| `Renderable`    | A `children` prop, or the return type of a helper |
-| `VNode`         | A value that specifically holds an element        |
-| `CSSProperties` | Typing an inline `style` object                   |
-| `ClassValue`    | Typing a `class` prop you forward                 |

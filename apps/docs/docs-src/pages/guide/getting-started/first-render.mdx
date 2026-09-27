@@ -9,7 +9,7 @@ Everything you need to render your first JSX to an HTML string.
 ## Hello world
 
 `renderToString` always returns a `Promise<string>`, even for synchronous
-trees. The simplest render outputs a complete HTML document.
+trees. The string is ready to send over HTTP or write to a file.
 
 ```tsx
 import { renderToString } from "@vincle/core";
@@ -37,15 +37,10 @@ const html = await renderToString(
 </html>
 ```
 
-The returned string is ready to send over HTTP, write to a file, or embed in
-any response pipeline.
-
 ## Components are functions
 
-Components are plain functions: no classes, no hooks, no lifecycle. Props are
-typed with standard TypeScript interfaces. Children are passed via the
-`children` prop or as JSX children, giving you the same composition model as
-React but without the overhead.
+A component is a plain function: props in, JSX out. No classes, no hooks, no
+lifecycle. Children arrive in the `children` prop.
 
 ```tsx
 import { renderToString, type JSX } from "@vincle/core";
@@ -69,15 +64,12 @@ const html = await renderToString(
 );
 ```
 
-Because there is no state or re-rendering, components are fully deterministic:
-same props, same output. This makes them trivially testable and cacheable.
+Same props, same output: components are easy to test and cache.
 
 ## Values are escaped
 
-**Every** value embedded in JSX, whether text content, an attribute value, or a
-style property, is HTML-escaped before it reaches the output. There is no
-escape-by-default opt-out. This covers `&`, `<`, `>`, and `"` across all
-rendering surfaces.
+Every value is escaped for where it lands. `raw()` is the only way to emit
+markup, for HTML you trust.
 
 ```tsx
 import { renderToString, raw } from "@vincle/core";
@@ -96,8 +88,7 @@ const html2 = await renderToString(<article>{raw(trustedHtml)}</article>);
 <article><em>rendered from your own markdown</em></article>
 ```
 
-The only way to inject unescaped HTML is `raw()`, an explicit opt-in wrapper
-for trusted content.
+See the [security model](/guide/security).
 
 ## Async works directly
 
@@ -126,10 +117,8 @@ async function UserCard({ id }: { id: string }) {
 const html = await renderToString(<UserCard id="42" />);
 ```
 
-This is covered in the [introduction](/guide/introduction#async-native).
-
 ## Where to next
 
 - [Elements & attributes](/guide/jsx/elements-attributes): `class`, `style`, booleans
-- [Introduction](/guide/introduction): components are functions
-- [Async-native](/guide/introduction#async-native): `await` inside render
+- [Components](/guide/jsx/components): props, composition, async
+- [Load data in your components](/guide/introduction#load-data-in-your-components): `await` inside render
