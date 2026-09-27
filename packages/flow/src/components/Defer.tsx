@@ -1,8 +1,8 @@
-import { snapshotContext, Scope, type JSX } from "@vincle/core";
+import { raw, snapshotContext, Scope, type JSX } from "@vincle/core";
 
 import type { DeferContent, MergeType, OnError } from "../types.js";
 
-import { Flow, renderPlaceholder } from "../context.js";
+import { Flow, pendingMarks, renderPlaceholder } from "../context.js";
 
 export interface DeferProps {
   target?: string;
@@ -13,8 +13,8 @@ export interface DeferProps {
   fallback?: JSX.Element;
 }
 
-export function Defer(props: DeferProps): JSX.Element {
-  const { registerFragment, nextId } = Scope.get(Flow);
+export function Defer(props: DeferProps): JSX.Element | null {
+  const { registerFragment, nextId, slots } = Scope.get(Flow);
   const { children, merge, timeout, onError, fallback } = props;
   const target = props.target ?? nextId();
 
@@ -31,5 +31,16 @@ export function Defer(props: DeferProps): JSX.Element {
     fallback,
   });
 
-  return renderPlaceholder(target, fallback);
+  // A `<Slot>` of this name is the placeholder: one per id (see `SlotState`).
+  if (slots.names.has(target)) return null;
+  const placeholder = renderPlaceholder(target, fallback);
+  if (props.target === undefined) return placeholder;
+  const [open, close] = pendingMarks(slots, target);
+  return (
+    <>
+      {raw(open)}
+      {placeholder}
+      {raw(close)}
+    </>
+  );
 }

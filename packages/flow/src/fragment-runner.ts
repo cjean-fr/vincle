@@ -1,4 +1,5 @@
-import { renderToString, type Awaitable, type JSX } from "@vincle/core";
+import type { Awaitable, JSX } from "@vincle/core";
+
 // The protocol test is core's: same predicate the tree walk dispatches on, so
 // "what counts as a stream" cannot mean one thing here and another there. The
 // local copy it replaces needed an `as any` to ask the question at all.
@@ -7,6 +8,7 @@ import { isAsyncIterable } from "@vincle/core/html";
 import type { FragmentEntry } from "./fragment-store.js";
 import type { DeferContent, FlowEvent, FlowOptions, MergeType } from "./types.js";
 
+import { renderFlow } from "./context.js";
 import { createTimeoutSignal } from "./timeout.js";
 
 const isLazyFactory = (
@@ -43,7 +45,7 @@ async function emitError(
     await emit({
       type: "fragment",
       id,
-      html: await renderToString(ui),
+      html: await renderFlow(ui),
       merge: "replace",
     });
   }
@@ -142,7 +144,7 @@ async function runValue(
 ): Promise<void> {
   let html: string;
   try {
-    html = await renderToString(value);
+    html = await renderFlow(value);
   } catch (renderError) {
     await reportOrThrow(emit, onError, id, "fragment", renderError);
     return;
@@ -194,7 +196,7 @@ async function runStream(
 
       let raw: string;
       try {
-        raw = await renderToString(r.value);
+        raw = await renderFlow(r.value);
       } catch (renderError) {
         await reportOrThrow(emit, onError, id, "stream", renderError);
         continue;
