@@ -3,7 +3,13 @@ import { Scope, raw, renderToString, type JSX } from "@vincle/core";
 import type { Adapter } from "./adapters/index.js";
 
 import { assertAdapter, PREFIX, describeValue } from "./config.js";
-import { withFlow, initFlowAssets, suppressFlowAssets, type FlowContext } from "./context.js";
+import {
+  withFlow,
+  initFlowAssets,
+  renderFlow,
+  suppressFlowAssets,
+  type FlowContext,
+} from "./context.js";
 import { ERR_FLOW_CONFIG, ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
 import { flushFragments } from "./flushFragments.js";
 
@@ -56,7 +62,7 @@ function createStaticContext(
         // A page boundary is an asset boundary: a fresh state before the
         // render, so `<Style>` emits once per page rather than once per site.
         initFlowAssets();
-        const html = await renderToString(node());
+        const html = await renderFlow(node());
         return adapter?.transformShell ? adapter.transformShell(html, ctx) : html;
       }, Scope.snapshot()),
 

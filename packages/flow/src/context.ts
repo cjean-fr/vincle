@@ -1,4 +1,4 @@
-import { Scope, type ScopeKey, type JSX } from "@vincle/core";
+import { Scope, renderToString, type JSX, type ScopeKey } from "@vincle/core";
 
 import type { FlowConfig } from "./types.js";
 
@@ -15,6 +15,8 @@ export interface FlowContext {
   fragments: FragmentStore;
   /** Named asset state for `<Style name>` / `<Script name>` dedup. */
   assets: AssetState;
+  /** The page's `<Slot>` names, and the mark around a placeholder one may replace. */
+  slots: SlotState;
 
   nextId: () => string;
   /**
@@ -57,6 +59,54 @@ export function renderPlaceholder(
   return config.adapter.Placeholder({ id, src: resolvedSrc, children: children ?? null });
 }
 
+/**
+ * A `<Defer>` whose target names a `<Slot>` has no placeholder of its own: the
+ * slot is it. One rendered earlier is known at once. One rendered later is not,
+ * so the `<Defer>` marks its placeholder, and `renderFlow` drops it once the page
+ * is rendered if a slot of that name turned up.
+ */
+export interface SlotState {
+  readonly names: Set<string>;
+  /** Random per page, so no markup the author writes can match it. */
+  mark: string | undefined;
+}
+
+const createSlotState = (): SlotState => ({ names: new Set(), mark: undefined });
+
+const MARK_PREFIX = "<!--vincle-defer-";
+
+/** The comment pair around the placeholder of a `<Defer>` whose slot may come later. */
+export function pendingMarks(slots: SlotState, id: string): [string, string] {
+  slots.mark ??= `vincle-defer-${crypto.randomUUID()}`;
+  return [`<!--${slots.mark}:${id}-->`, `<!--/${slots.mark}:${id}-->`];
+}
+
+/**
+ * Render a tree that may hold flow components, and settle every marked
+ * placeholder: dropped when a slot of its id was rendered, unwrapped otherwise.
+ * Ids are unique per render, so each open mark has one close mark.
+ */
+export async function renderFlow(node: Parameters<typeof renderToString>[0]): Promise<string> {
+  let html = await renderToString(node);
+  // Checked before the scope is read: a render with no flow scope has no marks.
+  if (!html.includes(MARK_PREFIX)) return html;
+  const { slots } = Scope.get(Flow);
+  const open = `<!--${slots.mark}:`;
+  let from = 0;
+  for (;;) {
+    const start = html.indexOf(open, from);
+    if (start === -1) return html;
+    const idEnd = html.indexOf("-->", start);
+    const id = html.slice(start + open.length, idEnd);
+    const close = `<!--/${slots.mark}:${id}-->`;
+    const end = html.indexOf(close, idEnd);
+    if (end === -1) return html;
+    const inner = slots.names.has(id) ? "" : html.slice(idEnd + 3, end);
+    html = html.slice(0, start) + inner + html.slice(end + close.length);
+    from = start;
+  }
+}
+
 export function initFlow(config: FlowConfig): void {
   // The funnel for every flow entry point: a wrong config stops here, at setup.
   assertFlowConfig(config);
@@ -67,6 +117,7 @@ export function initFlow(config: FlowConfig): void {
     config,
     fragments: store,
     assets,
+    slots: createSlotState(),
     nextId: () => `${config.idPrefix ?? "fragment-"}${++counter}`,
     registerFragment(id, entry) {
       store.register(id, entry);
@@ -75,15 +126,15 @@ export function initFlow(config: FlowConfig): void {
 }
 
 /**
- * Give the current scope its own asset state: a page boundary.
+ * Give the current scope its own asset state and slot names: a page boundary.
  *
  * A new context object, not a mutation of the existing one: two `renderPage`
- * calls awaited together each get their own scope, and mutating the shared
- * object made them race on `.assets`.
+ * calls awaited together each get their own scope, and a shared object would
+ * have them race on `.assets` and `.slots`.
  */
 export function initFlowAssets(): void {
   const current = Scope.get(Flow);
-  Scope.set(Flow, { ...current, assets: createAssetState() });
+  Scope.set(Flow, { ...current, assets: createAssetState(), slots: createSlotState() });
 }
 
 /**

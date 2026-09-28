@@ -5,7 +5,7 @@ import type { ShellContext } from "./adapters/shared.js";
 import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
 
 import { assertAdapter, assertFlowOptions } from "./config.js";
-import { withFlow } from "./context.js";
+import { renderFlow, withFlow } from "./context.js";
 import { createStream } from "./create-stream.js";
 import { ERR_FLOW_NO_STREAMING, vincleError } from "./errors.js";
 import { flushFragments } from "./flushFragments.js";
@@ -101,7 +101,7 @@ export async function renderShell(
   },
   ctx: ShellContext,
 ): Promise<{ shellBody: string; closingTag: string }> {
-  const shell = await renderToString(node());
+  const shell = await renderFlow(node());
   const { body, closingTag } = splitClosingTags(shell);
   const shellBody = adapter.transformShell ? adapter.transformShell(body, ctx) : body;
   return { shellBody, closingTag };
