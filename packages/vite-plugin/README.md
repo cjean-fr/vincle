@@ -126,6 +126,51 @@ CSS-only entries:
 
 If the entry is not in the manifest, `<Asset>` throws a clear error listing the available entries: typos surface immediately.
 
+## Advanced: Multiple entry points
+
+A project with several entry points (e.g. an admin dashboard separate from the main app) calls `<Asset>` for each entry in its layout:
+
+```tsx
+// In admin layout
+<Asset entry="src/admin/main.ts" />
+
+// In main app layout
+<Asset entry="src/main.ts" />
+<Asset entry="src/admin/main.ts" />  // if both scripts need to load
+```
+
+`<Asset>` emits the correct tags for each entry independently. Shared chunks are emitted as `<link rel="modulepreload">` once per entry that needs them.
+
+## Advanced: Custom base path
+
+When the app is served from a sub-path (`/app/`), pass `base` to `setVite()`:
+
+```ts
+setVite(manifest, { base: "/app/" });
+```
+
+The `Asset` component and `assetUrl()` both prefix URLs with the base. In dev, the base is prepended to the source path; in prod, it prefixes the resolved chunk file.
+
+## Advanced: Conditional asset loading
+
+Conditionally include assets in your layout based on the page or component:
+
+```tsx
+function Page({ isAdmin }: { isAdmin: boolean }) {
+  return (
+    <html>
+      <head>
+        <Asset entry="src/main.ts" />
+        {isAdmin && <Asset entry="src/admin/main.ts" />}
+      </head>
+      <body>{isAdmin ? <AdminContent /> : <PublicContent />}</body>
+    </html>
+  );
+}
+```
+
+In production, only the entries that render actually emit tags. Unused entries generate no output.
+
 ## Vite configuration
 
 For `loadViteManifest` to find a manifest, enable it in `vite.config.ts`:
@@ -142,6 +187,9 @@ export default defineConfig({
 ```
 
 The manifest will be written to `<outDir>/.vite/manifest.json`.
+
+For dev mode, no extra configuration is needed. The plugin works with Vite's
+default dev server setup.
 
 ## API
 
