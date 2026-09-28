@@ -235,14 +235,6 @@ describe("precompileTransform", () => {
       }
     });
 
-    it("declines one aimed at a handler, which the runtime refuses", () => {
-      const out = transformVincle(
-        `const a = <div><set attributeName="onclick" to="alert(1)" /></div>;`,
-      );
-      expect(out).toContain("jsxTemplateDeferred");
-      expect(out).toContain('<set attributeName="onclick" to="alert(1)" />');
-    });
-
     it("declines one whose target is computed, since the runtime cannot trust it", () => {
       const out = transformVincle(
         `const a = <div><animate attributeName={t} values="javascript:alert(1)" /></div>;`,
@@ -289,8 +281,8 @@ describe("precompileTransform", () => {
     it("decodes rawtext entities then escapeRawText (matches the dynamic runtime)", () => {
       // Default: decode entities (like the JS compiler does) then
       // escapeRawText: the same path renderChild takes, so `&gt;` becomes
-      // a real `>` and the output is valid CSS/JS. Unlike Deno mode where
-      // rawtext entities stay verbatim.
+      // a real `>` and the output is valid CSS/JS. Unlike compatibility mode
+      // where rawtext entities stay as-is.
       const style = transformVincle("const a = <style>.a &gt; .b</style>;");
       expect(style).toContain("jsxTemplate`<style>.a > .b</style>`");
       const script = transformVincle("const a = <script>a &amp;&amp; b</script>;");
@@ -461,9 +453,9 @@ describe("precompileTransform", () => {
     });
   });
 
-  describe("the default mode renders what the runtime renders", () => {
+  describe("vincle mode renders what the runtime renders", () => {
     /**
-     * Toggling the plugin changes no byte: the invariant the default mode
+     * Toggling the plugin changes no byte: the invariant vincle mode
      * exists to hold, checked end to end rather than on the shape of the
      * generated code.
      *
@@ -516,9 +508,8 @@ describe("precompileTransform", () => {
       // The animation shapes: the element, not the attribute, decides whether
       // the value is a URL, so these are the cases where a per-attribute
       // transform and a per-element runtime could disagree. Wrapped in a
-      // component so the element is built at render time: a refusal is one of
-      // the two outcomes, and a module-level expression would throw on import,
-      // before there is anything to compare.
+      // component so the element is built at render time, where a throw is an
+      // outcome to compare rather than a failed import.
       ["animate url", `() => <svg><a><animate attributeName="href" values={bad} /></a></svg>`],
       ["animate handler", `() => <svg><a><set attributeName="onclick" to="alert(1)" /></a></svg>`],
       [
@@ -561,14 +552,12 @@ describe("precompileTransform", () => {
       writeFileSync(outputPath, `/** @jsxImportSource @vincle/core */\n${result!.code}`);
       const preMod = (await import(outputPath)) as Record<string, unknown>;
 
-      // The contract is the same *outcome*, and a refusal is one of them: an
-      // animation aimed at an event handler throws on both paths, and comparing
-      // bytes alone would call that a divergence (or crash the harness on the
-      // throw) rather than the agreement it is.
+      // The contract is the same *outcome*, and a throw is one of them:
+      // comparing bytes alone would crash the harness on it rather than compare.
       const outcome = async (v: unknown): Promise<string> => {
         try {
           // Called here, not above: a component case builds its element when it
-          // runs, so that is where a refusal happens, and it has to land inside
+          // runs, so that is where a throw happens, and it has to land inside
           // the same `try` to be an outcome rather than a crash.
           return await renderToString(typeof v === "function" ? (v as () => unknown)() : v);
         } catch (e) {
@@ -587,6 +576,41 @@ describe("precompileTransform", () => {
         }
       }
       expect(divergences).toEqual([]);
+    });
+
+    // Deno's output shape: static attributes inlined verbatim, `jsxAttr` with no
+    // tag. The vincle runtime still judges the animation, from the template.
+    it("judges an animation in Deno's output shape as the runtime does", async () => {
+      const ANIMATIONS = [
+        `() => <svg><a><animate attributeName="href" values={bad} /></a></svg>`,
+        `() => <svg><a><animate values={bad} attributeName="href" /></a></svg>`,
+        `() => <svg><a><set attributeName="onclick" to={code} /></a></svg>`,
+        `() => <svg><a><animate attributeName={target} to={bad} /></a></svg>`,
+        `() => <svg><animate attributeName="opacity" values={list} /></svg>`,
+        `() => <div to={custom} />`,
+      ];
+      const prelude = [
+        `const bad = "#;javascript:alert(1)"; const code = "alert(1)"; const target = "href";`,
+        `const list = "0;1;0"; const custom = "user:1";`,
+      ].join("\n");
+      const source = `${prelude}\n${ANIMATIONS.map((e, i) => `export const c${i} = ${e};`).join("\n")}`;
+      const id = Math.random().toString(36).slice(2);
+
+      const runtimePath = join(TMP, `deno-rt-${id}.tsx`);
+      writeFileSync(runtimePath, `/** @jsxImportSource @vincle/core */\n${source}`);
+      const rtMod = (await import(runtimePath)) as Record<string, unknown>;
+
+      // No helpers: compatibility mode, Deno's output.
+      const result = precompileTransform(source, "/src/app.tsx", { runtimeSource: RT });
+      const outputPath = join(TMP, `deno-pre-${id}.tsx`);
+      writeFileSync(outputPath, `/** @jsxImportSource @vincle/core */\n${result!.code}`);
+      const preMod = (await import(outputPath)) as Record<string, unknown>;
+
+      const render = (v: unknown): Promise<string> => renderToString((v as () => unknown)());
+      for (const [i, expr] of ANIMATIONS.entries()) {
+        expect(await render(preMod[`c${i}`]), expr).toBe(await render(rtMod[`c${i}`]));
+      }
+      expect(result!.code).toContain("jsxAttr");
     });
   });
 
@@ -710,7 +734,7 @@ describe("precompileTransform", () => {
 
     it("precompiles a rawtext element with a hole, escaping it", () => {
       // The escape is wrong for CSS and JS: an HTML parser decodes nothing in
-      // there, and it is what Deno emits. The default mode declines instead.
+      // there, and it is what Deno emits. Vincle mode declines instead.
       const compat = transform("const a = <style>{css}</style>;");
       expect(compat).toContain("jsxTemplate`<style>${jsxEscape(css)}</style>`");
 

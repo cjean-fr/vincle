@@ -41,7 +41,7 @@ export interface PluginConfig {
  * boolean values this transform passes, every known runtime answers
  * synchronously.
  *
- * `normalizeSerializers` reduces all of it to text, once, at the entry point.
+ * `normalizeRuntimeHelpers` reduces all of it to text, once, at the entry point.
  */
 export type RenderAttr = (
   name: string,
@@ -62,9 +62,9 @@ export type RenderEscape = (
  * runtime answered in: a question that, asked in the middle of the attribute
  * path, is asked about a value on its way into a start tag.
  */
-interface Serializers {
-  attr: (name: string, value: string | true) => string;
-  escape: (text: string) => string;
+interface RuntimeHelpers {
+  jsxAttr: (name: string, value: string | true) => string;
+  jsxEscape: (text: string) => string;
 }
 
 export interface TransformResult {
@@ -83,11 +83,11 @@ interface TransformContext {
   source: string;
   used: Set<string>;
   /**
-   * The target runtime's own serializers, normalized at the entry point,
+   * The target runtime's own helpers, normalized at the entry point,
    * `null` in compatibility mode. Everything below this line sees text in, text
    * out; the shapes a foreign runtime may return are the entry point's problem.
    */
-  serializers: Serializers | null;
+  helpers: RuntimeHelpers | null;
   /**
    * Reproduce Deno's precompile output, defects included: true whenever no
    * serializer was injected.
@@ -173,14 +173,14 @@ export default function precompileTransform(
   }
 
   const program = result.program as Program;
-  const serializers = normalizeSerializers(renderAttr, renderEscape);
+  const helpers = normalizeRuntimeHelpers(renderAttr, renderEscape);
   const ctx: TransformContext = {
     source: code,
     used: new Set<string>(),
-    serializers,
+    helpers,
     // The two are one decision: no attribute serializer means no way to improve
     // on Deno's output, so Deno's output is what gets emitted.
-    compatibility: serializers === null,
+    compatibility: helpers === null,
   };
   const replacements: Replacement[] = [];
 
@@ -266,10 +266,12 @@ function isEligibleElement(node: JSXElement, ctx: TransformContext): boolean {
       : { kind: "attribute" as const, name: attrName(a) },
   );
   if (hasSpreadOrInnerHTML(briefs)) return false;
-  // An animation writing a value (`<animate attributeName="href" values="…">`).
-  // Same reason as the two shapes below: the answer needs the tag and two
-  // attributes, and `jsxAttr` carries one attribute and no tag.
-  if (animationNeedsRuntime(tag, briefs)) return false;
+  // An animation writing a value (`<animate attributeName="href" values="…">`):
+  // the answer needs the tag and two attributes, and a static attribute run
+  // through `jsxAttr` at build time carries one attribute and no tag. Declined,
+  // so the runtime judges it at render as it would unprecompiled. Compatibility mode emits Deno's shape instead, which
+  // `jsxTemplate` judges from the template itself.
+  if (!ctx.compatibility && animationNeedsRuntime(tag, briefs)) return false;
   // Two element shapes the transform declines rather than answer for. Both are
   // handed back as ordinary JSX: the same treatment a component gets, so the
   // runtime that the app compiles against decides, with its own rules.
@@ -444,14 +446,14 @@ function emitAttribute(attr: JSXAttribute, out: TemplateBuilder, ctx: TransformC
 /**
  * Emit a statically-known attribute (a boolean flag or a string literal).
  *
- * Secure mode (default, `ctx.serializers` present): the value is run through
+ * Vincle mode (default, `ctx.helpers` present): the value is run through
  * the runtime's own `jsxAttr` at build time and the serialized result is
  * inlined, so the same URL/CSS/name handling the runtime applies to dynamic
  * values also applies to static ones (`href="javascript:…"` →
  * `href="#blocked"`, unsafe `style` dropped, …), while the output stays fully
  * static.
  *
- * Compatibility mode (`ctx.serializers` is null): static attributes are
+ * Compatibility mode (`ctx.helpers` is null): static attributes are
  * trusted and inlined. The name is remapped to its HTML form (`className` →
  * `class`, `tabIndex` → `tabindex`): `resolveAttrName` falls back to
  * lowercasing, which covers event-handler names (`onClick` → `onclick`), and
@@ -465,14 +467,14 @@ function emitStaticAttr(
   out: TemplateBuilder,
   ctx: TransformContext,
 ): void {
-  if (ctx.serializers) {
+  if (ctx.helpers) {
     // The HTML name, not the authored one: remapping belongs to the transform,
     // which is where Deno does it, and a runtime's `jsxAttr` need not. Preact's
     // does not: it remaps when rendering a VNode, so a precompiled
     // `className="box"` reached the page as `className="box"` and styled
     // nothing. Idempotent for a runtime that remaps too, `@vincle/core`
     // included.
-    const text = ctx.serializers.attr(attrNameFor(rawName, ctx), value);
+    const text = ctx.helpers.jsxAttr(attrNameFor(rawName, ctx), value);
     if (text) out.static(` ${text}`);
     return;
   }
@@ -551,7 +553,7 @@ const COMPAT_INLINED_BOOLEAN_ATTRS = new Set([
  *
  * Only in compatibility mode, and it is not a formatting detail: the space is
  * one an HTML parser renders, so `<span>a </span><span>b</span>` reads "ab"
- * there. Deno's own `jsx: "react-jsx"` keeps it, and so does the default mode
+ * there. Deno's own `jsx: "react-jsx"` keeps it, and so does vincle mode
  * here, which follows the JSX rule the runtime path also applies.
  *
  * Only a text node in last position triggers it. A trailing element, an
@@ -575,11 +577,11 @@ function emitChildren(
           ? collapseJsxWhitespace(child.value).replace(RE_TRAILING_SPACE, "")
           : collapseJsxWhitespace(child.value);
       if (rawtextTag && ctx.compatibility) {
-        // Deno mode: entities stay verbatim, matching Deno's own precompile,
+        // Compatibility mode: entities stay verbatim, matching Deno's own precompile,
         // an HTML parser never decodes entities inside rawtext anyway.
         out.static(collapsed);
       } else if (rawtextTag) {
-        // Secure mode: decode then re-escape with escapeRawTagContent, which
+        // Vincle mode: decode then re-escape with escapeRawTagContent, which
         // also guards the closing tag: jsxEscape doesn't handle rawtext.
         const decoded = decodeJsxEntities(collapsed);
         out.static(escapeRawTagContent(decoded, rawtextTag));
@@ -587,7 +589,7 @@ function emitChildren(
         // Non-rawtext: decode, then the runtime's own jsxEscape when available
         // (byte-identical to it), else Vincle's escapeContent as fallback.
         const decoded = decodeJsxEntities(collapsed);
-        const escaped = ctx.serializers ? ctx.serializers.escape(decoded) : escapeContent(decoded);
+        const escaped = ctx.helpers ? ctx.helpers.jsxEscape(decoded) : escapeContent(decoded);
         out.static(escaped);
       }
     } else if (child.type === "JSXExpressionContainer") {
@@ -701,20 +703,20 @@ function unwrapSerialized(
  * The frontier: whatever shapes the target runtime answers in, reduced once to
  * the two functions the transform actually uses.
  *
- * Returns `null` for compatibility mode: no attribute serializer means no way
+ * Returns `null` for compatibility mode: no runtime helper means no way
  * to improve on Deno's output. A caller that passes `renderAttr` alone keeps
  * Vincle's own `escapeContent` for text, which is what the plugin's own check
  * (both helpers, or neither) makes unreachable through it.
  */
-function normalizeSerializers(
+function normalizeRuntimeHelpers(
   renderAttr: RenderAttr | undefined,
   renderEscape: RenderEscape | undefined,
-): Serializers | null {
+): RuntimeHelpers | null {
   if (renderAttr === undefined) return null;
   return {
-    attr: (name, value) =>
+    jsxAttr: (name, value) =>
       unwrapSerialized(renderAttr(name, value), "jsxAttr", JSON.stringify(name)),
-    escape: renderEscape
+    jsxEscape: renderEscape
       ? (text) => unwrapSerialized(renderEscape(text), "jsxEscape", "of a text node")
       : escapeContent,
   };
@@ -723,6 +725,11 @@ function normalizeSerializers(
 /**
  * The tagged template being written: the static slices, and the runtime
  * expressions that separate them.
+ *
+ * Vocabulary map, one per layer: these slices become the runtime's `templates`
+ * and the expressions its `values` (`jsxTemplate(templates, ...values)`); a
+ * `hole` here is one expression slot, while a `chunk` elsewhere is a stream
+ * piece (`render.ts`), never a template slot.
  *
  * `parts.length === exprs.length + 1` is enforced here and nowhere else: the
  * emit helpers append through `static` and `hole`, so no caller can leave the
