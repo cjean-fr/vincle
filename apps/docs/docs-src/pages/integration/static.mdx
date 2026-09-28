@@ -5,9 +5,9 @@ title: Static generation
 # Static generation
 
 Build HTML files at compile time. `renderToStatic` gives you a context to
-render all your pages, then emit fragment files if any page uses `<Defer>` with a lazy factory.
-Fragments are fetched by the browser after the shell page loads: no streaming
-connection required.
+render all your pages, then emit fragment files if any page uses `<Defer>` with
+a lazy factory. The browser fetches fragments after the shell page loads: no
+streaming connection required.
 
 ## When to use static generation
 
@@ -24,8 +24,8 @@ If you need fragments to arrive in the same HTTP response as the shell, use
 ## Pure static
 
 No lazy `<Defer>` in your pages? Call `renderToStatic` without an adapter.
-`ctx.renderPage` applies any configured shell transforms and returns the full
-HTML string: ready to write to a file.
+Each `ctx.renderPage` call applies any configured shell transforms and returns
+a complete HTML document, ready to write to a file.
 
 ```tsx
 import type { JSX } from "@vincle/core";
@@ -35,7 +35,6 @@ import { writeFile } from "node:fs/promises";
 
 declare const pages: { Component: () => JSX.Element; out: string }[];
 
-// Pure-static: no lazy <Defer>, no adapter needed.
 await renderToStatic(async (ctx) => {
   await Promise.all(
     pages.map(async (page) => {
@@ -46,14 +45,11 @@ await renderToStatic(async (ctx) => {
 });
 ```
 
-Each call to `ctx.renderPage` produces a complete HTML document. Use a build
-script to iterate over your routes and write each result to disk.
-
 ## With deferred fragments
 
 Pass an adapter and call `ctx.emitFragments` after rendering all pages. Each
-deferred fragment is rendered and passed to your callback with its id, its URL
-(from `generatePath`, default: `/fragments/{id}.html`), and its HTML content.
+deferred fragment is rendered, already `Frame`-wrapped, and passed to your
+callback with its id, its URL and its HTML.
 
 ```tsx
 import type { JSX } from "@vincle/core";
@@ -64,7 +60,6 @@ import { writeFile } from "node:fs/promises";
 
 declare const pages: { Component: () => JSX.Element; out: string }[];
 
-// Pages use <Defer> with lazy factories: emit fragment files after rendering all pages.
 await renderToStatic(
   async (ctx) => {
     for (const page of pages) {
@@ -72,37 +67,29 @@ await renderToStatic(
       await writeFile(page.out, "<!DOCTYPE html>\n" + html);
     }
 
-    // One .html file per deferred fragment: already
-    // Frame-wrapped, ready to write.
+    // One .html file per deferred fragment.
     await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
   },
   { adapter: NativeAdapter },
 );
 ```
 
-The browser loads the shell page first, then fetches each fragment URL
-independently using `<Include>`. Fragment files can be cached aggressively
+The browser loads the shell page first; each `<Defer>` placeholder carries its
+fragment's URL, and the adapter fetches it. Fragment files are static HTML at
+predictable URLs, so they can be cached aggressively.
 
-- they are static HTML files with predictable URLs.
-
-## Fragment file naming
-
-The `generatePath` option controls where fragments are written:
+The `generatePath` option sets each fragment's URL:
 
 | Option         | Default                              | Description                |
 | -------------- | ------------------------------------ | -------------------------- |
 | `generatePath` | ``(id) => `/fragments/${id}.html` `` | URL path for each fragment |
-
-The same path must be declared in the page's `<Include src="...">` so the
-browser knows where to find each fragment. Use a consistent convention across
-your build script and templates to keep them in sync.
 
 ## On-demand regeneration
 
 A full rebuild is wasteful when only one piece of data changed: a price, a
 stock count, a comment count. Because each fragment is a standalone file at a
 predictable URL, only that file needs to change; the shell page that
-`<Include>`s it is untouched.
+references it is untouched.
 
 `renderFragment` produces exactly the bytes a full build would have written
 for one `id`, without rendering any page:
@@ -133,9 +120,6 @@ export default async function handler(req: Request): Promise<Response> {
 }
 ```
 
-This is what Netlify's on-demand functions or Vercel's on-demand
-revalidation need: a handler that, given fresh data, returns the fragment's
-`{ url, html }`. How you publish those bytes at `url`, whether through a blob
-store, a revalidation call, or a CDN purge and re-upload, depends on the host and stays in
-your handler; `renderFragment` itself doesn't know which host it's running
-on. See [`renderFragment`](/api/flow/renderFragment) for the full API.
+How you publish those bytes at `url` (a blob store, a revalidation call, a CDN
+purge and re-upload) depends on the host and stays in your handler. See
+[`renderFragment`](/api/flow/renderFragment) for the full API.

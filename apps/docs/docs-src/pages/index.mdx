@@ -126,7 +126,7 @@ prose: false
     <div>
       <h2 id="streaming-title">{"The page can arrive before the results."}</h2>
       <p>{"Keep the heading visible while an async component loads. With flow, a fallback fills the space until its HTML is ready."}</p>
-      <p>{"Choose an adapter for delivery, including HTMX or Turbo. Browser updates use the chosen adapter’s client mechanism."}</p>
+      <p>{"Choose how it is delivered: natively, or through an HTMX or Turbo adapter."}</p>
       <a class="docs-text-link" href="/guide/views">
         {"Follow the complete example"}
       </a>
@@ -185,7 +185,7 @@ prose: false
       <a href="/guide/jsx/components" class="docs-feature-link">
         <div>
           <h3>{"Async components"}</h3>
-          <p>{"Fetch data inside your components. Await the tree. Vincle handles the rendering."}</p>
+          <p>{"Fetch data inside the component that needs it. Vincle awaits the tree."}</p>
         </div>
         <span aria-hidden="true">{"↗"}</span>
       </a>
@@ -199,7 +199,7 @@ prose: false
       <a href="/guide/security" class="docs-feature-link">
         <div>
           <h3>{"HTML escaping"}</h3>
-          <p>{"Content is escaped by default, dangerous URL schemes are blocked, and event handlers stay out of HTML."}</p>
+          <p>{"Content is escaped by default, dangerous URL schemes are blocked, and function-valued attributes are refused."}</p>
         </div>
         <span aria-hidden="true">{"↗"}</span>
       </a>

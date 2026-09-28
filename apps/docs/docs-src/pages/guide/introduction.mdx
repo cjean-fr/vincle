@@ -59,20 +59,18 @@ async function UserCard({ id }: { id: string }) {
 const html = await renderToString(<UserCard id="42" />);
 ```
 
-Components execute in document order. Async support does not automatically
-parallelize sibling components: a complete string response waits for the tree.
+Components execute in document order, one at a time, and the string response
+waits for the whole tree.
 
 ## Let slower parts arrive later
 
 Add `@vincle/flow` when a page should appear before all its data is ready.
 Wrap a slow component in `Defer`, provide a fallback, and use the streaming
-renderer to send the surrounding page before its deferred fragments.
+renderer to send the surrounding page before its deferred fragments. An
+[adapter](/integration/adapters) decides how fragments update the page: natively,
+or through HTMX or Turbo.
 
 [Follow a view from a route to streaming HTML](/guide/views).
-
-Flow's adapters determine how fragments update the page, including integration
-with HTMX and Turbo. Browser updates use the selected adapter's client mechanism;
-see [Adapters](/integration/adapters) for setup and capabilities.
 
 ## What the core provides
 
@@ -80,17 +78,16 @@ see [Adapters](/integration/adapters) for setup and capabilities.
 - **Tree context and scopes**: a React-style `createContext` passes a value to
   a subtree (`<Context.Provider>` + `useContext`); `Scope` holds mutable
   per-request state. See the [Context & Scope API](/api/core/scope).
-- **Default escaping**: text and attributes are escaped, and dangerous URL schemes
-  are filtered. See the [security model](/guide/security) for context-specific
-  rules and trusted HTML escape hatches.
+- **Default escaping**: every value is escaped for where it lands, and URL
+  schemes are filtered by an allowlist. `raw()` is the explicit way to vouch for
+  trusted HTML. See the [security model](/guide/security).
 - **A self-contained package**: the core has no runtime dependencies and includes
   its element types.
 - **HTML output**: send a response, write a static page, or pass a template to an
   email provider. Email client compatibility remains part of your template design.
 
-Vincle does not hydrate components into a reactive client application.
-Use it when your views produce HTML and add client-side behavior through
-your chosen tools.
+Vincle does not hydrate components in the browser: add client-side behavior
+with the tools of your choice.
 
 ## Next steps
 

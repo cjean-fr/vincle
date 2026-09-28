@@ -120,7 +120,7 @@ function Page() {
 }
 
 // The shell is sent immediately; deferred fragments stream
-// in as they resolve. NativeAdapter injects a ~550 B polyfill.
+// in as they resolve. NativeAdapter injects a small polyfill.
 const stream = renderToStream(() => <Page />, NativeAdapter);
 ```
 
@@ -167,15 +167,6 @@ bun add @vincle/flow
 
 ## Adapters
 
-An adapter controls how placeholders and patches are encoded in the HTML shell.
-Integration ships five built-in adapters:
-
-```ts
-import {
-  TurboAdapter, // Turbo Streams: <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
-  HtmxAdapter, // HTMX: hx-get / hx-swap-oob, morph on htmx >= 4
-  NativeAdapter, // <template for> + inline polyfill, all 5 positions
-  WebPlatformAdapter, // WICG declarative partial updates, replace only
-  EsiAdapter, // CDN edge composition via esi:include
-} from "@vincle/flow/adapters";
-```
+An adapter controls how placeholders and patches are encoded in the HTML shell:
+for Turbo, HTMX, the browser's native partial updates, or a CDN's ESI. See
+[Adapters](/integration/adapters) for the five built-in ones and how to choose.

@@ -4,7 +4,8 @@ title: Fragments
 
 # Fragments
 
-Fragments let you group multiple children without adding an extra DOM node.
+A fragment groups children without adding a wrapper element: `Fragment`
+returns its children unchanged.
 
 ## Syntax
 
@@ -30,25 +31,13 @@ const items2 = (
 );
 ```
 
-The shorthand `<>...</>` is emitted by the JSX transform when you have multiple root elements. The explicit `Fragment` import is useful when you need a key or prefer the long form:
-
-```tsx
-import { Fragment } from "@vincle/core";
-
-function List() {
-  return (
-    <Fragment>
-      <li>One</li>
-      <li>Two</li>
-      <li>Three</li>
-    </Fragment>
-  );
-}
-```
+`<>...</>` and `<Fragment>` are the same thing; the long form is there if you
+prefer it.
 
 ## When to use fragments
 
-Fragments are useful when a component needs to return multiple elements without a wrapping `<div>`:
+When a component returns several elements and a wrapping `<div>` would be
+noise:
 
 ```tsx
 function Breadcrumbs() {
@@ -61,18 +50,6 @@ function Breadcrumbs() {
       <span>Components</span>
     </>
   );
-}
-```
-
-## How it works
-
-`Fragment` is a plain function that returns its `children` prop unchanged. No wrapper element is created: the children are flattened directly into the parent during rendering.
-
-```tsx
-import { Fragment, type VNode } from "@vincle/core";
-
-export function Fragment({ children }: { children?: VNode }): VNode | undefined {
-  return children;
 }
 ```
 

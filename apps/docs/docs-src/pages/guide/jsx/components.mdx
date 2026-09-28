@@ -4,11 +4,10 @@ title: Components
 
 # Components
 
-Components are plain functions that return JSX. No classes, no hooks, no lifecycle: just props in, string out.
+A component is a plain function: props in, JSX out. No classes, no hooks, no
+lifecycle.
 
 ## Basics
-
-A component receives props as its first argument and returns JSX:
 
 ```tsx
 import { renderToString } from "@vincle/core";
@@ -28,29 +27,10 @@ const html = await renderToString(<Greeting name="Alice" />);
 <p>Hello, <strong>Alice</strong>!</p>
 ```
 
-## Typed props
+## Typed props and composition
 
-Props are typed with standard TypeScript interfaces:
-
-```tsx
-interface CardProps {
-  title: string;
-  children: VNode;
-}
-
-function Card({ title, children }: CardProps) {
-  return (
-    <div class="card">
-      <h2>{title}</h2>
-      {children}
-    </div>
-  );
-}
-```
-
-## Composition
-
-Components compose naturally: pass one component's output as another's children:
+Props are typed with ordinary TypeScript. Children arrive in the `children`
+prop, so one component's output becomes another's content:
 
 ```tsx
 import { renderToString, type JSX } from "@vincle/core";
@@ -76,7 +56,7 @@ const html = await renderToString(
 
 ## Async components
 
-Any component can be `async`. The whole tree is awaited by `renderToString`:
+Any component can be `async`. `renderToString` awaits the whole tree:
 
 ```tsx
 async function Profile({ id }: { id: string }) {
@@ -90,15 +70,14 @@ async function Profile({ id }: { id: string }) {
 }
 ```
 
-Sibling async branches run in document order, one at a time: `renderToString` resolves only when every branch finishes.
+Sibling async branches run in document order, one at a time.
 
 ## What you don't need
 
-- **State**: there is no re-rendering. State lives outside the render (database, request context).
-- **Effects**: no client lifecycle. Render once, produce a string, done.
-- **Client context updates**: a React-style `Context.Provider` supplies values during
-  server rendering; Vincle does not re-render in the browser.
-- **`React.memo`**: every render is a fresh call. Memoization is meaningless.
+A render calls each component once and produces a string. Nothing re-renders,
+so there is no state (it lives outside the render: database, request context),
+no effects, and no `React.memo`. A `Context.Provider` supplies values during
+the server render only.
 
 ## Where to next
 

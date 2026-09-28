@@ -4,47 +4,17 @@ title: Components
 
 # Components
 
-Two primitives handle declaring a placeholder and deferring content into it,
-plus a third for fetching a fragment from a separate URL entirely:
-
-- **`<Defer>`**: defers content into a placeholder, sync or lazy; renders
-  its own placeholder, so it's self-sufficient
-- **`<Slot>`**: a named hole, standing in for a `<Defer>` that renders
+- **`<Defer>`**: defers content into a placeholder. It renders its own
+  placeholder, so it is self-sufficient
+- **`<Slot>`**: a named placeholder, filled by a `<Defer>` that renders
   elsewhere in the tree
-- **`<Include>`**: client-side fetch placeholder
+- **`<Include>`**: a placeholder the browser fills by fetching a URL
 
-## `<Defer>`: defer content (sync or lazy)
+## `<Defer>`
 
-Registers content, either plain JSX or a lazy factory, under an automatically
-generated id (or an explicit `target`), and renders a placeholder in its own place showing `fallback` until that content
-is ready. No `<Slot>` required: for the common case, placeholder and content
-live together, in the same spot. **Unified**: one component for both
-synchronous and deferred content. The behaviour depends on `children`:
-
-| `children` type | `fallback` | Behaviour                                        |
-| --------------- | ---------- | ------------------------------------------------ |
-| Plain JSX       | N/A        | Content registered; placeholder rendered (empty) |
-| Plain JSX       | provided   | Content registered; placeholder shows `fallback` |
-| `(signal) => …` | N/A        | Lazy content; placeholder rendered (empty)       |
-| `(signal) => …` | provided   | Lazy content; placeholder shows `fallback`       |
-
-`target` is optional. Omit it when `Defer` renders its own placeholder;
-provide it to match a named `Slot`, as shown below.
-
-### Sync: push content
-
-`children` is deferred automatically: plain JSX works:
-
-```tsx
-<Defer>
-  <h1>Hello</h1>
-</Defer>
-```
-
-### Lazy: with placeholder
-
-Declares a deferred region with a placeholder in the shell. The `fallback` prop
-defines the content shown immediately:
+Registers its `children` as deferred content and renders a placeholder in its
+place, showing `fallback` (empty when omitted) until the content is ready. Its
+id is generated, unless `target` names a `<Slot>` (below).
 
 ```tsx
 import { Defer } from "@vincle/flow";
@@ -54,18 +24,17 @@ import { Defer } from "@vincle/flow";
 </Defer>;
 ```
 
-Pass a factory when you need the `AbortSignal`. It fires when the client
-disconnects, or when the fragment's `timeout` elapses. Forward it to your own
+Pass a factory to receive an `AbortSignal`. It fires when the client
+disconnects or the fragment's `timeout` elapses; forward it to your own
 cancelable work (e.g. `fetch(url, { signal })`) so that work stops early:
 
 ```tsx
 <Defer fallback={<p>Loading dashboard…</p>}>{(signal) => <HeavyDashboard signal={signal} />}</Defer>
 ```
 
-The signal firing doesn't cut the render itself short: Vincle still renders
-whatever the factory returns. What it does control is the _outcome_: if the
-signal has already fired by the time the render finishes, the result is
-discarded and routed to `onError` instead of being emitted.
+The signal does not cut the render short: if it has fired by the time the render
+finishes, the result is discarded and routed to `onError` instead of being
+emitted.
 
 ### Merge types
 
@@ -80,44 +49,22 @@ discarded and routed to `onError` instead of being emitted.
 | `"after"`   | Content inserted as next sibling          |
 | `"morph"`   | Target is diffed against content in place |
 
-The first five say **where** the content goes; `"morph"` says **how** it is
-applied: the client diffs the target instead of swapping it, so focus, scroll
-position and form state survive.
-
-Not every adapter supports all merge types: an unsupported merge is rejected
-at registration with a clear error.
+`"morph"` keeps focus, scroll position and form state. Not every adapter
+supports every merge type: an unsupported one is rejected at registration with a
+clear error.
 
 ## `<Slot>`: named insertion point
 
-Declares a named hole in the shell, standing in for a `<Defer>` that
-renders **elsewhere** in the tree: typically a layout reserving a spot by
-name, filled later by a page-specific component that has no other way to
-reach into that layout. Its `children` are rendered **immediately** as
-placeholder content: visible until the matching `<Defer>` patches them.
-An empty slot renders an empty placeholder.
+A named placeholder for content deferred **elsewhere** in the tree: typically a
+layout reserving a spot, filled by a page component that cannot reach into that
+layout. Its `children` render immediately as placeholder content, until the
+matching `<Defer>` replaces them. `name` is required.
 
-```tsx
-import { Slot } from "@vincle/flow";
+When placeholder and content live in the same spot, skip `Slot`: `Defer` with
+its own `fallback` does the job.
 
-<Slot name="comments">
-  <p>Loading comments…</p>
-</Slot>;
-```
-
-A `Slot` registers nothing in the pending store. It is purely a passive
-hole. `name` is **required**.
-
-If the placeholder and the deferred content are declared in the same spot,
-skip `Slot`: `Defer` alone, with its own `fallback`, is simpler and does
-the same job (see above). Reach for `Slot` only for the decoupled case.
-
-**Ordering matters when pairing them.** Every adapter renders a placeholder
-as an element (or marker) carrying the target's id, and every adapter's
-patch resolves to the _first_ match in the document: the same rule HTML
-`id` uniqueness and `getElementById` already impose. So `<Slot>` must come
-before the matching `<Defer>`, and that `<Defer>` should skip its own
-`fallback`: passing one renders a second, dead placeholder with the same id
-right next to `Slot`'s live one:
+The `<Slot>` is the placeholder: its `<Defer>` emits none of its own, wherever
+the two sit in the page.
 
 ```tsx
 import { Defer, Slot } from "@vincle/flow";
@@ -140,20 +87,14 @@ function SearchPage() {
 }
 ```
 
-Here, `target="results"` points to `Slot name="results"` inside `main`.
-The slot owns the loading message; `Defer` supplies the results from outside
-`main`, without a separate `fallback`.
-
 ## `<Include>`: client-side fetch
 
-Browser fetches the fragment from a URL after the shell lands. No server-push
-required: works with any static file server.
+The browser fetches the fragment from a URL after the shell lands. No
+server-push needed: works with any static file server.
 
 ```tsx
 import { Include } from "@vincle/flow";
 
-// The browser fetches /fragments/comments.html after the shell lands.
-// No server-push needed: works with any static file server.
 function Page() {
   return (
     <html>
@@ -165,31 +106,27 @@ function Page() {
 }
 ```
 
-## Return types
+## Content types
 
-`Defer` children accept the full `DeferContent` type: a renderable JSX
-node, a string, or an async iterable, each optionally produced by a factory
-that receives the `AbortSignal`:
+`Defer` children (the `DeferContent` type) are a value, or a factory receiving
+the `AbortSignal` and returning one:
 
-| Children / return type                                | Behaviour                                               |
-| ----------------------------------------------------- | ------------------------------------------------------- |
-| `JSX.Element`                                         | One-shot patch: renders once and resolves               |
-| `string`                                              | Rendered as text: one-shot patch                        |
-| `(signal: AbortSignal) => JSX.Element`                | **Cancellable**: receives the signal, one-shot patch    |
-| `AsyncIterable<JSX.Element>`                          | A **stream**: one patch per item, as each item resolves |
-| `(signal: AbortSignal) => AsyncIterable<JSX.Element>` | **Cancellable stream**: one patch per item              |
+| Content                      | Behaviour                                 |
+| ---------------------------- | ----------------------------------------- |
+| `JSX.Element` or `string`    | One patch, rendered once                  |
+| `AsyncIterable<JSX.Element>` | A stream: one patch per item, as it comes |
 
-The runtime unwraps `AsyncIterable` automatically inside the factory: you
-never need to call `.then()` or `for await` yourself.
+The runtime consumes an `AsyncIterable` itself: no `.then()` or `for await` on
+your side. See [Streaming](/integration/streaming#async-iterables-streaming-sequences).
 
-## Common props
+## Props
 
-| Prop       | Applies to | Meaning                                                       |
-| ---------- | ---------- | ------------------------------------------------------------- |
-| `name`     | `Slot`     | id of the placeholder (required)                              |
-| `target`   | `Defer`    | optional placeholder id; generated automatically when omitted |
-| `fallback` | `Defer`    | placeholder content shown in the shell (lazy only)            |
-| `merge`    | `Defer`    | how content applies to its target (default `"replace"`)       |
-| `timeout`  | `Defer`    | per-fragment render timeout in ms                             |
-| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's one     |
-| `src`      | `Include`  | URL the browser fetches for the fragment content              |
+| Prop       | Applies to         | Meaning                                                               |
+| ---------- | ------------------ | --------------------------------------------------------------------- |
+| `name`     | `Slot`             | id of the placeholder (required)                                      |
+| `target`   | `Defer`            | optional placeholder id; generated automatically when omitted         |
+| `fallback` | `Defer`, `Include` | placeholder content shown in the shell                                |
+| `merge`    | `Defer`            | how content applies to its target (default `"replace"`)               |
+| `timeout`  | `Defer`            | per-fragment render timeout in ms                                     |
+| `onError`  | `Defer`            | per-fragment error handler, overriding the renderer's one             |
+| `src`      | `Include`          | URL the browser fetches for the fragment content: http(s) or relative |

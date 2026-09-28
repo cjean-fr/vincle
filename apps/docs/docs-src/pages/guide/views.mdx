@@ -16,9 +16,8 @@ The examples below live together in the same directory.
 ## Compose a view
 
 Components are functions with TypeScript props. They can load their own data.
-This example uses a local sample data source; replace it with your search service.
 
-```tsx
+```tsx title="results.tsx"
 // Replace this sample data source with your database or search service.
 async function findResults() {
   return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
@@ -40,30 +39,13 @@ export async function Results() {
 
 ## Return HTML from a route
 
-Connect this handler to your existing server's routing layer. It uses the standard
+Call this handler from your server's routing layer. It uses the standard
 Response API; servers with their own response helpers can send the same HTML string.
 
 ```tsx
 import { renderToString } from "@vincle/core";
+import { Results } from "./results";
 
-async function findResults() {
-  return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
-}
-
-async function Results() {
-  const items = await findResults();
-  return (
-    <ul>
-      {items.map((item) => (
-        <li>
-          <a href={item.href}>{item.title}</a>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// Call this handler from your server's routing layer.
 export async function GET() {
   const html = await renderToString(
     <main>
@@ -79,11 +61,10 @@ export async function GET() {
 ```
 
 This response contains an HTML fragment. Wrap the view in your document layout
-when serving a complete page. Core adds no browser rendering runtime.
+when serving a complete page.
 
 The response waits for the complete tree. Async components execute in document
-order; making a component async does not automatically run sibling components
-in parallel.
+order; making a component async does not run its siblings in parallel.
 
 ## Let the results arrive later
 
@@ -99,23 +80,7 @@ renderToString to send the surrounding markup and fallback before the results.
 ```tsx
 import { Defer, renderToStream } from "@vincle/flow";
 import { NativeAdapter } from "@vincle/flow/adapters";
-
-async function findResults() {
-  return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
-}
-
-async function Results() {
-  const items = await findResults();
-  return (
-    <ul>
-      {items.map((item) => (
-        <li>
-          <a href={item.href}>{item.title}</a>
-        </li>
-      ))}
-    </ul>
-  );
-}
+import { Results } from "./results";
 
 function Page() {
   return (
@@ -140,21 +105,20 @@ return new Response(stream.pipeThrough(new TextEncoderStream()), {
 });
 ```
 
+Your server and proxy must pass chunks through without buffering the whole
+response.
+
 The Native adapter supplies the browser patching script. If your application
 already uses HTMX or Turbo, choose the corresponding
 [adapter](/integration/adapters) and load its client library.
 
-Async components can be passed directly to Defer, as above. Use a function child
-when you need its AbortSignal: for example, pass the signal to your component and
-forward it to fetch so its request can be cancelled. See
-[Streaming](/integration/streaming) for cancellation and timeouts.
-
-Streaming also depends on your server and proxy passing chunks through without
-buffering the whole response.
+To cancel a deferred component's work, use a function child: it receives an
+AbortSignal to forward to `fetch`. See [Streaming](/integration/streaming) for
+cancellation and timeouts.
 
 ## Continue from here
 
-- [Streaming](/integration/streaming): timeouts, errors, and fragment delivery
+- [Streaming](/integration/streaming): fragment delivery
 - [HTTP serving](/integration/http-serving): response helpers and request negotiation
 - [Adapters](/integration/adapters): choose how fragments reach the page
 - [Security](/guide/security): escaping rules and trusted HTML

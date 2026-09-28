@@ -5,13 +5,10 @@ title: TSRX
 # TSRX
 
 [TSRX](https://tsrx.dev/) is a TypeScript language extension for declarative
-UIs. `@vincle/core` is compatible with it: its
-[jsx-runtime](/guide/getting-started/typescript-setup) exports the same
-`jsx`, `jsxs`, and `Fragment` that TSRX's compiler emits, so `.tsrx`
-components render through vincle: no dedicated target package, no React.
-
-The whole wiring is pointing TSRX's transform at vincle with
-`jsxImportSource: "@vincle/core"`, in the bundler plugin and in your
+UIs. `@vincle/core`'s [jsx-runtime](/guide/getting-started/typescript-setup)
+exports the `jsx`, `jsxs`, and `Fragment` that TSRX's compiler emits, so `.tsrx`
+components render through vincle: no dedicated target package, no React. Set
+`jsxImportSource: "@vincle/core"` in the bundler plugin and in your
 `tsconfig.json`.
 
 ## Setup on Bun
@@ -21,7 +18,7 @@ The whole wiring is pointing TSRX's transform at vincle with
   "dependencies": {
     "@tsrx/bun-plugin-react": "^0.1.99",
     "@tsrx/react": "^0.3.4",
-    "@vincle/core": "^1.0.0"
+    "@vincle/core": "^0.9.0"
   },
   "devDependencies": {
     "@tsrx/typescript-plugin": "^0.4.7",
@@ -111,7 +108,6 @@ For the rest of your `.tsx` modules, set the import source as in
 
 ## Notes
 
-- **`renderToString` is awaited**: it returns a promise.
 - **Use the build, not a preload.** The plugin's extracted styles only work
   inside `Bun.build`; the `css` loader it relies on is not available at
   runtime. The build is also what emits the scoped styles as

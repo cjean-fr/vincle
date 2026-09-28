@@ -21,13 +21,20 @@ The measurements below put its tree renderer ahead of Preact, React and Hono on
 three page shapes, but behind kitajs. Precompilation changes that comparison
 when both sides escape the same content.
 
-Choose Preact or React when components must hydrate in the browser or use their
-existing component ecosystems. Choose Hono's JSX when rendering is already part
-of a Hono application. Kita is a good fit when immediate string assembly is the
-priority and you manage escaping explicitly. The checks and measurements below
-show what each of those choices costs or provides. There is no useful single
-score across speed, security defaults, API features and ecosystem fit; the
-right choice depends on which of these your application needs.
+Choose something else when:
+
+- **You render to the DOM, not to a string.** Vincle has no client runtime, no
+  hydration and no reconciler, and none is planned. Preact or React.
+- **You need every last microsecond and control your inputs.** `@kitajs/html`
+  without `safe` does less, and on Node it stays ahead of Vincle's precompile
+  path for it. On Bun the two are level, and Vincle is escaping. With their
+  TypeScript plugin wired into CI, either way is a defensible position.
+- **You are already inside a framework's rendering pipeline.** `hono/jsx` inside
+  a Hono app costs you nothing to keep.
+
+There is no useful single score across speed, security defaults, API features
+and ecosystem fit; the right choice depends on which of these your application
+needs.
 
 ## Escaping is not a setting
 
@@ -44,13 +51,12 @@ speed. Given the string `<img src=x onerror="alert(1)">` as a text child:
 
 `@kitajs/html` does not escape text children unless you ask it to, with a `safe`
 attribute or its `escape` helper. This is deliberate on their part, and they
-ship [`@kitajs/ts-html-plugin`](https://github.com/kitajs/ts-html-plugin): an
-editor plugin and CLI: to catch unescaped interpolations before they reach
-production. Verified identical on 4.2.13 and 5.0.0-next.1.
+ship [`@kitajs/ts-html-plugin`](https://github.com/kitajs/ts-html-plugin), an
+editor plugin and CLI, to catch unescaped interpolations before they reach
+production.
 
-Vincle takes the other side of that trade: escaping is not reachable from the
-component API at all. There is exactly one way to emit unescaped markup, and it
-is named after what it does:
+Vincle takes the other side of that trade: escaping cannot be turned off from the
+component API. The one way to emit unescaped markup is named after what it does:
 
 ```tsx
 import { raw } from "@vincle/core";
@@ -59,9 +65,9 @@ import { raw } from "@vincle/core";
 <div>{raw(trustedHtml)}</div> {/* the only escape hatch, and it is greppable */}
 ```
 
-Which is the better design is a real argument, and it is not settled by this
-page. What it does settle is that a benchmark comparing the two defaults is not
-comparing the same work: see below.
+Which is the better design is a real argument. What this page settles is that a
+benchmark comparing the two defaults is not comparing the same work: see
+[below](#reading-the-kitajs-column).
 
 ## Attribute names are a list, not a rule
 
@@ -78,25 +84,19 @@ hyphenated. No transformation separates them: only a list does. Given
 | `preact-render-to-string` | `<svg viewBox="0 0 24 24" strokeWidth="2" clipPath="url(#a)"></svg>`   |
 | `@kitajs/html`            | `<svg viewBox="0 0 24 24" strokeWidth="2" clipPath="url(#a)"></svg>`   |
 
-The split is a convention, not a defect. `@kitajs/html` and Preact pass
-attribute names through, so you write the name the markup carries,
-`stroke-width` renders as `stroke-width`. Vincle, React and Hono accept the
-camelCase spelling and map it, which is what the exception list is for.
+Neither convention is a defect. `@kitajs/html` and Preact pass attribute names
+through, so you write the name the markup carries. Vincle, React and Hono accept
+the camelCase spelling and map it.
 
-What earns the section is the failure mode of mixing the two. An HTML parser
-lowercases `strokeWidth` to `strokewidth`, which is not an SVG attribute, so the
-stroke keeps its default width: `getComputedStyle` reports `1px` where
-`stroke-width="7"` reports `7px`. `viewBox` survives, because the parser's
-foreign-content adjustment table names it; `strokeWidth` is not in that table.
-Nothing reports this: no error, no warning, and `@kitajs/html`'s types accept
-both spellings. JSX written against `@types/react` uses camelCase throughout, including
-in icon sets shipped as components.
+Mixing the two fails silently. The browser reads `strokeWidth` as `strokewidth`,
+which is not an SVG attribute, so the stroke keeps its default width: no error,
+no warning, and `@kitajs/html`'s types accept both spellings. JSX written against
+`@types/react`, icon sets included, uses camelCase throughout.
 
 ## Performance
 
-Each competitor is measured in the same process as Vincle, so the machine's
-mood is common to both terms and partly divides out. Each ratio below is the
-mean of 8 within-process throughput ratios; ± is their sample standard
+Each competitor is measured in the same process as Vincle. Each ratio below is
+the mean of 8 within-process throughput ratios; ± is their sample standard
 deviation, not a confidence interval. The values describe this workload and
 harness, not every application.
 
@@ -119,10 +119,9 @@ escape by default and build a tree from the same page shapes. Vincle is between
 
 ### Throughput and time per page
 
-The `realworld` case gives the scale behind those ratios. Throughput is the mean
-of 8 fresh-process results in pages per second; ± is the sample standard
-deviation. Time per page is `1,000 ÷ throughput` in milliseconds, so it is
-derived from the mean throughput rather than independently timed.
+The `realworld` case gives the scale behind those ratios: the mean of 8
+fresh-process results, ± the sample standard deviation. Time per page is
+derived from throughput, not timed separately.
 
 | Renderer                   |    Pages/s | Time/page |
 | -------------------------- | ---------: | --------: |
@@ -133,36 +132,29 @@ derived from the mean throughput rather than independently timed.
 | `hono/jsx`                 |   484 ± 12 |  2.066 ms |
 
 These are in-process rendering costs, not HTTP request latency. Absolute times
-depend on hardware and the benchmark harness; the ratios above are the more
-useful comparison across machines.
+depend on hardware; the ratios above compare better across machines.
 
 ### Reading the kitajs column
 
-Two differences compound in that column, and neither is an implementation
-detail.
+Two differences compound in that column.
 
-**It renders a different string.** `realworld` happens to contain no character
-needing an escape, so there the comparison is fair: 0.73× is a real number for
-a real page. On any input carrying `&` or `<`, the two produce different bytes,
-and Vincle is doing work kitajs is not.
+**It renders a different string.** `realworld` contains no character needing an
+escape, so there 0.73× is a fair number. On any input carrying `&` or `<`, Vincle
+is doing work kitajs is not.
 
-**It uses a different architecture.** `@kitajs/html`'s `createElement` returns a
-string immediately. Vincle's `jsx()` builds a node, and `renderToString` walks
-it. Comparing them measures the tree, not the renderer.
+**It uses a different architecture.** `@kitajs/html` returns a string
+immediately; Vincle builds a tree, then walks it. Comparing them measures the
+tree, not the renderer.
 
-Vincle has a path with no tree: the [precompile
-transform](/integration/precompile) emits `jsxTemplate` calls the way kitajs
-emits concatenations. Measured on the same 100-row list, output verified
-identical byte for byte before timing, over 7 fresh processes on each engine:
+Vincle has a path with no tree: the [precompile transform](/integration/precompile)
+emits templates the way kitajs emits concatenations. Measured on the same
+100-row list, with byte-identical output, over 7 fresh processes on each engine:
 
 | Renderer                    |   Bun / JSC |    Node / V8 |                                               |
 | --------------------------- | ----------: | -----------: | --------------------------------------------- |
 | `@vincle/core` (precompile) | **9.19** µs | **12.44** µs | escapes                                       |
 | `@kitajs/html` (`safe`)     |    12.92 µs |     18.06 µs | escapes → Vincle **1.40×** / **1.45×** faster |
 | `@kitajs/html` (default)    |     9.21 µs |     11.09 µs | does not escape                               |
-
-Both engines, because a gap on one of them alone is that engine's own
-deoptimisation rather than a property of the code.
 
 So: on the tree-walking path Vincle is slower than kitajs, and on the
 comparable path it is faster. Both are true, and neither on its own is the
@@ -181,11 +173,10 @@ whole picture.
 
 The first three rows are behavior checks on specific inputs, not a general
 security or API certification. For the URL row, the input is
-`<a href="javascript:alert(1)">x</a>`: Vincle emits `href="#blocked"`;
-React substitutes a URL that throws; Kita, Preact and Hono emit the supplied
-URL. Text escaping is checked with an HTML tag passed as a text child. The
-dependency row comes from the installed package manifests; it counts direct
-dependencies, not package size or the transitive install tree.
+`<a href="javascript:alert(1)">x</a>`: Vincle emits `href="#blocked"`; React
+substitutes a URL that throws; Kita, Preact and Hono emit the supplied URL. The
+dependency row counts direct dependencies from the package manifests, not
+package size or the transitive install tree.
 
 For the async row, rendering `<div><Async /></div>` where
 `Async` returns `Promise.resolve("hello")` gives:
@@ -208,32 +199,17 @@ string API.
 as a peer, so SSR uses two packages.
 ² `react-dom` depends on `scheduler` and requires `react` as a peer.
 
-Vincle's `createContext` and `<Context.Provider>` scope a value to a subtree,
-as in Preact, Hono and React. Its separate `Scope` stores mutable
-per-execution state that later siblings can read. Both retain isolation across
-concurrent renders. See the [Context & Scope](/api/core/scope).
+Vincle's `createContext` scopes a value to a subtree, as in Preact, Hono and
+React; its separate `Scope` stores mutable per-execution state that later
+siblings can read. Both stay isolated across concurrent renders. See
+[Context & Scope](/api/core/scope). `@kitajs/html` documents
+[why it has no context API](https://github.com/kitajs/html#why-there-is-no-context-api).
 
-`@kitajs/html` documents [why it has no context
-API](https://github.com/kitajs/html#why-there-is-no-context-api).
-
-Streaming, deferred fragments and DOM patching live in
-[`@vincle/flow`](/integration/streaming), a separate install. Kita also supports
-Suspense streaming; React and Hono have streaming entry points too, each with a
-different component contract. The
+Beyond the plain string API: streaming and deferred fragments live in
+[`@vincle/flow`](/integration/streaming), a separate install; Kita, React and
+Hono stream too, each with a different component contract. The
 [`@vincle/precompile` transform](/integration/precompile) works with Vincle,
-Preact and Hono; React lacks the `jsxTemplate` helper it needs. These are
-separate capabilities from the plain string-rendering API measured above.
-
-## When to choose something else
-
-- **You render to the DOM, not to a string.** Vincle has no client runtime, no
-  hydration and no reconciler, and none is planned. Preact or React.
-- **You need every last microsecond and control your inputs.** `@kitajs/html`
-  without `safe` does less, and on Node it stays ahead of Vincle's precompile
-  path for it. On Bun the two are level, and Vincle is escaping. With their
-  TypeScript plugin wired into CI, either way is a defensible position.
-- **You are already inside a framework's rendering pipeline.** `hono/jsx` inside
-  a Hono app costs you nothing to keep.
+Preact and Hono, not React.
 
 ## Reproducing this
 
@@ -241,10 +217,7 @@ separate capabilities from the plain string-rendering API measured above.
 bun run --filter=@vincle/bench bench:stats -- --runs 8
 ```
 
-It prints the throughput and ratio tables above: one row per implementation,
-over 8 fresh processes, each ratio computed inside a process and then averaged.
-The time-per-page column is derived from throughput. A single run is not a
+It prints the throughput and ratio tables above. A single run is not a
 measurement: the protocol, and what counts as a real delta, are in
 `apps/bench/README.md`. The like-for-like kitajs measurement is
-`apps/bench/src/ab-precompile-kita.js`; it refuses to report a number if the two
-outputs differ by a single byte.
+`apps/bench/src/ab-precompile-kita.js`.

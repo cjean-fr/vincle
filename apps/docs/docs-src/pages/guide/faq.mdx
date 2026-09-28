@@ -44,7 +44,7 @@ title: FAQ
         name: "What runtimes does Vincle support?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Node.js 22+, Bun, Deno, and Cloudflare Workers (with nodejs_compat flag). No DOM shim or polyfill required: Vincle has zero browser dependencies.",
+          text: "Node.js 22+, Bun, Deno, and Cloudflare Workers (with the nodejs_compat flag). No DOM shim, no polyfill, no browser build step.",
         },
       },
       {
@@ -52,7 +52,7 @@ title: FAQ
         name: "How do I handle async data fetching in Vincle?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Any component can be async. renderToString walks the tree depth-first and awaits every async component it encounters. Sibling async branches run in document order, one at a time. The component that needs data is the component that fetches it: no top-level loader, no prop-drilling.",
+          text: "Any component can be async: the component that needs data fetches it, with no top-level loader and no prop-drilling. renderToString awaits every async component, siblings in document order, one at a time, and resolves when the whole tree has rendered.",
         },
       },
       {
@@ -60,7 +60,7 @@ title: FAQ
         name: "How does security work in Vincle?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Security is the default, not an opt-in. Every value embedded in JSX is HTML-escaped: text content, attribute values, style properties. Dangerous URL schemes (javascript:, vbscript:, and non-image data:) are blocked. A function passed as an attribute value throws. The only escape hatch is raw(), which is explicit and opt-in.",
+          text: "Security is the default, not an opt-in. Every value is escaped for the place it lands, and a URL whose scheme is off the allowlist becomes #blocked. What you write yourself, such as an on* handler or a style string, is escaped but not inspected. raw() is the one way to vouch for trusted HTML, rawUrl() for a URL scheme.",
         },
       },
       {
@@ -84,7 +84,7 @@ title: FAQ
         name: "Can I catch rendering errors without crashing the whole page?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Errors throw or reject bare. There is no component-level boundary. Wrap renderToString in try/catch for a global fallback. For streaming, @vincle/flow provides per-fragment onError handlers that let individual sections fail without affecting the rest of the page.",
+          text: "Errors throw or reject bare: @vincle/core has no component-level boundary. Wrap renderToString in try/catch for a page-level fallback. When streaming, @vincle/flow's onError lets one fragment fail without the rest of the page.",
         },
       },
       {
@@ -92,7 +92,7 @@ title: FAQ
         name: "How do I debug rendering issues?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Vincle fails fast on common mistakes: an invalid tag name, a function passed as an attribute value, and a missing Scope value all throw. TypeScript catches type errors at build time. For runtime issues, wrap components in try/catch or use @vincle/flow's onError handlers for per-fragment error recovery.",
+          text: "TypeScript catches type errors at build time. At runtime, Vincle throws on anything that has no valid HTML form or no value: an invalid tag name, children on a void element, a function-valued attribute, a Scope key that was never set. A URL off the allowlist is not an error: it renders as #blocked.",
         },
       },
     ],
@@ -104,60 +104,49 @@ title: FAQ
 ## What is Vincle and when should I use it?
 
 Vincle is a JSX-to-HTML renderer designed exclusively for server-side use.
-Use it whenever the output you want is an HTML string:
+Use it whenever the output you want is an HTML string: static sites, email
+templates, SSR responses, HTML fragments from an API, PDF sources.
 
-- **Static sites**: render pages to `.html` files at build time
-- **Email templates**: compose rich HTML without a template language
-- **SSR responses**: serve HTML from any HTTP framework
-- **API responses**: return HTML fragments from an endpoint
-- **PDF sources**: generate HTML to feed into a headless browser
-
-Vincle is **not** for client-side rendering or hydration. If you need
-interactive components in the browser, pair it with HTMX, Turbo, Alpine.js,
-or a dedicated frontend framework.
+Vincle is **not** for client-side rendering or hydration. For interactive
+components in the browser, pair it with HTMX, Turbo, Alpine.js, or a dedicated
+frontend framework.
 
 ## How is Vincle different from React?
 
 React's renderers carry a virtual DOM, a reconciler, and a hydration
 contract. Vincle is built exclusively for server-side HTML generation:
 
-|                | Vincle                              | react-dom/server |
-| -------------- | ----------------------------------- | ---------------- |
-| Dependencies   | 0                                   | React runtime    |
-| Async          | Native `await`                      | Suspense-only    |
-| Virtual DOM    | None                                | Full             |
-| Client runtime | None                                | Hydration        |
-| Security       | Escape + URL block + handler filter | Escape only      |
+|                | Vincle                 | react-dom/server                        |
+| -------------- | ---------------------- | --------------------------------------- |
+| Dependencies   | 0                      | React runtime                           |
+| Async          | Native `await`         | Suspense-only                           |
+| Virtual DOM    | None                   | Full                                    |
+| Client runtime | None                   | Hydration                               |
+| Security       | Escape + URL allowlist | Escape + `javascript:` URLs neutralized |
 
 ## Can I use Vincle with React components?
 
-No. Vincle uses its own [JSX runtime](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/JSX)
-and does not support React hooks, refs, or the React ecosystem. The syntax
-is the same: the runtime is incompatible.
+No. Vincle uses its own JSX runtime and does not support React hooks, refs, or
+the React ecosystem. The syntax is the same: the runtime is incompatible.
 
 If you need React ecosystem libraries (MUI, Radix, React Router, TanStack),
-use React's own server renderer. Vincle is for projects where you control
-the component tree and don't need client-side interactivity.
+use React's own server renderer. See [Coming from React](/guide/coming-from-react)
+to port your own components.
 
 ## What runtimes does Vincle support?
 
-| Runtime                | Support | Notes                               |
-| ---------------------- | ------- | ----------------------------------- |
-| **Node.js 22+**        | ✅ Full | Native `AsyncLocalStorage`          |
-| **Bun**                | ✅ Full | Node-compatible `AsyncLocalStorage` |
-| **Deno**               | ✅ Full | Node-compatible `AsyncLocalStorage` |
-| **Cloudflare Workers** | ✅ Full | Requires `nodejs_compat` flag       |
-
-No DOM shim, no polyfill, no browser build step. Vincle works wherever
-JavaScript runs.
+Node.js 22+, Bun, Deno, and Cloudflare Workers (with the `nodejs_compat` flag).
+No DOM shim, no polyfill, no browser build step.
 
 ## How do I handle async data fetching?
 
-Any component can be `async`. `renderToString` walks the tree depth-first
-and awaits every async component it encounters:
+Any component can be `async`: the component that needs data fetches it, with no
+top-level loader and no prop-drilling. `renderToString` awaits every async
+component, siblings in document order, one at a time, and resolves when the
+whole tree has rendered.
 
 ```tsx
-async function Page() {
+async function Page({ id }: { id: string }) {
   const user = await db.users.find(id);
   const posts = await db.posts.findByUser(id);
   return (
@@ -175,28 +164,13 @@ async function Page() {
 const html = await renderToString(<Page id="42" />);
 ```
 
-Sibling async branches run in document order, one at a time. The returned `Promise<string>`
-resolves when every branch has finished rendering. No prop-drilling, no
-top-level loader: the component that needs data is the component that
-fetches it.
-
 ## How does security work in Vincle?
 
-Security is the default, not an opt-in. Vincle applies context-aware HTML
-encoding and URL filtering:
-
-- **Text content**: `&`, `<`, `>` escaped
-- **Attribute values**: `&`, `<`, `"` escaped (`>` isn't needed: it can't end a double-quoted value)
-- **URL attributes**: an allowlist of schemes: relative URLs, `http:`, `https:`, `mailto:`, `tel:`, `sms:`, and image data URIs (`data:image/png`, `/jpeg`, `/gif`, `/webp`, `/avif`). Anything else is blocked; `rawUrl()` vouches for a scheme off the list
-- **CSS values**: HTML-escaped but not validated. A style _value_ can still carry arbitrary declarations (`color: red; position: fixed`). Only property _names_ are checked. Don't pass untrusted data into `style`.
-
-The only escape hatch is `raw()`, which is explicit and opt-in. See the
-[Security model](/guide/security) for the full details.
-
-Inline event handlers are outside this security model. An `on*` string is
-serialized like any other attribute; Vincle does not inspect or sanitize the
-JavaScript inside it. Function-valued attributes throw because functions have
-no HTML representation and Vincle has no client runtime to attach them to.
+Security is the default, not an opt-in. Every value is escaped for the place it
+lands, and a URL whose scheme is off the allowlist becomes `#blocked`. What you
+write yourself, such as an `on*` handler or a `style` string, is escaped but not
+inspected. `raw()` is the one way to vouch for trusted HTML, `rawUrl()` for a URL
+scheme. See the [Security model](/guide/security).
 
 ## Can I use Vincle for streaming HTML?
 
@@ -205,35 +179,17 @@ fragments and streaming. The shell is sent immediately while slow
 components render concurrently. Five adapters let you choose your
 client mechanism:
 
-- **NativeAdapter**: WICG spec with a ~550 B polyfill
+- **NativeAdapter**: WICG spec with a small polyfill
 - **TurboAdapter**: Hotwire Turbo Streams
 - **HtmxAdapter**: HTMX OOB swaps
 - **WebPlatformAdapter**: native browser support, no JS
-- **EsiAdapter**: CDN-level ESI composition
-
-All adapters work in both streaming and static generation modes except
-`EsiAdapter`, which declares `streaming: false` and is rejected by
-`renderToStream`.
+- **EsiAdapter**: CDN-level ESI composition, static generation only
 
 ## Can I catch rendering errors without crashing the whole page?
 
-Errors throw or reject bare: `@vincle/core` has no component-level boundary
-that catches them mid-tree.
-
-**Top-level**: wrap `renderToString` in try/catch:
-
-```tsx
-try {
-  const html = await renderToString(<Page />);
-  // send html
-} catch (error) {
-  console.error("Render failed:", error);
-  // send a 500
-}
-```
-
-**Per-fragment (streaming)**: `@vincle/flow` provides `onError` for
-individual fragments: one section can fail without crashing the page:
+Errors throw or reject bare: `@vincle/core` has no component-level boundary.
+Wrap `renderToString` in try/catch for a page-level fallback. When streaming,
+`@vincle/flow`'s `onError` lets one fragment fail without the rest of the page:
 
 ```tsx
 serve(req, () => <Page />, NativeAdapter, {
@@ -246,6 +202,18 @@ serve(req, () => <Page />, NativeAdapter, {
 
 See the [Error handling API](/api/core/error-handling) page for details.
 
+## How do I debug rendering issues?
+
+TypeScript catches type errors at build time. At runtime, Vincle throws on
+anything that has no valid HTML form or no value:
+
+- **Invalid tag names** and **children on a void element**
+  (`<img>{caption}</img>`): a `TypeError`, at construction
+- **Function-valued attributes**: a function has no HTML form, `on*` included
+- **Missing execution values**: `Scope.get` on a key that was never set
+
+A URL off the allowlist is not an error: it renders as `#blocked`.
+
 ## What is the bundle size?
 
 | Package        | Download (gzip) | Dependencies        |
@@ -256,32 +224,6 @@ See the [Error handling API](/api/core/error-handling) page for details.
 That is the whole install: runtime, and types for every HTML and SVG element and
 every CSS property. `csstype` alone, one of the two packages React needs just
 to type a `style` prop, is 138 KB, and `@types/react` another 78 KB on top.
-
-No hidden dependencies, no runtime you don't need. Every byte is accounted
-for.
-
-## How do I debug rendering issues?
-
-Vincle throws or blocks for:
-
-- **Invalid tag names**: throws a `TypeError`, at construction (a computed tag, or a hand-built `VNode`)
-- **Children on a void element**: throws a `TypeError` at construction: `<img>{caption}</img>` has no valid HTML form, whatever `caption` holds
-- **Function-valued attributes**: throws (`on*` or not: a function has no HTML form)
-- **Missing execution values**: throws when `Scope.get` reads a key that was never set
-- **Invalid URL schemes**: blocked and replaced with `#blocked`
-
-TypeScript catches type errors at build time. For runtime issues in
-streaming, `@vincle/flow` provides `onError` handlers for per-fragment
-error recovery:
-
-```tsx
-serve(req, () => <Page />, NativeAdapter, {
-  onError: (error, { id, kind }) => {
-    console.error(`Fragment ${id} failed:`, error);
-    return <p>This section failed to load.</p>;
-  },
-});
-```
 
 ## Where can I get help?
 
