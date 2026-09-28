@@ -267,6 +267,42 @@ TypeScript refuses it before the renderer ever sees it.
 <button onClick={fn}>btn</button>; // ❌ throws
 ```
 
+## Polymorphic Components (the `as` prop)
+
+Vincle components can render different HTML tags based on props. The `as` prop pattern lets one component switch between elements — for example a `<Button>` that renders as `<a>` when given `as="a" href="/..."`.
+
+```tsx
+function Button({ as = "button", href, children, ...rest }) {
+  const Tag = as;
+  if (Tag === "a") {
+    return (
+      <a href={href} {...rest} onClick={rest.onClick}>
+        {children}
+      </a>
+    );
+  }
+  return <button {...rest}>{children}</button>;
+}
+
+// Usage:
+<Button as="a" href="/dashboard">Dashboard</Button>
+// => <a href="/dashboard">Dashboard</a>
+
+<Button onClick="alert('hi')">Submit</Button>
+// => <button>Submit</button>
+```
+
+**Best practices:**
+
+- Default to the most common tag (`as = "button"`). TypeScript infers it.
+- Pass `as` through destructuring: `const { as = "button", ...rest } = props`.
+- Spread `rest` last so explicit attributes override.
+- The `as` value must be a **string** (a valid HTML tag name). Components do not accept other components as `as` values.
+- Type `as` as a union of your supported tags: `as?: "button" | "a" | "summary"`.
+- Do not use `as` on native elements — the pattern only works on components you write.
+
+<!-- skip-typecheck: the second line is a type error on purpose -->
+
 `raw()` and `dangerouslySetInnerHTML` are the trust boundary, and it has two
 sides worth knowing:
 
