@@ -13,7 +13,7 @@ for the walk.
 
 ## Status
 
-`0.9.0` — private, not published.
+Current package version: `0.9.0` (pre-1.0 API).
 
 ## API
 
