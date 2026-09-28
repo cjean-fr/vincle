@@ -94,7 +94,7 @@
     "codegen:check": "bun scripts/codegen.ts --check"
   },
   "devDependencies": {
-    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/core": "catalog:",
     "@types/bun": "catalog:",
     "@types/react": "catalog:",
     "csstype": "catalog:",

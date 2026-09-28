@@ -71,7 +71,7 @@
     "test": "bun test"
   },
   "devDependencies": {
-    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/core": "catalog:",
     "@types/bun": "catalog:",
     "@vincle/core": "workspace:*",
     "oxc-parser": "catalog:",

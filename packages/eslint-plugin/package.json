@@ -50,7 +50,7 @@
     "@vincle/core": "workspace:^"
   },
   "devDependencies": {
-    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/core": "catalog:",
     "@types/bun": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "@typescript-eslint/rule-tester": "catalog:",

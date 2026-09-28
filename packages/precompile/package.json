@@ -63,7 +63,7 @@
   },
   "devDependencies": {
     "@jridgewell/trace-mapping": "^0.3.31",
-    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/core": "catalog:",
     "bun": "catalog:",
     "preact": "^10.29.8",
     "tsdown": "catalog:",

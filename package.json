@@ -33,7 +33,8 @@
       "vite-plugin-dts": "^5",
       "zod": "^4",
       "csstype": "^3.2.3",
-      "oxc-parser": "^0.150.0"
+      "oxc-parser": "^0.150.0",
+      "@stryker-mutator/core": "^10.0.0"
     }
   },
   "type": "module",
