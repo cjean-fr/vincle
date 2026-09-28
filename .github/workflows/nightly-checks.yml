@@ -87,7 +87,7 @@ jobs:
     if: always()
     steps:
       - name: Ensure nightly label
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             try {
@@ -108,7 +108,7 @@ jobs:
 
       - name: Fuzz — open / update issue on failure
         if: needs.fuzz.result == 'failure'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const seed  = process.env.VINCLE_FUZZ_SEEDS;
