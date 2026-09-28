@@ -33,10 +33,17 @@
   "concurrency": 2,
   "timeoutMS": 5000,
   "coverageAnalysis": "off",
-  "reporters": ["html", "clear-text", "progress"],
+  "reporters": ["html", "clear-text", "progress", "json"],
+  "htmlReporter": {
+    "fileName": "mutation/index.html"
+  },
+  "jsonReporter": {
+    "fileName": "mutation/mutation-result.json"
+  },
   "thresholds": {
     "high": 85,
     "low": 69,
     "break": 69
-  }
+  },
+  "seed": 3
 }
