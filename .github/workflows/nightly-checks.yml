@@ -54,7 +54,7 @@ jobs:
 
     strategy:
       matrix:
-        package: [vincle/flow, vincle/precompile]
+        package: [flow, precompile]
 
     steps:
       - name: Checkout
