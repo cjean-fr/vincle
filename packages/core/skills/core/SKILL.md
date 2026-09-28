@@ -271,10 +271,10 @@ TypeScript refuses it before the renderer ever sees it.
 sides worth knowing:
 
 ```tsx
-// In content position, raw() is verbatim: that is the whole point.
+// In content position, raw() is trusted: that is the whole point.
 <div>{raw(sanitizedHtml)}</div>;
 
-// In ATTRIBUTE position it is verbatim except `"`, which is escaped so a value
+// In ATTRIBUTE position it stays trusted except `"`, which is escaped so a value
 // can never end the attribute and reopen the tag. Sanitized *HTML* is still not
 // an attribute value: it belongs in content, not in a title.
 <a title={raw('say "hi"')}>x</a>; // title="say &quot;hi&quot;"

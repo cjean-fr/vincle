@@ -24,7 +24,6 @@ export {
 export {
   URL_ATTRIBUTES,
   ANIMATED_URL_ATTRIBUTES,
-  isEventHandlerName,
   resolveAttrName,
   isValidAttrName,
   attrMeta,

@@ -1,6 +1,6 @@
 import type { Renderable } from "./types.js";
 
-import { serializeAttr } from "./attrs.js";
+import { ElementAttr, serializeTemplateAttr } from "./attrs.js";
 import {
   ERR_DANGEROUS_HTML,
   ERR_INVALID_TAG,
@@ -12,6 +12,7 @@ import { ownChildren } from "./props.js";
 import { renderNode, sequenceFrom } from "./render.js";
 import { isVoidElement, serializeStatic, voidChildrenMessage } from "./serialize.js";
 import { invalidTagMessage, isValidTag } from "./tag.js";
+import { renderElementAttr } from "./template-attrs.js";
 import { VNode, raw, RawString, TemplateNode } from "./types.js";
 
 // ── Hybrid JSX: serialize static trees in one pass; keep dynamic trees as VNodes ──
@@ -216,15 +217,22 @@ export const precompileDialect = "vincle";
  * takes it back at assembly time, where knowing that the space sits inside a
  * start tag is possible.
  *
+ * An animation's `attributeName` and the four names it writes through come back
+ * as an `ElementAttr` instead: their judge needs the tag, which only the
+ * `jsxTemplate` holding the start tag has.
+ *
  * The value taxonomy lives in `serializeAttr` (`attrs.ts`): the same module
  * `buildAttrs` delegates to, so the two paths agree by construction rather than
  * by a case list: a divergence between them can go as far as closing the start tag.
  * This wrapper is the async rendez-vous for the precompile path: a promised
  * value recurses per attribute, where `buildAttrsAsync` resolves the batch.
  */
-export function jsxAttr(name: string, value: unknown): RawString | Promise<RawString> {
+export function jsxAttr(
+  name: string,
+  value: unknown,
+): RawString | ElementAttr | Promise<RawString | ElementAttr> {
   if (value instanceof Promise) return value.then((v) => jsxAttr(name, v));
-  return serializeAttr(name, value);
+  return serializeTemplateAttr(name, value);
 }
 
 /**
@@ -261,7 +269,15 @@ export function jsxTemplate(
       // The empty string `renderLeaf` answers, without reaching it.
       out = appendHole(out, "");
     } else if (isDeferredValue(v)) {
-      return new TemplateNode(() => renderTemplateAsync(out, v, values, i + 1, templates));
+      // Inside the deferred branch, which only objects reach: an `ElementAttr`
+      // costs the holes already headed for the async path one test, and a
+      // plain hole nothing.
+      if (!(v instanceof ElementAttr))
+        return new TemplateNode(() => renderTemplateAsync(out, v, values, i + 1, templates));
+      const text = renderElementAttr(v, templates, values, i);
+      if (typeof text !== "string")
+        return new TemplateNode(() => resumeAfter(out, text, values, i, templates));
+      out = appendHole(out, text);
     } else {
       out = appendHole(out, valueToText(v));
     }
@@ -303,7 +319,13 @@ export function jsxTemplateDeferred(
     else if (value === null || value === undefined || typeof value === "boolean")
       out = appendHole(out, "");
     else if (isDeferredValue(value)) {
-      return new TemplateNode(() => renderTemplateAsync(out, value, values, i + 1, templates));
+      // As in `jsxTemplate`: an `ElementAttr` is tested for on the deferred branch only.
+      if (!(value instanceof ElementAttr))
+        return new TemplateNode(() => renderTemplateAsync(out, value, values, i + 1, templates));
+      const text = renderElementAttr(value, templates, values, i);
+      if (typeof text !== "string")
+        return new TemplateNode(() => resumeAfter(out, text, values, i, templates));
+      out = appendHole(out, text);
     } else out = appendHole(out, valueToText(value));
     out += templates[i + 1] ?? "";
   }
@@ -335,6 +357,17 @@ function inStartTag(out: string): boolean {
   return quotes % 2 === 0;
 }
 
+/** Continue a template once the attribute at `hole` has resolved to its final text. */
+function resumeAfter(
+  prefix: string,
+  text: Promise<string>,
+  values: unknown[],
+  hole: number,
+  templates: ArrayLike<string>,
+): RawString | Promise<RawString> {
+  return renderTemplateAsync(prefix, text.then(raw), values, hole + 1, templates);
+}
+
 /**
  * A hole the synchronous path can't finish alone: a `VNode`, a `Promise`, or a
  * container that may hold one (array, iterable): the same taxonomy
@@ -363,7 +396,14 @@ function renderTemplateAsync(
   from: number,
   templates: ArrayLike<string>,
 ): RawString | Promise<RawString> {
-  const firstPart = renderValue(first);
+  // A hole is rendered with its index: an `ElementAttr` needs the template around it.
+  const renderAt = (v: unknown, i: number): string | Promise<string> =>
+    v instanceof ElementAttr
+      ? renderElementAttr(v, templates, values, i)
+      : v instanceof Promise
+        ? v.then((r: unknown) => renderAt(r, i))
+        : renderValue(v);
+  const firstPart = renderAt(first, from - 1);
   const finishFirst = (text: string) =>
     new RawString(appendHole(prefix, text) + (templates[from] ?? ""));
   if (from === values.length)
@@ -371,7 +411,7 @@ function renderTemplateAsync(
   return (async () => {
     const initial = appendHole(prefix, await firstPart) + (templates[from] ?? "");
     const out = await sequenceFrom(initial, values, from, (acc, value, i) => {
-      const part = renderValue(value);
+      const part = renderAt(value, i);
       const append = (text: string) => appendHole(acc, text) + (templates[i + 1] ?? "");
       return typeof part === "string" ? append(part) : part.then(append);
     });

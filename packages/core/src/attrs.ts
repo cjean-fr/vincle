@@ -1,7 +1,7 @@
-import { ERR_ANIMATED_HANDLER, ERR_FUNCTION_ATTR, vincleError } from "./errors.js";
+import { ERR_FUNCTION_ATTR, vincleError } from "./errors.js";
 import { escapeAttr, isSafeScheme } from "./escape.js";
 import { isAnimationTag } from "./tag.js";
-import { raw, RawString, RawUrl } from "./types.js";
+import { RawString, RawUrl } from "./types.js";
 
 // ── camelCase → kebab-case ──────────────────────────────────────────
 // Shared by SVG attribute names and style property names: the same boundary
@@ -244,23 +244,6 @@ export const URL_ATTRIBUTES: ReadonlySet<string> = new Set([
  */
 export const ANIMATED_URL_ATTRIBUTES: ReadonlySet<string> = new Set(["values", "to", "from", "by"]);
 
-// Leading whitespace admitted: over-matching a name no browser would resolve
-// costs nothing, under-matching one it would is the bypass.
-const RE_EVENT_HANDLER_NAME = /^[\t\n\f\r ]*on/i;
-
-/**
- * Is this name an event handler (`onclick`, `onmouseover`, …)?
- *
- * The one case a URL check cannot reach. `<set attributeName="onmouseover"
- * to="alert(1)">` writes a handler onto an element that never had one, from a
- * value that reads as data — and `alert(1)` carries no scheme, so it walks past
- * every URL gate there is. The name gives it away, and it is the author's own
- * literal: unlike the value, there is no provenance to argue about.
- */
-export function isEventHandlerName(name: string): boolean {
-  return RE_EVENT_HANDLER_NAME.test(name);
-}
-
 // ── HTML boolean attributes ─────────────────────────────────────────
 const BOOLEAN_ATTRIBUTES = new Set([
   "allowfullscreen",
@@ -318,7 +301,14 @@ export interface AttrMeta {
   /** Resolved HTML name (`className` → `class`). */
   readonly name: string;
   readonly valid: boolean;
-  readonly isUrl: boolean;
+  readonly isUrlAttribute: boolean;
+  /**
+   * Whether the value's judge depends on the element it sits on: an
+   * animation's `attributeName`, or one of the four it writes through. One
+   * attribute cannot answer that alone, so `jsxAttr` defers it to the template
+   * that holds the start tag (see {@link ElementAttr}).
+   */
+  readonly elementBound: boolean;
 }
 
 const ATTR_META = new Map<string, AttrMeta>();
@@ -346,7 +336,13 @@ export function attrMeta(key: string): AttrMeta {
   let meta = ATTR_META.get(key);
   if (meta === undefined) {
     const name = RE_HAS_UPPER.test(key) ? resolveAttrName(key) : key;
-    meta = { name, valid: isValidAttrName(name), isUrl: URL_ATTRIBUTES.has(name) };
+    meta = {
+      name,
+      valid: isValidAttrName(name),
+      isUrlAttribute: URL_ATTRIBUTES.has(name),
+      // `attributename` too: the parser adjusts it to `attributeName` in SVG.
+      elementBound: ANIMATED_URL_ATTRIBUTES.has(name) || name.toLowerCase() === "attributename",
+    };
     if (ATTR_META.size < ATTR_META_MAX) ATTR_META.set(key, meta);
   }
   return meta;
@@ -355,9 +351,9 @@ export function attrMeta(key: string): AttrMeta {
 // No dedicated branch for event handlers: a string serializes escaped, a
 // function throws, same as any other attribute. Discouraging the practice is
 // `@vincle/eslint-plugin`'s job, not the hot path's — what escapes a handler
-// written as one is the same `escapeAttr` as any other value. The one handler
-// this module refuses is the one nobody wrote: an animation that assembles one
-// out of a value, in `animationWritesUrls`.
+// written as one is the same `escapeAttr` as any other value. A handler is the
+// author's code however it is spelled, `onclick="…"` or an animation targeting
+// `onclick`: this module judges data, not what the author chose to write.
 
 /** How `attrFragment` judges a value: not at all, as one URL, as a `;` list of them. */
 type UrlCheck = typeof NOT_URL | typeof ONE_URL | typeof URL_LIST;
@@ -366,7 +362,7 @@ const ONE_URL = 1;
 const URL_LIST = 2;
 
 /** A `URL_LIST` is blocked whole when any item is: the animation reaches each in turn. */
-function isSafeUrl(str: string, url: typeof ONE_URL | typeof URL_LIST): boolean {
+function isAllowedUrl(str: string, url: typeof ONE_URL | typeof URL_LIST): boolean {
   if (url === ONE_URL) return isSafeScheme(str);
   for (const item of str.split(";")) if (!isSafeScheme(item.trim())) return false;
   return true;
@@ -382,12 +378,12 @@ function functionAttrMessage(key: string): string {
 }
 
 /**
- * A `RawString` used as an *attribute* value, emitted verbatim except for `"`.
+ * A `RawString` used as an *attribute* value, emitted trusted except for `"`.
  *
  * `raw()` means "trusted markup", which is not the same promise as "trusted
  * attribute value": the one character a double-quoted value cannot hold is the
  * quote that ends it: `title={raw('" onmouseover="alert(1)')}` would close the
- * attribute and reopen the tag. Escaping only that one keeps `raw()` verbatim
+ * attribute and reopen the tag. Escaping only that one keeps `raw()` trusted
  * where it counts: an attribute value is entity-decoded before it reaches CSS,
  * JS or the DOM, so `style={raw('font-family:"Foo"')}` still means what it says.
  */
@@ -412,7 +408,7 @@ function rawAttrValue(value: string): string {
  * an object allocated per attribute, not the call. A string fragment is what the
  * caller was building anyway.
  *
- * `url` is a parameter, not `meta.isUrl`, because one case is not the name's
+ * `url` is a parameter, not `meta.isUrlAttribute`, because one case is not the name's
  * own: on an animation element, `values`/`to`/`from`/`by` carry the URL of the
  * attribute named by a sibling. The element decides (`buildAttrs`), this obeys.
  *
@@ -431,7 +427,7 @@ function attrFragment(
   // Frequency order, from here down.
   if (type === "string") {
     let str = value as string;
-    if (url !== NOT_URL && !isSafeUrl(str, url)) str = "#blocked";
+    if (url !== NOT_URL && !isAllowedUrl(str, url)) str = "#blocked";
     return `${prefix}${attrName}="${escapeAttr(str)}"`;
   }
 
@@ -477,7 +473,7 @@ function attrFragment(
   }
 
   let str = String(value);
-  if (url !== NOT_URL && !isSafeUrl(str, url)) str = "#blocked";
+  if (url !== NOT_URL && !isAllowedUrl(str, url)) str = "#blocked";
   return `${prefix}${attrName}="${escapeAttr(str)}"`;
 }
 
@@ -489,21 +485,68 @@ function attrFragment(
  * `attrFragment` instead, since it writes a whole start tag itself.
  */
 export function serializeAttr(key: string, value: unknown): RawString {
-  if (value === null || value === undefined) return raw("");
-  if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
-    return raw("");
+  return new RawString(soloFragment(key, attrMeta(key), value));
+}
 
+/**
+ * One attribute judged by its name alone: `meta.isUrlAttribute`, no tag, no sibling.
+ * Exact for every attribute but the element-bound ones, which is why
+ * `serializeTemplateAttr` wraps those instead of answering for them.
+ */
+function soloFragment(key: string, meta: AttrMeta, value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (key === "children" || key === "key" || key === "ref" || key === "dangerouslySetInnerHTML")
+    return "";
   // The validity gate matters here as much as in the batch path: a name reaching
   // a runtime helper may be caller-controlled (spread, computed key), not
   // author-written.
-  const meta = attrMeta(key);
-  if (!meta.valid) return raw("");
+  if (!meta.valid) return "";
+  return attrFragment(key, meta, value, "", meta.isUrlAttribute ? ONE_URL : NOT_URL);
+}
 
-  // `meta.isUrl` and nothing more: one attribute, no tag, no bag. The case that
-  // needs all three is an animation, and `@vincle/precompile` hands those back to
-  // the runtime rather than inlining them — which is the only way this can be
-  // true for both paths.
-  return new RawString(attrFragment(key, meta, value, "", meta.isUrl ? ONE_URL : NOT_URL));
+/**
+ * An attribute whose judge needs the element: `jsxAttr`'s answer for an
+ * `elementBound` name, which the template holding the start tag resolves with
+ * {@link serializeInElement}.
+ *
+ * Not a `RawString`, so no consumer can emit it as markup by mistake. `value` is
+ * the name-only serialization: what a precompile transform inlines at build
+ * time, which is exact there because `@vincle/precompile` hands every element
+ * the rule applies to back to the runtime instead.
+ */
+export class ElementAttr {
+  readonly name: string;
+  readonly raw: unknown;
+  readonly value: string;
+  constructor(name: string, raw: unknown, value: string) {
+    this.name = name;
+    this.raw = raw;
+    this.value = value;
+  }
+}
+
+/** `jsxAttr`'s serializer: final text, or an {@link ElementAttr} to resolve in its element. */
+export function serializeTemplateAttr(key: string, value: unknown): RawString | ElementAttr {
+  const meta = attrMeta(key);
+  const text = soloFragment(key, meta, value);
+  return meta.elementBound ? new ElementAttr(key, value, text) : new RawString(text);
+}
+
+/**
+ * An {@link ElementAttr} judged in its element: the same rule `buildAttrs`
+ * applies, from the tag and the element-bound attributes around it.
+ */
+export function serializeInElement(
+  attr: ElementAttr,
+  tag: string,
+  element: Record<string, unknown>,
+): string {
+  const animateUrls = isAnimationTag(tag) && animationWritesUrls(element);
+  const meta = attrMeta(attr.name);
+  if (!animateUrls || !ANIMATED_URL_ATTRIBUTES.has(meta.name) || attr.value === "") {
+    return attr.value;
+  }
+  return attrFragment(attr.name, meta, attr.raw, "", URL_LIST);
 }
 
 export function buildAttrs(attrs: Record<string, unknown>, tag: string): string | Promise<string> {
@@ -545,7 +588,7 @@ export function buildAttrs(attrs: Record<string, unknown>, tag: string): string 
       meta,
       value,
       " ",
-      meta.isUrl
+      meta.isUrlAttribute
         ? ONE_URL
         : animateUrls && ANIMATED_URL_ATTRIBUTES.has(attrName)
           ? URL_LIST
@@ -557,7 +600,7 @@ export function buildAttrs(attrs: Record<string, unknown>, tag: string): string 
 }
 
 /**
- * Does this animation write its values onto a URL attribute, so they must be
+ * Could this animation write its values onto a URL attribute, so they must be
  * judged as URLs?
  *
  * Two attributes deciding one thing is why this cannot live in `attrMeta`, and
@@ -572,72 +615,28 @@ export function buildAttrs(attrs: Record<string, unknown>, tag: string): string 
  * Names are judged resolved, as `buildAttrs` serializes them: `VALUES` is
  * emitted as `values`, and `attributename` is the `attributeName` the parser
  * adjusts it to. Own keys only, for the reason `buildAttrs` asks `hasOwn`: a
- * polluted `Object.prototype.attributeName` would otherwise make every
- * animation in the process throw.
+ * polluted `Object.prototype.attributeName` would otherwise URL-judge every
+ * animation in the process.
  *
- * A target that is not a string literal is judged as a URL too, rather than
- * skipped: the element says it is animating *something*, and only the runtime
- * can find out what. Treating the unknown target as the dangerous one is the
- * direction that costs nothing — a property animation's value (`"0;1;0"`,
- * `"rotate(0,360)"`) carries no scheme — and the direction a bypass would not.
- *
- * @throws when a target is an event handler — the one thing a URL check cannot
- *   judge, `to="alert(1)"` carrying no scheme. Judged on the text it serializes
- *   to, so `raw("onclick")` or `["onclick"]` is the same target as `"onclick"`.
- *   See {@link animatedHandlerMessage}.
+ * Whatever the target, its values are judged as URLs: the target is not read.
+ * That costs nothing — a property animation's value (`"0;1;0"`,
+ * `"rotate(0,360)"`) carries no scheme — and leaves no target spelling, literal
+ * or computed, to get wrong.
  */
 function animationWritesUrls(attrs: Record<string, unknown>): boolean {
   let targets = false;
   let writes = false;
-  let handler: string | undefined;
   for (const key in attrs) {
     if (!Object.hasOwn(attrs, key)) continue;
     const name = attrMeta(key).name;
     if (ANIMATED_URL_ATTRIBUTES.has(name)) writes = true;
-    else if (name.toLowerCase() === "attributename") {
-      targets = true;
-      const text = targetText(attrs[key]);
-      if (text !== undefined && isEventHandlerName(text)) handler = text;
-    }
+    else if (name.toLowerCase() === "attributename") targets = true;
   }
   // Nothing to write is an animation of nothing: it animates no attribute, so
-  // there is no URL to have filtered and no handler to have forged. Also the
-  // condition `@vincle/precompile` uses to decide whether declining the element
-  // would change anything, and the two must agree on it.
-  if (!targets || !writes) return false;
-
-  if (handler !== undefined) throw animatedHandlerMessage(handler);
-  return true;
-}
-
-/** The text an `attributeName` value serializes to, or `undefined` when omitted. */
-function targetText(value: unknown): string | undefined {
-  if (value === null || value === undefined || typeof value === "boolean") return undefined;
-  if (value instanceof RawString || value instanceof RawUrl) return value.value;
-  return String(value);
-}
-
-/**
- * Why an animation aimed at a handler is refused. One message, so the two paths
- * that can reach it — a rendered element, a precompiled one — cannot disagree
- * on what to say.
- *
- * `attributeName="onclick"` with `to="alert(1)"` puts a handler on an element
- * that never had one, out of a value that reads as data. The value alone cannot
- * be judged: `alert(1)` carries no scheme, so it passes every URL gate, and it
- * is exactly as valid as the `onclick="…"` this runtime deliberately lets
- * through. The difference is provenance, and it is visible in the source: one is
- * code the author typed, the other is indistinguishable from a field of user
- * data by the time it arrives.
- */
-function animatedHandlerMessage(target: string): Error {
-  return vincleError(
-    `[vincle/core] attributeName="${target}" animates an event handler: an animation that writes ` +
-      "on* from a value is how data becomes code, and this runtime will not write one. " +
-      "Animate a property (`opacity`, `fill`, `transform`) instead, or set the handler as a literal " +
-      "attribute, which is the author's code and stays theirs.",
-    ERR_ANIMATED_HANDLER,
-  );
+  // there is no URL to have filtered. Also the condition `@vincle/precompile`
+  // uses to decide whether declining the element would change anything, and the
+  // two must agree on it.
+  return targets && writes;
 }
 
 /**
