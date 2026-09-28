@@ -2,11 +2,7 @@
 
 Bootstrap a server-rendered Vincle project from the command line.
 
-```sh
-npm create vincle
-bun create vincle
-deno run -A npm:create-vincle
-```
+This package is still under development and is not published yet.
 
 The CLI detects the runtime that started it and uses it as the default in the
 interactive prompt. You can press Enter to keep that choice or select `Bun`,
@@ -125,11 +121,7 @@ If no runtime is detected, the user is prompted to choose.
 ## --yes flag
 
 Pass `--yes` (or `-y`) to skip the interactive prompt and use the detected
-runtime. Combined with `--name`, it creates a project in a single command:
-
-```sh
-npm create vincle my-app -- --yes --name my-app
-```
+runtime. Combined with `--name`, it creates a project in a single command.
 
 ## License
 

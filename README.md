@@ -48,3 +48,7 @@ VINCLE_FUZZ_SEEDS=100000 bun test src/path-equivalence.test.ts
 ## License
 
 MIT © Christophe Jean
+
+## Publishing
+
+See [RELEASING.md](./RELEASING.md) for the first-publication setup and release order.

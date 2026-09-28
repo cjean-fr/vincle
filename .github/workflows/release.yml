@@ -9,7 +9,6 @@ on:
         type: choice
         options:
           - core
-          - create-vincle
           - flow
           - eslint-plugin
           - vite-plugin
@@ -41,6 +40,10 @@ jobs:
         env:
           PACKAGE: ${{ github.event.inputs.package }}
         run: |
+          case "$PACKAGE" in
+            core|flow|eslint-plugin|vite-plugin|precompile) ;;
+            *) echo "::error::Package is not available for release: $PACKAGE"; exit 1 ;;
+          esac
           PACKAGE_DIR="packages/$PACKAGE"
           echo "package_dir=$PACKAGE_DIR" >> "$GITHUB_OUTPUT"
           echo "package_name=$(jq -r '.name' "$PACKAGE_DIR/package.json")" >> "$GITHUB_OUTPUT"
@@ -54,8 +57,21 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
 
-      - name: Verify bootstrap dependency
-        if: github.event.inputs.package == 'create-vincle'
+      - name: Install npm with trusted publishing support
+        run: npm install --global npm@11.20.0
+
+      - name: Verify first-publication credentials
+        env:
+          PACKAGE_NAME: ${{ steps.meta.outputs.package_name }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if ! npm view "$PACKAGE_NAME" name --json >/dev/null 2>&1 && [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::If this is the first publication of $PACKAGE_NAME, add the NPM_TOKEN Actions secret before dispatching the release."
+            exit 1
+          fi
+
+      - name: Verify core is published
+        if: github.event.inputs.package != 'core'
         run: |
           CORE_VERSION="$(jq -r '.version' packages/core/package.json)"
           npm view "@vincle/core@${CORE_VERSION}" version
@@ -66,6 +82,9 @@ jobs:
       # `--quiet` prints only the tarball name, which is published by name: a
       # `*.tgz` would publish whichever came first if the directory held another.
       - name: Publish to NPM
+        env:
+          # Needed only to bootstrap packages that do not yet exist on npm.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cd "${{ steps.meta.outputs.package_dir }}"
           TARBALL="$(bun pm pack --quiet | tail -n1)"
