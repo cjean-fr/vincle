@@ -145,6 +145,25 @@ merge into it (e.g. `hx-*` attributes, Turbo's `turbo-frame`).
   receives the config, before anything renders.
 - **Per-fragment recovery** is `@vincle/flow`'s `onError`, for streaming.
 
+## Debugging
+
+`VNode` is exported as a **type only** from the public API: the class is not
+reachable as a value from the package, so the tag is validated at `jsx()` only.
+For debugging, import it from the source file directly:
+
+```ts
+import { VNode } from "@vincle/core/src/jsx-runtime";
+
+// Log a rendered tree's structure
+console.log(JSON.stringify(node, null, 2));
+// { tag: "div", attrs: { class: "foo" }, children: [ /* ... */ ] }
+```
+
+`VNode` has three public fields: `tag` (the element name or a component
+function), `attrs` (a flat record of all attributes), and `children` (the raw
+children value). For deeper inspection, enable the Bun test debugger and step
+through `jsx()` calls.
+
 ## Test
 
 ```sh
