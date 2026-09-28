@@ -4,7 +4,8 @@ title: serve
 
 # serve
 
-Higher-level HTTP helper that builds a `Response` from a page function. Supports optional content negotiation (HTMX).
+Builds a `Response` from a page function, through `renderToStream`, with
+optional content negotiation (HTMX).
 
 ## Signature
 
@@ -28,10 +29,8 @@ function serve(
 | `adapter` | `StreamingAdapter`                                                                    | Adapter for encoding fragments       |
 | `opts`    | `FlowOptions & ResponseInit & { negotiate?: Negotiate; mode?: "full" \| "fragment" }` | Optional flow options, headers, mode |
 
-**Flow options are validated up front**: `signal`, `onError`, `defaultTimeout`
-and the adapter are checked before rendering, so a misconfiguration fails at
-the call with a message prefixed `[vincle/flow]` that names the option, the
-offending value, and the fix. See [Error handling](/api/core/error-handling).
+Options are validated at the call, before anything renders: see
+[Error handling](/api/core/error-handling).
 
 ## Usage
 
@@ -47,4 +46,73 @@ Bun.serve({
 });
 ```
 
-`serve` builds a `Response` from a page function with optional content negotiation (HTMX). It wraps `renderToStream` internally.
+### With HTMX negotiation
+
+```tsx
+import { serve, negotiateHtmx } from "@vincle/flow/http";
+import { HtmxAdapter } from "@vincle/flow/adapters";
+
+Bun.serve({
+  port: 3000,
+  fetch(req) {
+    return serve(req, () => <Page />, HtmxAdapter, {
+      negotiate: negotiateHtmx,
+    });
+  },
+});
+```
+
+HTMX sends `HX-Target` to indicate which fragment a request expects. The negotiator extracts it and sets `Vary: HX-Target` so shared caches never serve a fragment response to a full-page navigation.
+
+### With custom negotiation
+
+Write your own negotiator for any client library that uses custom headers:
+
+```tsx
+import type { Negotiate } from "@vincle/flow";
+
+const negotiateMyLib: Negotiate = (req) => {
+  const fragment = req.headers.get("X-Fragment-Id") ?? undefined;
+  return {
+    headers: { Vary: "X-Fragment-Id" },
+    target: fragment,
+  };
+};
+```
+
+The `Vary` header is **unioned** with existing `Vary` values (not overwritten), so multiple negotiators or manual headers never corrupt shared-cache keys.
+
+### With custom error handler
+
+```tsx
+serve(req, () => <Page />, NativeAdapter, {
+  onError: (error, { id, kind }) => {
+    console.error(`Fragment ${id} failed:`, error);
+    return <p>Unavailable</p>;
+  },
+});
+```
+
+### With headers
+
+```tsx
+serve(req, () => <Page />, NativeAdapter, {
+  headers: { "X-Custom": "value" },
+  status: 200,
+});
+```
+
+### Options
+
+| Option           | Type                                   | Default  | Description                       |
+| ---------------- | -------------------------------------- | -------- | --------------------------------- |
+| `signal`         | `AbortSignal`                          | N/A      | Abort all pending renders         |
+| `onError`        | `(error, info) => JSX.Element \| void` | N/A      | Per-fragment error handler        |
+| `defaultTimeout` | `number`                               | N/A      | Per-fragment timeout (ms)         |
+| `negotiate`      | `(req: Request) => Negotiation`        | N/A      | Extract per-request hints         |
+| `mode`           | `"full" \| "fragment"`                 | `"full"` | Render full page or fragment-only |
+| `headers`        | `HeadersInit`                          | N/A      | Additional response headers       |
+| `status`         | `number`                               | `200`    | Response status code              |
+| `statusText`     | `string`                               | N/A      | Response status text              |
+
+The response body is a stream: the shell is flushed immediately, the browser starts parsing HTML while fragments are still rendering. The `content-type` header is set to `text/html; charset=utf-8` automatically.
