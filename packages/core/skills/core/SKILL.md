@@ -271,25 +271,38 @@ TypeScript refuses it before the renderer ever sees it.
 
 Vincle components can render different HTML tags based on props. The `as` prop pattern lets one component switch between elements — for example a `<Button>` that renders as `<a>` when given `as="a" href="/..."`.
 
+<!-- skip-typecheck: usage examples with multiple JSX roots -->
+
 ```tsx
-function Button({ as = "button", href, children, ...rest }) {
+function Button({
+  as = "button",
+  href,
+  children,
+  ...rest
+}: {
+  as?: "button" | "a";
+  href?: string;
+  children?: React.ReactNode;
+}) {
   const Tag = as;
   if (Tag === "a") {
     return (
-      <a href={href} {...rest} onClick={rest.onClick}>
+      <a href={href} {...rest}>
         {children}
       </a>
     );
   }
   return <button {...rest}>{children}</button>;
 }
+```
 
-// Usage:
+Usage:
+
+<!-- skip-typecheck: usage examples, not a runnable block -->
+
+```tsx
 <Button as="a" href="/dashboard">Dashboard</Button>
-// => <a href="/dashboard">Dashboard</a>
-
 <Button onClick="alert('hi')">Submit</Button>
-// => <button>Submit</button>
 ```
 
 **Best practices:**
