@@ -510,6 +510,31 @@ const asString = await renderToString(<div style={untrusted} />);
    syntax whether a value is trusted; that call is yours, which is why `raw(`
    is deliberately greppable.
 
+## Auditing `raw()` call sites
+
+Because `raw()` is the only escape hatch, every call site is a trust boundary
+that an audit must cover. The function name is stable and grepable:
+
+```bash
+# All raw() and rawUrl() call sites across the project
+grep -rn 'raw(' --include='*.tsx' --include='*.ts' src/
+grep -rn 'rawUrl(' --include='*.tsx' --include='*.ts' src/
+```
+
+Two distinct types carry two different promises:
+
+| Function   | In content                 | In attribute                         | Grep target |
+| ---------- | -------------------------- | ------------------------------------ | ----------- |
+| `raw()`    | Emitted as verbatim markup | Escaped as a value, trust for scheme | `raw(`      |
+| `rawUrl()` | N/A (type error)           | Trust for scheme only, still escaped | `rawUrl(`   |
+
+A `RawString` is **markup** — it bypasses escaping entirely. A `RawUrl` is a
+**URL** — it bypasses only the scheme filter. The distinction is enforced at
+both the type level (`RawString` and `RawUrl` are nominally distinct) and
+runtime (`instanceof` checks treat them differently). An audit should list
+every `raw()` call and verify the value originates from a trusted source
+(sanitizer output, template engine, hardcoded markup), never from user input.
+
 ## Invariants
 
 Each invariant is enforced by property-based (fuzz) or unit tests:
