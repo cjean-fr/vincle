@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsx, jsxEscape, jsxTemplate } from "./jsx-runtime.js";
-import { renderToString } from "./render.js";
-import { Scope } from "./scope.js";
+import { jsx, jsxEscape, jsxTemplate } from "../src/jsx-runtime.js";
+import { renderToString } from "../src/render.js";
+import { Scope } from "../src/scope.js";
 
 /**
  * Components execute in document order.

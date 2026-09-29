@@ -19,9 +19,9 @@ export default {
   commandRunner: {
     command: [
       "bun test",
-      "src/path-equivalence.test.ts",
-      "src/precompile-equivalence.test.ts",
-      "src/attr-equivalence.test.ts",
+      "tests/path-equivalence.test.ts",
+      "tests/precompile-equivalence.test.ts",
+      "tests/attr-equivalence.test.ts",
     ].join(" "),
   },
   mutate: [

@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import { jsx } from "./jsx-runtime.js";
-import { Scope } from "./scope.js";
+import { jsx } from "../src/jsx-runtime.js";
+import { Scope } from "../src/scope.js";
 
 /**
  * A code is only worth having if every error carries one, and a behavioural test

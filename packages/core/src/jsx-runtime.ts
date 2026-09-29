@@ -144,7 +144,21 @@ export function jsxEscapeDeferred(
 function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
   let out = "";
   for (let i = 0; i < arr.length; i++) {
-    const part = jsxEscape(arr[i]);
+    const value = arr[i];
+    // Array holes need the text, not one short-lived RawString per primitive.
+    if (typeof value === "string") {
+      out += escapeContent(value);
+      continue;
+    }
+    if (value instanceof RawString) {
+      out += value.value;
+      continue;
+    }
+    if (value === null || (typeof value !== "object" && typeof value !== "function")) {
+      out += valueToText(value);
+      continue;
+    }
+    const part = jsxEscape(value);
     if (part instanceof Promise) {
       return escapeArrayFrom(out, part.then(renderEscaped), arr, i + 1);
     }

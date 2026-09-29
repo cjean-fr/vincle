@@ -9,9 +9,8 @@ import {
   renderLeaf,
   valueToText,
 } from "./escape.js";
-import { providerMarker, renderProvider, type Context } from "./provider.js";
 import { isVoidElement, serializeElement, serializeVoidElement } from "./serialize.js";
-import { RawString, VNode } from "./types.js";
+import { providerMarker, RawString, VNode, type ProvideFn } from "./types.js";
 import { TemplateNode } from "./types.js";
 
 /**
@@ -79,9 +78,9 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     // ── Component ──
     if (typeof vnode.tag === "function") {
       const comp = vnode.tag;
-      const context = (comp as unknown as { [providerMarker]?: Context<unknown> })[providerMarker];
-      if (context) {
-        return renderProvider(context, vnode.attrs["value"], () => renderNode(vnode.children));
+      const provide = (comp as unknown as { [providerMarker]?: ProvideFn })[providerMarker];
+      if (provide) {
+        return provide(vnode.attrs["value"], () => renderNode(vnode.children));
       }
       let result: unknown;
       try {
@@ -285,11 +284,9 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
     // the problem.
     if (typeof child.tag === "string") return renderNode(child);
     const comp = child.tag as (props: Record<string, unknown>) => unknown;
-    const context = (comp as unknown as { [providerMarker]?: Context<unknown> })[providerMarker];
-    if (context) {
-      return renderProvider(context, child.attrs["value"], () =>
-        renderRawtextChild(child.children, rawtextTag),
-      );
+    const provide = (comp as unknown as { [providerMarker]?: ProvideFn })[providerMarker];
+    if (provide) {
+      return provide(child.attrs["value"], () => renderRawtextChild(child.children, rawtextTag));
     }
     let result: unknown;
     try {

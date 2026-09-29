@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsxEscape, jsxTemplate, jsxTemplateDeferred, jsx, Fragment } from "./jsx-runtime.js";
-import { renderToString } from "./render.js";
-import { raw, RawString, VNode } from "./types.js";
+import { jsxEscape, jsxTemplate, jsxTemplateDeferred, jsx, Fragment } from "../src/jsx-runtime.js";
+import { renderToString } from "../src/render.js";
+import { raw, RawString, VNode } from "../src/types.js";
 
 /**
  * Path-equivalence fuzzer for the **third** renderer.
