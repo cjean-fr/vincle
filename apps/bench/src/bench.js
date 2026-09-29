@@ -288,6 +288,20 @@ function runtimeList() {
   return jsx("ul", { class: "list", children: rows });
 }
 
+// Primitive array holes are distinct from rows of pre-rendered RawStrings.
+const ARRAY_TEMPLATE = ["<div>", "</div>"];
+const arrayFixtures = {
+  "array-small": Array.from({ length: 16 }, (_, i) => `Item ${i}: a & b < c`),
+  "array-large": Array.from({ length: 1000 }, (_, i) => `Item ${i}: a & b < c`),
+  "array-mixed": Array.from({ length: 200 }, (_, i) => [
+    `Item ${i}: a & b < c`,
+    i,
+    null,
+    false,
+    Vincle.raw("<b>trusted</b>"),
+  ]).flat(),
+};
+
 // Measured cases
 //
 // The short key is what `stats.js` aggregates and what a baseline is indexed on:
@@ -303,6 +317,9 @@ const CASES = {
   "realworld-precompile": `realworld-precompile: full page, ${PURCHASES.length} purchases, tree walk vs the real precompile transform (vincle only)`,
   "provider-static": "provider-static: root Provider, mostly literal markup",
   "provider-translations": "provider-translations: root Provider, 100 readers",
+  "array-small": "array-small: 16 primitive text values",
+  "array-large": "array-large: 1000 primitive text values",
+  "array-mixed": "array-mixed: 1000 text, numeric, empty and trusted values",
 };
 
 // Build the pages outside the bench so that only the render is measured
@@ -359,6 +376,12 @@ if (Locale) {
     ],
   );
 }
+for (const [kase, values] of Object.entries(arrayFixtures)) {
+  const runtime = () => renderToString(jsx("div", { children: values }));
+  const precompiled = () => renderToString(jsxTemplate(ARRAY_TEMPLATE, jsxEscape(values)));
+  if ((await runtime()) !== (await precompiled())) throw new Error(`${kase}: paths differ`);
+  BENCHES.push([kase, "@vincle/core", runtime], [kase, "@vincle/core (precompile)", precompiled]);
+}
 
 // Measurement budget
 //
@@ -406,7 +429,10 @@ if (Locale) {
 }
 
 const results = [];
+const requestedCases = process.env.VINCLE_BENCH_CASES?.split(",");
+if (requestedCases?.some((kase) => !(kase in CASES))) throw new Error("Unknown benchmark case");
 for (const [kase, name, fn] of BENCHES) {
+  if (requestedCases && !requestedCases.includes(kase)) continue;
   const { avg } = await measure(fn);
   results.push({ case: kase, name, opsPerSec: 1e9 / avg });
 }
@@ -427,6 +453,8 @@ if (Locale) {
 // apps/bench/README.md: the measurement protocol lives there.
 if (process.argv.includes("--json")) {
   console.log(JSON.stringify(results));
+  const { measurementEnvironment, METADATA_PREFIX } = await import("./measurement.js");
+  console.error(METADATA_PREFIX + JSON.stringify(measurementEnvironment(import.meta.url)));
 } else {
   const REF = "@vincle/core";
   const fmt = (n) => n.toLocaleString("en-US", { maximumFractionDigits: 0 }).padStart(14);

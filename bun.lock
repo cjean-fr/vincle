@@ -22,6 +22,7 @@
       "dependencies": {
         "@kitajs/html": "^5.0.0-next.1",
         "@vincle/core": "workspace:*",
+        "@vincle/flow": "workspace:*",
         "@vincle/precompile": "workspace:*",
       },
       "devDependencies": {

@@ -6,8 +6,12 @@
  *   node  --conditions=dist --cpu-prof --cpu-prof-name=v8.cpuprofile  src/profile.js vincle realworld
  *   bun   --conditions=dist --cpu-prof                                src/profile.js vincle realworld
  *
- * Args: <impl: vincle|kitajs> <case: realworld|text> [iterations]
+ * Args: <impl: vincle|kitajs> <case: realworld|stack> [iterations]
  */
+
+import { createElement as kita } from "@kitajs/html";
+import { renderToString } from "@vincle/core";
+import { jsx } from "@vincle/core/jsx-runtime";
 
 // `render` already returns final HTML. Wrapping it again would escape the
 // output and introduce an artificial 28% slowdown.
@@ -20,8 +24,43 @@ const N = Number(iters);
 
 const purchases = generatePurchases();
 
+function stack(create, depth) {
+  if (depth <= 0)
+    return create(
+      "div",
+      null,
+      create("span", { class: "foo", "data-testid": "stack" }, "deep stack"),
+    );
+  return create("div", null, stack(create, depth - 1));
+}
+
+function stackPage(create) {
+  const children = [];
+  for (let i = 0; i < 10; i++) children[i] = stack(create, 1000);
+  return create("div", null, children);
+}
+
+function stackVincle(depth) {
+  if (depth <= 0)
+    return jsx("div", {
+      children: jsx("span", { class: "foo", "data-testid": "stack", children: "deep stack" }),
+    });
+  return jsx("div", { children: stackVincle(depth - 1) });
+}
+
+function stackPageVincle() {
+  const children = [];
+  for (let i = 0; i < 10; i++) children[i] = stackVincle(1000);
+  return jsx("div", { children });
+}
+
 /** @returns {Promise<string> | string} */
 function once() {
+  if (kase === "stack") {
+    if (impl === "vincle") return renderToString(stackPageVincle());
+    if (impl === "kitajs") return stackPage(kita);
+    throw new Error(`unknown impl: ${impl}`);
+  }
   if (kase !== "realworld") throw new Error(`unknown case: ${kase}`);
   if (impl === "vincle") return realworldVincle(NAME, purchases);
   if (impl === "kitajs") return realworldKita(NAME, purchases);

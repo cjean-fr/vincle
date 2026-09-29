@@ -28,8 +28,7 @@
  * points `@vincle/core` at that build and every other dependency at the
  * workspace's. The bench files are copied, not symlinked: resolution follows
  * the real path of the importer, so a symlinked bench.js would still resolve
- * from the workspace. A/B therefore runs under the bun engine only: it spawns
- * `bun` on the sandbox.
+ * from the workspace. Each A/B run uses the selected engine on the sandbox.
  *
  * Used by `stats.js --ab` (pre-built package roots) and by `compare.ts` (git
  * revisions, built hermetically).
@@ -48,6 +47,13 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
+
+import {
+  buildIdentity,
+  environmentDifferences,
+  readMeasurement,
+  repositoryState,
+} from "./measurement.js";
 
 export const REF = "@vincle/core";
 
@@ -91,19 +97,24 @@ function setupSandbox(buildRoot) {
   return sandbox;
 }
 
-async function abMeasureOnce(benchPath) {
-  const proc = Bun.spawn(["bun", "--conditions=dist", benchPath, "--json"], {
+async function abMeasureOnce(benchPath, engine) {
+  const executable = engine === "node" ? (process.env.VINCLE_BENCH_NODE ?? engine) : engine;
+  const proc = Bun.spawn([executable, "--conditions=dist", benchPath, "--json"], {
     env: { ...process.env, NODE_ENV: "production" },
     stdout: "pipe",
     stderr: "pipe",
   });
-  const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
   if (exitCode !== 0) {
-    const stderr = await new Response(proc.stderr).text();
     throw new Error(`benchmark exited ${exitCode}\n${stderr}`);
   }
   const line = stdout.trimEnd().split("\n").at(-1);
-  return JSON.parse(line);
+  if (!line) throw new Error(`benchmark emitted no JSON under ${engine}`);
+  return readMeasurement(stdout, stderr);
 }
 
 /** rows → Map "case\0name" → opsPerSec. */
@@ -180,7 +191,7 @@ function bootstrapMedianCI(ps, nBoot = 4000, seed = 0x9e3779b9) {
  * competitor's name. `calibrate`: A/A pairs to measure the design's noise
  * floor. `save`: where to keep the paired ratios for re-analysis.
  */
-export async function abMain(aDir, bDir, control, runs, calibrate, save) {
+export async function abMain(aDir, bDir, control, runs, calibrate, save, engine = "bun", sources) {
   for (const [label, dir] of [
     ["A", aDir],
     ["B", bDir],
@@ -195,6 +206,16 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
 
   const sandboxA = setupSandbox(aDir);
   const sandboxB = setupSandbox(bDir);
+  const provenance =
+    save === undefined
+      ? undefined
+      : {
+          repository: repositoryState(import.meta.dir),
+          builds: {
+            a: { ...buildIdentity(aDir), source: sources?.a },
+            b: { ...buildIdentity(bDir), source: sources?.b },
+          },
+        };
   const calPairs = [];
   const abPairs = [];
   try {
@@ -203,16 +224,21 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
     // ramp: it would sample the ramp, not the steady state, and overstate
     // σ_pair for pairs that actually run in the steady state.
     console.log("warming up: 2 throwaway runs …");
-    await abMeasureOnce(resolve(sandboxA, "src", "bench.js"));
-    await abMeasureOnce(resolve(sandboxA, "src", "bench.js"));
+    await abMeasureOnce(resolve(sandboxA, "src", "bench.js"), engine);
+    await abMeasureOnce(resolve(sandboxA, "src", "bench.js"), engine);
 
     // One pair: two adjacent fresh processes. `aFirst` is the alternation.
     const runPair = async (sbA, sbB, aFirst) => {
-      const first = await abMeasureOnce(resolve(aFirst ? sbA : sbB, "src", "bench.js"));
-      const second = await abMeasureOnce(resolve(aFirst ? sbB : sbA, "src", "bench.js"));
-      const opsA = aFirst ? opsMap(first) : opsMap(second);
-      const opsB = aFirst ? opsMap(second) : opsMap(first);
-      return pairRatios(opsA, opsB, control);
+      const first = await abMeasureOnce(resolve(aFirst ? sbA : sbB, "src", "bench.js"), engine);
+      const second = await abMeasureOnce(resolve(aFirst ? sbB : sbA, "src", "bench.js"), engine);
+      const a = aFirst ? first : second;
+      const b = aFirst ? second : first;
+      const differences = environmentDifferences(a.environment, b.environment);
+      if (differences.length) throw new Error(`A/B environments differ: ${differences.join(", ")}`);
+      return {
+        ratios: pairRatios(opsMap(a.rows), opsMap(b.rows), control),
+        samples: { aFirst, a, b },
+      };
     };
 
     if (calibrate > 0) {
@@ -246,14 +272,14 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
     return e;
   };
   for (const pair of abPairs) {
-    for (const [key, { p, controlled }] of pair) {
+    for (const [key, { p, controlled }] of pair.ratios) {
       const e = entryFor(key);
       e.ps.push(p);
       e.controlled = e.controlled && controlled;
     }
   }
   for (const pair of calPairs) {
-    for (const [key, { p }] of pair) {
+    for (const [key, { p }] of pair.ratios) {
       const e = entries.find((x) => x.key === key);
       if (e) e.calPs.push(p);
     }
@@ -307,17 +333,25 @@ export async function abMain(aDir, bDir, control, runs, calibrate, save) {
   );
 
   if (save !== undefined) {
+    mkdirSync(dirname(resolve(save)), { recursive: true });
     writeFileSync(
       save,
       JSON.stringify(
         {
           recordedAt: new Date().toISOString(),
+          schemaVersion: 2,
           mode: "ab",
+          engine,
+          cases: process.env.VINCLE_BENCH_CASES?.split(","),
           a: aDir,
           b: bDir,
           control,
           runs,
           calibrate,
+          buildMode: sources?.buildMode,
+          ...provenance,
+          pairs: abPairs.map((pair) => pair.samples),
+          calibrationPairs: calPairs.map((pair) => pair.samples),
           entries: entries.map((e) => ({
             case: e.case,
             name: e.name,
