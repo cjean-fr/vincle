@@ -1,10 +1,10 @@
 import { raw } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
 
-import { NativeAdapter } from "./adapters/index.js";
-import { Style, Script } from "./components/index.js";
-import { renderToStream, renderToStatic, Defer } from "./index.js";
-import { collect } from "./test-utils.js";
+import { NativeAdapter } from "../src/adapters/index.js";
+import { Style, Script } from "../src/components/index.js";
+import { renderToStream, renderToStatic, Defer } from "../src/index.js";
+import { collect } from "../src/test-utils.js";
 
 describe("Style/Script: render pipeline integration", () => {
   it("deduplicates same name across shell", async () => {

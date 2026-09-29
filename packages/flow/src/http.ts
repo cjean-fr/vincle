@@ -69,6 +69,7 @@ export async function serve(
   const negotiation = opts?.negotiate?.(req) ?? {};
   const body = renderToStream(() => page(negotiation), adapter, {
     ...opts,
+    signal: opts?.signal ? AbortSignal.any([req.signal, opts.signal]) : req.signal,
     mode: opts?.mode ?? negotiation.mode,
   }).pipeThrough(new TextEncoderStream());
   const headers = mergeHeaders(

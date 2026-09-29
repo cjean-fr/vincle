@@ -87,24 +87,42 @@ export function pendingMarks(slots: SlotState, id: string): [string, string] {
  * Ids are unique per render, so each open mark has one close mark.
  */
 export async function renderFlow(node: Parameters<typeof renderToString>[0]): Promise<string> {
-  let html = await renderToString(node);
+  const html = await renderToString(node);
   // Checked before the scope is read: a render with no flow scope has no marks.
   if (!html.includes(MARK_PREFIX)) return html;
   const { slots } = Scope.get(Flow);
   const open = `<!--${slots.mark}:`;
+  const parts: string[] = [];
+  const closings: Array<{ start: number; end: number }> = [];
   let from = 0;
+  let start = html.indexOf(open, from);
   for (;;) {
-    const start = html.indexOf(open, from);
-    if (start === -1) return html;
+    const closing = closings.at(-1);
+    if (closing && (start === -1 || start >= closing.start)) {
+      parts.push(html.slice(from, closing.start));
+      from = closing.end;
+      closings.pop();
+      continue;
+    }
+    if (start === -1) break;
     const idEnd = html.indexOf("-->", start);
     const id = html.slice(start + open.length, idEnd);
     const close = `<!--/${slots.mark}:${id}-->`;
     const end = html.indexOf(close, idEnd);
-    if (end === -1) return html;
-    const inner = slots.names.has(id) ? "" : html.slice(idEnd + 3, end);
-    html = html.slice(0, start) + inner + html.slice(end + close.length);
-    from = start;
+    if (end === -1) break;
+    parts.push(html.slice(from, start));
+    if (slots.names.has(id)) {
+      from = end + close.length;
+    } else {
+      // Keep walking retained fallback content: it can contain another Defer.
+      closings.push({ start: end, end: end + close.length });
+      from = idEnd + 3;
+    }
+    start = html.indexOf(open, from);
   }
+  if (from === 0) return html;
+  parts.push(html.slice(from));
+  return parts.join("");
 }
 
 export function initFlow(config: FlowConfig): void {

@@ -66,16 +66,15 @@ export async function flushFragments(
   emit: (ev: FlowEvent) => Promise<void>,
   opts: FlowOptions = {},
 ): Promise<void> {
-  const processed = new Set<string>();
+  const cursor = ctx.fragments.cursor();
   const live: Promise<void>[] = [];
   const serial = serializeEmit(emit);
 
   while (!opts.signal?.aborted) {
-    const wave = ctx.fragments.outstanding(processed);
+    const wave = cursor.outstanding();
     if (wave.length > 0) {
       const oneShots: Promise<void>[] = [];
       for (const [id, entry] of wave) {
-        processed.add(id);
         const { isStreaming, done } = runFragment(id, entry, serial.emit, opts);
         (isStreaming ? live : oneShots).push(done);
       }
@@ -85,7 +84,7 @@ export async function flushFragments(
     if (live.length === 0) break;
     await settleOrThrow(live);
     live.length = 0;
-    if (!ctx.fragments.hasOutstanding(processed)) break;
+    if (!cursor.hasOutstanding()) break;
   }
   if (live.length > 0) await settleOrThrow(live);
   await serial.drain();

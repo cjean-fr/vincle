@@ -45,6 +45,11 @@ export type FragmentStore = {
   outstanding(processed: Set<string>): Array<[string, FragmentEntry]>;
   /** True when at least one entry is not in `processed`. */
   hasOutstanding(processed: Set<string>): boolean;
+  /** A per-drain cursor, valid until clear(): visits each registration once, including later generations. */
+  cursor(): {
+    outstanding(): Array<[string, FragmentEntry]>;
+    hasOutstanding(): boolean;
+  };
   /** Total registered entries (including processed ones). */
   readonly size: number;
   /** Purge all entries to eagerly release closures and references. */
@@ -105,6 +110,26 @@ export function createFragmentStore(config: FlowConfig): FragmentStore {
         if (!processed.has(id)) return true;
       }
       return false;
+    },
+    cursor() {
+      const entries = map.entries();
+      let visited = 0;
+      return {
+        outstanding() {
+          const wave: Array<[string, FragmentEntry]> = [];
+          // Stop at this generation's boundary. Calling next() past the end
+          // would finish the iterator before nested work registers new entries.
+          const boundary = map.size;
+          while (visited < boundary) {
+            const next = entries.next();
+            if (next.done) break;
+            wave.push(next.value);
+            visited++;
+          }
+          return wave;
+        },
+        hasOutstanding: () => visited < map.size,
+      };
     },
     get size() {
       return map.size;

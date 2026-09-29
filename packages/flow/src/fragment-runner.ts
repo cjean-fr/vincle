@@ -32,6 +32,21 @@ function classifyEntry(entry: FragmentEntry, signal: AbortSignal): Classificatio
 
 type Emit = (ev: FlowEvent) => Promise<void>;
 
+/** Stop waiting on user work when it ignores the signal; remove the listener on every exit. */
+async function abortable<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  let onAbort!: () => void;
+  const aborted = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason);
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([work, aborted]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
+}
+
 async function emitError(
   emit: Emit,
   onError: FlowOptions["onError"],
@@ -144,7 +159,7 @@ async function runValue(
 ): Promise<void> {
   let html: string;
   try {
-    html = await renderFlow(value);
+    html = await abortable(renderFlow(value), signal);
   } catch (renderError) {
     await reportOrThrow(emit, onError, id, "fragment", renderError);
     return;
@@ -177,28 +192,28 @@ async function runStream(
   signal: AbortSignal,
 ): Promise<void> {
   const it = iterable[Symbol.asyncIterator]();
-  const aborted = new Promise<IteratorResult<JSX.Element | string>>((resolve) => {
-    const onAbort = () => resolve({ done: true, value: undefined });
-    if (signal.aborted) onAbort();
-    else signal.addEventListener("abort", onAbort, { once: true });
-  });
 
   // `fatal`: true for a failed emit, false for an iteration/render problem,
   // only the former propagates, the latter routes to emitError.
   let fatal = false;
+  let completed = false;
 
   try {
     while (true) {
+      if (signal.aborted) break;
       const step = Promise.resolve(it.next());
-      step.catch(() => {});
-      const r = await Promise.race([step, aborted]);
-      if (r.done) break;
+      const r = await abortable(step, signal);
+      if (r.done) {
+        completed = true;
+        break;
+      }
 
       let raw: string;
       try {
-        raw = await renderFlow(r.value);
+        raw = await abortable(renderFlow(r.value), signal);
       } catch (renderError) {
         await reportOrThrow(emit, onError, id, "stream", renderError);
+        if (signal.aborted) break;
         continue;
       }
 
@@ -214,6 +229,13 @@ async function runStream(
     if (fatal) throw error;
     await reportOrThrow(emit, onError, id, "stream", error);
   } finally {
-    if (signal.aborted) await it.return?.(undefined).catch(() => {});
+    if (!completed) {
+      // A generator may queue return() behind a next() that never settles.
+      // Request cleanup without letting uncooperative user work block cancellation.
+      try {
+        const closing = Promise.resolve(it.return?.(undefined)).catch(() => {});
+        if (!signal.aborted) await closing;
+      } catch {}
+    }
   }
 }
