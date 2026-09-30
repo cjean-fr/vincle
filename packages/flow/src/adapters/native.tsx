@@ -60,7 +60,7 @@ export const WebPlatformAdapter = createAdapter({
 const POLYFILL_MERGES = ["replace", "append", "prepend", "before", "after"] as const;
 
 /**
- * Decorate any adapter with the ~550 B inline polyfill for the WICG
+ * Decorate any adapter with the inline polyfill for the WICG
  * Declarative Partial Updates API. The polyfill is injected into `<head>`
  * only when fragments are present (`ctx.fragments.size > 0`).
  *
@@ -88,5 +88,5 @@ export function withPolyfill<T extends Adapter>(
   };
 }
 
-/** Default Native adapter: WICG format + inline polyfill (~550 B). */
+/** Default Native adapter: WICG format + inline polyfill. */
 export const NativeAdapter = withPolyfill(WebPlatformAdapter);

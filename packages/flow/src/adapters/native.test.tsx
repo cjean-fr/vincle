@@ -121,7 +121,10 @@ describe("merge capabilities: the pure spec and the polyfill diverge", () => {
 
   it("the registry refuses a merge the pure spec can't apply", () => {
     expect(() =>
-      storeFor(WebPlatformAdapter).register("x", { content: "c", merge: "append" }),
+      storeFor(WebPlatformAdapter).register("x", {
+        content: "c",
+        merge: "append",
+      }),
     ).toThrow(/merge="append" is not supported/);
   });
 
@@ -209,5 +212,72 @@ describe("native polyfill data-src URL gate", () => {
     ]) {
       expect(await runPolyfillWithSrc(src)).toEqual([]);
     }
+  });
+});
+
+/**
+ * The spec keeps a `<template for>` that matches no target in the DOM to
+ * signal the error; the polyfill removes a template only once it has applied.
+ */
+describe("native polyfill orphan templates", () => {
+  const runPolyfill = (markers: { nodeValue: string }[], attrs: Record<string, string>) => {
+    let removed = false;
+    const template = {
+      nodeName: "TEMPLATE",
+      getAttribute: (key: string) => attrs[key] ?? null,
+      content: { cloneNode: () => ({}) },
+      innerHTML: "c",
+      remove: () => {
+        removed = true;
+      },
+    };
+    const nodes = markers.map((m) => ({
+      ...m,
+      nextSibling: null,
+      after: () => {},
+    }));
+    const g = globalThis as Record<string, unknown>;
+    const prev = {
+      document: g["document"],
+      MutationObserver: g["MutationObserver"],
+    };
+    g["document"] = {
+      body: null,
+      documentElement: {},
+      createNodeIterator: () => {
+        let i = 0;
+        return { nextNode: () => nodes[i++] ?? null };
+      },
+      getElementById: () => null,
+      querySelectorAll: () => [template],
+    };
+    g["MutationObserver"] = class {
+      observe() {}
+    };
+    try {
+      // eslint-disable-next-line no-eval -- the polyfill is intentionally eval'd into the sandboxed globals
+      eval(NATIVE_POLYFILL);
+    } finally {
+      g["document"] = prev.document;
+      g["MutationObserver"] = prev.MutationObserver;
+    }
+    return removed;
+  };
+
+  it("removes a template once its target is patched", () => {
+    expect(
+      runPolyfill([{ nodeValue: '?start name="x"' }, { nodeValue: "?end" }], {
+        for: "x",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps a template whose target does not exist", () => {
+    expect(
+      runPolyfill([{ nodeValue: '?start name="y"' }, { nodeValue: "?end" }], {
+        for: "x",
+      }),
+    ).toBe(false);
+    expect(runPolyfill([], { for: "x", "data-merge": "append" })).toBe(false);
   });
 });

@@ -26,7 +26,7 @@ const stream = renderToStream(
 Fragment streaming extension for [@vincle/core](https://github.com/cjean-fr/vincle/tree/main/packages/core).
 Renders deferred JSX fragments and delivers them to the browser as DOM patches.
 **Pick the adapter that matches your JS budget: from zero JS (WebPlatform/ESI)
-to ~550 B (Native) to full framework (Turbo/HTMX).**
+to an inline polyfill (Native) to full framework (Turbo/HTMX).**
 
 ## When to use
 
@@ -212,7 +212,7 @@ Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/
 
 The first five say **where** content goes; `"morph"` says **how** it is applied: the client diffs instead of swapping, so focus, scroll position and form state survive the update. It needs a diffing client: `TurboAdapter` (Turbo >= 8) and `HtmxAdapter` (htmx >= 4) only.
 
-An adapter that cannot express a merge **rejects it at registration** with a clear error (see capabilities). `NativeAdapter` supports the five positions but not `"morph"`: diffing is far past a 550 B budget. `WebPlatformAdapter` and `EsiAdapter` support `"replace"` only.
+An adapter that cannot express a merge **rejects it at registration** with a clear error (see capabilities). `NativeAdapter` supports the five positions but not `"morph"`: diffing is out of reach for an inline polyfill. `WebPlatformAdapter` and `EsiAdapter` support `"replace"` only.
 
 ## Adapters
 
@@ -228,7 +228,7 @@ Each adapter implements `Placeholder`/`Patch`/`Frame` (JSX), optional `transform
 
 - **`Patch`**: fragment delivered inline in the same HTTP response as the shell.
 - **`Frame`**: fragment served as a standalone file fetched by the client (SSG).
-- `NativeAdapter` injects a ~550 B polyfill for DOM patching. Pass `WebPlatformAdapter` for zero-JS output, or `EsiAdapter` for CDN-level composition without client JS. An adapter is **required**: `renderToStream` takes it as its second argument, and a `Defer` without one throws at registration.
+- `NativeAdapter` injects an inline polyfill for DOM patching. Pass `WebPlatformAdapter` for zero-JS output, or `EsiAdapter` for CDN-level composition without client JS. An adapter is **required**: `renderToStream` takes it as its second argument, and a `Defer` without one throws at registration.
 
 ### Capabilities
 
@@ -243,7 +243,7 @@ type AdapterCapabilities = {
 
 This is surfaced in the type system. `renderToStream` / `serve` require a streaming adapter, so **`EsiAdapter` is rejected at compile time** there: ESI composition happens at the CDN, via `renderToStatic` + `emitFragments`. An unsupported `merge` fails fast at registration.
 
-#### `NativeAdapter` (~550 B polyfill)
+#### `NativeAdapter` (inline polyfill)
 
 Uses the [Declarative Partial Updates](https://developer.chrome.com/blog/declarative-partial-updates) API plus a minimal polyfill injected via `transformShell`. All five merge positions (not `"morph"`), no external client library, works in modern browsers.
 
