@@ -33,6 +33,13 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      - name: Validate release commit
+        run: |
+          bun run lint
+          bunx oxfmt --check .
+          bun run check
+          bun run test
+
       # Republishing an existing version needs no guard here: npm refuses the
       # duplicate and the job fails there.
       - name: Locate Package

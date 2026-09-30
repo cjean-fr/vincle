@@ -2,8 +2,8 @@
 
 The [Manual Release (Bun)](.github/workflows/release.yml) workflow publishes one
 package at a time from the selected Git ref. Check that CI is green for that ref
-before dispatching it. The five packages available in the workflow currently
-target `0.9.0`.
+before dispatching it. Each package publishes the version in its own
+`package.json`.
 
 ## First publication
 
