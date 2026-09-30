@@ -250,7 +250,6 @@ const BOOLEAN_ATTRIBUTES = new Set([
   "async",
   "autofocus",
   "autoplay",
-  "buffer",
   "checked",
   "controls",
   "declare",
@@ -273,7 +272,6 @@ const BOOLEAN_ATTRIBUTES = new Set([
   "required",
   "reversed",
   "selected",
-  "sanitize",
   "truespeed",
 ]);
 

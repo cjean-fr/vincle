@@ -4384,7 +4384,7 @@ export namespace JSX {
     summary: HTMLAttributes;
     sup: HTMLAttributes;
     table: TableHTMLAttributes;
-    template: TemplateHTMLAttributes;
+    template: HTMLAttributes;
     tbody: HTMLAttributes;
     td: TdHTMLAttributes;
     textarea: TextareaHTMLAttributes;
@@ -4462,9 +4462,6 @@ export namespace JSX {
     view: SVGProps;
   }
   // @generated:end
-
-  /** Extension point for template attributes supplied by integrations. */
-  export interface TemplateHTMLAttributes extends HTMLAttributes {}
 
   /**
    * Props every element accepts without them being attributes.
