@@ -1,5 +1,18 @@
 # @vincle/core
 
+> Write a function that returns JSX. Get back a string of HTML. That's it.
+
+```tsx
+import { renderToString } from "@vincle/core";
+
+function Greeting({ name }: { name: string }) {
+  return <h1>Hello, {name}!</h1>;
+}
+
+const html = await renderToString(<Greeting name="world" />);
+// → "<h1>Hello, world!</h1>"
+```
+
 The JSX → HTML engine has no dependencies and is under 100 KB to download.
 That includes the runtime and per-element attribute table for every HTML and SVG
 element, every CSS property. `csstype` alone, one of the two packages React
@@ -11,9 +24,15 @@ One renderer, one tree walk: `renderToString` for a document. Static subtrees
 are serialized to final HTML at `jsx()` time; anything dynamic stays a `VNode`
 for the walk.
 
+**What that means:** you write a function, return JSX, get HTML. TypeScript
+checks your props and attributes. Async data works out of the box. The output
+is escaped, URLs are filtered, and nothing ships to the browser. Send a response,
+write a static page, or email a template. No mental overhead of "server vs client
+component." Just JSX → HTML.
+
 ## Status
 
-Current package version: `0.9.0` (pre-1.0 API).
+Current package version: `0.9.1` (pre-1.0 API).
 
 ## API
 
@@ -53,6 +72,13 @@ those, …).
 Each JSX runtime re-exports the `JSX` namespace, because TypeScript resolves
 `JSX.*` from the module named in `jsxImportSource`.
 
+## Tests
+
+Unit tests for one source module live beside that module in `src/`. Tests that
+check several modules or package-wide contracts live in `tests/`. `bun test`
+runs both groups. The mutation suite runs the unit tests and the relevant
+cross-module tests.
+
 ## Guarantees
 
 These are the properties the tests exist to hold. They are worth stating because
@@ -62,16 +88,17 @@ each one was, at some point, quietly untrue.
   markup ran before you, so a document that reads mutated context does not depend
   on how long each sibling took. Overlapping I/O is available where the markup
   shows it: `<Defer>` / `<Slot>` in `@vincle/flow`. See
-  `src/execution-order.test.ts`.
+  `tests/execution-order.test.ts`.
 
 - **The static path and the walk emit the same bytes.** A static subtree serialized at
   `jsx()` time is byte-identical to the same subtree walked as a `VNode`: 1000
-  generated trees, `src/path-equivalence.test.ts`.
+  generated trees, `tests/path-equivalence.test.ts`.
 
 - **The precompile runtime and the VNode runtime agree.** `jsxEscape` /
   `jsxTemplate` are a third traversal of the same value taxonomy: 1000 generated
-  values, `src/precompile-equivalence.test.ts`. `jsxAttr` and `buildAttrs` remain
-  two attribute serializers pinned by a residual equivalence in `attrs.test.ts`.
+  values, `tests/precompile-equivalence.test.ts`. `jsxAttr` and
+  `buildAttrs` remain two attribute serializers pinned by a residual equivalence
+  in `src/attrs.test.ts`.
   The precompile surface is exactly `jsxTemplate` / `jsxAttr` / `jsxEscape`: the
   contract Deno defined and Preact and Hono also export, so the transform in
   `@vincle/precompile` emits nothing a compatible runtime lacks, and

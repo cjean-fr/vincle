@@ -20,9 +20,9 @@
 import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
-const PACKAGE_ROOT = import.meta.dir;
+const PACKAGE_ROOT = resolve(import.meta.dir, "..");
 const SKILL = join(PACKAGE_ROOT, "skills/core/SKILL.md");
 const OUT = join(PACKAGE_ROOT, "tmp/skill-check");
 

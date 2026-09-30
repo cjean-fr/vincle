@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsx, Fragment } from "./jsx-runtime.js";
-import { renderToString } from "./render.js";
-import { isVoidElement, voidChildrenMessage } from "./serialize.js";
-import { invalidTagMessage, isValidTag } from "./tag.js";
-import { VNode, raw } from "./types.js";
+import { jsx, Fragment } from "../src/jsx-runtime.js";
+import { renderToString } from "../src/render.js";
+import { isVoidElement, voidChildrenMessage } from "../src/serialize.js";
+import { invalidTagMessage, isValidTag } from "../src/tag.js";
+import { VNode, raw } from "../src/types.js";
 
 /**
  * Path-equivalence fuzzer: the structural guard for the hybrid model.

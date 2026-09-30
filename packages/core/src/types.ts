@@ -105,6 +105,21 @@ export class TemplateNode implements Promise<RawString> {
 }
 
 /**
+ * Key under which a component carries its own render: the tree walk calls it
+ * instead of the component. `createContext` sets it, so the walk never imports
+ * the provider module and a render without context ships no `AsyncLocalStorage`.
+ *
+ * @internal
+ */
+export const providerMarker = Symbol("vincle.provider");
+
+/** @internal */
+export type ProvideFn = (
+  value: unknown,
+  render: () => string | Promise<string>,
+) => string | Promise<string>;
+
+/**
  * Mark a string as trusted HTML: rendered as trusted output, unescaped. The only way to
  * bypass escaping, and deliberately greppable: audit `raw(` call sites to audit safety.
  */

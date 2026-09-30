@@ -287,6 +287,12 @@ describe("jsxEscape: synchronous collections", () => {
     expect(await value(["a & b", 1, null, undefined, false, true, 2n])).toBe("a &amp; b12");
   });
 
+  test("primitive array holes preserve numeric text and escape symbol descriptions", async () => {
+    expect(await value([NaN, Infinity, -Infinity, -0, Symbol("<&>"), 2n])).toBe(
+      "NaNInfinity-Infinity0Symbol(&lt;&amp;&gt;)2",
+    );
+  });
+
   test("nested arrays flatten", async () => {
     expect(await value([["a", ["b", ["c"]]], "d"])).toBe("abcd");
   });

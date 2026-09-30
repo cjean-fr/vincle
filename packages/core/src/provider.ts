@@ -1,7 +1,6 @@
-import type { Renderable } from "./types.js";
-
 import { resolveAsyncLocalStorage } from "./als.js";
 import { ERR_CONTEXT_CHILDREN, ERR_SCOPE_COLLISION, noAlsHint, vincleError } from "./errors.js";
+import { providerMarker, type ProvideFn, type Renderable } from "./types.js";
 
 interface Frame {
   readonly context: Context<unknown>;
@@ -87,7 +86,6 @@ export interface Context<T> extends ContextProvider<T> {
   readonly [defaultValueKey]: T;
 }
 
-export const providerMarker = Symbol("vincle.provider");
 /** The default, kept out of the public surface - React 19's context object does not expose it. */
 const defaultValueKey = Symbol("vincle.context.default");
 let store: Store | undefined;
@@ -145,7 +143,8 @@ export function createContext<T>(defaultValue: T): Context<T> {
   }
   const context = Provider as Context<T>;
   Object.assign(context, { Provider: context, Consumer });
-  Object.defineProperty(context, providerMarker, { value: context });
+  const provide: ProvideFn = (value, render) => renderProvider(context, value as T, render);
+  Object.defineProperty(context, providerMarker, { value: provide });
   Object.defineProperty(context, defaultValueKey, { value: defaultValue });
   return context;
 }
@@ -157,7 +156,7 @@ export function useContext<T>(context: Context<T>): T {
   return context[defaultValueKey];
 }
 
-export function renderProvider<T>(
+function renderProvider<T>(
   context: Context<T>,
   value: T,
   render: () => string | Promise<string>,
