@@ -17,6 +17,7 @@ function setOpen(open: boolean): void {
   if (open) previousFocus = document.activeElement;
   if (open) nav.setAttribute("data-open", "");
   else nav.removeAttribute("data-open");
+  nav.toggleAttribute("inert", !open && window.matchMedia("(max-width: 767px)").matches);
   backdrop?.toggleAttribute("data-open", open);
   toggle?.setAttribute("aria-expanded", String(open));
   toggle?.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
@@ -31,6 +32,16 @@ function setOpen(open: boolean): void {
     previousFocus = null;
   }
 }
+
+// The server renders the mobile navigation inert. On desktop it is visible
+// in the document flow and must participate in the tab order immediately.
+const desktop = window.matchMedia("(min-width: 768px)");
+const syncNavigationInert = () => {
+  const nav = document.querySelector<HTMLElement>(NAV_SELECTOR);
+  if (nav) nav.toggleAttribute("inert", !desktop.matches);
+};
+syncNavigationInert();
+desktop.addEventListener("change", syncNavigationInert);
 
 // --- Nav open/close click handler ---
 

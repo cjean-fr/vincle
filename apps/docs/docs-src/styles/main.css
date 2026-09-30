@@ -454,26 +454,40 @@ html {
     rotate 200ms var(--ease-in-out);
 }
 
-.docs-theme-toggle-sun {
+.docs-theme-toggle-icon {
   opacity: 0;
   scale: 0.75;
-  rotate: 90deg;
 }
 
-.docs-theme-toggle-moon {
-  opacity: 1;
-}
-
-.dark .docs-theme-toggle-sun {
+[data-theme="auto"] .docs-theme-toggle-auto,
+[data-theme="light"] .docs-theme-toggle-sun,
+[data-theme="dark"] .docs-theme-toggle-moon {
   opacity: 1;
   scale: 1;
-  rotate: 0deg;
 }
 
-.dark .docs-theme-toggle-moon {
-  opacity: 0;
-  scale: 0.75;
-  rotate: -90deg;
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] .docs-theme-toggle-sun {
+    opacity: 1;
+    scale: 1;
+  }
+  [data-theme="auto"] .docs-theme-toggle-auto,
+  [data-theme="auto"] .docs-theme-toggle-moon {
+    opacity: 0;
+    scale: 0.75;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] .docs-theme-toggle-moon {
+    opacity: 1;
+    scale: 1;
+  }
+  [data-theme="auto"] .docs-theme-toggle-auto,
+  [data-theme="auto"] .docs-theme-toggle-sun {
+    opacity: 0;
+    scale: 0.75;
+  }
 }
 
 .docs-search-results {
