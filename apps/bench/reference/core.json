@@ -1,0 +1,9 @@
+{
+  "commit": "75f2b00a2d07d4eac0dc04abfd8770b3332f3215",
+  "description": "Core source present before the saved benchmark of 21 September 2026. Rebuild with the current toolchain and compare in the same session; do not compare historical ops/s across environments.",
+  "cases": ["text", "stack"],
+  "build": "installed",
+  "runs": 24,
+  "calibrate": 6,
+  "control": "hono/jsx (toString)"
+}

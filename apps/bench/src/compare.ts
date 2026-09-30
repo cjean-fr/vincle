@@ -17,6 +17,9 @@
  * `bun install` and `bun run build`, the way CI builds them. What is measured
  * is what a clean checkout of that revision would publish, whatever the local
  * node_modules has drifted into.
+ * `--build installed` instead links the repository's installed build tools into
+ * each isolated source copy: both sides use the same compiler, without an install.
+ * The fixed-reference protocol selects this mode and records the tool versions.
  *
  * The verdict is the A/B crossover in ab.js: paired adjacent fresh processes,
  * the order alternating, each ratio taken inside the process against a
@@ -30,13 +33,16 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
 import { abMain } from "./ab.js";
+import { repositoryState } from "./measurement.js";
 
 // The two source folders the build of packages/core needs: the package, and
 // the shared tsconfig base its tsconfig.json extends (the only thing the
@@ -89,6 +95,8 @@ function parseArgs(argv: string[]) {
     calibrate: num("calibrate", 3),
     control: flags.get("control") ?? "all",
     save: flags.get("save"),
+    reference: flags.get("reference"),
+    build: flags.get("build") ?? "mini-ci",
   };
 }
 
@@ -131,7 +139,12 @@ function run(cmd: string, args: string[], cwd: string): Promise<void> {
  * Copy the side's sources without vendor into a throwaway mini workspace and
  * build them the way CI does. Returns the built package root.
  */
-async function prepareSide(side: Side, root: string, temps: string[]): Promise<string> {
+async function prepareSide(
+  side: Side,
+  root: string,
+  temps: string[],
+  build: string,
+): Promise<string> {
   const tmp = mkdtempSync(`${tmpdir()}/vincle-cmp-`);
   temps.push(tmp);
   const pkgDir = resolve(tmp, "packages/core");
@@ -177,7 +190,14 @@ async function prepareSide(side: Side, root: string, temps: string[]): Promise<s
   const bunfig = resolve(root, "bunfig.toml");
   if (existsSync(bunfig)) copyFileSync(bunfig, resolve(tmp, "bunfig.toml"));
 
-  await run("bun", ["install"], tmp);
+  if (build === "installed") {
+    symlinkSync(
+      realpathSync(resolve(root, "packages/core/node_modules")),
+      resolve(pkgDir, "node_modules"),
+    );
+  } else {
+    await run("bun", ["install"], tmp);
+  }
   await run("bun", ["run", "build"], pkgDir);
   if (!existsSync(resolve(pkgDir, "dist/index.mjs")))
     throw new Error(`${tmp}: the build produced no dist/index.mjs`);
@@ -193,12 +213,33 @@ if (!Number.isInteger(opts.runs) || opts.runs < 2) {
 }
 if (opts.positional.length > 2) {
   console.error(
-    "usage: bun run compare [<a>] [<b>] [--runs n] [--calibrate n] [--control x] [--save f]",
+    "usage: bun run compare [<a>] [<b>] [--reference file] [--build mini-ci|installed] [--runs n] [--calibrate n] [--control x] [--save f]",
   );
   process.exit(1);
 }
 
 const root = git(["rev-parse", "--show-toplevel"]);
+if (opts.reference) {
+  const reference = JSON.parse(readFileSync(resolve(opts.reference), "utf8"));
+  opts.a ??= reference.commit;
+  if (!process.argv.includes("--runs")) opts.runs = reference.runs;
+  if (!process.argv.includes("--calibrate")) opts.calibrate = reference.calibrate;
+  if (!process.argv.includes("--control")) opts.control = reference.control;
+  if (!process.argv.includes("--build")) opts.build = reference.build ?? opts.build;
+  process.env["VINCLE_BENCH_CASES"] ??= reference.cases.join(",");
+  if (
+    !Number.isInteger(opts.runs) ||
+    opts.runs < 2 ||
+    !Number.isInteger(opts.calibrate) ||
+    opts.calibrate < 0
+  ) {
+    throw new Error("Invalid run counts in reference");
+  }
+}
+if (!["installed", "mini-ci"].includes(opts.build))
+  throw new Error("--build must be installed or mini-ci");
+if (!Number.isInteger(opts.calibrate) || opts.calibrate < 0)
+  throw new Error("--calibrate must be an integer ≥ 0");
 const sideA = resolveSide(opts.a, "a", "commit");
 const sideB = resolveSide(opts.b, "b", "workdir");
 
@@ -218,14 +259,19 @@ if (sameTree) {
 }
 
 console.log(`\ncomparing\n  A: ${describe(sideA, root)}\n  B: ${describe(sideB, root)}\n`);
+if (opts.reference)
+  console.log("A is the reference and B the candidate: A/B > 1 means the candidate is slower.\n");
 
 const temps: string[] = [];
+const workingState = repositoryState(root);
+const sourceA = sideA.kind === "workdir" ? { ...sideA, ...workingState } : sideA;
+const sourceB = sideB.kind === "workdir" ? { ...sideB, ...workingState } : sideB;
 let pkgA: string, pkgB: string;
 try {
-  console.log(`building A: mini CI (copy without vendor, bun install, bun run build) …`);
-  pkgA = await prepareSide(sideA, root, temps);
-  console.log(`\nbuilding B: mini CI …`);
-  pkgB = await prepareSide(sideB, root, temps);
+  console.log(`building A: isolated sources, ${opts.build} toolchain …`);
+  pkgA = await prepareSide(sideA, root, temps, opts.build);
+  console.log(`\nbuilding B: isolated sources, ${opts.build} toolchain …`);
+  pkgB = await prepareSide(sideB, root, temps, opts.build);
 } catch (e) {
   console.error(
     `\nbuild failed; the temp dirs are kept for inspection:\n  ${temps.join("\n  ")}\n`,
@@ -235,7 +281,11 @@ try {
 }
 
 try {
-  await abMain(pkgA, pkgB, opts.control, opts.runs, opts.calibrate, opts.save);
+  await abMain(pkgA, pkgB, opts.control, opts.runs, opts.calibrate, opts.save, "bun", {
+    a: sourceA,
+    b: sourceB,
+    buildMode: opts.build,
+  });
 } finally {
   for (const t of temps) rmSync(t, { recursive: true, force: true });
 }

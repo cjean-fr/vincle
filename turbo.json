@@ -41,6 +41,11 @@
     "conformance": {
       "dependsOn": ["build"],
       "outputs": []
+    },
+    "bench:flow": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": []
     }
   }
 }

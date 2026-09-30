@@ -17,17 +17,19 @@
  * revisions without building them by hand, `compare.ts` does that part.
  */
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 import { abMain, REF } from "./ab.js";
+import {
+  comparisonDelta,
+  environmentDifferences,
+  readMeasurement,
+  repositoryState,
+} from "./measurement.js";
 
 /** Below this many standard errors of the difference, a delta is not a finding. */
 const SIGNIFICANCE_SIGMAS = 3;
-
-/** Standard error of the difference: the test is on the mean, hence `sd/√n`. */
-function stdErrOfDiff(a, b) {
-  return Math.sqrt(a.sd ** 2 / Math.max(1, a.n) + b.sd ** 2 / Math.max(1, b.n));
-}
 
 function parseArgs(argv) {
   const flag = (name) => {
@@ -40,6 +42,7 @@ function parseArgs(argv) {
     save: flag("save"),
     against: flag("against"),
     engines: flag("engines") ?? "bun",
+    metric: flag("metric") ?? "ratios",
     // `--ab A B`: two package roots to pit against each other.
     ab: abAt === -1 ? undefined : [argv[abAt + 1], argv[abAt + 2]],
     // What divides the machine out of each pair: `all` (geometric mean of the
@@ -60,7 +63,7 @@ function parseArgs(argv) {
  */
 const ENGINES = {
   bun: (file) => ["bun", "--conditions=dist", "run", file, "--json"],
-  node: (file) => ["node", "--conditions=dist", file, "--json"],
+  node: (file) => [process.env.VINCLE_BENCH_NODE ?? "node", "--conditions=dist", file, "--json"],
 };
 
 // Ratios measured in the same process: that is what survives a change of
@@ -72,14 +75,16 @@ async function measureOnce(engine) {
     stdout: "pipe",
     stderr: "pipe",
   });
-  const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
   if (exitCode !== 0) {
-    const stderr = await new Response(proc.stderr).text();
     throw new Error(`benchmark exited ${exitCode} under ${engine}\n${stderr}`);
   }
   // The JSON is the last line; the runtime may print before it.
-  const line = stdout.trimEnd().split("\n").at(-1);
-  return JSON.parse(line);
+  return readMeasurement(stdout, stderr);
 }
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -166,7 +171,14 @@ function printTable(stats) {
   }
 }
 
-function printComparison(now, before) {
+function printComparison(now, before, metric) {
+  const ratios = metric === "ratios";
+  const format = ratios ? (value) => `×${value.toFixed(3)}` : num;
+  console.log(
+    ratios
+      ? "\nComparing Vincle/entry ratios (higher is better)."
+      : "\nComparing absolute throughput.",
+  );
   console.log(
     `\n${"case".padEnd(11)}${"implementation".padEnd(31)}${"before".padStart(11)}` +
       `${"after".padStart(11)}${"delta".padStart(9)}${"sigmas".padStart(8)}  verdict`,
@@ -174,24 +186,29 @@ function printComparison(now, before) {
   console.log("─".repeat(92));
   let currentEngine = "";
   for (const [key, s] of now) {
+    if (ratios && s.name === REF) continue;
     if (s.engine !== currentEngine) {
       console.log(`${currentEngine === "" ? "" : "\n"}── ${s.engine} ──`);
       currentEngine = s.engine;
     }
     const b = before.get(key);
     if (b === undefined) {
+      const value = ratios ? s.ratio : s.mean;
       console.log(
-        `${s.case.padEnd(11)}${s.name.padEnd(31)}${"-".padStart(11)}${num(s.mean).padStart(11)}${"".padStart(17)}  new case`,
+        `${s.case.padEnd(11)}${s.name.padEnd(31)}${"-".padStart(11)}${(value === undefined ? "-" : format(value)).padStart(11)}${"".padStart(17)}  new case`,
       );
       continue;
     }
-    const se = stdErrOfDiff(s, b);
-    const sigmas = se === 0 ? Infinity : Math.abs(s.mean - b.mean) / se;
-    const delta = ((s.mean - b.mean) / b.mean) * 100;
+    const comparison = comparisonDelta(s, b, metric);
+    if (!comparison) {
+      console.log(`${s.case.padEnd(11)}${s.name.padEnd(31)}  no comparable ${metric} in baseline`);
+      continue;
+    }
+    const { delta, sigmas } = comparison;
     const verdict =
-      sigmas < SIGNIFICANCE_SIGMAS ? "noise, not a finding" : delta > 0 ? "faster" : "SLOWER";
+      sigmas < SIGNIFICANCE_SIGMAS ? "noise, not a finding" : delta > 0 ? "improved" : "REGRESSED";
     console.log(
-      `${s.case.padEnd(11)}${s.name.padEnd(31)}${num(b.mean).padStart(11)}${num(s.mean).padStart(11)}` +
+      `${s.case.padEnd(11)}${s.name.padEnd(31)}${format(comparison.before).padStart(11)}${format(comparison.after).padStart(11)}` +
         `${(delta >= 0 ? "+" : "") + delta.toFixed(1)}%`.padStart(9) +
         `${sigmas === Infinity ? "∞" : sigmas.toFixed(1)}`.padStart(8) +
         `  ${verdict}`,
@@ -206,8 +223,16 @@ function printComparison(now, before) {
 // ── main ────────────────────────────────────────────────────────────────────
 
 const opts = parseArgs(process.argv.slice(2));
+if (!["ratios", "throughput"].includes(opts.metric)) {
+  console.error("--metric must be ratios or throughput");
+  process.exit(1);
+}
 if (!Number.isInteger(opts.runs) || opts.runs < 2) {
   console.error("--runs must be an integer ≥ 2; a single run cannot yield a standard deviation.");
+  process.exit(1);
+}
+if (!Number.isInteger(opts.calibrate) || opts.calibrate < 0) {
+  console.error("--calibrate must be an integer ≥ 0");
   process.exit(1);
 }
 
@@ -222,21 +247,23 @@ if (opts.ab !== undefined) {
     console.error("--ab takes two package roots: --ab <A> <B>");
     process.exit(1);
   }
-  if (opts.engines !== "bun") {
-    console.error("--ab runs under the bun engine only: it spawns a bun process per run");
-    process.exit(1);
+  for (const engine of engines) {
+    console.log(`\nA/B engine: ${engine}`);
+    const save = opts.save && engines.length > 1 ? `${opts.save}.${engine}.json` : opts.save;
+    await abMain(opts.ab[0], opts.ab[1], opts.control, opts.runs, opts.calibrate, save, engine);
   }
-  await abMain(opts.ab[0], opts.ab[1], opts.control, opts.runs, opts.calibrate, opts.save);
   process.exit(0);
 }
 
 let before;
+let savedBaseline;
 if (opts.against !== undefined) {
   if (!existsSync(opts.against)) {
     console.error(`baseline not found: ${opts.against}`);
     process.exit(1);
   }
   const saved = JSON.parse(readFileSync(opts.against, "utf8"));
+  savedBaseline = saved;
   // A baseline recorded before `--engines` existed carries no engine and was bun.
   before = new Map(saved.entries.map((e) => [`${e.engine ?? "bun"}\0${e.case}\0${e.name}`, e]));
   console.log(`baseline: ${opts.against} (${saved.runs} runs, ${saved.recordedAt})`);
@@ -246,25 +273,57 @@ console.log(`measuring: ${opts.runs} runs in fresh processes, under ${engines.jo
 const runs = [];
 for (const engine of engines) {
   for (let i = 0; i < opts.runs; i++) {
-    runs.push({ engine, rows: await measureOnce(engine) });
+    runs.push({ engine, ...(await measureOnce(engine)) });
     process.stdout.write(`\r  ${engine} ${i + 1}/${opts.runs}`);
   }
 }
 process.stdout.write("\r".padEnd(20) + "\r");
 
 const stats = aggregate(runs);
+const environments = Object.fromEntries(
+  engines.map((engine) => [engine, runs.find((run) => run.engine === engine)?.environment]),
+);
+let incompatible = false;
+if (savedBaseline) {
+  for (const engine of engines) {
+    const oldEnvironment = savedBaseline.environments?.[engine];
+    if (!oldEnvironment || !environments[engine]) {
+      console.error(
+        `${engine}: baseline environment is unknown; cross-session differences cannot establish a code regression.`,
+      );
+      continue;
+    }
+    const differences = environmentDifferences(environments[engine], oldEnvironment);
+    if (differences.length) {
+      console.error(
+        `${engine}: incompatible baseline (${differences.join(", ")}); re-record it with the same environment and harness.`,
+      );
+      incompatible = true;
+    }
+  }
+}
 
-if (before === undefined) printTable(stats);
-else printComparison(stats, before);
+if (before === undefined || incompatible) printTable(stats);
+else printComparison(stats, before, opts.metric);
 
 if (opts.save !== undefined) {
+  mkdirSync(dirname(opts.save), { recursive: true });
   writeFileSync(
     opts.save,
     JSON.stringify(
-      { recordedAt: new Date().toISOString(), runs: opts.runs, entries: [...stats.values()] },
+      {
+        schemaVersion: 2,
+        recordedAt: new Date().toISOString(),
+        runs: opts.runs,
+        repository: repositoryState(import.meta.dir),
+        environments,
+        entries: [...stats.values()],
+        samples: runs,
+      },
       null,
       2,
     ),
   );
   console.log(`\nsaved: ${opts.save}`);
 }
+if (incompatible) process.exit(1);

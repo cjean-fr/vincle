@@ -10,11 +10,14 @@
     "format": "oxfmt",
     "gen:precompile": "NODE_ENV=production bun src/gen-precompile.mjs",
     "bench:stats": "bun --conditions=dist run src/stats.js",
-    "test": "NODE_ENV=production bun test"
+    "test": "NODE_ENV=production bun test",
+    "bench:flow": "NODE_ENV=production bun --conditions=dist src/flow.js",
+    "bench:reference": "bun run src/compare.ts --reference reference/core.json"
   },
   "dependencies": {
     "@kitajs/html": "^5.0.0-next.1",
     "@vincle/core": "workspace:*",
+    "@vincle/flow": "workspace:*",
     "@vincle/precompile": "workspace:*"
   },
   "devDependencies": {

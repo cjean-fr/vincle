@@ -40,7 +40,8 @@ bun run bench:stats -- --runs 8 --against results/baseline.json
 ```
 
 Options: `--runs <n>` (default 8, minimum 2), `--save <file>`,
-`--against <file>`, `--engines bun|node|both` (default `bun`), and
+`--against <file>`, `--metric ratios|throughput` (default `ratios`),
+`--engines bun|node|both` (default `bun`), and
 `--ab <A> <B>` for pre-built package roots. The everyday way to ask "is this
 revision faster than that one" is `bun run compare [a] [b]`: see
 [A/B](#ab--is-this-build-faster-than-that-one).
@@ -54,25 +55,21 @@ moment. Record your own locally, right before changing the code.
 
 ## What a measurement costs
 
-`--runs 8` takes about 42 s, so 5 s per run. Two settings, both measured before
-being kept:
+`bench.js` uses mitata's `measure()` with its defaults: 642 ms of cumulative
+sampling time per entry, plus its adaptive warm-up. It does not use `run()`'s
+empty calibrations. Total duration depends on how many cases are selected and
+how many implementations each has.
 
-- `bench.js` calls mitata's `measure()`, not its `run()`. The four empty
-  calibrations `run()` performs cost 3.5 s per process and feed only its own
-  display, of which `--json` keeps nothing.
-- each case is warmed by 16 unmeasured calls, then sampled over 250 ms of
-  cumulative time, against 642 ms and a single warm-up call by default.
+`VINCLE_BENCH_CASES=text,stack` selects cases without changing their sampling
+settings. A change to the harness, warm-up, runtime or competitors can change
+ratios even when Core stays identical. Re-record a baseline when those change.
 
-Over 8 runs this setting gives a median inter-run cv of 2.0%, where mitata's
-defaults give 3.1% in 134 s: sensitivity is not what was traded for the time.
-
-What does change is the scale. Measured on the same `dist`, **absolute** values
-drop by 3 to 14%: competitors included, whose code did not move: `run()`'s empty
-calibrations were warming the process before the first case. And the **ratios**
-are not spared either: they shift by −5.5% to +7.0%, because that warm-up was
-not worth the same to every implementation. A ratio divides out the machine, not
-a change of harness. Any baseline recorded before this change compares two
-harnesses rather than two revisions of the code; re-record it.
+Saved results now retain the actual child runtime version, host, competitor
+versions, harness fingerprint, Core build fingerprint, repository state and raw
+samples. Metadata is collected after measurement. `--against` compares ratios
+by default; `--metric throughput` selects the absolute measurements. Known
+incompatible environments are rejected. Old files without metadata remain
+readable, but their differences cannot establish a code regression.
 
 ## Why there is no gate
 
@@ -90,16 +87,9 @@ Two things learned along the way, and still true:
 - **A cost depends on the process context.** The same change was worth 3% in a
   process rendering only vincle, and 11% in one that also rendered the four
   competitors. Polluted inline caches are what an application looks like.
-- **What actually found the regression** was a hand-run A/B: the `dist` from
-  before and the one from after, on the same machine, in the same session, once
-  a line is already suspected. Reproducible: commit or stash first, the second
-  checkout discards whatever is uncommitted under `packages/core/src`:
-
-```bash
-git checkout <before> -- packages/core/src
-bun run build --filter=@vincle/core && bun run bench:stats -- --runs 8
-git checkout HEAD -- packages/core/src   # then rebuild
-```
+- **What actually found the regression** was comparing frozen before/after
+  builds in the same session. Use `compare` below: its isolated copies preserve
+  local changes and build both sides without switching this checkout.
 
 CI does not measure. Eight processes inside one runner job share a VM for its
 whole duration, so the spread they print is jitter inside that VM and not the
@@ -160,13 +150,45 @@ control: its rows are marked `(raw)` and are a glance, not a verdict.
 Cost: two mini CIs (a `bun install` and a build each, about a minute the first
 time, less once the bun cache is warm), then two warm-up runs plus
 (calibrate + runs) × 2 processes: about three minutes at the defaults.
-`--save` keeps the paired ratios, so the verdict can be re-read without
-re-measuring. A/B runs under the bun engine only.
+`--save` keeps the paired ratios, raw samples, environments, build fingerprints
+and source refs (when using `compare`), so the verdict can be re-read without
+re-measuring. `compare` defaults to Bun; `bench:stats --ab` also accepts
+`--engines node` or `--engines both`. With both engines, `--save result` writes
+`result.bun.json` and `result.node.json`, keeping their measurements separate.
 
 What it does **not** divide out: if build B changes the engine's state, the
 control, measured in the same process _after_ vincle, partly follows it,
 and the verdict is pulled toward 1. Second order at the sizes measured here;
 for a change that restructures the hot path, read it with that caution.
+
+## Fixed reference for cumulative changes
+
+`reference/core.json` pins the Core revision present before the saved 21 September
+2026 benchmark. It selects `text` and `stack`, 24 alternating pairs and six A/A
+calibration pairs, with Hono as the competitor control.
+
+From this app directory:
+
+```bash
+bun run bench:reference --save results/core-reference.json
+```
+
+This reference uses `--build installed`: both isolated source copies are built
+with the repository's already installed compiler and build tools. No dependency
+download is needed; their actual versions are recorded. The ordinary `compare`
+command keeps its mini-CI build by default (`--build mini-ci`).
+
+Both sides use the same benchmark and competitors in this session. The reference
+is rebuilt; it is a source revision, not an old timing file. Keep this reference
+fixed across developments to expose cumulative movement. A small change with an
+interval spanning 1 is inconclusive. If a loss is established, compare intermediate
+revisions with the same protocol before profiling the affected case.
+
+A is the fixed reference and B the current code. In this command's A/B table,
+a value above 1 means the current code is slower; below 1 means it is faster.
+
+The result preserves source refs and fingerprints; files under `results/` stay
+local. An old snapshot without versions is useful context, not a causal test.
 
 ## Locating a cost
 
@@ -183,6 +205,9 @@ NODE_ENV=production node --conditions=dist --cpu-prof src/profile.js vincle real
 
 ```bash
 NODE_ENV=production bun --conditions=dist --cpu-prof src/profile.js kitajs realworld 600
+
+# the recursive workload, with the same depth and repeats as bench.js
+NODE_ENV=production bun --conditions=dist --cpu-prof src/profile.js vincle stack 6000
 ```
 
 Profile the **reference too**, on the same tree. "Where vincle spends its time"
@@ -294,3 +319,67 @@ NODE_ENV=production node --conditions=dist src/bench.js
 The `dist` export condition resolves `@vincle/core` to the built artefact, and
 the turbo task `bench:stats` depends on `^build`. What is measured is what is
 published, not the sources.
+
+## Flow: fragments, latency and memory
+
+```bash
+# From the repository root: builds Core and Flow before measuring their dist.
+bun x turbo run bench:flow -- --runs 8 --save /tmp/flow-before.json
+# After a change, on the same machine and runtime:
+bun x turbo run bench:flow -- --runs 8 --against /tmp/flow-before.json --save /tmp/flow-after.json
+```
+
+`bench:flow` exercises five workloads with the Htmx adapter: 100 and 1,000
+explicit fragment targets with later Slots (marker removal), 1,500 nested
+fragment generations, 2,000 small stream chunks, and a reader that waits 1 ms
+between 30 chunks (backpressure). Each render creates fresh content and drains
+the complete wire stream. The ASCII fixtures let the harness check wire byte
+counts across runs and against the baseline; semantic equivalence belongs to
+the tests, since equal lengths alone do not prove equal output.
+
+Each scenario runs in a fresh process for each of the eight runs, with two
+warm-up renders and five timed renders (`--samples` changes the latter).
+The table reports medians of per-process medians: total rendering time, time
+until the first HTML chunk, renders per second, and process peak RSS in MiB.
+Peak RSS includes the runtime, imports, warm-up and GC history; it is neither
+retained heap nor memory allocated by one render. The first-chunk time covers
+the renderer and consumer here, not network latency or browser paint.
+
+A comparison includes a deterministic independent-process bootstrap 95%
+interval for the ratio of median total times. An interval crossing zero delta
+is reported as `unresolved`. This estimates sampling uncertainty only:
+sequential before/after sessions can still drift. Repeat in the reverse order
+before attributing a gain to code, and keep small changes provisional. These
+are synthetic stress cases, not percentages to extrapolate to every page.
+Saved JSON keeps the individual process results; keep it in `/tmp` or the
+ignored `apps/bench/results/` directory rather than versioning local timings.
+
+## Monitoring primitive precompile arrays
+
+The `array-small`, `array-large` and `array-mixed` cases exercise `jsxEscape`
+array holes: 16 escaped strings, 1,000 escaped strings, and 1,000 mixed text,
+numeric, empty and trusted values. The tree-walk and precompile paths must emit
+identical HTML before measurement. Existing `precompile` and
+`realworld-precompile` cases also cover arrays of already-rendered markup.
+
+A focused A/B can select cases without changing the harness's sampling budget:
+
+```bash
+# Run in apps/bench; A and B are frozen Core package roots with package.json + dist.
+VINCLE_BENCH_CASES=array-small,array-large,array-mixed,precompile,realworld-precompile \
+  bun run bench:stats -- --ab /tmp/core-after /tmp/core-before \
+  --runs 8 --calibrate 2 --engines both --control @vincle/core --save results/core-arrays
+```
+
+Here the unchanged tree-walk implementation is the control for each precompile
+case. The reference's paired ratio is therefore 1 by construction; it cannot
+identify regressions in the reference itself. Use the full benchmark and its
+competitor control when changing the ordinary renderer. The selected cases
+also change the process context, so confirm small gains in the full benchmark
+before applying them broadly. A/B artifacts record the selected engine and
+case filter. Rerun the command locally to monitor later changes.
+
+To select an explicit Node executable instead of the one on PATH, set
+`VINCLE_BENCH_NODE` to its path (`node -p process.execPath` reports the binary
+currently used by the shell). Both the ordinary Node series and Node A/B use
+that path. A process that emits no JSON now produces an explicit error.
