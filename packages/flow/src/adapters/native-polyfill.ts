@@ -1,9 +1,11 @@
 export const NATIVE_POLYFILL = `(function(){
 var ADJ={append:"beforeend",prepend:"afterbegin",before:"beforebegin",after:"afterend"};
 function fill(name,frag){
-var it=document.createNodeIterator(document.body||document.documentElement,128),nd,s=null,e=null;
-while((nd=it.nextNode())){if(!s&&nd.nodeValue==='?start name="'+name+'"'){s=nd;continue;}if(s&&nd.nodeValue==='?end'){e=nd;break;}}
-if(!s)return false;var c=s.nextSibling;while(c&&c!==e){var x=c.nextSibling;c.remove();c=x;}s.after(frag);return true;
+var it=document.createNodeIterator(document.body||document.documentElement,128),nd,s=null;
+while((nd=it.nextNode()))if(nd.nodeValue==='?start name="'+name+'"'){s=nd;break;}
+if(!s)return false;var c=s.nextSibling,d=0;
+while(c){if(c.nodeType===8){var v=c.nodeValue;if(v==='?end'){if(!d)break;d--;}else if(v.indexOf('?start ')===0)d++;}var x=c.nextSibling;c.remove();c=x;}
+s.after(frag);return true;
 }
 function run(t){
 var name=t.getAttribute("for");if(!name)return;

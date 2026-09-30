@@ -281,3 +281,106 @@ describe("native polyfill orphan templates", () => {
     expect(runPolyfill([], { for: "x", "data-merge": "append" })).toBe(false);
   });
 });
+
+/**
+ * A `<?start>` closes on the next `<?end>` among its siblings, skipping the
+ * pairs nested inside it: a nested placeholder's `<?end>`, or one inside a
+ * child element, is not its own.
+ */
+describe("native polyfill marker range", () => {
+  interface FakeNode {
+    nodeType: number;
+    nodeValue: string;
+    children: FakeNode[];
+    parent: FakeNode | null;
+    readonly nextSibling: FakeNode | null;
+    remove(): void;
+    after(node: FakeNode): void;
+  }
+
+  const node = (nodeType: number, nodeValue: string, children: FakeNode[] = []): FakeNode => {
+    const n: FakeNode = {
+      nodeType,
+      nodeValue,
+      children,
+      parent: null,
+      get nextSibling() {
+        const siblings = n.parent?.children ?? [];
+        return siblings[siblings.indexOf(n) + 1] ?? null;
+      },
+      remove() {
+        n.parent?.children.splice(n.parent.children.indexOf(n), 1);
+        n.parent = null;
+      },
+      after(other) {
+        const siblings = n.parent!.children;
+        siblings.splice(siblings.indexOf(n) + 1, 0, other);
+        other.parent = n.parent;
+      },
+    };
+    for (const c of children) c.parent = n;
+    return n;
+  };
+  const pi = (value: string) => node(8, value);
+  const el = (name: string, children: FakeNode[] = []) => node(1, name, children);
+
+  const comments = (root: FakeNode): FakeNode[] =>
+    root.children.flatMap((c) => [...(c.nodeType === 8 ? [c] : []), ...comments(c)]);
+  const shape = (n: FakeNode): string =>
+    n.nodeType === 8 ? `<${n.nodeValue}>` : `${n.nodeValue}(${n.children.map(shape).join("")})`;
+
+  const patch = (body: FakeNode, target: string): void => {
+    const template = {
+      nodeName: "TEMPLATE",
+      getAttribute: (key: string) => (key === "for" ? target : null),
+      content: { cloneNode: () => el("patch") },
+      remove: () => {},
+    };
+    const g = globalThis as Record<string, unknown>;
+    const prev = { document: g["document"], MutationObserver: g["MutationObserver"] };
+    g["document"] = {
+      body,
+      createNodeIterator: () => {
+        const found = comments(body);
+        let i = 0;
+        return { nextNode: () => found[i++] ?? null };
+      },
+      querySelectorAll: () => [template],
+    };
+    g["MutationObserver"] = class {
+      observe() {}
+    };
+    try {
+      // eslint-disable-next-line no-eval -- the polyfill is intentionally eval'd into the sandboxed globals
+      eval(NATIVE_POLYFILL);
+    } finally {
+      g["document"] = prev.document;
+      g["MutationObserver"] = prev.MutationObserver;
+    }
+  };
+
+  it("stops at its own <?end> when a placeholder is nested in an element", () => {
+    const body = el("body", [
+      pi('?start name="a"'),
+      el("div", [pi('?start name="b"'), el("skeleton"), pi("?end")]),
+      pi("?end"),
+      el("footer"),
+    ]);
+    patch(body, "a");
+    expect(shape(body)).toBe('body(<?start name="a">patch()<?end>footer())');
+  });
+
+  it("skips a sibling pair nested inside the range", () => {
+    const body = el("body", [
+      pi('?start name="a"'),
+      pi('?start name="b"'),
+      el("skeleton"),
+      pi("?end"),
+      el("more"),
+      pi("?end"),
+      el("footer"),
+    ]);
+    patch(body, "a");
+    expect(shape(body)).toBe('body(<?start name="a">patch()<?end>footer())');
+  });
+});
