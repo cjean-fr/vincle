@@ -90,32 +90,6 @@ two sit in the page.
 | `name`     | `string` | N/A     | Fragment id, required                              |
 | `children` | `VNode`  | N/A     | Fallback content rendered immediately in the shell |
 
-## Include
-
-The browser fetches a fragment from a URL after the shell lands: no server push,
-any static file server works.
-
-```tsx
-import { Include } from "@vincle/flow";
-
-function Page() {
-  return (
-    <html>
-      <body>
-        <Include src="/fragments/comments.html" />
-      </body>
-    </html>
-  );
-}
-```
-
-**Props:**
-
-| Prop       | Type          | Default | Description                            |
-| ---------- | ------------- | ------- | -------------------------------------- |
-| `src`      | `string`      | N/A     | URL of the fragment HTML file to fetch |
-| `fallback` | `JSX.Element` | N/A     | Placeholder shown while fetching       |
-
 ## Style / Script: asset emission
 
 `<Style>` and `<Script>` emit their tag where they stand, once per `name`: the

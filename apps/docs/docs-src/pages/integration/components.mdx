@@ -8,7 +8,6 @@ title: Components
   placeholder, so it is self-sufficient
 - **`<Slot>`**: a named placeholder, filled by a `<Defer>` that renders
   elsewhere in the tree
-- **`<Include>`**: a placeholder the browser fills by fetching a URL
 
 ## `<Defer>`
 
@@ -87,25 +86,6 @@ function SearchPage() {
 }
 ```
 
-## `<Include>`: client-side fetch
-
-The browser fetches the fragment from a URL after the shell lands. No
-server-push needed: works with any static file server.
-
-```tsx
-import { Include } from "@vincle/flow";
-
-function Page() {
-  return (
-    <html>
-      <body>
-        <Include src="/fragments/comments.html" />
-      </body>
-    </html>
-  );
-}
-```
-
 ## Content types
 
 `Defer` children (the `DeferContent` type) are a value, or a factory receiving
@@ -121,12 +101,11 @@ your side. See [Streaming](/integration/streaming#async-iterables-streaming-sequ
 
 ## Props
 
-| Prop       | Applies to         | Meaning                                                               |
-| ---------- | ------------------ | --------------------------------------------------------------------- |
-| `name`     | `Slot`             | id of the placeholder (required)                                      |
-| `target`   | `Defer`            | optional placeholder id; generated automatically when omitted         |
-| `fallback` | `Defer`, `Include` | placeholder content shown in the shell                                |
-| `merge`    | `Defer`            | how content applies to its target (default `"replace"`)               |
-| `timeout`  | `Defer`            | per-fragment render timeout in ms                                     |
-| `onError`  | `Defer`            | per-fragment error handler, overriding the renderer's one             |
-| `src`      | `Include`          | URL the browser fetches for the fragment content: http(s) or relative |
+| Prop       | Applies to | Meaning                                                       |
+| ---------- | ---------- | ------------------------------------------------------------- |
+| `name`     | `Slot`     | id of the placeholder (required)                              |
+| `target`   | `Defer`    | optional placeholder id; generated automatically when omitted |
+| `fallback` | `Defer`    | placeholder content shown in the shell                        |
+| `merge`    | `Defer`    | how content applies to its target (default `"replace"`)       |
+| `timeout`  | `Defer`    | per-fragment render timeout in ms                             |
+| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's one     |

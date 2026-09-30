@@ -146,7 +146,7 @@ describe("merge capabilities: the pure spec and the polyfill diverge", () => {
 /**
  * The polyfill turns `data-src` into `fetch(src)` + `innerHTML`: a client-side
  * sink outside `@vincle/core`'s output-encoding model. The gate below mirrors
- * the server policy (`<Include>` allows http(s) or relative only): anything
+ * the server policy (http(s) or relative only): anything
  * that does not resolve to http(s) is dropped, fail-closed, before `fetch`.
  */
 describe("native polyfill data-src URL gate", () => {

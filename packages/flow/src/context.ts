@@ -30,15 +30,14 @@ export interface FlowContext {
 export const Flow: ScopeKey<FlowContext> = Scope.key<FlowContext>("@vincle/flow:flow");
 
 /**
- * The single adapter negotiation for deferred-fragment placeholders. Defer,
- * Slot and Include all end in `adapter.Placeholder({ id, src, children })`;
- * only their *policies* differ (what to register, which URL to allow, whether
- * a missing adapter is an error). Everything about the negotiation lives here:
+ * The single adapter negotiation for deferred-fragment placeholders. Defer
+ * and Slot both end in `adapter.Placeholder({ id, src, children })`;
+ * only their *policies* differ (what to register, whether a missing adapter
+ * is an error). Everything about the negotiation lives here:
  *
  * - a missing adapter is an error (callers that want to tolerate it, e.g.
  *   Defer in pure-static mode, check `config.adapter` themselves first);
- * - in static mode `src` defaults to `generatePath(id)`; callers that carry
- *   their own URL (Include) pass it explicitly;
+ * - in static mode `src` defaults to `generatePath(id)`;
  * - children are normalized to `null`.
  */
 export function renderPlaceholder(

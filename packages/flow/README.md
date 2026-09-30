@@ -72,7 +72,7 @@ bun add @vincle/flow
 
 ## Components
 
-@vincle/flow provides three declarative primitives for deferred content: a unified family built around **Slot** (the hole) and **Defer** (the deferred content that fills it). Each works with any adapter, in both streaming and static generation.
+@vincle/flow provides two declarative primitives for deferred content: a unified family built around **Slot** (the hole) and **Defer** (the deferred content that fills it). Each works with any adapter, in both streaming and static generation.
 
 ### `<Slot>`: a named insertion point with fallback content
 
@@ -156,24 +156,6 @@ The factory is invoked only when the fragment is about to render. It receives an
 
 `Defer` always renders a placeholder at its position in the shell: `fallback` is that placeholder's content (empty if none given), and the deferred content replaces it when it resolves. Rendering a `Defer` without any adapter throws at registration: there is no placeholder to emit and nothing to patch into.
 
-### `<Include>`: client-side fetch only
-
-Renders a placeholder with a `src` attribute: the browser fetches the fragment after the shell lands. No server-push, works with any static host.
-
-```tsx
-import { Include } from "@vincle/flow";
-
-<Include src="/fragments/comments.html" />;
-<Include src="/fragments/stats.html" fallback={<Spinner />} />;
-
-// @ts-expect-error: dangerous schemes are rejected at compile time
-<Include src="javascript:alert(1)" />;
-```
-
-`src` uses a strict **whitelist**: for string **literals**, only `http(s):` and relative paths compile. Every other scheme (`javascript:`, `data:`, `mailto:`, …) is a compile-time error. A fragment fetch needs no other scheme. Dynamic `string` values pass through and remain the caller's responsibility.
-
-Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/issues/2791) and ESI `<esi:include>`: short, standard, self-explanatory.
-
 ### Content forms
 
 `Defer` accepts content in either form:
@@ -195,7 +177,6 @@ Named after the [draft HTML `<include>` element](https://github.com/whatwg/html/
 | `merge`    | `Defer`    | how content applies to its target (default `"replace"`): see below |
 | `timeout`  | `Defer`    | per-fragment render timeout in ms                                  |
 | `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's `onError`    |
-| `src`      | `Include`  | URL the browser fetches for the fragment content                   |
 
 ### Merge types
 
@@ -469,7 +450,6 @@ All exports are importable from `@vincle/flow` unless noted otherwise.
 | --------- | ------------------------- | ------------------------------------------------------------------------------ |
 | `Slot`    | `@vincle/flow`            | Named insertion point with optional fallback children; renders a placeholder   |
 | `Defer`   | `@vincle/flow`            | Push deferred content into a target DOM id: sync (plain JSX) or lazy (factory) |
-| `Include` | `@vincle/flow`            | Client-side fetch placeholder: no server deferral                              |
 | `Style`   | `@vincle/flow/components` | Named, deduplicated `<style>` tag                                              |
 | `Script`  | `@vincle/flow/components` | Named, deduplicated `<script>` tag                                             |
 
