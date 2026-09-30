@@ -18,7 +18,6 @@ export const ERR_FLOW_MERGE_UNSUPPORTED = "ERR_VINCLE_FLOW_MERGE_UNSUPPORTED";
 export const ERR_FLOW_FRAGMENT_ID = "ERR_VINCLE_FLOW_FRAGMENT_ID";
 export const ERR_FLOW_NO_FRAGMENT = "ERR_VINCLE_FLOW_NO_FRAGMENT";
 export const ERR_FLOW_NO_STREAMING = "ERR_VINCLE_FLOW_NO_STREAMING";
-export const ERR_FLOW_FORBIDDEN_SCHEME = "ERR_VINCLE_FLOW_FORBIDDEN_SCHEME";
 export const ERR_FLOW_DUP_FRAGMENT = "ERR_VINCLE_FLOW_DUP_FRAGMENT";
 
 /** Every code this package attaches. Widening it is the one allowed change. */
@@ -29,7 +28,6 @@ export type ErrorCode =
   | typeof ERR_FLOW_FRAGMENT_ID
   | typeof ERR_FLOW_NO_FRAGMENT
   | typeof ERR_FLOW_NO_STREAMING
-  | typeof ERR_FLOW_FORBIDDEN_SCHEME
   | typeof ERR_FLOW_DUP_FRAGMENT;
 
 /**

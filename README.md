@@ -26,11 +26,11 @@ together, but core is a complete product on its own.
 
 ### Core
 
-| Package                                         | Description                                                                                                                             |
-| :---------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@vincle/core`](./packages/core)               | JSX-to-HTML string renderer. Zero dependencies. **Start here.**                                                                         |
-| [`@vincle/flow`](./packages/flow)               | Deferred fragments, streaming, and DOM patching: `<Slot>`, `<Defer>`, `<Include>` + Turbo / HTMX / Native / WebPlatform / ESI adapters. |
-| [`@vincle/vite-plugin`](./packages/vite-plugin) | Vite asset integration: `<Asset>`, `assetUrl`, manifest resolution.                                                                     |
+| Package                                         | Description                                                                                                                |
+| :---------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| [`@vincle/core`](./packages/core)               | JSX-to-HTML string renderer. Zero dependencies. **Start here.**                                                            |
+| [`@vincle/flow`](./packages/flow)               | Deferred fragments, streaming, and DOM patching: `<Slot>`, `<Defer>` + Turbo / HTMX / Native / WebPlatform / ESI adapters. |
+| [`@vincle/vite-plugin`](./packages/vite-plugin) | Vite asset integration: `<Asset>`, `assetUrl`, manifest resolution.                                                        |
 
 ### Tooling
 

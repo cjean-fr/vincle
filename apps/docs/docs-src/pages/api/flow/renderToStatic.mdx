@@ -65,5 +65,5 @@ await renderToStatic(
 );
 ```
 
-The page's `Include src` must point at the same path, so the browser finds each
-fragment.
+Each placeholder's `src` defaults to `generatePath(id)`, the same path, so the
+browser finds each fragment.

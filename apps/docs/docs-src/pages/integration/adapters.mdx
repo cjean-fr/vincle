@@ -14,7 +14,7 @@ Vincle ships five built-in adapters. Import from `@vincle/flow/adapters`:
 import {
   TurboAdapter, // Turbo Streams: <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
   HtmxAdapter, // HTMX: hx-get / hx-swap-oob, morph on htmx >= 4
-  NativeAdapter, // <template for> + inline polyfill, all 5 positions
+  NativeAdapter, // <template data-for> + inline polyfill, all 5 positions
   WebPlatformAdapter, // WICG declarative partial updates, native support required
   EsiAdapter, // CDN edge composition via esi:include
 } from "@vincle/flow/adapters";
@@ -37,7 +37,7 @@ import {
       <td>
         <strong>NativeAdapter</strong>
       </td>
-      <td>~750 B polyfill, gzipped (auto-injected)</td>
+      <td>~1.5 kB polyfill, gzipped (auto-injected)</td>
       <td>
         <CheckIcon />
       </td>
@@ -98,13 +98,27 @@ does not support.
 
 Recommended for most applications. It uses the
 [WICG Declarative Partial Updates](https://github.com/WICG/declarative-partial-updates)
-wire format, with a small polyfill **injected automatically** only when
-fragments are pending: a pure-static page stays polyfill-free, and there is
-nothing to configure on the client.
+format, with a polyfill **injected automatically** when fragments or active
+`<template src>` / `<template for>` elements are present. Inert templates and
+pages without deferred content do not require it.
+
+Use Native for both SSG and streaming while native browser support is incomplete.
+Native protects templates with `data-for`, so browsers that implement patching
+but not `src` cannot consume them before the polyfill. It handles both comment
+and processing-instruction markers.
+
+SSG loads the emitted fragment files. Streaming consumes complete inline patch
+templates and also handles external includes arriving in the page. External
+responses are buffered; failed requests preserve fallback content.
+
+Once target browsers support both WICG patching and Fragment Include, switch the
+render call to `WebPlatformAdapter`. Keep the same JSX and generated URLs and
+use `merge="replace"`, which both adapters support. WebPlatform emits standard
+`for` attributes and adds no JavaScript.
 
 ### WebPlatformAdapter
 
-The same wire format with no polyfill: the initial HTML holds a named range with
+The standard WICG format with no polyfill: the initial HTML holds a named range with
 fallback content, and a matching `<template for="…">` later in the response
 replaces it as the browser parses it.
 
@@ -114,7 +128,23 @@ replaces it as the browser parses it.
 <template for="comments"><p>First comment</p></template>
 ```
 
-It needs native browser support, which is not universal; Google's
+For a static-mode `<Defer>`, Vincle instead emits an external include:
+
+```html
+<?start name="comments">Loading comments…<?end>
+<template for="comments" src="/fragments/comments.html"></template>
+```
+
+`emitFragments` writes raw HTML at that URL, with no `<template>` wrapper.
+This follows the experimental
+[Fragment Include proposal](https://github.com/WICG/declarative-partial-updates/blob/main/fragment-include-explainer.md).
+You can also render `<template src="/partials/header.html" for="" />` directly
+in JSX for an in-place include. Importing Flow also enables `buffer`, `sanitize`, `crossorigin`,
+and `referrerpolicy` as well. Without native support, these includes remain inert.
+The Native polyfill supports targeted and in-place includes, but buffers external
+responses and does not implement the proposal’s sanitization API.
+
+It needs native browser support; Google's
 [Declarative partial updates article](https://developer.chrome.com/docs/web-platform/declarative-partial-updates)
 covers the motivation and browser support. For the polyfill and the other merge
 positions, use `NativeAdapter`.

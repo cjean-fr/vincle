@@ -23,8 +23,8 @@ export interface RenderFragmentOptions {
 /**
  * Render a single fragment on demand, outside a full site build: given
  * fresh content, produces the exact bytes `emitFragments` would have written
- * for this `id` during a full build, at the same URL. The page that includes
- * it (via `Include`/`Frame`) never needs rebuilding.
+ * for this `id` during a full build, at the same URL. The page whose
+ * placeholder points at it never needs rebuilding.
  *
  * Framework- and host-agnostic: write `html` to `url` yourself, or hand both
  * to whatever partial-update mechanism your host offers (Netlify Blobs,
