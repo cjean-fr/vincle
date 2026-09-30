@@ -1,10 +1,39 @@
 # @vincle/flow
 
-Fragment streaming extension for [@vincle/core](https://github.com/cjean-fr/vincle/tree/main/packages/core). Renders deferred JSX fragments and delivers them to the browser as DOM patches. **Pick the adapter that matches your JS budget: from zero JS (WebPlatform/ESI) to ~550 B (Native) to full framework (Turbo/HTMX).**
+> Send a page before all its data is ready. The browser sees content immediately,
+> and fragments arrive as they're ready — patched into the page by HTMX, Turbo,
+> or vanilla browser APIs. No hydration, no virtual DOM.
+
+```tsx
+import { renderToStream, Defer } from "@vincle/flow";
+
+const stream = renderToStream(
+  () => (
+    <html>
+      <body>
+        <header>Page loaded instantly</header>
+        <Defer target="heavy" fallback={<p>Loading…</p>}>
+          <HeavyComponent />
+        </Defer>
+      </body>
+    </html>
+  ),
+  adapter,
+);
+// → ReadableStream<string>. Pipe it to the HTTP response.
+```
+
+Fragment streaming extension for [@vincle/core](https://github.com/cjean-fr/vincle/tree/main/packages/core).
+Renders deferred JSX fragments and delivers them to the browser as DOM patches.
+**Pick the adapter that matches your JS budget: from zero JS (WebPlatform/ESI)
+to ~550 B (Native) to full framework (Turbo/HTMX).**
 
 ## When to use
 
-Use `@vincle/core` alone for SSG, emails, and pure SSR. Add `@vincle/flow` when you need **progressive enhancement**: the initial HTML loads fast with placeholders, and heavy or slow components are rendered separately and patched into the page without a full reload.
+Use `@vincle/core` alone for SSG, emails, and pure SSR. Add `@vincle/flow` when
+you need **progressive enhancement**: the initial HTML loads fast with placeholders,
+and heavy or slow components are rendered separately and patched into the page
+without a full reload.
 
 | `@vincle/core`            | `@vincle/flow`                                     |
 | ------------------------- | -------------------------------------------------- |

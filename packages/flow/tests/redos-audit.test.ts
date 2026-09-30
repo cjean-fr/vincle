@@ -12,7 +12,7 @@
  *      backtracking blow up. Nothing here may trip the analyzer.
  *   3. **Behaviourally.** The declared matches and rejections must hold.
  *
- * Same mechanism and same detectors as `packages/core/redos-audit.test.ts`.
+ * Same mechanism and same detectors as `packages/core/tests/redos-audit.test.ts`.
  */
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -20,8 +20,8 @@ import { dirname, join } from "node:path";
 import { parseSync } from "oxc-parser";
 
 /**
- * Package root, derived from this file. The scan reads the sources next to
- * it: they don't move depending on which directory `bun test` is invoked from.
+ * Package root, derived from this file, so the scan does not depend on the
+ * directory where `bun test` is invoked.
  */
 const PACKAGE_ROOT = dirname(import.meta.dir);
 

@@ -2,15 +2,14 @@
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "command",
   "commandRunner": {
-    "command": "bun test src"
+    "command": "bun test src tests/assets-integration.test.tsx"
   },
   "commandRunner_comment": [
-    "`bun test src`, not `bun test`. Mutation runs in a sandbox: a copy of this",
+    "Mutation runs source tests and the assets integration test in a sandbox:",
     "package alone, instrumented sources, a moved cwd. A test that depends on",
     "anything but the mutated code: a neighbouring manifest, the repo layout,",
-    "the transpiler: fails there and nowhere else, so the run is restricted to",
-    "the tests that live next to the mutated code. Root tests still run under",
-    "`bun test` and in CI; they simply kill no mutant."
+    "the transpiler: fails there and nowhere else. The ReDoS source audit",
+    "still runs under `bun test` and in CI, outside mutation runs."
   ],
   "mutate": [
     "src/**/*.ts",

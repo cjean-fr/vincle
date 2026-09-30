@@ -5,6 +5,50 @@ import { serve, negotiateHtmx } from "./http.js";
 import { Defer } from "./index.js";
 
 describe("HTTP negotiation (decoupled from the adapter)", () => {
+  for (const source of ["request", "options"] as const) {
+    it(`serve forwards in-flight cancellation from ${source}`, async () => {
+      const request = new AbortController();
+      const options = new AbortController();
+      const started = Promise.withResolvers<AbortSignal>();
+      const res = await serve(
+        new Request("http://localhost", { signal: request.signal }),
+        () => (
+          <Defer target="blocked">
+            {(signal) => {
+              started.resolve(signal);
+              return new Promise<never>(() => {});
+            }}
+          </Defer>
+        ),
+        HtmxAdapter,
+        { signal: options.signal },
+      );
+      const body = res.text();
+      const signal = await started.promise;
+      const reason = new Error("cancelled");
+      (source === "request" ? request : options).abort(reason);
+      expect(signal.aborted).toBe(true);
+      expect(signal.reason).toBe(reason);
+      await body;
+    }, 1000);
+  }
+
+  it("serve skips rendering an already cancelled request without options", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let rendered = false;
+    const res = await serve(
+      new Request("http://localhost", { signal: controller.signal }),
+      () => {
+        rendered = true;
+        return <span>unreachable</span>;
+      },
+      HtmxAdapter,
+    );
+    expect(await res.text()).toBe("");
+    expect(rendered).toBe(false);
+  });
+
   it("negotiateHtmx reads HX-Target and sets Vary", () => {
     const n = negotiateHtmx(new Request("http://localhost", { headers: { "HX-Target": "my-id" } }));
     expect(n.target).toBe("my-id");

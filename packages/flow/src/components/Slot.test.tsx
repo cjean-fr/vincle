@@ -6,6 +6,28 @@ import { renderToStream } from "../render.js";
 import { collect } from "../test-utils.js";
 
 describe("Slot", () => {
+  it("settles markers inside a retained Defer fallback", async () => {
+    const html = await collect(
+      renderToStream(
+        () => (
+          <>
+            <Defer target="outer" fallback={<Defer target="inner">inner result</Defer>}>
+              outer result
+            </Defer>
+            <Slot name="inner">
+              <span>inner loading</span>
+            </Slot>
+          </>
+        ),
+        TurboAdapter,
+      ),
+    );
+    expect(html).not.toContain("vincle-defer");
+    expect(html.match(/<turbo-frame id="inner"/g)).toHaveLength(1);
+    expect(html).toContain('id="outer"');
+    expect(html).toContain("inner result");
+    expect(html).toContain("outer result");
+  });
   it("renders a placeholder with no registration when children are absent", async () => {
     const html = await collect(renderToStream(() => <Slot name="sidebar" />, TurboAdapter));
     expect(html).toContain('id="sidebar"');

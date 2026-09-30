@@ -16,6 +16,30 @@ function adaptCfg(overrides?: Partial<FlowConfig>): FlowConfig {
 }
 
 describe("FragmentStore", () => {
+  it("a drain cursor sees later generations and retains duplicate detection", () => {
+    const store = createFragmentStore(adaptCfg());
+    const cursor = store.cursor();
+    expect(cursor.outstanding()).toEqual([]);
+    store.register("a", { content: "a", merge: "replace" });
+    expect(cursor.outstanding().map(([id]) => id)).toEqual(["a"]);
+    expect(cursor.hasOutstanding()).toBe(false);
+    expect(cursor.outstanding()).toEqual([]);
+    store.register("b", { content: "b", merge: "replace" });
+    store.register("c", { content: "c", merge: "replace" });
+    expect(cursor.hasOutstanding()).toBe(true);
+    expect(cursor.outstanding().map(([id]) => id)).toEqual(["b", "c"]);
+    expect(cursor.hasOutstanding()).toBe(false);
+    expect(() => store.register("a", { content: "again", merge: "replace" })).toThrow(
+      "already registered",
+    );
+    expect(store.get("a")?.content).toBe("a");
+    expect(
+      store
+        .cursor()
+        .outstanding()
+        .map(([id]) => id),
+    ).toEqual(["a", "b", "c"]);
+  });
   describe("register validation", () => {
     it("throws when no adapter is configured", () => {
       const cfg = adaptCfg({ adapter: undefined });
