@@ -70,24 +70,49 @@ renderer to send the surrounding page before its deferred fragments. An
 [adapter](/integration/adapters) decides how fragments update the page: natively,
 or through HTMX or Turbo.
 
+```tsx
+import { renderToStream, Defer } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+const stream = renderToStream(
+  () => (
+    <html>
+      <body>
+        <h1>Page visible immediately</h1>
+        <Defer target="comments" fallback={<p>Loading comments…</p>}>
+          <Comments />
+        </Defer>
+      </body>
+    </html>
+  ),
+  NativeAdapter,
+);
+// → ReadableStream<string>. Pipe it to the HTTP response.
+```
+
 [Follow a view from a route to streaming HTML](/guide/views).
 
-## What the core provides
+## What the core gives you
 
-- **Typed components and attributes**: check props and HTML attributes with TypeScript.
-- **Tree context and scopes**: a React-style `createContext` passes a value to
-  a subtree (`<Context.Provider>` + `useContext`); `Scope` holds mutable
-  per-request state. See the [Context & Scope API](/api/core/scope).
-- **Default escaping**: every value is escaped for where it lands, and URL
-  schemes are filtered by an allowlist. `raw()` is the explicit way to vouch for
-  trusted HTML. See the [security model](/guide/security).
-- **A self-contained package**: the core has no runtime dependencies and includes
-  its element types.
-- **HTML output**: send a response, write a static page, or pass a template to an
-  email provider. Email client compatibility remains part of your template design.
+You get an HTML string. Here's what makes that worth it:
 
-Vincle does not hydrate components in the browser: add client-side behavior
-with the tools of your choice.
+- **TypeScript checks your templates.** Props, attributes, CSS values — all typed.
+  Misspell `class` as `cls`, and the compiler catches it before you run anything.
+  See the [Context & Scope API](/api/core/scope).
+
+- **Security is the default, not a config.** Every value is escaped for its context.
+  URL attributes only accept safe schemes. `raw()` is the explicit opt-out — if HTML
+  escapes you, it's one function call. See the [security model](/guide/security).
+
+- **The output works immediately.** A complete HTML string you can send as a response,
+  write to disk for SSG, or pass to an email provider. No transformation step.
+  Email client compatibility is still your template design problem, not the renderer's.
+
+Think of it as a faster, simpler alternative to React's server rendering —
+but without the client-side runtime.
+
+Vincle does not send a JavaScript runtime to the browser. Components run on the
+server and produce HTML. Add client-side behavior with the tools of your choice.
 
 ## Next steps
 
