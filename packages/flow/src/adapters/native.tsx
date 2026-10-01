@@ -1,8 +1,9 @@
-import { raw } from "@vincle/core";
+import { raw, renderToString, type JSX } from "@vincle/core";
 import { escapeAttr } from "@vincle/core/html";
 
 import { injectIntoHead } from "../utils.js";
-import { POLYFILL_SCRIPT } from "./native-polyfill.js";
+import { NATIVE_POLYFILL } from "./native-polyfill.js";
+import { prepareNativeTemplates } from "./native-shell.js";
 import { createAdapter, type Adapter } from "./shared.js";
 
 export { NATIVE_POLYFILL, nativePolyfillHash } from "./native-polyfill.js";
@@ -25,7 +26,7 @@ export const WebPlatformAdapter = createAdapter({
           {raw(`<?start name="${safeId}">`)}
           {children}
           {raw(`<?end>`)}
-          <template htmlFor={id} data-src={src} />
+          <template for={id} src={src} />
         </>
       );
     }
@@ -40,16 +41,17 @@ export const WebPlatformAdapter = createAdapter({
 
   Patch: ({ id, children, merge }) => {
     if (merge === "replace") {
-      return <template htmlFor={id}>{children}</template>;
+      return <template for={id}>{children}</template>;
     }
     return (
-      <template htmlFor={id} data-merge={merge}>
+      <template for={id} data-merge={merge}>
         {children}
       </template>
     );
   },
 
-  Frame: ({ id, children }) => <template htmlFor={id}>{children}</template>,
+  // A fetched include is raw markup, not another inert patch template.
+  Frame: ({ children }) => <>{children}</>,
 });
 
 /**
@@ -60,9 +62,9 @@ export const WebPlatformAdapter = createAdapter({
 const POLYFILL_MERGES = ["replace", "append", "prepend", "before", "after"] as const;
 
 /**
- * Decorate any adapter with the inline polyfill for the WICG
- * Declarative Partial Updates API. The polyfill is injected into `<head>`
- * only when fragments are present (`ctx.fragments.size > 0`).
+ * Decorate a WICG-format adapter with the inline polyfill. Its templates use
+ * `data-for` so partially implemented native patching cannot consume them first.
+ * The polyfill is injected when fragments or active templates are present.
  *
  * Useful when you want to use `WebPlatformAdapter` in browsers that do
  * not yet support `<template for>` natively.
@@ -75,15 +77,21 @@ export function withPolyfill<T extends Adapter>(
   // lose that refusal for every decorated adapter.
   capabilities: { streaming: T["capabilities"]["streaming"]; merges: typeof POLYFILL_MERGES };
 } {
+  const markup = async (node: JSX.Element) =>
+    raw(prepareNativeTemplates(await renderToString(node)).html);
   return {
     ...adapter,
+    Placeholder: (props) => markup(adapter.Placeholder(props)),
+    Patch: (props) => markup(adapter.Patch(props)),
+    Frame: (props) => markup(adapter.Frame(props)),
     // The polyfill reads `data-merge` and translates it to `insertAdjacentHTML`
     //: exactly what the pure spec lacks, so those merges become real here.
     capabilities: { streaming: adapter.capabilities.streaming, merges: POLYFILL_MERGES },
     transformShell: (shell, ctx) => {
       const transformed = adapter.transformShell ? adapter.transformShell(shell, ctx) : shell;
-      if (ctx.fragments.size === 0) return transformed;
-      return injectIntoHead(transformed, POLYFILL_SCRIPT);
+      const prepared = prepareNativeTemplates(transformed);
+      if (ctx.fragments.size === 0 && !prepared.active) return transformed;
+      return injectIntoHead(prepared.html, String(<script>{NATIVE_POLYFILL}</script>));
     },
   };
 }

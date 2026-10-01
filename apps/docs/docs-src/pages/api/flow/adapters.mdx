@@ -19,13 +19,13 @@ const stream = renderToStream(() => <Page />, NativeAdapter);
 
 All exported from `@vincle/flow/adapters`.
 
-| Adapter              | Target                                             | Merge support                           | Size                      |
-| -------------------- | -------------------------------------------------- | --------------------------------------- | ------------------------- |
-| `NativeAdapter`      | Inline polyfill via `<template for>`               | replace, append, prepend, before, after | ~750 B polyfill (gzipped) |
-| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | the five above + morph (Turbo >= 8)     | N/A                       |
-| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | the five above + morph (htmx >= 4)      | N/A                       |
-| `WebPlatformAdapter` | WICG declarative partial updates                   | replace only                            | N/A                       |
-| `EsiAdapter`         | CDN edge composition via `esi:include`             | replace                                 | N/A                       |
+| Adapter              | Target                                             | Merge support                           | Size                       |
+| -------------------- | -------------------------------------------------- | --------------------------------------- | -------------------------- |
+| `NativeAdapter`      | Inline polyfill via `<template data-for>`          | replace, append, prepend, before, after | ~1.5 kB polyfill (gzipped) |
+| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | the five above + morph (Turbo >= 8)     | N/A                        |
+| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | the five above + morph (htmx >= 4)      | N/A                        |
+| `WebPlatformAdapter` | WICG declarative partial updates                   | replace only                            | N/A                        |
+| `EsiAdapter`         | CDN edge composition via `esi:include`             | replace                                 | N/A                        |
 
 ## Merge types
 

@@ -25,8 +25,7 @@ describe("renderFragment", () => {
     const { html } = await renderFragment("price-AAPL", () => <span>182.30</span>, {
       adapter: NativeAdapter,
     });
-    expect(html).toContain('<template for="price-AAPL">');
-    expect(html).toContain("<span>182.30</span>");
+    expect(html).toBe("<span>182.30</span>");
   });
 
   it("settles on the last yield for a streamed content", async () => {

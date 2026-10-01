@@ -265,6 +265,38 @@ describe("loadViteManifest", () => {
     }
   });
 
+  it("rejects malformed chunks and optional fields", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "vincle-manifest-"));
+    const file = join(dir, "manifest.json");
+    try {
+      for (const chunk of [
+        {},
+        null,
+        [],
+        { file: "" },
+        { file: 1 },
+        { file: "main.js", css: "main.css" },
+        { file: "main.js", imports: [1] },
+        { file: "main.js", isEntry: "true" },
+        { file: "main.js", src: false },
+      ]) {
+        await writeFile(file, JSON.stringify({ "src/main.ts": chunk }));
+        await expect(loadViteManifest(file)).rejects.toThrow('invalid chunk "src/main.ts"');
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports read failures instead of selecting dev mode", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "vincle-manifest-"));
+    try {
+      await expect(loadViteManifest(dir)).rejects.toThrow("could not read the manifest");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("parses a valid manifest", async () => {
     const dir = await mkdtemp(join(tmpdir(), "vincle-manifest-"));
     const file = join(dir, "manifest.json");

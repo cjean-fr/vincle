@@ -2,7 +2,7 @@ import type { VNode } from "@vincle/core";
 
 import { describe, it, expect } from "bun:test";
 
-import { TurboAdapter, NativeAdapter, EsiAdapter } from "./adapters/index.js";
+import { TurboAdapter, NativeAdapter, WebPlatformAdapter, EsiAdapter } from "./adapters/index.js";
 import { renderToStatic, Defer } from "./index.js";
 
 describe("renderToStatic", () => {
@@ -141,8 +141,7 @@ describe("renderToStatic", () => {
       );
       expect(written).toHaveLength(1);
       expect(written[0]!.id).toBe("content");
-      expect(written[0]!.html).toContain('<template for="content">');
-      expect(written[0]!.html).toContain("<span>real</span>");
+      expect(written[0]!.html).toBe("<span>real</span>");
     });
   });
 
@@ -336,5 +335,34 @@ describe("emitFragments across pages", () => {
 
     expect(emitted).toEqual([["one"], ["two"], ["three"]]);
     expect(factoryCalls).toBe(3);
+  });
+});
+
+describe("WICG Fragment Include static output", () => {
+  it("fetches a raw fragment with native src and keeps fallback in the target range", async () => {
+    const files: Record<string, string> = {};
+    const shell = await renderToStatic(
+      async (ctx) => {
+        const html = await ctx.renderPage(() => (
+          <html>
+            <body>
+              <Defer target="header" fallback={<p>Loading</p>}>
+                <nav>Links</nav>
+              </Defer>
+            </body>
+          </html>
+        ));
+        await ctx.emitFragments((_id, url, content) => {
+          files[url] = content;
+        });
+        return html;
+      },
+      { adapter: WebPlatformAdapter },
+    );
+    expect(shell).toContain('<?start name="header"><p>Loading</p><?end>');
+    expect(shell).toContain('<template for="header" src="/fragments/header.html"></template>');
+    expect(shell).not.toContain("data-src");
+    expect(shell).not.toContain("<script");
+    expect(files["/fragments/header.html"]).toBe("<nav>Links</nav>");
   });
 });
