@@ -1,3 +1,5 @@
+import "../jsx-augment.js";
+
 export type { Adapter, ShellContext } from "./shared.js";
 export { createAdapter } from "./shared.js";
 export { TurboAdapter } from "./turbo.js";

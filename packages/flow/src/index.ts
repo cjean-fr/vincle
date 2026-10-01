@@ -1,3 +1,5 @@
+import "./jsx-augment.js";
+
 export { Slot, type SlotProps } from "./components/Slot.js";
 export { Defer, type DeferProps } from "./components/Defer.js";
 export { renderToStream, renderToFlowEvents } from "./render.js";

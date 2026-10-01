@@ -711,7 +711,7 @@ const tableBlock: string[] = [
   "  [K: `${string}-${string}`]: Record<string, unknown> & { children?: Renderable };",
   ...tags.map(([tag, name]) => {
     const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(tag) ? tag : JSON.stringify(tag);
-    return `  ${key}: ${name};`;
+    return `  ${key}: ${tag === "template" ? "TemplateHTMLAttributes" : name};`;
   }),
   "}",
 ];

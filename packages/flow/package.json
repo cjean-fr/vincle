@@ -74,6 +74,7 @@
     "@stryker-mutator/core": "catalog:",
     "@types/bun": "catalog:",
     "@vincle/core": "workspace:*",
+    "happy-dom": "^20.14.5",
     "oxc-parser": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"
