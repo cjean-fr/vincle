@@ -20,7 +20,7 @@
  * @module
  */
 import { Scope, jsxs, Fragment, type ScopeKey, type JSX } from "@vincle/core";
-import { readFile, access } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 
 import {
   ERR_VITE_CONFIG,
@@ -68,15 +68,11 @@ const ViteContext: ScopeKey<ViteScope> = Scope.key<ViteScope>("@vincle/vite:scop
  * // manifest is null in dev (file absent), the parsed object after `vite build`.
  */
 export async function loadViteManifest(path: string): Promise<ViteManifest | null> {
-  try {
-    await access(path);
-  } catch {
-    return null;
-  }
   let text: string;
   try {
     text = await readFile(path, "utf-8");
   } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code === "ENOENT") return null;
     const reason = err instanceof Error ? err.message : String(err);
     throw vincleError(
       `[vincle/vite-plugin] loadViteManifest: could not read the manifest at "${path}": ${reason}. ` +
@@ -104,6 +100,30 @@ export async function loadViteManifest(path: string): Promise<ViteManifest | nul
         "Re-run `vite build`; the file may be stale or truncated.",
       ERR_VITE_MANIFEST_SHAPE,
     );
+  }
+  for (const [entry, chunk] of Object.entries(parsed)) {
+    const object = chunk !== null && typeof chunk === "object" && !Array.isArray(chunk);
+    const valid =
+      object &&
+      typeof chunk.file === "string" &&
+      chunk.file.trim() !== "" &&
+      ["src", "name"].every((key) => chunk[key] === undefined || typeof chunk[key] === "string") &&
+      ["isEntry", "isDynamicEntry"].every(
+        (key) => chunk[key] === undefined || typeof chunk[key] === "boolean",
+      ) &&
+      ["imports", "dynamicImports", "css", "assets"].every(
+        (key) =>
+          chunk[key] === undefined ||
+          (Array.isArray(chunk[key]) &&
+            chunk[key].every((item: unknown) => typeof item === "string")),
+      );
+    if (!valid) {
+      throw vincleError(
+        `[vincle/vite-plugin] loadViteManifest: invalid chunk ${JSON.stringify(entry)} in the manifest at "${path}". ` +
+          "Expected a non-empty file string and correctly typed optional chunk fields. Re-run `vite build`.",
+        ERR_VITE_MANIFEST_SHAPE,
+      );
+    }
   }
   return parsed as ViteManifest;
 }
