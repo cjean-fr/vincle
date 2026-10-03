@@ -112,6 +112,18 @@ html {
   }
 }
 
+/* === Page transitions === */
+@view-transition {
+  navigation: auto;
+}
+
+/* The reset above does not reach ::view-transition-* pseudo-elements */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+
 /* === Print styles === */
 @media print {
   /* Hide interactive chrome */
