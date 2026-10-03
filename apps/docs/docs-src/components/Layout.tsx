@@ -14,8 +14,9 @@ import { ThemeToggle, themeInitScript, themeScriptHash } from "./ThemeToggle.js"
 // The hosts the `<head>` below actually loads from: a 'self'-only policy
 // would block the site's own font stylesheets, font files and preconnects.
 const FONT_STYLES = "https://api.fontshare.com https://fonts.googleapis.com";
-const FONT_FILES = "https://api.fontshare.com https://fonts.gstatic.com";
-const FONT_PRECONNECTS = `${FONT_STYLES} https://fonts.gstatic.com`;
+// Fontshare's stylesheet points its @font-face files at a separate CDN host.
+const FONT_FILES = "https://cdn.fontshare.com https://fonts.gstatic.com";
+const FONT_PRECONNECTS = `${FONT_STYLES} ${FONT_FILES}`;
 
 /**
  * The default page CSP.
@@ -91,7 +92,8 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
           http-equiv="Permissions-Policy"
           content="camera=(), microphone=(), geolocation=(), interest-cohort=()"
         />
-        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://api.fontshare.com" />
+        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
