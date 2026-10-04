@@ -1,3 +1,6 @@
+import { translatorFor } from "../i18n/interface.js";
+import { browserLocale, localizedPath } from "../i18n/locale.js";
+
 export interface SearchDocument {
   url: string;
   title: string;
@@ -19,13 +22,14 @@ let index: SearchDocument[] | null = null;
 
 export async function loadIndex(): Promise<SearchDocument[]> {
   if (index) return index;
-  const res = await fetch("/search-index.json");
+  const res = await fetch(localizedPath("/search-index.json", browserLocale()));
   if (!res.ok) throw new Error(`Failed to load search index: ${res.status}`);
   index = (await res.json()) as SearchDocument[];
   return index;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const t = translatorFor(browserLocale());
   const dialog = document.getElementById("search-dialog") as HTMLDialogElement | null;
   const input = document.getElementById("search-input") as HTMLInputElement | null;
   const status = document.getElementById("search-status") as HTMLElement | null;
@@ -47,12 +51,12 @@ document.addEventListener("DOMContentLoaded", () => {
   async function open(trigger?: Element | null) {
     // Morph origin: map trigger position relative to dialog center
     if (trigger instanceof HTMLElement) {
-      const t = trigger.getBoundingClientRect();
+      const triggerRect = trigger.getBoundingClientRect();
       // showModal first so dialog has its final layout
       searchDialog.showModal();
       const d = searchDialog.getBoundingClientRect();
-      const ox = ((t.left + t.width / 2 - d.left) / d.width) * 100;
-      const oy = ((t.top + t.height / 2 - d.top) / d.height) * 100;
+      const ox = ((triggerRect.left + triggerRect.width / 2 - d.left) / d.width) * 100;
+      const oy = ((triggerRect.top + triggerRect.height / 2 - d.top) / d.height) * 100;
       searchDialog.style.setProperty("--search-origin-x", ox + "%");
       searchDialog.style.setProperty("--search-origin-y", oy + "%");
       searchDialog.style.transformOrigin = "var(--search-origin-x) var(--search-origin-y)";
@@ -60,14 +64,14 @@ document.addEventListener("DOMContentLoaded", () => {
       searchDialog.showModal();
     }
     if (!index) {
-      searchStatus.textContent = "Loading search…";
+      searchStatus.textContent = t("loadingSearch");
       searchInput.disabled = true;
       try {
         await loadIndex();
         searchInput.disabled = false;
-        searchInput.placeholder = "Search docs…";
+        searchInput.placeholder = t("searchPlaceholder");
       } catch {
-        searchStatus.textContent = "Failed to load search";
+        searchStatus.textContent = t("searchFailed");
         return;
       }
     }
@@ -94,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const docs = await loadIndex();
 
     if (!q.trim()) {
-      searchStatus.textContent = "Type to search";
+      searchStatus.textContent = t("typeToSearch");
       clearResults();
       return;
     }
@@ -102,12 +106,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const ranked = search(docs, q);
 
     if (ranked.length === 0) {
-      searchStatus.textContent = "No results";
+      searchStatus.textContent = t("noResults");
       clearResults();
       return;
     }
 
-    searchStatus.textContent = `${ranked.length} results`;
+    searchStatus.textContent = t("resultCount", { count: ranked.length });
     searchStatus.classList.add("hidden");
     selectedIndex = -1;
 

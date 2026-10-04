@@ -103,14 +103,16 @@ describe("SSG build", () => {
 
   it("produces a Markdown twin for every content page", async () => {
     const htmls = [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)]
-      .filter((f) => !["404.html", "500.html"].includes(f))
+      .filter((f) => !/(?:^|\/)(?:404|500)\.html$/.test(f))
       .toSorted();
     expect(htmls.length).toBeGreaterThan(0);
     for (const html of htmls) {
       const twin =
-        html === "index.html"
-          ? path.join(DIST_DIR, "index.md")
-          : path.join(DIST_DIR, html.replace(/\.html$/, ".md"));
+        html === "fr.html"
+          ? path.join(DIST_DIR, "fr/index.md")
+          : html === "index.html"
+            ? path.join(DIST_DIR, "index.md")
+            : path.join(DIST_DIR, html.replace(/\.html$/, ".md"));
       expect(await Bun.file(twin).exists(), `no .md twin for ${html}`).toBe(true);
     }
   });
@@ -317,7 +319,7 @@ describe("code-block assets are shipped once, in the bundle", () => {
 describe("page footer", () => {
   const contentPages = (): string[] =>
     [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)]
-      .filter((f) => !["404.html", "500.html"].includes(f))
+      .filter((f) => !/(?:^|\/)(?:404|500)\.html$/.test(f))
       .toSorted();
 
   it("every content page links to its own source file", async () => {
@@ -405,5 +407,58 @@ describe("renderDocument", () => {
     const html = await renderDocument(() => <div>{"<script>alert(1)</script>"}</div>);
     expect(html).toContain("&lt;script&gt;");
     expect(html).not.toContain("<script>");
+  });
+});
+
+describe("English and French documentation", () => {
+  it("pairs every page with reciprocal language links and its own canonical", async () => {
+    const english = JSON.parse(
+      await readFile(path.join(DIST_DIR, "search-index.json"), "utf8"),
+    ) as { url: string }[];
+    const french = JSON.parse(
+      await readFile(path.join(DIST_DIR, "fr/search-index.json"), "utf8"),
+    ) as { url: string }[];
+    expect(french.length).toBe(english.length);
+    const frenchUrls = new Set(french.map(({ url }) => url));
+    for (const { url } of english) {
+      expect(url.startsWith("/fr")).toBe(false);
+      const translated = url === "/" ? "/fr" : `/fr${url}`;
+      expect(frenchUrls.has(translated)).toBe(true);
+      for (const [locale, route] of [
+        ["en", url],
+        ["fr", translated],
+      ]) {
+        const file = route === "/" ? "index.html" : `${route!.slice(1)}.html`;
+        const html = await readFile(path.join(DIST_DIR, file), "utf8");
+        expect(html).toContain(`<html lang="${locale}"`);
+        expect(html).toContain(`<link rel="canonical" href="https://vincle.cjean.fr${route}">`);
+        expect(html).toContain(`hreflang="en" href="https://vincle.cjean.fr${url}"`);
+        expect(html).toContain(`hreflang="fr" href="https://vincle.cjean.fr${translated}"`);
+        expect(html).toContain(`hreflang="x-default" href="https://vincle.cjean.fr${url}"`);
+      }
+    }
+  });
+
+  it("localizes code controls and preserves accessible tab relationships", async () => {
+    const html = await readFile(
+      path.join(DIST_DIR, "fr/guide/getting-started/installation.html"),
+      "utf8",
+    );
+    expect(html).toContain('title="Copier dans le presse-papiers"');
+    expect(html).toContain('data-copied="Copié !"');
+    expect(html).toContain('aria-label="Variantes de l’exemple de code"');
+    expect(html).toContain('aria-labelledby="docs-tabs-1-tab-0"');
+    expect(html).not.toContain("arialabelledby=");
+  });
+
+  it("does not index or canonicalize error pages in either language", async () => {
+    for (const prefix of ["", "fr/"]) {
+      for (const code of [404, 500]) {
+        const html = await readFile(path.join(DIST_DIR, `${prefix}${code}.html`), "utf8");
+        expect(html).toContain('<meta name="robots" content="noindex">');
+        expect(html).not.toContain('rel="canonical"');
+        expect(html).not.toContain("hreflang=");
+      }
+    }
   });
 });

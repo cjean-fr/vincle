@@ -7,9 +7,19 @@
  */
 import {
   createRenderer,
+  pluginFramesTexts,
   type SatteriExpressiveCodeRenderer,
   type ThemeObjectOrShikiThemeName,
 } from "satteri-expressive-code";
+
+import { translatorFor } from "../i18n/interface.js";
+
+const french = translatorFor("fr");
+pluginFramesTexts.addLocale("fr", {
+  copyButtonTooltip: french("copyCode"),
+  copyButtonCopied: french("copiedCode"),
+  terminalWindowFallbackTitle: french("terminalWindow"),
+});
 
 export const EC_THEMES: ThemeObjectOrShikiThemeName[] = ["github-light", "github-dark"];
 

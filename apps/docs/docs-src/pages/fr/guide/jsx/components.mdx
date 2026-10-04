@@ -1,0 +1,88 @@
+---
+title: "Composants"
+headingIds:
+  [
+    "components",
+    "basics",
+    "typed-props-and-composition",
+    "async-components",
+    "what-you-don-t-need",
+    "where-to-next",
+  ]
+---
+
+# Composants
+
+Un composant Vincle est une fonction qui retourne une valeur rendable.
+
+## Principes de base
+
+Utilisez des noms avec une majuscule pour les composants. Les noms en minuscules désignent des éléments HTML.
+
+```tsx
+import { renderToString } from "@vincle/core";
+
+function Greeting({ name }: { name: string }) {
+  return (
+    <p>
+      Hello, <strong>{name}</strong>!
+    </p>
+  );
+}
+
+const html = await renderToString(<Greeting name="Alice" />);
+```
+
+```html
+<p>Hello, <strong>Alice</strong>!</p>
+```
+
+## Props typées et composition
+
+Déclarez les props avec les types TypeScript habituels. `Renderable` décrit les valeurs de contenu, y compris les promesses, tableaux et itérables ; `JSX.Element` décrit un élément créé par le runtime JSX.
+
+```tsx
+import { renderToString, type JSX } from "@vincle/core";
+
+function Layout({ title, children }: { title: string; children: JSX.Element | JSX.Element[] }) {
+  return (
+    <html lang="en">
+      <head>
+        <title>{title}</title>
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+const html = await renderToString(
+  <Layout title="My page">
+    <h1>Welcome</h1>
+    <p>This is a page rendered with Vincle.</p>
+  </Layout>,
+);
+```
+
+## Composants asynchrones
+
+Une fonction `async` peut attendre ses données avant de retourner du JSX. Les composants sont évalués dans l’ordre du document. Flow permet de différer explicitement certaines régions.
+
+```tsx
+async function Profile({ id }: { id: string }) {
+  const user = await db.users.find(id);
+  return (
+    <div class="profile">
+      <h1>{user.name}</h1>
+      <p>{user.bio}</p>
+    </div>
+  );
+}
+```
+
+## Ce dont vous pouvez vous passer
+
+Aucun hook, classe ou cycle de vie client n’est nécessaire. L’interactivité vient de votre JavaScript, de HTMX, de Turbo ou des mécanismes du navigateur.
+
+## Pour continuer
+
+Consultez les [types JSX](/fr/api/core/jsx-types), les [contextes](/fr/api/core/scope) et les [fragments](/fr/guide/jsx/fragments).

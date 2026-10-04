@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
+import { translatorFor } from "../docs-src/i18n/interface.js";
 import { applyTheme } from "../docs-src/theme/state.js";
 
 function setup(stored: string | null = null, dark = false, blocked = false) {
@@ -31,7 +32,20 @@ function setup(stored: string | null = null, dark = false, blocked = false) {
     document: {
       documentElement: html,
       querySelectorAll: () => [
-        { setAttribute: (key: string, value: string) => (attributes[key] = value) },
+        {
+          getAttribute: (key: string) => {
+            const messages: Record<string, string> = {
+              "data-theme-auto-dark": "themeAutoDark",
+              "data-theme-auto-light": "themeAutoLight",
+              "data-theme-light-dark": "themeLightAuto",
+              "data-theme-light-light": "themeLightDark",
+              "data-theme-dark-dark": "themeDarkLight",
+              "data-theme-dark-light": "themeDarkAuto",
+            };
+            return translatorFor("en")(messages[key] as "themeAutoDark");
+          },
+          setAttribute: (key: string, value: string) => (attributes[key] = value),
+        },
       ],
       addEventListener: (key: string, callback: any) => (handlers[key] = callback),
     },

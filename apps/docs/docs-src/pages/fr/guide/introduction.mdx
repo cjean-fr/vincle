@@ -1,0 +1,93 @@
+---
+title: "Vos vues en JSX. Votre application en HTML."
+headingIds:
+  [
+    "your-views-in-jsx-your-app-in-html",
+    "compose-a-view",
+    "load-data-in-your-components",
+    "let-slower-parts-arrive-later",
+    "what-the-core-gives-you",
+    "next-steps",
+  ]
+---
+
+# Vos vues en JSX. Votre application en HTML.
+
+Vincle transforme des composants JSX typés en HTML sur votre serveur. Conservez votre routeur, vos données et votre application ; adoptez les fragments progressifs lorsque vous en avez besoin.
+
+## Composer une vue
+
+Composez des vues avec des fonctions ordinaires. Les chaînes sont échappées et les attributs sont typés. `renderToString` fournit le HTML de la réponse.
+
+```tsx
+import { renderToString } from "@vincle/core";
+
+function App({ name }: { name: string }) {
+  return <h1>Hello, {name}!</h1>;
+}
+
+const page = <App name="world" />;
+const html = await renderToString(page);
+```
+
+```html
+<h1>Hello, world!</h1>
+```
+
+## Charger les données dans les composants
+
+Les composants `async` chargent leurs propres données. Le moteur les attend dans l’ordre du document. Préparez des promesses en amont si vous souhaitez commencer plusieurs requêtes ensemble.
+
+```tsx
+import { renderToString } from "@vincle/core";
+
+declare const db: {
+  users: {
+    findById(id: string): Promise<{ name: string; email: string }>;
+  };
+};
+
+async function UserCard({ id }: { id: string }) {
+  const user = await db.users.findById(id);
+  return (
+    <div class="card">
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+
+const html = await renderToString(<UserCard id="42" />);
+```
+
+## Laisser arriver les parties lentes plus tard
+
+Avec `@vincle/flow`, `<Defer>` permet aux parties lentes d’arriver après la structure initiale. Son contenu de repli s’affiche en attendant le résultat.
+
+```tsx
+import { renderToStream, Defer } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+const stream = renderToStream(
+  () => (
+    <html>
+      <body>
+        <h1>Page visible immediately</h1>
+        <Defer target="comments" fallback={<p>Loading comments…</p>}>
+          <Comments />
+        </Defer>
+      </body>
+    </html>
+  ),
+  NativeAdapter,
+);
+// → ReadableStream<string>. Pipe it to the HTTP response.
+```
+
+## Ce que fournit Core
+
+Core fournit le rendu JSX, l’échappement, le filtrage des URL et les contextes. Il ne livre aucun runtime au navigateur. Flow, les adaptateurs et la précompilation sont des packages distincts.
+
+## Étapes suivantes
+
+Commencez par l’[installation](/fr/guide/getting-started/installation), les [vues progressives](/fr/guide/views) ou le [streaming](/fr/integration/streaming).

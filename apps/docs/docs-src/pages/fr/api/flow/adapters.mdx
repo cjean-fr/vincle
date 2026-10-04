@@ -1,0 +1,23 @@
+---
+title: "Adaptateurs Flow"
+headingIds: ["adapters", "built-in-adapters", "merge-types"]
+---
+
+# Adaptateurs Flow
+
+Un adaptateur choisit la représentation HTML des fragments et de leurs mises à jour.
+
+```tsx
+import { renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+const stream = renderToStream(() => <Page />, NativeAdapter);
+```
+
+## Adaptateurs fournis
+
+`NativeAdapter` fournit un polyfill, `WebPlatformAdapter` utilise les fonctions expérimentales du navigateur, `TurboAdapter` et `HtmxAdapter` ciblent leurs bibliothèques respectives, et `EsiAdapter` convient aux inclusions statiques côté infrastructure.
+
+## Modes de fusion
+
+Les modes comprennent `replace`, `append`, `prepend`, `before` et `after` selon l’adaptateur. Turbo et HTMX peuvent également utiliser `morph` avec une version compatible. Les adaptateurs WebPlatform et ESI sont limités au remplacement.

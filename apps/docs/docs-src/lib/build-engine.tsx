@@ -10,6 +10,14 @@ import type { Page, PageMeta } from "../types.js";
 
 import config from "../../docs.config.js";
 import { setDocs } from "../context.js";
+import { translatorFor } from "../i18n/interface.js";
+import {
+  locales,
+  localeFor,
+  localizedPath,
+  translationAlternates,
+  type Locale,
+} from "../i18n/locale.js";
 import { buildMinimatchIndex } from "../search/minimatch-build.js";
 import { buildSitemap } from "./build-sitemap.js";
 import {
@@ -62,7 +70,10 @@ function concurrency(): number {
 
 let manifest: ViteManifest | null = null;
 let allPages: Page[] = [];
-let resolvedTabs: { label: string; slug: string; href: string }[] = [];
+let tabsByLocale: Record<Locale, { label: string; slug: string; href: string }[]> = {
+  en: [],
+  fr: [],
+};
 
 export async function initBuild(): Promise<void> {
   manifest = await loadViteManifest(path.resolve(config.viteManifest));
@@ -134,19 +145,31 @@ export async function refreshPages(): Promise<void> {
 async function renderPages(pages: Page[]): Promise<{ url: string; title: string; html: string }[]> {
   const typedPages = allPages as (Page & { meta: PageMeta })[];
 
-  // Resolve tab hrefs once for the entire build.
-  resolvedTabs = await Promise.all(
-    config.tabs.map(async (tab) => ({
-      label: tab.label,
-      slug: tab.slug,
-      href: tab.href ?? (await firstPageOfTab(config, typedPages, tab)),
-    })),
-  );
+  const available = new Set(typedPages.filter((page) => !page.meta.draft).map((page) => page.url));
+  if (available.size !== typedPages.filter((page) => !page.meta.draft).length) {
+    throw new Error("[@vincle/docs] duplicate page URLs detected.");
+  }
+  for (const locale of locales) {
+    const t = translatorFor(locale);
+    tabsByLocale[locale] = await Promise.all(
+      config.tabs.map(async (tab) => ({
+        label:
+          tab.slug === "guide" || tab.slug === "integration" || tab.slug === "api"
+            ? t(tab.slug)
+            : tab.label,
+        slug: tab.slug,
+        href: tab.href
+          ? localizedPath(tab.href, locale)
+          : await firstPageOfTab(config, typedPages, tab, locale),
+      })),
+    );
+  }
 
   return mapConcurrent(
     pages,
     async (page) => {
       const meta = page.meta;
+      const locale = localeFor(page.url);
       const sidebar = await resolveSidebar(config, typedPages, page.url);
       const { prev, next } = resolveNavigation(sidebar, page.url);
       const currentTab = tabFor(config.tabs, page.url);
@@ -167,7 +190,8 @@ async function renderPages(pages: Page[]): Promise<{ url: string; title: string;
             meta,
             sidebar,
             currentTab,
-            resolvedTabs,
+            resolvedTabs: tabsByLocale[locale],
+            alternates: translationAlternates(page.url, available),
             lastUpdated,
             editUrl,
             prev,
@@ -178,7 +202,10 @@ async function renderPages(pages: Page[]): Promise<{ url: string; title: string;
           return config.layout({ children: inner });
         },
         {
-          transforms: [(h) => injectToc(h, renderTocHtml), injectHeadingAnchors],
+          transforms: [
+            (h) => injectToc(h, (entries) => renderTocHtml(entries, locale)),
+            (h) => injectHeadingAnchors(h, locale),
+          ],
         },
       );
 
@@ -202,14 +229,28 @@ async function postBuild(
     html: r.html,
   }));
 
-  await buildMinimatchIndex(pageData, path.join(config.out, "search-index.json"));
+  for (const locale of locales) {
+    const outDir = locale === "en" ? config.out : path.join(config.out, locale);
+    await mkdir(outDir, { recursive: true });
+    await buildMinimatchIndex(
+      pageData.filter((page) => localeFor(page.url) === locale),
+      path.join(outDir, "search-index.json"),
+    );
+  }
 
   const hasSitemap = config.sitemap && Boolean(config.site);
   await updateRobotsTxt(config.out, hasSitemap, config.site);
 
   if (hasSitemap) {
     await buildSitemap(
-      pages.map((p) => ({ url: p.url, draft: p.meta.draft })),
+      pages.map((p) => ({
+        url: p.url,
+        draft: p.meta.draft,
+        alternates: translationAlternates(
+          p.url,
+          new Set(pages.filter((page) => !page.meta.draft).map((page) => page.url)),
+        ),
+      })),
       config.site!,
       config.out,
     );
@@ -221,8 +262,23 @@ async function postBuild(
     html: r.html,
     text: htmlToText(r.html),
   }));
-  await generateLlmsTxt(pageData, config, config.out);
-  await generateLlmsFullTxt(textPages, config, config.out);
+  for (const locale of locales) {
+    const outDir = locale === "en" ? config.out : path.join(config.out, locale);
+    const localeConfig =
+      locale === "en" ? config : { ...config, description: translatorFor(locale)("description") };
+    await generateLlmsTxt(
+      pageData.filter((page) => localeFor(page.url) === locale),
+      localeConfig,
+      outDir,
+      locale,
+    );
+    await generateLlmsFullTxt(
+      textPages.filter((page) => localeFor(page.url) === locale),
+      localeConfig,
+      outDir,
+      locale,
+    );
+  }
 
   await copyStaticAssets();
   await generateMarkdownAlternates(pages, config.out);
@@ -230,20 +286,28 @@ async function postBuild(
   await generateAgentSkillsIndex(config.out);
   await generateAiCatalog(config.out, config);
 
-  await renderError(404, "Page Not Found", "Page not found.");
-  await renderError(500, "Server Error", "Server error. Something went wrong.");
+  for (const locale of locales) {
+    const t = translatorFor(locale);
+    await renderError(404, t("notFoundTitle"), t("notFoundMessage"), locale);
+    await renderError(500, t("errorTitle"), t("errorMessage"), locale);
+  }
 }
 
-async function renderError(status: number, title: string, message: string): Promise<void> {
+async function renderError(
+  status: number,
+  title: string,
+  message: string,
+  locale: Locale,
+): Promise<void> {
   const html = await renderDocument(() => {
     setVite(manifest!, { base: config.base });
     setDocs({
       config,
-      currentPage: `/${status}`,
+      currentPage: localizedPath(`/${status}`, locale),
       meta: { title },
       sidebar: { groups: [] },
       currentTab: null,
-      resolvedTabs,
+      resolvedTabs: tabsByLocale[locale],
       lastUpdated: null,
       editUrl: null,
       prev: null,
@@ -255,16 +319,20 @@ async function renderError(status: number, title: string, message: string): Prom
           <h1 class="text-6xl font-bold text-gray-300 dark:text-gray-700">{status}</h1>
           <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">{message}</p>
           <a
-            href="/"
+            href={localizedPath("/", locale)}
             class="mt-6 inline-block text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
           >
-            ← Back to home
+            {translatorFor(locale)("backHome")}
           </a>
         </main>
       ),
     });
   });
-  await writeFile(path.join(config.out, `${status}.html`), "<!DOCTYPE html>\n" + html, "utf-8");
+  await writeFile(
+    path.join(config.out, locale === "en" ? `${status}.html` : `${locale}/${status}.html`),
+    "<!DOCTYPE html>\n" + html,
+    "utf-8",
+  );
 }
 
 async function copyStaticAssets(): Promise<void> {

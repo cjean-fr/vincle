@@ -1,7 +1,10 @@
-import { useDocs } from "../context.js";
+import { useDocs, useTranslation } from "../context.js";
+import { localeFor, type Locale } from "../i18n/locale.js";
 
 export function PageFooter() {
-  const { editUrl, lastUpdated, prev, next } = useDocs();
+  const t = useTranslation();
+  const { editUrl, lastUpdated, prev, next, currentPage } = useDocs();
+  const locale = localeFor(currentPage);
   const hasNav = prev !== null || next !== null;
   const hasFooter = editUrl !== null || lastUpdated !== null;
 
@@ -64,14 +67,14 @@ export function PageFooter() {
               target="_blank"
               rel="noopener"
             >
-              Edit this page on GitHub →
+              {t("editPage")}
             </a>
           ) : (
             <span />
           )}
           {lastUpdated && (
             <time class="docs-page-footer-updated" dateTime={lastUpdated}>
-              Last updated: {formatDate(lastUpdated)}
+              {t("lastUpdated", { date: formatDate(lastUpdated, locale) })}
             </time>
           )}
         </footer>
@@ -80,9 +83,9 @@ export function PageFooter() {
   );
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: Locale): string {
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return new Date(iso).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",

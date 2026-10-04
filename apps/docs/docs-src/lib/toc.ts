@@ -1,5 +1,8 @@
 import { escapeAttr, escapeContent } from "@vincle/core/html";
 
+import type { Locale } from "../i18n/locale.js";
+
+import { translatorFor } from "../i18n/interface.js";
 import { eachHeading, withoutAnchor } from "./headings.js";
 import { htmlToText } from "./html-text.js";
 
@@ -86,12 +89,13 @@ function renderGroup(group: GroupedEntry): string {
   return `<li class="docs-toc-entry docs-toc-level-${group.level} m-0">${renderTocLink(group)}${sublist}</li>`;
 }
 
-export function renderTocHtml(entries: TocEntry[]): string {
+export function renderTocHtml(entries: TocEntry[], locale: Locale = "en"): string {
+  const t = translatorFor(locale);
   const groups = groupEntries(entries);
   const items = groups.map((g) => renderGroup(g)).join("");
   return (
-    `<aside class="docs-toc sticky top-8 text-sm" aria-label="Table of contents">` +
-    `<p class="docs-toc-title m-0 mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--docs-color-text-secondary)]">On this page</p>` +
+    `<aside class="docs-toc sticky top-8 text-sm" aria-label="${escapeAttr(t("contents"))}">` +
+    `<p class="docs-toc-title m-0 mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--docs-color-text-secondary)]">${escapeContent(t("onThisPage"))}</p>` +
     `<div class="docs-toc-track">` +
     `<div class="docs-toc-marker" aria-hidden="true"></div>` +
     `<ul class="docs-toc-list list-none p-0 m-0 border-l border-[var(--docs-color-border)]">${items}</ul>` +

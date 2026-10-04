@@ -1,0 +1,102 @@
+---
+title: "Streaming"
+headingIds: ["streaming", "when-to-stream", "rendertostream", "async-iterables-streaming-sequences"]
+---
+
+# Streaming
+
+Envoyez rapidement la structure de la page et livrez les régions lentes quand elles sont prêtes.
+
+## Quand utiliser le streaming
+
+Le streaming est utile lorsque certaines données ont une latence importante. Il conserve une page exploitable pendant le chargement des régions différées.
+
+## renderToStream
+
+`renderToStream` attend la structure initiale puis envoie ses fragments. Choisissez un adaptateur et encodez les chaînes dans votre réponse, ou utilisez `serve()`.
+
+```tsx
+import { Slot, Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+declare function fetchComments(): Promise<{ text: string }[]>;
+
+async function Comments() {
+  const items = await fetchComments();
+  return (
+    <ul>
+      {items.map((c) => (
+        <li>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+// <Slot> declares the placeholder with fallback content in the shell.
+// <Defer> pushes the real content, which replaces it when resolved.
+function Page() {
+  return (
+    <html>
+      <body>
+        <h1>My page</h1>
+        <Slot name="comments">
+          <p>Loading comments…</p>
+        </Slot>
+        <Defer target="comments">{() => <Comments />}</Defer>
+      </body>
+    </html>
+  );
+}
+
+const stream = renderToStream(() => <Page />, NativeAdapter);
+```
+
+## Itérables asynchrones : séquences progressives
+
+Un itérable asynchrone produit plusieurs mises à jour d’une région. L’adaptateur applique le mode de fusion choisi. Respectez le signal d’annulation pour arrêter les ressources inutiles.
+
+```tsx
+import { Defer } from "@vincle/flow";
+
+declare function fetchRows(page: number): Promise<{ id: number; name: string }[]>;
+
+function Feed() {
+  return (
+    <Defer target="feed" merge="append">
+      {async function* () {
+        let page = 1;
+        while (true) {
+          const rows = await fetchRows(page++);
+          if (rows.length === 0) break;
+          for (const row of rows) {
+            yield <tr key={row.id}>{row.name}</tr>;
+          }
+        }
+      }}
+    </Defer>
+  );
+}
+```
+
+```tsx
+import { Defer } from "@vincle/flow";
+import { on, type EventEmitter } from "node:events";
+
+declare const priceFeed: EventEmitter; // emits "price" with { symbol, value }
+
+function LivePrice() {
+  return (
+    <Defer target="price">
+      {async function* (signal) {
+        for await (const [price] of on(priceFeed, "price", { signal })) {
+          yield (
+            <span>
+              {price.symbol}: {price.value}
+            </span>
+          );
+        }
+      }}
+    </Defer>
+  );
+}
+```

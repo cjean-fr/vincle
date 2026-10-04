@@ -1,0 +1,70 @@
+---
+title: "Utilitaires Flow"
+headingIds: ["utils", "composeshell", "injectintohead", "assertfragmentid"]
+---
+
+# Utilitaires Flow
+
+Quelques fonctions facilitent la composition du document et la validation des fragments.
+
+## composeShell
+
+`composeShell` enchaîne les transformations de la structure HTML et ignore les valeurs de transformation falsy.
+
+```tsx
+import { NativeAdapter, createAdapter } from "@vincle/flow/adapters";
+import { composeShell, injectIntoHead } from "@vincle/flow/utils";
+
+const metadata = () => (html: string) => injectIntoHead(html, "<title>Home</title>");
+
+const MyAdapter = createAdapter({
+  ...NativeAdapter,
+  transformShell: composeShell(NativeAdapter.transformShell, metadata()),
+});
+```
+
+```tsx
+function composeShell(
+  ...transforms: Array<((shell: string, ctx: ShellContext) => string) | undefined | null | false>
+): (shell: string, ctx: ShellContext) => string;
+```
+
+## injectIntoHead
+
+`injectIntoHead` insère du contenu dans `<head>` et crée cet élément si nécessaire.
+
+```tsx
+import { injectIntoHead } from "@vincle/flow/utils";
+
+const shell = "<html><body>…</body></html>";
+const patched = injectIntoHead(shell, `<link rel="stylesheet" href="/app.css">`);
+```
+
+```html
+<html>
+  <head>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    …
+  </body>
+</html>
+```
+
+```tsx
+function injectIntoHead(html: string, content: string): string;
+```
+
+## assertFragmentId
+
+`assertFragmentId` exige une lettre initiale, suivie de lettres, chiffres, tirets ou underscores. Validez les identifiants avant de les utiliser dans le document.
+
+```tsx
+import { assertFragmentId } from "@vincle/flow/utils";
+
+assertFragmentId(userInput, "Slot name"); // throws if invalid
+```
+
+```tsx
+function assertFragmentId(id: string, label: string): void;
+```

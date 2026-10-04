@@ -9,7 +9,7 @@ import { mdxToJs, defineHastPlugin } from "satteri";
 import expressiveCode from "satteri-expressive-code";
 
 import { EC_THEMES, getSharedRenderer } from "./expressive-code.js";
-import { fenceTabs, wrapTables } from "./hast-plugins.js";
+import { fenceTabs, fenceTabsFor, wrapTables } from "./hast-plugins.js";
 
 /** Where compiled MDX lands before being imported. */
 const COMPILED_ROOT = path.resolve(import.meta.dirname, "../pages/.compiled");
@@ -77,20 +77,29 @@ export interface CompiledMdx {
   meta: Record<string, unknown>;
 }
 
-const headingIds = defineHastPlugin({
-  name: "heading-ids",
-  element: {
-    filter: ["h1", "h2", "h3", "h4", "h5", "h6"],
-    visit(node, ctx) {
-      const id = ctx
-        .textContent(node)
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      if (id) ctx.setProperty(node, "id", id);
+function headingPlugin(ids: readonly string[] = []) {
+  let index = 0;
+  return defineHastPlugin({
+    name: "heading-ids",
+    element: {
+      filter: ["h1", "h2", "h3", "h4", "h5", "h6"],
+      visit(node, ctx) {
+        const id =
+          ids[index++] ??
+          ctx
+            .textContent(node)
+            .normalize("NFKD")
+            .replace(/\p{M}/gu, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+        if (id) ctx.setProperty(node, "id", id);
+      },
     },
-  },
-});
+  });
+}
+
+const headingIds = headingPlugin();
 
 const compileOptions: MdxCompileOptions = {
   jsxImportSource: "@vincle/core",
@@ -148,7 +157,22 @@ export class MdxCache {
     hash: string,
   ): Promise<CompiledMdx> {
     const { data: frontmatter, content } = grayMatter(raw);
-    const { code } = await mdxToJs(content, compileOptions);
+    const stableIds = Array.isArray(frontmatter["headingIds"])
+      ? frontmatter["headingIds"].filter((id): id is string => typeof id === "string")
+      : [];
+    const { code } = await mdxToJs(content, {
+      ...compileOptions,
+      hastPlugins: [
+        fenceTabsFor(file.includes("/pages/fr/") ? "fr" : "en"),
+        expressiveCode({
+          themes: EC_THEMES,
+          customCreateRenderer: getSharedRenderer,
+          getBlockLocale: () => (file.includes("/pages/fr/") ? "fr" : "en"),
+        }),
+        headingPlugin(stableIds),
+        wrapTables,
+      ],
+    });
 
     if (this.#modules.size >= MdxCache.MAX_SIZE) {
       const first = this.#modules.keys().next();

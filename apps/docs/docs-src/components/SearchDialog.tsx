@@ -1,4 +1,6 @@
+import { useTranslation } from "../context.js";
 export function SearchDialog() {
+  const t = useTranslation();
   return (
     <search>
       <button
@@ -19,7 +21,7 @@ export function SearchDialog() {
             d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
           />
         </svg>
-        <span class="docs-search-trigger-label hidden md:inline">Search</span>
+        <span class="docs-search-trigger-label hidden md:inline">{t("search")}</span>
         <kbd class="docs-search-kbd hidden items-center gap-0.5 rounded border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--docs-color-text-secondary)] sm:inline-flex">
           <span class="text-base leading-none">⌘</span>K
         </kbd>
@@ -28,7 +30,7 @@ export function SearchDialog() {
       <dialog
         id="search-dialog"
         class="docs-search-dialog m-0 mx-auto mt-[15vh] w-full max-w-xl rounded-xl border border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] p-0 shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:flex-col"
-        aria-label="Search documentation"
+        aria-label={t("searchDocumentation")}
       >
         <div class="docs-search-input-row flex items-center gap-3 border-b border-[var(--docs-color-border)] px-4 py-3">
           <svg
@@ -47,14 +49,14 @@ export function SearchDialog() {
           <input
             id="search-input"
             type="search"
-            placeholder="Loading index…"
+            placeholder={t("loadingIndex")}
             class="docs-search-input flex-1 bg-transparent px-1 text-[var(--docs-color-text)] outline-none placeholder:text-[var(--docs-color-text-secondary)] disabled:opacity-50"
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
             disabled
-            aria-label="Search query"
+            aria-label={t("searchQuery")}
             aria-controls="search-results"
             aria-describedby="search-status"
           />
@@ -67,14 +69,14 @@ export function SearchDialog() {
           id="search-status"
           class="docs-search-status px-4 py-6 text-center text-sm text-[var(--docs-color-text-secondary)]"
         >
-          Loading…
+          {t("loading")}
         </p>
 
         <ul
           id="search-results"
           class="docs-search-results m-0 max-h-[60vh] overflow-y-auto py-2"
           role="listbox"
-          aria-label="Search results"
+          aria-label={t("searchResults")}
         ></ul>
       </dialog>
     </search>

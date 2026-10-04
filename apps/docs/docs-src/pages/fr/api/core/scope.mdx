@@ -1,0 +1,64 @@
+---
+title: "Contextes et Scope"
+headingIds: ["context-scope", "tree-context", "scope", "runtime-support"]
+---
+
+# Contextes et Scope
+
+Vincle propose un contexte attaché à l’arbre et une portée mutable attachée à l’exécution.
+
+## Contexte de l’arbre
+
+`createContext(defaultValue)` crée un contexte. Un Provider fournit une valeur à son sous-arbre ; `useContext` lit le Provider le plus proche ou la valeur par défaut. Aucun `Scope.with()` n’est nécessaire pour un Provider.
+
+```tsx
+import { createContext, useContext, renderToString } from "@vincle/core";
+
+const Theme = createContext<"light" | "dark">("light");
+
+function ThemedBox({ children }: { children: string }) {
+  const theme = useContext(Theme);
+  return <div class={theme === "dark" ? "dark" : "light"}>{children}</div>;
+}
+
+const html = await renderToString(
+  <Theme.Provider value="dark">
+    <ThemedBox>Hello</ThemedBox>
+  </Theme.Provider>,
+);
+```
+
+## Scope
+
+`Scope.key<T>()` crée une clé typée. `Scope.with()` installe une portée, `Scope.set()` écrit et `Scope.get()` lit. Les portées imbriquées utilisent un instantané des valeurs ; les mutations restent propres à l’exécution courante.
+
+```tsx
+import { Scope, renderToString } from "@vincle/core";
+
+declare function getSession(req: Request): Promise<{ userId: string }>;
+const Request = Scope.key<{ userId: string; locale: string }>("app:request");
+const App = () => <main>{Scope.get(Request).userId}</main>;
+
+async function handleRequest(req: Request): Promise<Response> {
+  const session = await getSession(req);
+  const html = await Scope.with(() => {
+    Scope.set(Request, {
+      userId: session.userId,
+      locale: req.headers.get("Accept-Language") ?? "en",
+    });
+    return renderToString(<App />);
+  });
+  return new Response(html, { headers: { "Content-Type": "text/html" } });
+}
+```
+
+```tsx
+const childHtml = await Scope.with(async () => {
+  Scope.set(Theme, "dark");
+  return Scope.with(() => renderToString(<ChildPage />), Scope.snapshot());
+});
+```
+
+## Environnements pris en charge
+
+AsyncLocalStorage assure l’isolation sous Bun et Node.js, ainsi que dans les environnements compatibles. Sans ce mécanisme, Vincle sérialise l’entrée dans les portées et refuse les entrées concurrentes. Une lecture hors de la portée peut voir l’état d’une exécution en cours : ne partagez pas de données sensibles de cette manière.

@@ -1,5 +1,6 @@
 import { raw } from "@vincle/core";
 
+import { useTranslation } from "../context.js";
 import { applyTheme } from "../theme/state.js";
 
 const SUN_ICON = raw(
@@ -11,13 +12,20 @@ const MOON_ICON = raw(
 );
 
 export function ThemeToggle() {
+  const t = useTranslation();
   return (
     <button
       type="button"
       data-docs-theme-toggle
       class="docs-theme-toggle inline-grid h-9 w-9 place-items-center rounded-lg text-[var(--docs-color-text-secondary)] transition-colors hover:bg-[var(--docs-color-surface)] hover:text-[var(--docs-color-text)]"
-      aria-label="Theme: Automatic. Switch to Light"
-      title="Theme: Automatic. Switch to Light"
+      aria-label={t("themeInitial")}
+      title={t("themeInitial")}
+      data-theme-auto-dark={t("themeAutoDark")}
+      data-theme-auto-light={t("themeAutoLight")}
+      data-theme-light-dark={t("themeLightAuto")}
+      data-theme-light-light={t("themeLightDark")}
+      data-theme-dark-dark={t("themeDarkLight")}
+      data-theme-dark-light={t("themeDarkAuto")}
     >
       {SUN_ICON}
       {MOON_ICON}

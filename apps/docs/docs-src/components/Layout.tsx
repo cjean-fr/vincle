@@ -2,7 +2,9 @@ import type { JSX } from "@vincle/core";
 
 import { Asset } from "@vincle/vite-plugin";
 
-import { useDocs } from "../context.js";
+import { useDocs, useTranslation } from "../context.js";
+import { localeFor, localizedPath, markdownPath, unlocalizedPath } from "../i18n/locale.js";
+import { LanguageSwitcher } from "./LanguageSwitcher.js";
 import { Nav } from "./Nav.js";
 import { NavToggle } from "./NavToggle.js";
 import { PageFooter } from "./PageFooter.js";
@@ -50,10 +52,12 @@ const StructuredData = ({
   siteUrl,
   title,
   description,
+  locale,
 }: {
   siteUrl: string;
   title: string;
   description: string;
+  locale: string;
 }) => (
   <script type="application/ld+json">
     {JSON.stringify({
@@ -62,30 +66,34 @@ const StructuredData = ({
       name: title,
       description: description,
       url: siteUrl,
+      inLanguage: locale,
     })}
   </script>
 );
 
 export async function Layout({ children }: { children: JSX.Element }): Promise<JSX.Element> {
-  const { config, meta, currentPage } = useDocs();
+  const { config, meta, currentPage, alternates = [] } = useDocs();
+  const locale = localeFor(currentPage);
+  const t = useTranslation();
+  const route = unlocalizedPath(currentPage);
   const title = meta.title ? `${meta.title} — ${config.title}` : config.title;
-  const description = meta.description ?? config.description;
+  const description = meta.description ?? (locale === "en" ? config.description : t("description"));
   const image = meta.image ?? config.image;
-  const canonical = config.site ? config.site + currentPage : null;
+  const canonical = config.site ? config.site.replace(/\/+$/, "") + currentPage : null;
   const csp = meta.csp ?? (await defaultCsp());
-  const is404 = currentPage === "/404";
-  const isErrorPage = is404 || currentPage === "/500";
-  const isHome = currentPage === "/";
+  const is404 = route === "/404";
+  const isErrorPage = is404 || route === "/500";
+  const isHome = route === "/";
 
   return (
-    <html lang="en" class="docs-html">
+    <html lang={locale} class="docs-html">
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="color-scheme" content="light dark" />
         <meta name="theme-color" content="#fcfdff" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#101b2b" media="(prefers-color-scheme: dark)" />
-        {is404 && <meta name="robots" content="noindex" />}
+        {isErrorPage && <meta name="robots" content="noindex" />}
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         <meta http-equiv="Content-Security-Policy" content={csp} />
         <meta
@@ -108,19 +116,44 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <title>{title}</title>
         {description && <meta name="description" content={description} />}
-        {canonical && <link rel="canonical" href={canonical} />}
+        {canonical && !isErrorPage && <link rel="canonical" href={canonical} />}
+        {config.site &&
+          !isErrorPage &&
+          alternates.map(({ locale: language, href }) => (
+            <link
+              rel="alternate"
+              hrefLang={language}
+              href={config.site!.replace(/\/+$/, "") + href}
+            />
+          ))}
+        {config.site &&
+          !isErrorPage &&
+          alternates.some((alternate) => alternate.locale === "en") && (
+            <link
+              rel="alternate"
+              hrefLang="x-default"
+              href={
+                config.site.replace(/\/+$/, "") +
+                alternates.find((alternate) => alternate.locale === "en")!.href
+              }
+            />
+          )}
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
         {/* Markdown twin of this page, for agents (RSS-style alternate). */}
         {!isErrorPage && (
-          <link
-            rel="alternate"
-            type="text/markdown"
-            href={isHome ? "/index.md" : currentPage + ".md"}
-          />
+          <link rel="alternate" type="text/markdown" href={markdownPath(currentPage)} />
         )}
         <meta property="og:type" content="website" />
         <meta property="og:title" content={title} />
-        <meta property="og:locale" content="en_US" />
+        <meta property="og:locale" content={locale === "fr" ? "fr_FR" : "en_US"} />
+        {alternates
+          .filter((alternate) => alternate.locale !== locale)
+          .map((alternate) => (
+            <meta
+              property="og:locale:alternate"
+              content={alternate.locale === "fr" ? "fr_FR" : "en_US"}
+            />
+          ))}
         {description && <meta property="og:description" content={description} />}
         {canonical && <meta property="og:url" content={canonical} />}
         {image && <meta property="og:image" content={image} />}
@@ -130,20 +163,25 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
         {image && <meta name="twitter:image" content={image} />}
         {themeInitScript}
         {config.site && (
-          <StructuredData siteUrl={config.site} title={title} description={description} />
+          <StructuredData
+            locale={locale}
+            siteUrl={config.site}
+            title={title}
+            description={description}
+          />
         )}
         <Asset entry={config.clientEntry} />
       </head>
       <body class="docs-body bg-[var(--docs-color-bg)] text-[var(--docs-color-text)] antialiased">
         <a href="#docs-main" class="docs-skip-link">
-          Skip to content
+          {t("skipContent")}
         </a>
 
         {/* Sticky top header: logo + nav links + search + theme + mobile menu */}
         <header class="docs-header sticky top-0 z-40 bg-[var(--docs-color-bg)]/80 [box-shadow:inset_0_-1px_0_var(--docs-color-border)] backdrop-blur-xl">
           <div class="mx-auto flex h-16 max-w-7xl items-center gap-1 px-4 md:px-6">
             <a
-              href="/"
+              href={localizedPath("/", locale)}
               class="docs-brand shrink-0 text-base font-bold tracking-tight text-[var(--docs-color-text)]"
             >
               <span class="docs-brand-mark" aria-hidden="true">
@@ -153,6 +191,7 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
             </a>
             <Tabs />
             <div class="ml-auto flex shrink-0 items-center gap-2">
+              <LanguageSwitcher />
               <SearchDialog />
               <ThemeToggle />
               {!isHome && <NavToggle />}

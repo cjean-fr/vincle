@@ -6,6 +6,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, extname, resolve } from "node:path";
 
+import { localeFor } from "./i18n/locale.js";
 import { initBuild, rebuildAll, refreshPages } from "./lib/build-engine.js";
 
 const PORT = Number(process.env["PORT"] ?? 3000);
@@ -148,11 +149,16 @@ async function main(): Promise<void> {
       if (filePath !== DIST && !filePath.startsWith(DIST + "/"))
         return new Response("Forbidden", { status: 403 });
       let target = filePath;
+      let status = 200;
       if (!existsSync(target)) {
         const alt = target + ".html";
         if (existsSync(alt)) target = alt;
         else {
-          const fallback = join(DIST, "404.html");
+          status = 404;
+          const fallback = join(
+            DIST,
+            localeFor(url.pathname) === "fr" ? "fr/404.html" : "404.html",
+          );
           if (existsSync(fallback)) target = fallback;
           else return new Response("Not Found", { status: 404 });
         }
@@ -164,6 +170,7 @@ async function main(): Promise<void> {
         let body: string | Uint8Array = content;
         if (ext === ".html") body = injectLiveReload(content.toString("utf-8"));
         return new Response(body as BodyInit, {
+          status,
           headers: { "Content-Type": mime },
         });
       });

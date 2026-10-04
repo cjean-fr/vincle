@@ -1,0 +1,10 @@
+{
+  "core": {
+    "label": "Core",
+    "order": 1
+  },
+  "flow": {
+    "label": "Flow API",
+    "order": 100
+  }
+}

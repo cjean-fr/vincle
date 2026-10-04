@@ -1,0 +1,74 @@
+---
+title: "Intégration"
+headingIds: ["integration", "how-it-works", "two-rendering-modes", "install", "adapters"]
+---
+
+# Intégration
+
+Flow ajoute des fragments progressifs au rendu HTML de Core, sans imposer de routeur.
+
+## Fonctionnement
+
+La structure initiale contient le contenu immédiat et les emplacements différés. Les fragments arrivent ensuite dans la représentation de l’adaptateur choisi.
+
+```tsx
+import { Slot, Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+declare function fetchComments(): Promise<{ text: string }[]>;
+
+async function Comments() {
+  const items = await fetchComments();
+  return (
+    <ul>
+      {items.map((c) => (
+        <li>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+
+// <Slot> declares the placeholder with fallback content in the shell.
+// <Defer> pushes the real content, which replaces it when resolved.
+function Page() {
+  return (
+    <html>
+      <body>
+        <h1>My page</h1>
+        <Slot name="comments">
+          <p>Loading comments…</p>
+        </Slot>
+        <Defer target="comments">{() => <Comments />}</Defer>
+      </body>
+    </html>
+  );
+}
+
+// The shell is sent immediately; deferred fragments stream
+// in as they resolve. NativeAdapter injects a small polyfill.
+const stream = renderToStream(() => <Page />, NativeAdapter);
+```
+
+## Deux modes de rendu
+
+Le streaming envoie les résultats durant la réponse. La génération statique écrit la page et les fragments dans des fichiers accessibles séparément.
+
+## Installation
+
+Installez `@vincle/flow` avec Core en utilisant Bun, pnpm ou npm. Flow demande Core 0.9.1 ou une version compatible plus récente.
+
+```bash tab="npm" sync="pkg-manager"
+npm install @vincle/flow
+```
+
+```bash tab="pnpm" sync="pkg-manager"
+pnpm add @vincle/flow
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/flow
+```
+
+## Adaptateurs
+
+Choisissez un [adaptateur](/fr/integration/adapters) selon votre client : polyfill natif, Turbo, HTMX, plateforme Web expérimentale ou ESI.

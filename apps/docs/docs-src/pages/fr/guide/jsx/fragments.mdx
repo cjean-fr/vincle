@@ -1,0 +1,54 @@
+---
+title: "Fragments JSX"
+headingIds: ["fragments", "syntax", "when-to-use-fragments", "where-to-next"]
+---
+
+# Fragments JSX
+
+Un fragment regroupe des enfants sans ajouter de balise au HTML produit.
+
+## Syntaxe
+
+Utilisez `<>…</>` ou importez `Fragment`. Le moteur rend les enfants dans l’ordre.
+
+```tsx
+import { Fragment } from "@vincle/core";
+
+// Long form
+const items = (
+  <Fragment>
+    <li>One</li>
+    <li>Two</li>
+  </Fragment>
+);
+
+// Shorthand (requires jsxImportSource in tsconfig)
+const items2 = (
+  <>
+    <li>One</li>
+    <li>Two</li>
+  </>
+);
+```
+
+## Quand utiliser les fragments
+
+Les fragments conviennent aux listes de voisins et aux composants qui doivent retourner plusieurs éléments. Un tableau de valeurs rendables fonctionne également.
+
+```tsx
+function Breadcrumbs() {
+  return (
+    <>
+      <a href="/">Home</a>
+      <span>/</span>
+      <a href="/docs">Docs</a>
+      <span>/</span>
+      <span>Components</span>
+    </>
+  );
+}
+```
+
+## Pour continuer
+
+Continuez avec les [composants](/fr/guide/jsx/components) et les [types JSX](/fr/api/core/jsx-types).

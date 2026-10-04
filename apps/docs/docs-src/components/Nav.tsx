@@ -1,15 +1,16 @@
 import type { ResolvedSidebarItem } from "../types.js";
 
-import { useDocs } from "../context.js";
+import { useDocs, useTranslation } from "../context.js";
 
 export function Nav() {
+  const t = useTranslation();
   const { sidebar } = useDocs();
 
   return (
     <nav
       id="docs-nav"
       class="docs-nav pointer-events-none fixed inset-y-0 left-0 z-40 w-full max-w-xs overflow-y-auto border-r border-[var(--docs-color-border)] bg-[var(--docs-color-bg)] md:pointer-events-auto md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-56 md:max-w-none md:shrink-0 md:overflow-y-auto md:border-0 md:bg-transparent md:pt-6 md:pr-6"
-      aria-label="Primary navigation"
+      aria-label={t("primaryNavigation")}
       tabIndex={-1}
     >
       {/* Search for mobile */}
@@ -18,7 +19,7 @@ export function Nav() {
           data-search-trigger
           type="button"
           class="flex w-full items-center gap-2 rounded-lg border border-[var(--docs-color-border)] px-3 py-2 text-sm text-[var(--docs-color-text-secondary)] transition-colors hover:bg-[var(--docs-color-surface)] hover:text-[var(--docs-color-text)]"
-          aria-label="Search documentation"
+          aria-label={t("searchDocumentation")}
         >
           <svg class="size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path
@@ -27,7 +28,7 @@ export function Nav() {
               d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
             />
           </svg>
-          Search
+          {t("search")}
         </button>
       </div>
 

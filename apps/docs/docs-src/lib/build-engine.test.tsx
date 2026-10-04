@@ -103,14 +103,16 @@ describe("SSG build", () => {
 
   it("produces a Markdown twin for every content page", async () => {
     const htmls = [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)]
-      .filter((f) => !["404.html", "500.html"].includes(f))
+      .filter((f) => !/(?:^|\/)(?:404|500)\.html$/.test(f))
       .toSorted();
     expect(htmls.length).toBeGreaterThan(0);
     for (const html of htmls) {
       const twin =
-        html === "index.html"
-          ? path.join(DIST_DIR, "index.md")
-          : path.join(DIST_DIR, html.replace(/\.html$/, ".md"));
+        html === "fr.html"
+          ? path.join(DIST_DIR, "fr/index.md")
+          : html === "index.html"
+            ? path.join(DIST_DIR, "index.md")
+            : path.join(DIST_DIR, html.replace(/\.html$/, ".md"));
       expect(await Bun.file(twin).exists(), `no .md twin for ${html}`).toBe(true);
     }
   });
@@ -317,7 +319,7 @@ describe("code-block assets are shipped once, in the bundle", () => {
 describe("page footer", () => {
   const contentPages = (): string[] =>
     [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)]
-      .filter((f) => !["404.html", "500.html"].includes(f))
+      .filter((f) => !/(?:^|\/)(?:404|500)\.html$/.test(f))
       .toSorted();
 
   it("every content page links to its own source file", async () => {

@@ -1,0 +1,51 @@
+---
+title: "renderToFlowEvents"
+headingIds: ["rendertoflowevents", "signature", "events", "consuming-the-events"]
+---
+
+# renderToFlowEvents
+
+Expose les événements sémantiques du rendu, avant leur sérialisation par un adaptateur.
+
+## Signature
+
+La fonction retourne un `ReadableStream<FlowEvent>` avec les mêmes arguments que `renderToStream`. Les événements arrivent dans l’ordre de production. Vous contrôlez leur transport et leur représentation.
+
+```tsx
+import { renderToFlowEvents } from "@vincle/flow";
+
+function renderToFlowEvents(
+  node: () => JSX.Element,
+  adapter: StreamingAdapter,
+  opts?: FlowOptions & { mode?: "full" | "fragment" },
+): ReadableStream<FlowEvent>;
+```
+
+## Événements
+
+Les événements sont `shell` avec `html`, `fragment` avec `id`, `html` et `merge`, puis `close` avec `html`. Ils décrivent le document et ses mises à jour.
+
+## Consommer les événements
+
+Parcourez les événements avec `for await`. Les demandes du consommateur déterminent la progression ; une annulation libère les fragments encore en cours.
+
+```tsx
+import { renderToFlowEvents } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+const stream = renderToFlowEvents(() => <Page />, NativeAdapter);
+
+for await (const ev of stream) {
+  switch (ev.type) {
+    case "shell":
+      // ev.html: the full shell, before closing tags
+      break;
+    case "fragment":
+      // ev.id, ev.html, ev.merge: patch into the shell yourself
+      break;
+    case "close":
+      // ev.html: trailing </body></html>
+      break;
+  }
+}
+```
