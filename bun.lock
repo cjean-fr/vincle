@@ -136,6 +136,7 @@
         "@jridgewell/trace-mapping": "^0.3.31",
         "@stryker-mutator/core": "catalog:",
         "bun": "catalog:",
+        "preact": "^11.0.0",
         "tsdown": "catalog:",
         "typescript": "catalog:",
         "vite": "catalog:",
