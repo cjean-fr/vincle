@@ -10,10 +10,6 @@ const MOON_ICON = raw(
   `<svg class="docs-theme-toggle-icon docs-theme-toggle-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>`,
 );
 
-const AUTO_ICON = raw(
-  `<svg class="docs-theme-toggle-icon docs-theme-toggle-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
-);
-
 export function ThemeToggle() {
   return (
     <button
@@ -23,7 +19,6 @@ export function ThemeToggle() {
       aria-label="Theme: Automatic. Switch to Light"
       title="Theme: Automatic. Switch to Light"
     >
-      {AUTO_ICON}
       {SUN_ICON}
       {MOON_ICON}
     </button>
