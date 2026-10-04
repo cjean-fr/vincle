@@ -3,6 +3,7 @@ import { localeFor } from "../i18n/locale.js";
 
 export function LanguageSwitcher() {
   const { currentPage, alternates = [] } = useDocs();
+  if (alternates.length < 2) return null;
   const current = localeFor(currentPage);
   const t = useTranslation();
   return (

@@ -91,7 +91,7 @@ describe("Style/Script: render pipeline integration", () => {
           <html>
             <head>
               <Script name="init" module>
-                {"console.log('hi')"}
+                console.log('hi')
               </Script>
             </head>
             <body>
@@ -113,7 +113,7 @@ describe("Style/Script: render pipeline integration", () => {
           <html>
             <head>
               <Script name="late" defer>
-                {"console.log('deferred')"}
+                console.log('deferred')
               </Script>
             </head>
             <body>

@@ -94,9 +94,6 @@ export async function generateNetlifyHeaders(outDir: string): Promise<void> {
     "/",
     `  Link: ${link}`,
     "",
-    "/fr",
-    '  Link: </fr/index.md>; rel="alternate"; type="text/markdown", </fr/llms.txt>; rel="service-doc", </fr/llms-full.txt>; rel="service-doc"',
-    "",
     "/.well-known/ai-catalog.json",
     "  Content-Type: application/json",
     "  Access-Control-Allow-Origin: *",
@@ -109,11 +106,7 @@ export async function generateNetlifyHeaders(outDir: string): Promise<void> {
     "",
   ].join("\n");
   await writeFile(path.join(outDir, "_headers"), content, "utf-8");
-  await writeFile(
-    path.join(outDir, "_redirects"),
-    "/fr/* /fr/404.html 404\n/* /404.html 404\n",
-    "utf-8",
-  );
+  await writeFile(path.join(outDir, "_redirects"), "/* /404.html 404\n", "utf-8");
 }
 
 interface AgentSkillEntry {

@@ -90,7 +90,7 @@ describe("Script", () => {
     await inFlow(async () => {
       const html = await renderToString(
         <Script name="late" defer>
-          {"/* deferred */"}
+          /* deferred */
         </Script>,
       );
       expect(html).toBe('<script data-name="late" defer>/* deferred */</script>');

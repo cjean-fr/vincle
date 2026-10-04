@@ -1,7 +1,7 @@
 {
   "extends": "../../packages/typescript-config/react.json",
   "compilerOptions": {
-    "types": ["vite/client", "bun"]
+    "types": ["vite/client", "bun", "node"]
   },
   "include": ["docs-src", "vite.config.ts"]
 }
