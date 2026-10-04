@@ -30,9 +30,9 @@ The plugin detects the runtime from `jsxImportSource`. Vite 5–8 is supported.
 For a Bun server that imports JSX directly:
 
 ```ts
+import precompile from "@vincle/precompile/bun";
 // preload.ts
 import { plugin } from "bun";
-import precompile from "@vincle/precompile/bun";
 
 plugin(precompile());
 ```
