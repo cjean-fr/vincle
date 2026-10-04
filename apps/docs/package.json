@@ -14,13 +14,13 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@cjean-fr/i18n-tiny": "2.0.1",
     "@vincle/core": "workspace:*",
-    "@vincle/flow": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
     "gray-matter": "^4.0.3",
-    "satteri": "^0.9.5",
+    "satteri": "^0.10.5",
     "satteri-expressive-code": "^0.1.24",
-    "vite-plugin-satteri": "^0.2.15"
+    "vite-plugin-satteri": "^0.3.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",

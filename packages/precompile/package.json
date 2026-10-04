@@ -59,14 +59,13 @@
   "dependencies": {
     "@vincle/core": "workspace:^",
     "entities": "^8.1.0",
-    "magic-string": "^0.30.21",
+    "magic-string": "^1.4.3",
     "oxc-parser": "catalog:"
   },
   "devDependencies": {
     "@jridgewell/trace-mapping": "^0.3.31",
     "@stryker-mutator/core": "catalog:",
     "bun": "catalog:",
-    "preact": "^10.29.8",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:"
