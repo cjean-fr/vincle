@@ -1,213 +1,62 @@
 # @vincle/vite-plugin
 
-Vite asset integration for [@vincle/core](../core) projects. Reference your assets by their **source path** (`src/main.ts`, `src/styles/main.css`, `src/logo.svg`) and let one component (or one helper for arbitrary tags) resolve them correctly in both dev and production.
-
-## Why
-
-A @vincle/core + Vite project typically hardcodes asset paths in its layout:
-
-```tsx
-<link rel="stylesheet" href="/assets/main.css" />
-<script type="module" src="/assets/main.js"></script>
-```
-
-Three problems:
-
-- **Dev/prod drift**: Vite serves sources directly in dev (`/src/styles/main.css`), bundles them with hashes in build (`/assets/main-Bx7k.css`). Most projects work around this with string replaces.
-- **No cache-busting**: to keep the hardcoded paths working, you turn off Vite's content hashing.
-- **No transitive preloading**: production bundles split chunks but the layout doesn't see those splits.
-
-This package solves all three with one component.
+Resolve Vite assets by source path in `@vincle/core` layouts. Uses source URLs
+in development and hashed manifest URLs in production, including bundled CSS
+and module preload links.
 
 ## Install
 
-```bash
-bun add @vincle/vite-plugin
+```sh
+bun add @vincle/core @vincle/vite-plugin
+pnpm add @vincle/core @vincle/vite-plugin
+npm install @vincle/core @vincle/vite-plugin
 ```
 
 ## Usage
 
-### 1. Reference assets in your layout
-
-```tsx
-import { Asset } from "@vincle/vite-plugin";
-
-export function Layout({ children }) {
-  return (
-    <html>
-      <head>
-        <title>My app</title>
-        <Asset entry="src/main.ts" />
-      </head>
-      <body>{children}</body>
-    </html>
-  );
-}
-```
-
-The `entry` is the **source path** as Vite sees it. The same string works in both modes.
-
-### 2. Configure the scope before rendering
-
-Once per render, call `setVite()`:
+Enable the manifest and declare your entry in Vite:
 
 ```ts
-import { setVite, loadViteManifest } from "@vincle/vite-plugin";
+// vite.config.ts
+import { defineConfig } from "vite";
 
-// Production build: load the manifest produced by `vite build`
-const manifest = await loadViteManifest("dist/.vite/manifest.json");
-setVite(manifest, { base: "/" });
-
-// Dev mode: pass null
-setVite(null);
-```
-
-`loadViteManifest` returns `null` if the file is absent: same behavior dev setups rely on, so you can write:
-
-```ts
-const manifest = await loadViteManifest("dist/.vite/manifest.json");
-setVite(manifest); // null in dev, real manifest in prod
-```
-
-### 3. Reference arbitrary assets with `assetUrl()`
-
-For tags `<Asset>` doesn't emit (images, fonts, favicons, OpenGraph metadata, …), use `assetUrl(entry)` inside the attribute you build yourself:
-
-```tsx
-import { assetUrl } from "@vincle/vite-plugin";
-
-<link rel="icon" href={assetUrl("src/favicon.svg")} />
-<link
-  rel="preload"
-  as="font"
-  type="font/woff2"
-  href={assetUrl("src/fonts/inter.woff2")}
-  crossorigin
-/>
-<img src={assetUrl("src/hero.png")} alt="hero" />
-<meta property="og:image" content={assetUrl("src/og-image.png")} />
-```
-
-Resolution rules:
-
-- Dev: returns `{base}{entry}` (Vite serves the source directly).
-- Prod: returns `{base}{chunk.file}` from the manifest.
-- Throws if the entry is missing from the manifest in prod.
-
-### 4. What `<Asset>` emits
-
-**Dev mode** (`manifest === null`):
-
-```tsx
-<Asset entry="src/styles/main.css" />
-// → <link rel="stylesheet" href="/src/styles/main.css">
-
-<Asset entry="src/main.ts" />
-// → <script type="module" src="/src/main.ts">
-```
-
-The Vite HMR client (`/@vite/client`) is **not** emitted here: pipe your output through `server.transformIndexHtml()` to let Vite inject it (and apply its other dev-mode transforms). Any setup that bypasses `transformIndexHtml` must add `<script type="module" src="/@vite/client">` manually.
-
-**Production mode** (manifest provided):
-
-```tsx
-<Asset entry="src/main.ts" />
-// → <link rel="stylesheet" href="/assets/main-Bx7k2c.css">     ← co-bundled CSS
-//   <link rel="modulepreload" href="/assets/shared-xyz789.js"> ← transitive imports
-//   <script type="module" src="/assets/main-abc123.js">        ← entry itself
-```
-
-CSS-only entries:
-
-```tsx
-<Asset entry="src/styles/main.css" />
-// → <link rel="stylesheet" href="/assets/main-only-d4f6.css">
-```
-
-If the entry is not in the manifest, `<Asset>` throws a clear error listing the available entries: typos surface immediately.
-
-## Advanced: Multiple entry points
-
-A project with several entry points (e.g. an admin dashboard separate from the main app) calls `<Asset>` for each entry in its layout:
-
-```tsx
-// In admin layout
-<Asset entry="src/admin/main.ts" />
-
-// In main app layout
-<Asset entry="src/main.ts" />
-<Asset entry="src/admin/main.ts" />  // if both scripts need to load
-```
-
-`<Asset>` emits the correct tags for each entry independently. Shared chunks are emitted as `<link rel="modulepreload">` once per entry that needs them.
-
-## Advanced: Custom base path
-
-When the app is served from a sub-path (`/app/`), pass `base` to `setVite()`:
-
-```ts
-setVite(manifest, { base: "/app/" });
-```
-
-The `Asset` component and `assetUrl()` both prefix URLs with the base. In dev, the base is prepended to the source path; in prod, it prefixes the resolved chunk file.
-
-## Advanced: Conditional asset loading
-
-Conditionally include assets in your layout based on the page or component:
-
-```tsx
-function Page({ isAdmin }: { isAdmin: boolean }) {
-  return (
-    <html>
-      <head>
-        <Asset entry="src/main.ts" />
-        {isAdmin && <Asset entry="src/admin/main.ts" />}
-      </head>
-      <body>{isAdmin ? <AdminContent /> : <PublicContent />}</body>
-    </html>
-  );
-}
-```
-
-In production, only the entries that render actually emit tags. Unused entries generate no output.
-
-## Vite configuration
-
-For `loadViteManifest` to find a manifest, enable it in `vite.config.ts`:
-
-```ts
 export default defineConfig({
   build: {
     manifest: true,
-    rollupOptions: {
-      input: "src/main.ts",
-    },
+    rollupOptions: { input: "src/main.ts" },
   },
 });
 ```
 
-The manifest will be written to `<outDir>/.vite/manifest.json`.
+Configure asset resolution once per render, inside a scope:
 
-For dev mode, no extra configuration is needed. The plugin works with Vite's
-default dev server setup.
+```tsx
+import { Scope, renderToString } from "@vincle/core";
+import { Asset, loadViteManifest, setVite } from "@vincle/vite-plugin";
 
-## API
+const manifest = await loadViteManifest("dist/.vite/manifest.json");
 
-| Export                         | Description                                                                                                   |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `Asset`                        | Component that resolves an entry to `<link>` / `<script>` / `<link rel="modulepreload">` tags (CSS / JS only) |
-| `assetUrl(entry)`              | Function that resolves an entry to a URL string: use inside arbitrary tags (images, fonts, favicons, …)       |
-| `setVite(manifest, { base? })` | Configure the render scope. Call once per render.                                                             |
-| `loadViteManifest(path)`       | Load a Vite manifest from disk. Returns `null` if the file does not exist.                                    |
-| `ViteManifest`                 | Type mirroring Vite's `manifest.json` shape                                                                   |
-| `ViteManifestChunk`            | Type for a single manifest entry                                                                              |
+const html = await Scope.with(() => {
+  setVite(manifest);
+  return renderToString(
+    <html>
+      <head>
+        <Asset entry="src/main.ts" />
+      </head>
+      <body>Hello</body>
+    </html>,
+  );
+});
+```
 
-## Notes
+`loadViteManifest` returns `null` when the file is absent (development).
+`setVite(manifest, { base: "/app/" })` sets a custom URL prefix.
+Use `assetUrl(entry)` for images, fonts and other asset URLs.
 
-- `setVite()` uses `Scope.set()` from @vincle/core: call it inside `Scope.with()` (`@vincle/flow`'s `renderToStatic` / `renderToStream` establish one).
-- `loadViteManifest()` uses `node:fs/promises`: works in Node ≥ 20, Bun, and Deno.
-- The package has no dependency on `vite` itself: only on `@vincle/core`.
+In development, pass the rendered HTML through Vite's `transformIndexHtml`
+to inject the HMR client. Flow renderers already create a scope.
 
-## License
+[Documentation](https://vincle.cjean.fr) ·
+[Source and API](https://github.com/cjean-fr/vincle/blob/main/packages/vite-plugin/src/index.tsx)
 
 MIT © Christophe Jean
