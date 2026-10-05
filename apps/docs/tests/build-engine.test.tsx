@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { translatorFor } from "../docs-src/i18n/interface.js";
 import { initBuild, rebuildAll } from "../docs-src/lib/build-engine.js";
 import { editUrlFor } from "../docs-src/lib/page-history.js";
 import { renderDocument } from "../docs-src/lib/render-document.js";
@@ -410,55 +411,18 @@ describe("renderDocument", () => {
   });
 });
 
-describe("English and French documentation", () => {
-  it("pairs every page with reciprocal language links and its own canonical", async () => {
-    const english = JSON.parse(
-      await readFile(path.join(DIST_DIR, "search-index.json"), "utf8"),
-    ) as { url: string }[];
-    const french = JSON.parse(
-      await readFile(path.join(DIST_DIR, "fr/search-index.json"), "utf8"),
-    ) as { url: string }[];
-    expect(french.length).toBe(english.length);
-    const frenchUrls = new Set(french.map(({ url }) => url));
-    for (const { url } of english) {
-      expect(url.startsWith("/fr")).toBe(false);
-      const translated = url === "/" ? "/fr" : `/fr${url}`;
-      expect(frenchUrls.has(translated)).toBe(true);
-      for (const [locale, route] of [
-        ["en", url],
-        ["fr", translated],
-      ]) {
-        const file = route === "/" ? "index.html" : `${route!.slice(1)}.html`;
-        const html = await readFile(path.join(DIST_DIR, file), "utf8");
-        expect(html).toContain(`<html lang="${locale}"`);
-        expect(html).toContain(`<link rel="canonical" href="https://vincle.cjean.fr${route}">`);
-        expect(html).toContain(`hreflang="en" href="https://vincle.cjean.fr${url}"`);
-        expect(html).toContain(`hreflang="fr" href="https://vincle.cjean.fr${translated}"`);
-        expect(html).toContain(`hreflang="x-default" href="https://vincle.cjean.fr${url}"`);
-      }
-    }
+describe("English documentation", () => {
+  it("publishes English pages without French routes or links", async () => {
+    expect(existsSync(path.join(DIST_DIR, "fr"))).toBe(false);
+    const html = await readFile(path.join(DIST_DIR, "index.html"), "utf8");
+    expect(html).toContain('<html lang="en"');
+    expect(html).not.toContain('hreflang="fr"');
+    const headers = await readFile(path.join(DIST_DIR, "_headers"), "utf8");
+    expect(headers).not.toContain("/fr");
   });
+});
 
-  it("localizes code controls and preserves accessible tab relationships", async () => {
-    const html = await readFile(
-      path.join(DIST_DIR, "fr/guide/getting-started/installation.html"),
-      "utf8",
-    );
-    expect(html).toContain('title="Copier dans le presse-papiers"');
-    expect(html).toContain('data-copied="Copié !"');
-    expect(html).toContain('aria-label="Variantes de l’exemple de code"');
-    expect(html).toContain('aria-labelledby="docs-tabs-1-tab-0"');
-    expect(html).not.toContain("arialabelledby=");
-  });
-
-  it("does not index or canonicalize error pages in either language", async () => {
-    for (const prefix of ["", "fr/"]) {
-      for (const code of [404, 500]) {
-        const html = await readFile(path.join(DIST_DIR, `${prefix}${code}.html`), "utf8");
-        expect(html).toContain('<meta name="robots" content="noindex">');
-        expect(html).not.toContain('rel="canonical"');
-        expect(html).not.toContain("hreflang=");
-      }
-    }
-  });
+it("keeps interface translations available through i18n-tiny", () => {
+  expect(translatorFor("en")("search")).toBe("Search");
+  expect(translatorFor("fr")("search")).toBe("Rechercher");
 });

@@ -37,7 +37,7 @@
     "build": "turbo build",
     "check": "turbo check",
     "dev": "turbo run dev",
-    "format": "turbo format",
+    "format": "turbo run format",
     "lint": "turbo run build --filter=@vincle/eslint-plugin && oxlint .",
     "test": "turbo test",
     "test:coverage": "turbo run coverage"

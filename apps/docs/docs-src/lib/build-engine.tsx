@@ -11,13 +11,7 @@ import type { Page, PageMeta } from "../types.js";
 import config from "../../docs.config.js";
 import { setDocs } from "../context.js";
 import { translatorFor } from "../i18n/interface.js";
-import {
-  locales,
-  localeFor,
-  localizedPath,
-  translationAlternates,
-  type Locale,
-} from "../i18n/locale.js";
+import { localeFor, localizedPath, translationAlternates, type Locale } from "../i18n/locale.js";
 import { buildMinimatchIndex } from "../search/minimatch-build.js";
 import { buildSitemap } from "./build-sitemap.js";
 import {
@@ -67,6 +61,8 @@ function concurrency(): number {
     16,
   );
 }
+
+const documentationLocales = ["en"] as readonly Locale[];
 
 let manifest: ViteManifest | null = null;
 let allPages: Page[] = [];
@@ -149,7 +145,7 @@ async function renderPages(pages: Page[]): Promise<{ url: string; title: string;
   if (available.size !== typedPages.filter((page) => !page.meta.draft).length) {
     throw new Error("[@vincle/docs] duplicate page URLs detected.");
   }
-  for (const locale of locales) {
+  for (const locale of documentationLocales) {
     const t = translatorFor(locale);
     tabsByLocale[locale] = await Promise.all(
       config.tabs.map(async (tab) => ({
@@ -229,7 +225,7 @@ async function postBuild(
     html: r.html,
   }));
 
-  for (const locale of locales) {
+  for (const locale of documentationLocales) {
     const outDir = locale === "en" ? config.out : path.join(config.out, locale);
     await mkdir(outDir, { recursive: true });
     await buildMinimatchIndex(
@@ -262,7 +258,7 @@ async function postBuild(
     html: r.html,
     text: htmlToText(r.html),
   }));
-  for (const locale of locales) {
+  for (const locale of documentationLocales) {
     const outDir = locale === "en" ? config.out : path.join(config.out, locale);
     const localeConfig =
       locale === "en" ? config : { ...config, description: translatorFor(locale)("description") };
@@ -286,7 +282,7 @@ async function postBuild(
   await generateAgentSkillsIndex(config.out);
   await generateAiCatalog(config.out, config);
 
-  for (const locale of locales) {
+  for (const locale of documentationLocales) {
     const t = translatorFor(locale);
     await renderError(404, t("notFoundTitle"), t("notFoundMessage"), locale);
     await renderError(500, t("errorTitle"), t("errorMessage"), locale);
