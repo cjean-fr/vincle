@@ -4,4 +4,4 @@
 
 - Initial npm publication of the JSX precompile transform.
 - Separate emission and runtime helpers; retain build-time sanitization and runtime escaping.
-- Update `magic-string` to 1.4.3 and the OXC parser to 0.153.0; remove the unused Preact development dependency.
+- Update `magic-string` to 1.4.3 and the OXC parser to 0.153.0. Keep Preact as a development dependency for runtime-compatibility tests.
