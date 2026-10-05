@@ -8,10 +8,10 @@
   ],
   "testRunner": "command",
   "commandRunner": {
-    "command": "bun test src"
+    "command": "bun test --bail src"
   },
   "commandRunner_comment": [
-    "`bun test src`, not `bun test`. Mutation runs in a sandbox: a copy of this",
+    "`bun test --bail src`, not `bun test`. Mutation runs in a sandbox: a copy of this",
     "package alone, instrumented sources, a moved cwd. A test that depends on",
     "anything but the mutated code: a neighbouring manifest, the repo layout,",
     "the transpiler: fails there and nowhere else, so the run is restricted to",

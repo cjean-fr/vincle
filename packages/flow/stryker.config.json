@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "command",
   "commandRunner": {
-    "command": "bun test src tests/assets-integration.test.tsx"
+    "command": "bun test --bail src tests/assets-integration.test.tsx"
   },
   "commandRunner_comment": [
     "Mutation runs source tests and the assets integration test in a sandbox:",
