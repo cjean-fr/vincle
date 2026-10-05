@@ -1,0 +1,14 @@
+{
+  "elements-attributes": {
+    "title": "Éléments et attributs",
+    "order": 1
+  },
+  "components": {
+    "title": "Composants",
+    "order": 2
+  },
+  "fragments": {
+    "title": "Fragments JSX",
+    "order": 3
+  }
+}

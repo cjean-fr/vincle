@@ -1,0 +1,123 @@
+---
+title: "Premier rendu"
+headingIds:
+  [
+    "first-render",
+    "hello-world",
+    "components-are-functions",
+    "values-are-escaped",
+    "async-works-directly",
+    "where-to-next",
+  ]
+---
+
+# Premier rendu
+
+Tout ce qu’il faut pour transformer votre premier composant JSX en une chaîne HTML.
+
+## Bonjour le monde
+
+`renderToString` retourne toujours une `Promise<string>`, même lorsque l’arbre est synchrone. Vous pouvez envoyer cette chaîne dans une réponse HTTP ou l’écrire dans un fichier.
+
+```tsx
+import { renderToString } from "@vincle/core";
+
+const html = await renderToString(
+  <html lang="en">
+    <head>
+      <title>Hello, world!</title>
+    </head>
+    <body>
+      <h1>Hello, world!</h1>
+    </body>
+  </html>,
+);
+```
+
+```html
+<html lang="en">
+  <head>
+    <title>Hello, world!</title>
+  </head>
+  <body>
+    <h1>Hello, world!</h1>
+  </body>
+</html>
+```
+
+## Les composants sont des fonctions
+
+Un composant est une fonction ordinaire : il reçoit des props et retourne du JSX. Les éléments imbriqués arrivent dans `children`. Aucun cycle de vie ni hook n’est nécessaire.
+
+```tsx
+import { renderToString, type JSX } from "@vincle/core";
+
+function Layout({ title, children }: { title: string; children: JSX.Element | JSX.Element[] }) {
+  return (
+    <html lang="en">
+      <head>
+        <title>{title}</title>
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+const html = await renderToString(
+  <Layout title="My page">
+    <h1>Welcome</h1>
+    <p>This is a page rendered with Vincle.</p>
+  </Layout>,
+);
+```
+
+## Les valeurs sont échappées
+
+Les valeurs sont échappées selon leur position. Réservez `raw()` au HTML de confiance que vous avez produit ou assaini. Consultez le [modèle de sécurité](/fr/guide/security).
+
+```tsx
+import { renderToString, raw } from "@vincle/core";
+
+// User input is HTML-escaped automatically
+const userInput = '<script>alert("xss")</script>';
+const html = await renderToString(<p>{userInput}</p>);
+
+// Use raw() only for trusted HTML you generated yourself
+const trustedHtml = "<em>rendered from your own markdown</em>";
+const html2 = await renderToString(<article>{raw(trustedHtml)}</article>);
+```
+
+```html
+<p>&lt;script&gt;alert("xss")&lt;/script&gt;</p>
+<article><em>rendered from your own markdown</em></article>
+```
+
+## L’asynchrone fonctionne directement
+
+Un composant peut être `async`. Le moteur attend son résultat et parcourt les composants dans l’ordre du document : le composant qui a besoin des données peut les charger directement.
+
+```tsx
+import { renderToString } from "@vincle/core";
+
+declare const db: {
+  users: {
+    findById(id: string): Promise<{ name: string; email: string }>;
+  };
+};
+
+async function UserCard({ id }: { id: string }) {
+  const user = await db.users.findById(id);
+  return (
+    <div class="card">
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+
+const html = await renderToString(<UserCard id="42" />);
+```
+
+## Pour continuer
+
+Continuez avec les [éléments et attributs](/fr/guide/jsx/elements-attributes), les [composants](/fr/guide/jsx/components) et le [chargement de données](/fr/guide/introduction#load-data-in-your-components).

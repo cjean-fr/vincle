@@ -20,7 +20,10 @@ function setOpen(open: boolean): void {
   nav.toggleAttribute("inert", !open && window.matchMedia("(max-width: 767px)").matches);
   backdrop?.toggleAttribute("data-open", open);
   toggle?.setAttribute("aria-expanded", String(open));
-  toggle?.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+  toggle?.setAttribute(
+    "aria-label",
+    toggle.getAttribute(open ? "data-close-label" : "data-open-label") ?? "",
+  );
   toggle?.querySelector(".docs-nav-toggle-open")?.toggleAttribute("hidden", open);
   toggle?.querySelector(".docs-nav-toggle-close")?.toggleAttribute("hidden", !open);
   main?.toggleAttribute("inert", open);

@@ -1,0 +1,34 @@
+{
+  "overview": {
+    "title": "Vue d’ensemble",
+    "order": 1
+  },
+  "components": {
+    "title": "Composants",
+    "order": 2
+  },
+  "streaming": {
+    "title": "Streaming",
+    "order": 3
+  },
+  "static": {
+    "title": "Génération statique",
+    "order": 4
+  },
+  "adapters": {
+    "title": "Adaptateurs",
+    "order": 5
+  },
+  "http-serving": {
+    "title": "Service HTTP",
+    "order": 6
+  },
+  "precompile": {
+    "title": "Précompilation",
+    "order": 7
+  },
+  "tsrx": {
+    "title": "TSRX",
+    "order": 8
+  }
+}

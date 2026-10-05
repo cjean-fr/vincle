@@ -1,0 +1,121 @@
+---
+title: "Gestion des erreurs"
+headingIds:
+  [
+    "error-handling",
+    "top-level-errors",
+    "message-format",
+    "error-codes",
+    "vincle-core",
+    "vincle-flow",
+    "vincle-vite-plugin-and-vincle-precompile",
+    "per-fragment-errors-streaming",
+  ]
+---
+
+# Gestion des erreurs
+
+Les erreurs Vincle portent un code stable permettant de distinguer leur origine et de les traiter.
+
+## Erreurs globales
+
+Capturez les erreurs autour de la construction JSX et de l’appel attendu au renderer : certaines validations échouent immédiatement, d’autres durant le rendu asynchrone.
+
+```tsx
+import { renderToString } from "@vincle/core";
+
+try {
+  const html = await renderToString(<Page />);
+  // send html to client
+} catch (error) {
+  console.error("Page render failed:", error);
+  // send a 500 or fallback page
+}
+```
+
+## Format des messages
+
+Le message indique la cause et, lorsque c’est possible, le composant concerné. Utilisez `error.code` pour la logique applicative plutôt que de comparer le texte du message.
+
+```
+[vincle/<package>] <api or component>: <what happened>. <why>. <how to fix it>
+```
+
+```
+[vincle/flow] <Defer target="hero">: merge="prepend" is not supported by this adapter: it supports: replace, append. Pick one of those, or use an adapter that supports "prepend".
+```
+
+## Codes d’erreur
+
+Les codes publics couvrent les erreurs de rendu, de fragments et de configuration. Les exemples ci-dessous montrent comment les vérifier.
+
+```ts
+try {
+  html = await renderToString(<Page />);
+} catch (error) {
+  if (error.code === "ERR_VINCLE_VOID_CHILDREN") {
+    // the markup is wrong, not the data
+  }
+}
+```
+
+### `@vincle/core`
+
+Core signale notamment les balises invalides, le contenu d’un élément vide, les fonctions utilisées comme attributs et les clés de contexte absentes.
+
+### `@vincle/flow`
+
+Flow signale les identifiants de fragments invalides, les incohérences de configuration, les délais dépassés et les erreurs de contenu différé.
+
+### `@vincle/vite-plugin` et `@vincle/precompile`
+
+Les outils de build signalent les configurations invalides, les manifestes illisibles ou mal formés et les imports de runtime invalides.
+
+## Erreurs par fragment (streaming)
+
+En streaming, une erreur dans un fragment peut être traitée par `onError(error, id)` sans abandonner tout le document. Choisissez un remplacement qui n’expose aucune information sensible.
+
+```tsx
+serve(req, () => <Page />, NativeAdapter, {
+  onError: (error, { id, kind }) => {
+    console.error(`Fragment ${id} failed:`, error);
+    return <p>This section failed to load.</p>;
+  },
+});
+```
+
+| Code                          | Déclenché lorsque                                      |
+| ----------------------------- | ------------------------------------------------------ |
+| `ERR_VINCLE_INVALID_TAG`      | nom de balise invalide en HTML                         |
+| `ERR_VINCLE_VOID_CHILDREN`    | contenu dans un élément vide (`<br>`, `<img>`, …)      |
+| `ERR_VINCLE_DANGEROUS_HTML`   | `dangerouslySetInnerHTML.__html` n’est pas une chaîne  |
+| `ERR_VINCLE_FUNCTION_ATTR`    | fonction utilisée comme valeur d’attribut              |
+| `ERR_VINCLE_VNODE_AS_TEXT`    | composant interpolé dans une position textuelle        |
+| `ERR_VINCLE_SCOPE_COLLISION`  | rendus ou portées concurrents sans `AsyncLocalStorage` |
+| `ERR_VINCLE_NO_STORE`         | lecture du store avant l’entrée dans `Scope.with()`    |
+| `ERR_VINCLE_NO_SCOPE`         | appel à Scope en dehors de `Scope.with()`              |
+| `ERR_VINCLE_CONTEXT_KEY`      | clé différente d’une chaîne non vide                   |
+| `ERR_VINCLE_CONTEXT_LIMIT`    | nombre de clés distinctes supérieur à la capacité      |
+| `ERR_VINCLE_CONTEXT_UNSET`    | lecture d’une valeur absente de la portée              |
+| `ERR_VINCLE_CONTEXT_CHILDREN` | enfant d’un `Consumer` qui n’est pas une fonction      |
+
+| Code                                | Déclenché lorsque                                |
+| ----------------------------------- | ------------------------------------------------ |
+| `ERR_VINCLE_FLOW_CONFIG`            | option refusée par le point d’entrée             |
+| `ERR_VINCLE_FLOW_NO_ADAPTER`        | emplacement ou fragment sans adaptateur          |
+| `ERR_VINCLE_FLOW_MERGE_UNSUPPORTED` | mode `merge` non pris en charge par l’adaptateur |
+| `ERR_VINCLE_FLOW_FRAGMENT_ID`       | identifiant invalide pour le DOM ou une URL      |
+| `ERR_VINCLE_FLOW_DUP_FRAGMENT`      | deux `<Defer>` avec la même cible                |
+| `ERR_VINCLE_FLOW_NO_FRAGMENT`       | aucun résultat pour l’identifiant demandé        |
+| `ERR_VINCLE_FLOW_NO_STREAMING`      | adaptateur incompatible avec le streaming        |
+
+| Code                             | Déclenché lorsque                                      |
+| -------------------------------- | ------------------------------------------------------ |
+| `ERR_VINCLE_VITE_MANIFEST_READ`  | lecture du manifeste Vite impossible                   |
+| `ERR_VINCLE_VITE_MANIFEST_PARSE` | manifeste qui n’est pas du JSON valide                 |
+| `ERR_VINCLE_VITE_MANIFEST_SHAPE` | structure du manifeste invalide                        |
+| `ERR_VINCLE_VITE_CONFIG`         | option invalide passée à `setVite`                     |
+| `ERR_VINCLE_VITE_MISSING_ENTRY`  | entrée absente du manifeste                            |
+| `ERR_VINCLE_PRECOMPILE_CONFIG`   | `runtimeSource` qui n’est pas un identifiant de module |
+| `ERR_VINCLE_PRECOMPILE_HELPER`   | résultat d’un helper incompatible avec le transform    |
+| `ERR_VINCLE_PRECOMPILE_INTERNAL` | invariant du transform rompu : bug à signaler          |

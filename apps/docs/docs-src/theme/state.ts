@@ -19,13 +19,10 @@ export function applyTheme(preference?: ThemePreference): void {
       (selected === "auto" && matchMedia("(prefers-color-scheme: dark)").matches),
   );
   const systemDark = matchMedia("(prefers-color-scheme: dark)").matches;
-  const labels = {
-    auto: `Theme: Automatic (system ${systemDark ? "dark" : "light"}). Switch to ${systemDark ? "light" : "dark"}`,
-    light: systemDark ? "Theme: Light. Return to Automatic" : "Theme: Light. Switch to Dark",
-    dark: systemDark ? "Theme: Dark. Switch to Light" : "Theme: Dark. Return to Automatic",
-  };
   for (const button of document.querySelectorAll("[data-docs-theme-toggle]")) {
-    button.setAttribute("aria-label", labels[selected]);
-    button.setAttribute("title", labels[selected]);
+    const label =
+      button.getAttribute(`data-theme-${selected}-${systemDark ? "dark" : "light"}`) ?? "";
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
   }
 }

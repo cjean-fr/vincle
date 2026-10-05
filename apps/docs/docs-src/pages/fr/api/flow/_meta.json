@@ -1,0 +1,34 @@
+{
+  "components": {
+    "title": "Composants",
+    "order": 1
+  },
+  "adapters": {
+    "title": "Adaptateurs",
+    "order": 2
+  },
+  "renderToStream": {
+    "title": "renderToStream",
+    "order": 3
+  },
+  "renderToStatic": {
+    "title": "renderToStatic",
+    "order": 4
+  },
+  "renderFragment": {
+    "title": "renderFragment",
+    "order": 5
+  },
+  "serve": {
+    "title": "serve",
+    "order": 6
+  },
+  "renderToFlowEvents": {
+    "title": "renderToFlowEvents",
+    "order": 7
+  },
+  "utils": {
+    "title": "Utilitaires",
+    "order": 8
+  }
+}

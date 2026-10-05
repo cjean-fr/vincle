@@ -1,0 +1,14 @@
+{
+  "installation": {
+    "title": "Installation",
+    "order": 1
+  },
+  "first-render": {
+    "title": "Premier rendu",
+    "order": 2
+  },
+  "typescript-setup": {
+    "title": "Configuration TypeScript",
+    "order": 3
+  }
+}

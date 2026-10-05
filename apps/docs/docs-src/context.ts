@@ -3,8 +3,12 @@ import { Scope, type ScopeKey } from "@vincle/core";
 import type { NavLink } from "./lib/sidebar.js";
 import type { ResolvedDocsConfig, PageMeta, ResolvedSidebar, TabConfig } from "./types.js";
 
+import { translatorFor } from "./i18n/interface.js";
+import { localeFor, type Locale } from "./i18n/locale.js";
+
 export interface DocsRenderContext {
   config: ResolvedDocsConfig;
+  alternates?: ReadonlyArray<{ locale: Locale; href: string }>;
   currentPage: string;
   meta: PageMeta;
   sidebar: ResolvedSidebar;
@@ -27,4 +31,8 @@ export function setDocs(value: DocsRenderContext): void {
 
 export function useDocs(): DocsRenderContext {
   return Scope.get(DocsContext);
+}
+
+export function useTranslation() {
+  return translatorFor(localeFor(useDocs().currentPage));
 }

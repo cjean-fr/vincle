@@ -1,0 +1,36 @@
+{
+  "introduction": {
+    "title": "Introduction",
+    "order": 0
+  },
+  "views": {
+    "title": "D’une vue au HTML progressif",
+    "order": 1.5
+  },
+  "getting-started": {
+    "title": "Premiers pas",
+    "collapsed": false,
+    "order": 1
+  },
+  "jsx": {
+    "title": "JSX",
+    "collapsed": false,
+    "order": 2
+  },
+  "security": {
+    "title": "Modèle de sécurité",
+    "order": 3
+  },
+  "coming-from-react": {
+    "title": "Venir de React",
+    "order": 4
+  },
+  "comparison": {
+    "title": "Comparaison",
+    "order": 5
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "order": 6
+  }
+}

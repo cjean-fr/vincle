@@ -1,0 +1,236 @@
+---
+title: "JSX pour le serveur"
+description: "Composez des vues JSX typées sur votre serveur. Ajoutez des fragments HTML progressifs selon les besoins de vos pages."
+prose: false
+---
+
+<div class="docs-home">
+  <section class="docs-home-hero" aria-labelledby="home-title">
+    <div class="docs-hero-copy">
+      <div class="docs-product-label">
+        <span aria-hidden="true">{"</>"}</span>
+        {"Moteur de rendu JSX côté serveur"}
+      </div>
+      <h1 id="home-title">
+        {"Vos vues en JSX."}
+        <br />
+        {"Votre application en HTML."}
+      </h1>
+      <p class="docs-hero-description">
+        {
+          "Composez des composants typés et asynchrones sur votre serveur. Envoyez une réponse HTML, puis laissez arriver les parties lentes lorsqu’elles sont prêtes."
+        }
+      </p>
+      <div class="docs-home-actions">
+        <a class="docs-button docs-button-primary" href="/fr/guide/getting-started/installation">
+          {"Rendre votre première vue"}
+        </a>
+        <a class="docs-button docs-button-secondary" href="/fr/integration/streaming">
+          {"Découvrir le streaming"}
+        </a>
+      </div>
+      <div class="docs-install-tabs">
+        ```bash tab="npm" sync="pkg-manager"
+        npm install @vincle/core
+        ```
+
+        ```bash tab="pnpm" sync="pkg-manager"
+        pnpm add @vincle/core
+        ```
+
+        ```bash tab="bun" sync="pkg-manager"
+        bun add @vincle/core
+        ```
+      </div>
+    </div>
+    <div class="docs-hero-example">
+      <div class="docs-example-heading">
+        <span class="docs-example-mark" aria-hidden="true">
+          {"</>"}
+        </span>
+        <span>{"Du JSX au HTML"}</span>
+        <span class="docs-example-language">{"TypeScript"}</span>
+      </div>
+      ```tsx title="hello.tsx"
+      import { renderToString } from "@vincle/core";
+
+      function App({ name }: { name: string }) {
+        return <h1>Hello, {name}!</h1>;
+      }
+
+      const page = <App name="world" />;
+      const html = await renderToString(page);
+      ```
+
+      ```html
+      <h1>Hello, world!</h1>
+      ```
+
+      <p class="docs-example-note">{"Le résultat est une simple chaîne HTML."}</p>
+    </div>
+
+  </section>
+
+<div class="docs-runtime-strip" aria-label="Environnements compatibles">
+  <span>{"Environnements compatibles"}</span>
+  <ul>
+    <li>{"Node.js 22+"}</li>
+    <li>{"Bun"}</li>
+    <li>{"Deno"}</li>
+    <li>{"Cloudflare Workers"}</li>
+  </ul>
+</div>
+
+<section class="docs-home-section" aria-labelledby="use-cases-title">
+  <div class="docs-section-heading">
+    <h2 id="use-cases-title">
+      {"Commencez par une vue."}
+      <br />
+      {"Adaptez-vous aux besoins de la page."}
+    </h2>
+    <p>
+      {
+        "Conservez votre serveur et votre routeur. Choisissez les capacités de rendu nécessaires à chaque page."
+      }
+    </p>
+  </div>
+  <div class="docs-use-cases">
+    <article>
+      <span class="docs-use-case-symbol" aria-hidden="true">
+        {"1"}
+      </span>
+      <h3>{"Composer une vue"}</h3>
+      <p>
+        {
+          "Composez des vues HTML réutilisables avec des fonctions, des props typées et des données asynchrones."
+        }
+      </p>
+      <a class="docs-text-link" href="/fr/guide/getting-started/first-render">
+        {"Écrire votre premier composant"}
+      </a>
+    </article>
+    <article>
+      <span class="docs-use-case-symbol" aria-hidden="true">
+        {"2"}
+      </span>
+      <h3>{"La retourner depuis une route"}</h3>
+      <p>
+        {"Effectuez le rendu avec @vincle/core et envoyez le HTML depuis votre gestionnaire HTTP."}
+      </p>
+      <a class="docs-text-link" href="/fr/guide/views">
+        {"Relier une vue à votre serveur"}
+      </a>
+    </article>
+    <article>
+      <span class="docs-use-case-symbol" aria-hidden="true">
+        {"3"}
+      </span>
+      <h3>{"Différer les parties lentes"}</h3>
+      <p>
+        {
+          "Ajoutez @vincle/flow pour envoyer la structure de la page avant les fragments HTML différés."
+        }
+      </p>
+      <a class="docs-text-link" href="/fr/integration/streaming">
+        {"Diffuser un fragment"}
+      </a>
+    </article>
+  </div>
+</section>
+
+  <section class="docs-home-section docs-foundations" aria-labelledby="streaming-title">
+    <div>
+      <h2 id="streaming-title">{"La page peut arriver avant les résultats."}</h2>
+      <p>{"Gardez le titre visible pendant le chargement d’un composant asynchrone. Avec Flow, un contenu de repli occupe l’espace jusqu’à ce que le HTML soit prêt."}</p>
+      <p>{"Choisissez le mode de livraison : natif, ou via un adaptateur HTMX ou Turbo."}</p>
+      <a class="docs-text-link" href="/fr/guide/views">
+        {"Suivre l’exemple complet"}
+      </a>
+    </div>
+    <div class="docs-hero-example">
+      ```tsx title="results-page.tsx"
+      import { Defer, renderToStream } from "@vincle/flow";
+      import { NativeAdapter } from "@vincle/flow/adapters";
+
+      async function findResults() {
+        return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
+      }
+
+      async function Results() {
+        const items = await findResults();
+        return (
+          <ul>
+            {items.map((item) => (
+              <li>
+                <a href={item.href}>{item.title}</a>
+              </li>
+            ))}
+          </ul>
+        );
+      }
+
+      function Page() {
+        return (
+          <main>
+            <h1>Search results</h1>
+            <Defer fallback={<p>Loading results…</p>}>
+              <Results />
+            </Defer>
+          </main>
+        );
+      }
+
+      const stream = renderToStream(() => <Page />, NativeAdapter);
+      ```
+      <p class="docs-example-note">
+        {"Le composant Results reste identique. La page choisit le rendu différé."}
+      </p>
+    </div>
+
+  </section>
+
+  <section class="docs-home-section docs-foundations" aria-labelledby="features-title">
+    <div>
+      <h2 id="features-title">{"Inclus dans le moteur."}</h2>
+      <p>{"Des vues typées, un rendu prévisible et des frontières HTML explicites."}</p>
+      <a class="docs-text-link" href="https://github.com/cjean-fr/vincle">
+        {"Voir les sources sur GitHub"}
+      </a>
+    </div>
+    <div class="docs-feature-list">
+      <a href="/fr/guide/jsx/components" class="docs-feature-link">
+        <div>
+          <h3>{"Composants asynchrones"}</h3>
+          <p>{"Chargez les données dans le composant qui en a besoin. Vincle attend le résultat de l’arbre."}</p>
+        </div>
+        <span aria-hidden="true">{"↗"}</span>
+      </a>
+      <a href="/fr/api/core/scope" class="docs-feature-link">
+        <div>
+          <h3>{"Contexte de l’arbre"}</h3>
+          <p>{"Partagez une valeur avec un sous-arbre via un Provider, ou conservez l’état de la requête dans une portée Scope."}</p>
+        </div>
+        <span aria-hidden="true">{"↗"}</span>
+      </a>
+      <a href="/fr/guide/security" class="docs-feature-link">
+        <div>
+          <h3>{"Échappement HTML"}</h3>
+          <p>{"Le contenu est échappé par défaut, les schémas d’URL dangereux sont bloqués et les fonctions sont refusées comme valeurs d’attributs."}</p>
+        </div>
+        <span aria-hidden="true">{"↗"}</span>
+      </a>
+      <a href="/fr/guide/jsx/elements-attributes" class="docs-feature-link">
+        <div>
+          <h3>{"Prise en charge de TypeScript"}</h3>
+          <p>{"TypeScript vérifie vos composants et leurs attributs HTML."}</p>
+        </div>
+        <span aria-hidden="true">{"↗"}</span>
+      </a>
+    </div>
+  </section>
+  <footer class="docs-home-footer">
+    <span>{"Vincle : du JSX pour le serveur."}</span>
+    <a href="https://www.npmjs.com/package/@vincle/core">{"Disponible sur npm"}</a>
+    <a href="https://github.com/cjean-fr/vincle/blob/main/LICENSE">{"Licence MIT"}</a>
+  </footer>
+</div>

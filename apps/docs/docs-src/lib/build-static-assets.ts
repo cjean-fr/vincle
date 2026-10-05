@@ -5,17 +5,22 @@ import path from "node:path";
 
 import type { ResolvedDocsConfig } from "../types.js";
 
+import { markdownPath, type Locale } from "../i18n/locale.js";
+
 export async function generateLlmsTxt(
   pages: { url: string; title: string; html: string }[],
   config: ResolvedDocsConfig,
   outDir: string,
+  locale: Locale = "en",
 ): Promise<void> {
   const lines: string[] = [
     `# ${config.title}: ${config.tagline ?? "Documentation"}`,
     "",
     `> ${config.description}`,
     "",
-    "Every page is also available as Markdown at its URL plus `.md` (home page: `/index.md`).",
+    locale === "fr"
+      ? "Chaque page est également disponible en Markdown à son URL suivie de `.md` (accueil : `/fr/index.md`)."
+      : "Every page is also available as Markdown at its URL plus `.md` (home page: `/index.md`).",
     "",
     "## Pages",
     "",
@@ -32,9 +37,10 @@ export async function generateLlmsFullTxt(
   pages: { url: string; title: string; html: string; text: string }[],
   config: ResolvedDocsConfig,
   outDir: string,
+  locale: Locale = "en",
 ): Promise<void> {
   const parts: string[] = [
-    `# ${config.title}: Full documentation`,
+    `# ${config.title}: ${locale === "fr" ? "Documentation complète" : "Full documentation"}`,
     "",
     `> ${config.description}`,
     "",
@@ -88,6 +94,9 @@ export async function generateNetlifyHeaders(outDir: string): Promise<void> {
     "/",
     `  Link: ${link}`,
     "",
+    "/fr",
+    '  Link: </fr/index.md>; rel="alternate"; type="text/markdown", </fr/llms.txt>; rel="service-doc", </fr/llms-full.txt>; rel="service-doc"',
+    "",
     "/.well-known/ai-catalog.json",
     "  Content-Type: application/json",
     "  Access-Control-Allow-Origin: *",
@@ -100,6 +109,11 @@ export async function generateNetlifyHeaders(outDir: string): Promise<void> {
     "",
   ].join("\n");
   await writeFile(path.join(outDir, "_headers"), content, "utf-8");
+  await writeFile(
+    path.join(outDir, "_redirects"),
+    "/fr/* /fr/404.html 404\n/* /404.html 404\n",
+    "utf-8",
+  );
 }
 
 interface AgentSkillEntry {
@@ -200,7 +214,7 @@ export async function generateMarkdownAlternates(
 ): Promise<void> {
   for (const page of pages) {
     if (!page.file.endsWith(".mdx")) continue;
-    const name = page.url === "/" ? "index.md" : `${page.url}.md`;
+    const name = markdownPath(page.url);
     const target = path.join(outDir, name);
     await mkdir(path.dirname(target), { recursive: true });
     await copyFile(page.file, target);

@@ -1,0 +1,260 @@
+---
+title: "Sécurité"
+headingIds:
+  [
+    "security",
+    "the-rule",
+    "auto-escaping",
+    "escaping-inside-script-and-style",
+    "what-the-compiler-guarantees-and-what-it-doesn-t",
+    "the-raw-escape-hatch",
+    "rawurl-a-trusted-scheme-and-nothing-else",
+    "raw-in-an-attribute",
+    "defense-in-depth",
+    "security-boundaries",
+    "svg-animation-a-url-and-a-handler-one-attribute-removed",
+    "best-practices",
+    "auditing-raw-call-sites",
+    "invariants",
+    "asvs-compliance",
+    "references",
+  ]
+---
+
+# Sécurité
+
+Vincle échappe les valeurs par défaut et contrôle les schémas d’URL. Ces garanties s’appliquent à la sérialisation ; elles ne remplacent pas la validation des données ni l’autorisation applicative.
+
+## La règle
+
+Traitez les chaînes ordinaires comme du texte. L’insertion de balisage nécessite une décision explicite avec `raw()`. Pour un protocole d’URL approuvé, utilisez l’échappatoire plus étroite `rawUrl()`.
+
+## Échappement automatique
+
+Le contenu texte, les attributs et les URL suivent des chemins adaptés. Les caractères susceptibles de fermer une balise ou un attribut sont échappés. Les schémas autorisés sont les URL relatives, `http`, `https`, `mailto`, `tel`, `sms` et les données d’image admises.
+
+```tsx
+import { renderToString, raw } from "@vincle/core";
+
+// User input is HTML-escaped automatically
+const userInput = '<script>alert("xss")</script>';
+const html = await renderToString(<p>{userInput}</p>);
+
+// Use raw() only for trusted HTML you generated yourself
+const trustedHtml = "<em>rendered from your own markdown</em>";
+const html2 = await renderToString(<article>{raw(trustedHtml)}</article>);
+```
+
+```html
+<p>&lt;script&gt;alert("xss")&lt;/script&gt;</p>
+<article><em>rendered from your own markdown</em></article>
+```
+
+### Échappement dans `<script>` et `<style>`
+
+Dans `<script>` et `<style>`, l’échappement empêche notamment une fermeture prématurée de l’élément. Il ne transforme pas une donnée arbitraire en programme JavaScript ou CSS sûr. Sérialisez correctement les données selon leur usage.
+
+```tsx
+
+```
+
+```tsx
+<script>{`const name = "${user.name}";`}</script>  // ❌ user.name = '";alert(1);//'
+<script>{`const name = ${JSON.stringify(user.name)};`}</script>  // ✅
+```
+
+## Garanties et limites du compilateur
+
+La précompilation applique les contrôles aux valeurs statiques et conserve la sérialisation des valeurs dynamiques. Elle ne valide pas vos règles métier, vos sources HTML ni les effets de votre code client.
+
+## L’échappatoire `raw()`
+
+`raw()` insère du HTML de confiance sans l’échappement habituel. Assainissez le HTML non fiable avant cet appel avec un outil adapté et une politique explicite.
+
+```tsx
+import { renderToString, raw } from "@vincle/core";
+
+// Raw strings pass through verbatim: no escaping applied
+const html = await renderToString(<div>{raw("<strong>Bold</strong>")}</div>);
+```
+
+```html
+<div><strong>Bold</strong></div>
+```
+
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString, raw } from "@vincle/core";
+
+const userInput = '<script>alert("XSS")</script>';
+
+// ❌ NEVER do this with untrusted input
+const unsafe = await renderToString(<div>{raw(userInput)}</div>);
+
+// ✅ This is safe (default behavior - always escaped)
+const safe = await renderToString(<div>{userInput}</div>);
+
+// ✅ raw() is safe with trusted sources (markdown, templates, your code)
+const trustedHtml = "<strong>Hello</strong>";
+const result = await renderToString(<p>{raw(trustedHtml)}</p>);
+```
+
+```html
+<div>
+  <script>
+    alert("XSS");
+  </script>
+</div>
+<div>&lt;script&gt;alert("XSS")&lt;/script&gt;</div>
+<p><strong>Hello</strong></p>
+```
+
+### `rawUrl()` : approuver un schéma d’URL
+
+`rawUrl()` autorise un schéma choisi tout en conservant l’échappement HTML. Il ne garantit pas que la destination soit autorisée ou digne de confiance.
+
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString, rawUrl } from "@vincle/core";
+
+const html = await renderToString(
+  <a href={rawUrl("phpstorm://open?file=src/app.ts")}>open in the IDE</a>,
+);
+```
+
+```html
+<a href="phpstorm://open?file=src/app.ts">open in the IDE</a>
+```
+
+### `raw()` dans un attribut
+
+Dans un attribut, `raw()` préserve les protections structurelles des guillemets mais contourne le filtrage des schémas. Préférez `rawUrl()` lorsque seule une URL nécessite une exception.
+
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString, raw } from "@vincle/core";
+
+// In content position, raw() is verbatim: that is the whole point.
+const content = await renderToString(<div>{raw("<strong>Bold</strong>")}</div>);
+
+// In attribute position it is verbatim too, except `"`: a value that carried one
+// would end the attribute and reopen the tag. Escaping it changes nothing a
+// parser reads back: the value is entity-decoded before CSS, JS or the DOM see it.
+const quoted = await renderToString(<div style={raw('font-family:"Inter"')} />);
+
+// So an attribute cannot be broken out of, even through raw().
+const attack = await renderToString(<a title={raw('" onmouseover="alert(1)')}>x</a>);
+
+// A URL attribute holding a RawString still skips the scheme check, by design:
+// raw() means "I vouch for this value".
+const vouched = await renderToString(<a href={raw("javascript:doIt()")}>run</a>);
+```
+
+```html
+<div><strong>Bold</strong></div>
+<div style='font-family:"Inter"'></div>
+<a title='" onmouseover="alert(1)'>x</a>
+<a href="javascript:doIt()">run</a>
+```
+
+## Défense en profondeur
+
+Ajoutez une CSP adaptée, validez les entrées et limitez les destinations autorisées selon votre application. Les contrôles du renderer constituent une couche supplémentaire.
+
+## Frontières de sécurité
+
+Le renderer protège les frontières de sérialisation HTML. L’authentification, les permissions, les données exposées, le JavaScript approuvé et le CSS de confiance restent sous la responsabilité de l’application.
+
+### Animation SVG : URL et gestionnaires indirects
+
+Une animation SVG peut écrire ses valeurs dans un autre attribut via `attributeName`. Vincle juge les valeurs d’animation dans le contexte de l’élément, filtre les URL qu’elles peuvent écrire et refuse les cibles de gestionnaires d’événement dangereux.
+
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString } from "@vincle/core";
+
+const html = await renderToString(
+  <svg>
+    <a>
+      <animate attributeName="href" values={untrusted} />
+      <text>click me</text>
+    </a>
+  </svg>,
+);
+```
+
+```html
+<svg>
+  <a>
+    <animate attributeName="href" values="#blocked"></animate>
+    <text>click me</text>
+  </a>
+</svg>
+```
+
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString } from "@vincle/core";
+
+await renderToString(
+  <svg>
+    <a>
+      <set attributeName="onclick" to="alert(1)" />
+    </a>
+  </svg>,
+);
+// Error: attributeName="onclick" animates an event handler
+```
+
+```tsx
+// @jsxImportSource @vincle/core
+import { renderToString } from "@vincle/core";
+
+const untrusted = "red;position:fixed;top:0;left:0;width:100vw;height:100vw";
+
+// A style object is inspected: a property name carrying CSS syntax is dropped,
+// and a value carrying `;` or `\` is CSS-escaped: the browser reads `\;` as a
+// literal `;`, so the smuggled declarations stay inside the value.
+const bag = await renderToString(<div style={{ color: untrusted }} />);
+
+// Legitimate values survive that escaping unchanged in meaning.
+const dataUri = await renderToString(
+  <div style={{ background: "url(data:image/png;base64,iVBORw0KGgo=)" }} />,
+);
+
+// A style *string* is an author-written declaration list: it is escaped for the
+// attribute, not parsed as CSS. Never build one from untrusted input.
+const asString = await renderToString(<div style={untrusted} />);
+```
+
+```html
+<div style="color:red\;position:fixed\;top:0\;left:0\;width:100vw\;height:100vw"></div>
+<div style="background:url(data:image/png\;base64,iVBORw0KGgo=)"></div>
+<div style="red;position:fixed;top:0;left:0;width:100vw;height:100vw"></div>
+```
+
+## Bonnes pratiques
+
+Conservez les valeurs non fiables sous forme de chaînes ordinaires, évitez le code inline construit par concaténation, validez les destinations et testez les chemins de confiance.
+
+## Auditer les appels à `raw()`
+
+Recherchez les appels à `raw()` et justifiez leur provenance. Vérifiez que le HTML a été produit par votre application ou assaini avant l’insertion, et que les changements de source ne peuvent pas contourner cette étape.
+
+```bash
+# All raw() and rawUrl() call sites across the project
+grep -rn 'raw(' --include='*.tsx' --include='*.ts' src/
+grep -rn 'rawUrl(' --include='*.tsx' --include='*.ts' src/
+```
+
+## Invariants
+
+Les invariants attendus comprennent l’échappement du contenu, la conservation de la structure des attributs, le contrôle des URL, la validation des noms de balises et le traitement cohérent des chemins précompilés et ordinaires.
+
+## Exigences ASVS
+
+Ces contrôles contribuent aux exigences ASVS relatives aux sorties et aux injections. La conformité complète dépend de l’application, de son environnement et de l’ensemble de ses contrôles.
+
+## Références
+
+Consultez les références OWASP sur la prévention des injections XSS, la politique CSP et les contrôles ASVS, ainsi que les règles ESLint Vincle et les tests de sécurité du dépôt.

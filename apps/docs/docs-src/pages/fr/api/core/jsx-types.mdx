@@ -1,0 +1,138 @@
+---
+title: "Types JSX"
+headingIds:
+  [
+    "jsx-types",
+    "renderable",
+    "vnode",
+    "components",
+    "attributes",
+    "event-handlers",
+    "jsx-namespace",
+    "custom-elements",
+    "cssproperties",
+    "classvalue",
+  ]
+---
+
+# Types JSX
+
+Les types publics distinguent les éléments JSX des valeurs qu’un composant peut rendre.
+
+```tsx
+<dvi clas="card" />
+//^ error: 'dvi' does not exist
+//  ^ error: 'clas' does not exist on <div>. Did you mean 'class'?
+```
+
+## Renderable
+
+`Renderable` comprend les éléments, chaînes échappées, nombres, booléens ignorés, `null`, `undefined`, promesses, tableaux, itérables et itérables asynchrones. `RawString` représente du HTML approuvé.
+
+```ts
+import type { RawString, VNode } from "@vincle/core";
+
+export type Renderable =
+  | VNode
+  | RawString
+  | string
+  | number
+  | bigint
+  | boolean
+  | null
+  | undefined
+  | Iterable<Renderable>
+  | AsyncIterable<Renderable>
+  | Promise<Renderable>;
+```
+
+## VNode
+
+`VNode` est exporté comme type. Créez les éléments avec le runtime JSX, qui valide les balises, plutôt qu’avec un constructeur accessible à l’application.
+
+## Composants
+
+Les composants reçoivent des props et retournent une valeur rendable, éventuellement asynchrone. Utilisez `JSX.Element` lorsqu’une API exige précisément un élément JSX.
+
+```tsx
+import type { Renderable } from "@vincle/core";
+
+const Greeting = ({ name }: { name: string }) => <h1>Hello, {name}!</h1>;
+
+const AsyncGreeting = async ({ id }: { id: string }) => {
+  const user = await db.users.find(id);
+  return <h1>Hello {user.name}</h1>;
+};
+
+const Items = () => [<li>a</li>, <li>b</li>];
+
+const Card = ({ children }: { children?: Renderable }) => <div class="card">{children}</div>;
+```
+
+## Attributs
+
+Les attributs HTML et SVG sont typés. Les aliases connus sont normalisés, les noms personnalisés sont conservés et les valeurs sont échappées.
+
+```tsx
+<a href={resolveUrl(slug)} class={["btn", active && "btn-active"]}>
+  link
+</a>
+```
+
+### Gestionnaires d’événements
+
+Les événements HTML acceptent des chaînes. Une fonction ne peut pas être sérialisée comme gestionnaire d’événement et provoque une erreur.
+
+```tsx
+<button onclick="submit()">Click me</button>
+<button onClick="submit()">Both spellings work</button>
+```
+
+## Namespace JSX
+
+Le namespace `JSX` fournit `IntrinsicElements`, `Element` et les interfaces d’attributs. Les intégrations étendent les interfaces neutres de Core dans leur propre package.
+
+### Éléments personnalisés
+
+Pour typer un élément personnalisé, augmentez `IntrinsicElements` avec un type littéral de props. Cela respecte la signature d’index des éléments personnalisés.
+
+```tsx
+<my-widget theme="dark" data-id="7">
+  content
+</my-widget>
+```
+
+```tsx
+import type { Renderable } from "@vincle/core";
+
+declare module "@vincle/core/jsx-runtime" {
+  namespace JSX {
+    interface IntrinsicElements {
+      "turbo-frame": { src?: string; target?: string; children?: Renderable };
+    }
+  }
+}
+```
+
+## CSSProperties
+
+`CSSProperties` décrit les propriétés CSS et les variables personnalisées. Les noms sont normalisés lors de la sérialisation et les noms invalides ou dangereux sont écartés.
+
+```tsx
+import type { CSSProperties } from "@vincle/core";
+
+const styles = {
+  backgroundColor: "#fff",
+  fontSize: "14px",
+  "--custom-var": "value", // CSS variables supported
+} satisfies CSSProperties;
+```
+
+## ClassValue
+
+`ClassValue` accepte une chaîne ou un tableau plat de chaînes et de valeurs falsy. Les entrées falsy sont omises.
+
+```tsx
+<div class={["card", isActive && "card-active", null]} />
+// => <div class="card card-active">
+```

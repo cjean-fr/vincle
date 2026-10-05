@@ -1,0 +1,116 @@
+---
+title: "Adaptateurs"
+headingIds:
+  [
+    "adapters",
+    "choosing-an-adapter",
+    "nativeadapter",
+    "webplatformadapter",
+    "turboadapter",
+    "htmxadapter",
+    "esiadapter",
+    "custom-adapters",
+  ]
+---
+
+# Adaptateurs
+
+L’adaptateur relie le rendu Flow au mécanisme qui met à jour le document.
+
+```ts
+import {
+  TurboAdapter, // Turbo Streams: <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
+  HtmxAdapter, // HTMX: hx-get / hx-swap-oob, morph on htmx >= 4
+  NativeAdapter, // <template data-for> + inline polyfill, all 5 positions
+  WebPlatformAdapter, // WICG declarative partial updates, native support required
+  EsiAdapter, // CDN edge composition via esi:include
+} from "@vincle/flow/adapters";
+```
+
+## Choisir un adaptateur
+
+Choisissez l’adaptateur selon les capacités du client et l’infrastructure, pas selon votre routeur serveur.
+
+### NativeAdapter
+
+`NativeAdapter` livre son polyfill automatiquement et prend en charge remplacement, ajout et insertion relative. Il fonctionne sans bibliothèque client supplémentaire.
+
+### WebPlatformAdapter
+
+`WebPlatformAdapter` utilise directement Fragment Include et DOM Patching. Ces API expérimentales exigent un navigateur compatible et sont limitées au remplacement.
+
+```html
+<?start name="comments">Loading comments…<?end>
+<!-- Later in the same HTML stream: -->
+<template for="comments"><p>First comment</p></template>
+```
+
+```html
+<?start name="comments">Loading comments…<?end>
+<template for="comments" src="/fragments/comments.html"></template>
+```
+
+### TurboAdapter
+
+`TurboAdapter` émet les éléments attendus par Turbo. Le mode `morph` exige Turbo 8 ou une version compatible plus récente.
+
+```tsx
+// Placeholder in shell:
+//   <turbo-frame id="comments">Loading…</turbo-frame>
+
+// Patch:
+//   <turbo-stream action="replace" target="comments">
+//     <template>…</template>
+//   </turbo-stream>
+
+// Patch, merge="morph" (Turbo >= 8):
+//   <turbo-stream action="replace" method="morph" target="comments">
+//     <template>…</template>
+//   </turbo-stream>
+```
+
+### HtmxAdapter
+
+`HtmxAdapter` émet les mises à jour HTMX. Le mode `morph` exige HTMX 4 ou une version compatible plus récente.
+
+```tsx
+// Placeholder in shell:
+//   <div id="comments" hx-get="/_fragments/comments" hx-trigger="load" hx-swap="outerHTML">Loading…</div>
+
+// Patch:
+//   <div id="comments" hx-swap-oob="outerHTML">…</div>
+
+// Patch, merge="morph" (htmx >= 4):
+//   <div id="comments" hx-swap-oob="outerMorph">…</div>
+```
+
+### EsiAdapter
+
+`EsiAdapter` émet des inclusions ESI pour le statique côté proxy ou CDN. Il prend uniquement en charge le remplacement.
+
+## Adaptateurs personnalisés
+
+Implémentez l’interface d’adaptateur pour une autre cible. Gardez la même représentation entre la page initiale, les fragments streamés et les fichiers statiques.
+
+```tsx
+import { createAdapter } from "@vincle/flow/adapters";
+
+const MyAdapter = createAdapter({
+  Placeholder: ({ id, children }) => <div data-defer={id}>{children}</div>,
+  Patch: ({ id, children, merge }) => (
+    <div data-patch={id} data-merge={merge}>
+      {children}
+    </div>
+  ),
+  Frame: ({ id, children }) => <div data-frame={id}>{children}</div>,
+  capabilities: { streaming: true, merges: ["replace", "append"] },
+});
+```
+
+| Export           | Rôle                                                       |
+| ---------------- | ---------------------------------------------------------- |
+| `Placeholder`    | Rend l’emplacement d’un fragment différé                   |
+| `Patch`          | Encadre un fragment prêt pour son insertion dans le DOM    |
+| `Frame`          | Encadre le contenu d’un fichier de fragment statique       |
+| `capabilities`   | Déclare les modes de fusion et le support du streaming     |
+| `transformShell` | Transforme facultativement la structure avant son émission |

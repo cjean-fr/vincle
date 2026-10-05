@@ -1,19 +1,21 @@
-import { useDocs } from "../context.js";
+import { useDocs, useTranslation } from "../context.js";
+import { unlocalizedPath } from "../i18n/locale.js";
 
 /**
  * Top-level nav links, rendered in the header bar. Each tab links to its first
  * page in reading order (or an explicit `href` resolved at build start).
  */
 export function Tabs() {
+  const t = useTranslation();
   const { resolvedTabs, currentTab, currentPage } = useDocs();
 
   // Error pages: no tab context.
-  if (currentTab === null && currentPage !== "/") return null;
+  if (currentTab === null && unlocalizedPath(currentPage) !== "/") return null;
 
   return (
     <nav
       class="docs-tabs-bar ml-2 flex items-center gap-0.5 overflow-x-auto max-sm:hidden"
-      aria-label="Sections"
+      aria-label={t("sections")}
     >
       {resolvedTabs.map((tab) => (
         <a
