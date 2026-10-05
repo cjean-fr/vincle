@@ -35,14 +35,16 @@
   "type": "module",
   "scripts": {
     "build": "turbo build",
-    "check": "turbo check",
+    "check": "bun run check:static && tsc -p scripts/tsconfig.json && bun test scripts/check-static.test.ts && turbo check",
     "dev": "turbo run dev",
     "format": "turbo run format",
     "lint": "turbo run build --filter=@vincle/eslint-plugin && oxlint .",
     "test": "turbo test",
-    "test:coverage": "turbo run coverage"
+    "test:coverage": "turbo run coverage",
+    "check:static": "bun scripts/check-static.ts"
   },
   "devDependencies": {
+    "@types/bun": "catalog:",
     "bun": "^1.4.2",
     "lefthook": "^2.1.17",
     "oxfmt": "^0.72.0",
