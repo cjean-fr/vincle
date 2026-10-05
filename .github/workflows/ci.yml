@@ -10,6 +10,14 @@ permissions:
   contents: read
 
 jobs:
+  workflows:
+    name: Validate GitHub Actions workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Actionlint
+        uses: docker://rhysd/actionlint:1.7.7
+
   # No turbo cache restored: `turbo run test` then builds only the *declared*
   # dependencies, so a test that expects any other one fails here. The main job
   # restores the cache and would not see it.
