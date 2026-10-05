@@ -1,128 +1,42 @@
 # create-vincle
 
-Bootstrap a server-rendered Vincle project from the command line.
+Bootstrap a server-rendered Vincle project for Bun, Node.js or Deno.
+Generates a search page, an HTTP server and the matching TypeScript setup.
 
-This package is still under development and is not published yet.
-
-The CLI detects the runtime that started it and uses it as the default in the
-interactive prompt. You can press Enter to keep that choice or select `Bun`,
-`Node.js`, or `Deno`. The generated project contains the quick-start search
-page from the Vincle guide, a matching HTTP server, and the TypeScript
-configuration for the selected runtime.
+Under development; not published yet.
 
 ## Usage
 
-```text
-create-vincle [directory]
+From the repository root after `bun install`:
 
-Options:
-  --runtime <auto|bun|deno|node>   Runtime to target
-  --name <name>                    Project/package name (default: directory name)
-  --yes, -y                        Use defaults, skip prompts
-  --no-install                     Generate files only, skip dependency install
-  --force                        Overwrite existing directory contents
-  --help, -h                     Show help
-  --version, -v                  Show version
+```sh
+bun packages/create-vincle/src/bin.ts my-app
 ```
 
-The default target directory is `vincle-app`. Dependencies are installed after
-generation: `bun install` and `npm install` for Bun and Node, and `deno cache`
-for Deno. Use `--no-install` to generate files only.
+The prompt defaults to the runtime running the CLI. To skip prompts and
+choose a runtime explicitly:
 
-## Generated project
-
-Every generated project contains the same search-page component from the Vincle
-guide, wired to a minimal HTTP server. The file layout depends on the runtime.
-
-### Bun
-
-```
-my-vincle-app/
-├── server.tsx          # HTTP server + search page component
-├── package.json        # @vincle/core + typescript + @types/bun
-├── tsconfig.json       # JSX: react-jsx, jsxImportSource: @vincle/core
-├── .gitignore
-└── README.md
+```sh
+bun packages/create-vincle/src/bin.ts my-app --runtime node --yes
 ```
 
-- **Dev**: `bun run dev` — watch mode via `bun --watch server.tsx`
-- **Start**: `bun server.tsx`
-- **Type-check**: `bun run check` (`tsc --noEmit`)
+## Options
 
-### Node.js
+| Option                | Purpose                                        |
+| --------------------- | ---------------------------------------------- |
+| `--runtime <runtime>` | `auto` (default), `bun`, `deno` or `node`      |
+| `--name <name>`       | Package name (default: directory name)         |
+| `--yes`, `-y`         | Use defaults without prompts                   |
+| `--no-install`        | Generate files without installing dependencies |
+| `--force`             | Overwrite existing directory contents          |
+| `--help`, `-h`        | Show help                                      |
+| `--version`, `-v`     | Show version                                   |
 
-```
-my-vincle-app/
-├── server.tsx          # HTTP server (node:http) + search page component
-├── package.json        # @vincle/core + typescript + tsx + @types/node
-├── tsconfig.json       # JSX: react-jsx, jsxImportSource: @vincle/core
-├── .gitignore
-└── README.md
-```
+The default directory is `vincle-app`. Dependencies are installed automatically.
+Run `bun run dev`, `pnpm run dev`, `npm run dev` or `deno task dev` in the
+generated project.
+The Node.js template requires Node 22 or later.
 
-- **Dev**: `npm run dev` — watch mode via `tsx watch server.tsx`
-- **Start**: `npm start` (`tsx server.tsx`)
-- **Type-check**: `npm run check` (`tsc --noEmit`)
+[Getting started](https://vincle.cjean.fr/guide/getting-started/first-render)
 
-Node.js requires Node ≥ 22. The template uses the standard `node:http` module;
-no Express or Fastify dependency.
-
-### Deno
-
-```
-my-vincle-app/
-├── server.tsx          # HTTP server (Deno.serve) + search page component
-├── deno.json           # @vincle/core via npm: scope, deno tasks
-├── .gitignore
-└── README.md
-```
-
-- **Dev**: `deno task dev` — watch mode via `deno run --allow-net --watch`
-- **Start**: `deno task start`
-- **Type-check**: `deno task check` (`deno check server.tsx`)
-
-Deno uses `deno.json` with `@vincle/core` imported from the npm scope.
-
-## TypeScript configuration
-
-All templates enable JSX transform (`react-jsx`) and set `jsxImportSource` to
-`@vincle/core` so JSX expressions resolve to the vincle runtime.
-
-| Setting            | Bun            | Node.js        | Deno               |
-| ------------------ | -------------- | -------------- | ------------------ |
-| `jsx`              | `react-jsx`    | `react-jsx`    | `react-jsx`        |
-| `jsxImportSource`  | `@vincle/core` | `@vincle/core` | `npm:@vincle/core` |
-| `module`           | `Preserve`     | `NodeNext`     | —                  |
-| `moduleResolution` | `Bundler`      | `NodeNext`     | —                  |
-| `types`            | `["bun"]`      | `["node"]`     | —                  |
-| `target`           | `ESNext`       | `ESNext`       | —                  |
-
-The TypeScript compiler is a peer dependency: it is included in the generated
-project but not required at runtime. The package ships its own per-element
-attribute types, so `@types/react` is not needed.
-
-## Search page
-
-The generated page is a simple search that filters Vincle guide titles. It
-demonstrates:
-
-- Async component fetching data (`guides` list)
-- Typed props (`{ query: string }`)
-- Form with `<form action="/" method="get">`
-- Conditional rendering (empty results)
-- Complete HTML document structure (`<html>`, `<head>`, `<body>`)
-
-## Runtime detection
-
-The CLI detects the runtime from the host environment and pre-selects it in the
-prompt. Detection follows this order: `Bun.version` → `Deno.version` → `process.versions.node`.
-If no runtime is detected, the user is prompted to choose.
-
-## --yes flag
-
-Pass `--yes` (or `-y`) to skip the interactive prompt and use the detected
-runtime. Combined with `--name`, it creates a project in a single command.
-
-## License
-
-MIT
+MIT © Christophe Jean

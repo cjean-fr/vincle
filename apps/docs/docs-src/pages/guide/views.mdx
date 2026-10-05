@@ -70,8 +70,16 @@ order; making a component async does not run its siblings in parallel.
 
 Install the optional streaming package:
 
-```sh
+```bash tab="npm" sync="pkg-manager"
 npm install @vincle/flow
+```
+
+```bash tab="pnpm" sync="pkg-manager"
+pnpm add @vincle/flow
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/flow
 ```
 
 Keep Results unchanged and wrap it in Defer. Use renderToStream instead of
