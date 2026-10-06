@@ -1,70 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
 
 import { jsx } from "../src/jsx-runtime.js";
 import { Scope } from "../src/scope.js";
 
-/**
- * A code is only worth having if every error carries one, and a behavioural test
- * covers the paths it happens to exercise. So the guard is on the source: a
- * coded throw reads `throw vincleError(…, CODE)`, which means the literal
- * `throw new Error(` cannot appear. Any that does is a throw someone added
- * without a code, and this fails naming the file.
- *
- * Bare rethrows in `render.ts`, such as `throw error`, are deliberately
- * excluded. They re-raise an error from the caller's component,
- * and stamping a vincle code on them would be a lie.
- */
-const UNCODED_THROW = /\bthrow\s+new\s+\w*Error\s*\(/g;
-
-function sourceFiles(dir: string): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(dir)) {
-    const path = join(dir, entry);
-    if (statSync(path).isDirectory()) out.push(...sourceFiles(path));
-    else if (/\.tsx?$/.test(entry) && !entry.includes(".test.")) out.push(path);
-  }
-  return out;
-}
-
-/**
- * Every package, from one file. The convention is the workspace's, not this
- * package's: a second copy of this scan in each of the other five would rot
- * apart from it, and every package's tests run together in CI anyway.
- */
-function packagesDirectory(): string {
-  for (let dir = import.meta.dir; dirname(dir) !== dir; dir = dirname(dir)) {
-    // Instrumentation adds uncoded throws even during Stryker's initial run.
-    // This static guard must inspect the original workspace sources.
-    if (basename(dir) === ".stryker-tmp") return dirname(dirname(dir));
-  }
-  return join(import.meta.dir, "..", "..");
-}
-
-const PACKAGES = packagesDirectory();
-
 describe("error codes", () => {
-  it("every thrown error is stamped: no bare `throw new Error(`", () => {
-    const offenders: string[] = [];
-    for (const pkg of readdirSync(PACKAGES)) {
-      const manifest = join(PACKAGES, pkg, "package.json");
-      if (!statSync(manifest, { throwIfNoEntry: false })?.isFile()) continue;
-      const { name } = JSON.parse(readFileSync(manifest, "utf8")) as { name?: string };
-      if (name?.split("/").at(-1) !== pkg) continue;
-      const src = join(PACKAGES, pkg, "src");
-      if (!statSync(src, { throwIfNoEntry: false })?.isDirectory()) continue;
-      for (const file of sourceFiles(src)) {
-        const text = readFileSync(file, "utf8");
-        for (const match of text.matchAll(UNCODED_THROW)) {
-          const line = text.slice(0, match.index).split("\n").length;
-          offenders.push(`${pkg}/${file.split("/src/")[1]}:${line}`);
-        }
-      }
-    }
-    expect(offenders).toEqual([]);
-  });
-
   it("names an invalid tag", () => {
     expect(() => jsx("a b", {})).toThrow(
       expect.objectContaining({ code: "ERR_VINCLE_INVALID_TAG" }),

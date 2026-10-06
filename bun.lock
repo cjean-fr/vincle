@@ -5,6 +5,7 @@
     "": {
       "name": "@vincle/vincle",
       "devDependencies": {
+        "@types/bun": "catalog:",
         "bun": "^1.4.2",
         "lefthook": "^2.1.17",
         "oxfmt": "^0.72.0",
