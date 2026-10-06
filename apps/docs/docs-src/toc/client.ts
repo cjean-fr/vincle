@@ -38,11 +38,14 @@ function installScrollSpy(toc: HTMLElement, opts: ScrollSpyOptions = {}): () => 
 
   function getActiveId(): string {
     const scrollBottom = window.scrollY + window.innerHeight;
-    const threshold = window.scrollY + o.offset;
     const isAtBottom = scrollBottom >= document.documentElement.scrollHeight - 2;
     let result = headings[0]!.id;
     for (const h of headings) {
-      if (h.offsetTop <= threshold || isAtBottom) result = h.id;
+      // Anchor navigation stops at scroll-margin-top, which includes the fixed
+      // header. Use viewport coordinates so positioned ancestors don't skew it.
+      const scrollMargin = parseFloat(getComputedStyle(h).scrollMarginTop) || 0;
+      const threshold = Math.max(o.offset, scrollMargin) + 1;
+      if (h.getBoundingClientRect().top <= threshold || isAtBottom) result = h.id;
     }
     return result;
   }
