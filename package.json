@@ -25,7 +25,7 @@
       "typescript": "^6.0.3",
       "@typescript-eslint/parser": "^8.71.1",
       "@typescript-eslint/rule-tester": "^8.71.1",
-      "vite": "^8.3.2",
+      "vite": "^8.3.3",
       "zod": "^4",
       "csstype": "^3.2.3",
       "oxc-parser": "^0.153.0",
