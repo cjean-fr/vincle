@@ -7,6 +7,7 @@ import precompileTransform, {
   type RenderAttr,
   type RenderEscape,
 } from "./index.js";
+import { declaredRuntimeHelpers } from "./runtime-helpers.js";
 
 export type { PluginConfig };
 
@@ -194,19 +195,14 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         return;
       }
 
-      if (mod.precompileDialect !== "vincle") return;
-
-      if (typeof mod.jsxAttr !== "function" || typeof mod.jsxEscape !== "function") {
-        this.error(
-          `[vincle/precompile] "${source}" declares the "vincle" precompile dialect ` +
-            "but does not export both jsxAttr and jsxEscape, so build-time sanitization cannot " +
-            'run: a literal href="javascript:…" would reach the bundle unfiltered. Re-export ' +
-            "the runtime whole (`export * from`) rather than naming a subset.",
-        );
+      let helpers;
+      try {
+        helpers = declaredRuntimeHelpers(mod, source);
+      } catch (error) {
+        this.error(error instanceof Error ? error.message : String(error));
       }
-      renderAttr = mod.jsxAttr;
-
-      renderEscape = mod.jsxEscape;
+      renderAttr = helpers?.jsxAttr ?? null;
+      renderEscape = helpers?.jsxEscape ?? null;
     },
 
     transform(code: string, id: string) {

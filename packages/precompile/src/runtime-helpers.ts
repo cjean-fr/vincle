@@ -1,7 +1,25 @@
 import type { RenderAttr, RenderEscape, RuntimeHelpers } from "./types.js";
 
 import { escapeContent } from "./core/index.js";
-import { ERR_PRECOMPILE_HELPER, vincleError } from "./errors.js";
+import { ERR_PRECOMPILE_CONFIG, ERR_PRECOMPILE_HELPER, vincleError } from "./errors.js";
+
+/** Validate the dialect promise once for both build adapters. */
+export function declaredRuntimeHelpers(
+  mod: { precompileDialect?: unknown; jsxAttr?: unknown; jsxEscape?: unknown },
+  source: string,
+): { jsxAttr: RenderAttr; jsxEscape: RenderEscape } | null {
+  if (mod.precompileDialect !== "vincle") return null;
+  if (typeof mod.jsxAttr !== "function" || typeof mod.jsxEscape !== "function") {
+    throw vincleError(
+      `[vincle/precompile] "${source}" declares the "vincle" precompile dialect ` +
+        "but does not export both jsxAttr and jsxEscape, so build-time sanitization cannot " +
+        'run: a literal href="javascript:…" would reach the bundle unfiltered. Re-export ' +
+        "the runtime whole (`export * from`) rather than naming a subset.",
+      ERR_PRECOMPILE_CONFIG,
+    );
+  }
+  return { jsxAttr: mod.jsxAttr as RenderAttr, jsxEscape: mod.jsxEscape as RenderEscape };
+}
 
 /**
  * One runtime answer to text.
