@@ -1,0 +1,48 @@
+{
+  "name": "@vincle/site",
+  "version": "0.1.0",
+  "description": "Static file generation for Vincle sites",
+  "keywords": [
+    "generator",
+    "ssg",
+    "static-site",
+    "vincle"
+  ],
+  "homepage": "https://vincle.cjean.fr",
+  "bugs": {
+    "url": "https://github.com/cjean-fr/vincle/issues"
+  },
+  "license": "MIT",
+  "author": "Christophe Jean",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cjean-fr/vincle.git",
+    "directory": "packages/site"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc --noEmit",
+    "test": "bun test",
+    "format": "oxfmt"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsdown": "^0.23.0",
+    "typescript": "^6.0.3"
+  }
+}

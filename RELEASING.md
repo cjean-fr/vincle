@@ -17,8 +17,9 @@ registry. To bootstrap a package from GitHub Actions with provenance:
    the credential check and publish steps. The account and token must meet npm's
    2FA requirements for non-interactive publishing.
 3. Dispatch the workflow for `core` first, then `flow`, `eslint-plugin`,
-   `vite-plugin`, and `precompile` in any order. Each remaining package checks
-   that the matching core version exists on npm.
+   `vite-plugin`, and `precompile` in any order. These integrations check that
+   the matching core version exists on npm. Publish `site` independently:
+   it has no Core dependency.
 4. For each package, configure npm trusted publishing for GitHub repository
    `cjean-fr/vincle`, workflow filename `release.yml`, with direct `npm publish`
    allowed. Remove the `NPM_TOKEN` secret and revoke the bootstrap token once

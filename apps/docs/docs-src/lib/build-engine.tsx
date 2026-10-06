@@ -1,9 +1,10 @@
 import type { ViteManifest } from "@vincle/vite-plugin";
 
+import { generateSite, type SiteOutput } from "@vincle/site";
 import { loadViteManifest, setVite } from "@vincle/vite-plugin";
 import { existsSync } from "node:fs";
-import { writeFile, mkdir, rm, cp, readdir } from "node:fs/promises";
-import { availableParallelism, cpus } from "node:os";
+import { writeFile, mkdir, rm, cp, readdir, mkdtemp, readFile } from "node:fs/promises";
+import { availableParallelism, cpus, tmpdir } from "node:os";
 import path from "node:path";
 
 import type { Page, PageMeta } from "../types.js";
@@ -52,7 +53,12 @@ function mapConcurrent<T, R>(
     }
   };
   const pool = Math.min(maxConcurrency, items.length) || 1;
-  return Promise.all(Array.from({ length: pool }, worker)).then(() => results);
+  // Wait for every writer before disposing the prepared directory on failure.
+  return Promise.allSettled(Array.from({ length: pool }, worker)).then((settled) => {
+    const failed = settled.find((result) => result.status === "rejected");
+    if (failed?.status === "rejected") throw failed.reason;
+    return results;
+  });
 }
 
 function concurrency(): number {
@@ -81,64 +87,56 @@ export async function initBuild(): Promise<void> {
 export async function rebuildAll(): Promise<void> {
   if (!manifest) await initBuild();
   await cleanupCompiled();
-  await cleanupDist();
+  await rebuildSite();
+  console.log(`Built ${allPages.length} pages.`);
+}
+
+/** Full builds and development refreshes own the same generated output. */
+async function rebuildSite(): Promise<void> {
+  if (!manifest) await initBuild();
   clearMetaCache();
   clearHistoryCache();
   allPages = await discoverPages(config);
-  const rendered = await renderPages(allPages);
-  await postBuild(allPages, rendered);
-  console.log(`Built ${allPages.length} pages.`);
+  // Existing producers prepare the complete site together, including files
+  // derived from the rendered HTML. Only the generator publishes it to dist.
+  const prepared = await mkdtemp(path.join(tmpdir(), "vincle-docs-"));
+  try {
+    const rendered = await renderPages(allPages, prepared);
+    await postBuild(allPages, rendered, prepared);
+    await generateSite({
+      out: config.out,
+      preserve: ["assets"],
+      outputs: preparedOutputs(prepared),
+    });
+  } finally {
+    await rm(prepared, { recursive: true, force: true });
+  }
 }
 
 async function cleanupCompiled(): Promise<void> {
   await rm(COMPILED_DIR, { recursive: true, force: true });
 }
 
-/**
- * Vite owns `assets/` (its outDir, which it empties itself) and the files
- * copied from `public/`; everything else under `dist/` is SSG output. A
- * renamed or deleted page must not survive as a dead route in the served
- * directory, so each full rebuild starts from a clean slate.
- */
-async function cleanupDist(): Promise<void> {
-  const out = path.resolve(config.out);
-  if (!existsSync(out)) return;
-  const publicDir = path.resolve(out, "../public");
-  const publicNames = new Set(existsSync(publicDir) ? await readdir(publicDir) : []);
-  for (const entry of await readdir(out, { withFileTypes: true })) {
-    if (entry.name === "assets" || publicNames.has(entry.name)) continue;
-    await rm(path.join(out, entry.name), { recursive: true, force: true });
-  }
-}
-
-export async function rebuildPages(urls: string[]): Promise<void> {
-  if (!manifest) await initBuild();
-
-  const knownUrls = new Map(allPages.map((p) => [p.url, p]));
-  const newPages: Page[] = [];
-
-  for (const url of urls) {
-    if (knownUrls.has(url)) {
-      newPages.push(knownUrls.get(url)!);
-    }
-  }
-
-  if (newPages.length > 0) {
-    await renderPages(newPages);
-    console.log(`[dev] Rebuilt ${newPages.length} page(s).`);
+/** Walk the prepared site; binary files retain their original bytes. */
+async function* preparedOutputs(dir: string, prefix = ""): AsyncGenerator<SiteOutput> {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const file = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) throw new Error(`[@vincle/docs] symbolic output: ${relative}`);
+    if (entry.isDirectory()) yield* preparedOutputs(file, relative);
+    else yield { path: relative, content: () => readFile(file) };
   }
 }
 
 export async function refreshPages(): Promise<void> {
-  clearMetaCache();
-  clearHistoryCache();
-  allPages = await discoverPages(config);
-  const rendered = await renderPages(allPages);
-  await postBuild(allPages, rendered);
+  await rebuildSite();
   console.log(`[dev] Refreshed ${allPages.length} pages.`);
 }
 
-async function renderPages(pages: Page[]): Promise<{ url: string; title: string; html: string }[]> {
+async function renderPages(
+  pages: Page[],
+  out: string,
+): Promise<{ url: string; title: string; html: string }[]> {
   const typedPages = allPages as (Page & { meta: PageMeta })[];
 
   const available = new Set(typedPages.filter((page) => !page.meta.draft).map((page) => page.url));
@@ -206,8 +204,17 @@ async function renderPages(pages: Page[]): Promise<{ url: string; title: string;
       );
 
       const fullHtml = "<!DOCTYPE html>\n" + html;
-      await mkdir(path.dirname(page.outPath), { recursive: true });
-      await writeFile(page.outPath, fullHtml, "utf-8");
+      const relative = path.relative(config.out, page.outPath);
+      if (
+        !relative ||
+        relative === ".." ||
+        relative.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(relative)
+      )
+        throw new Error(`[@vincle/docs] page output escapes its directory: ${page.url}`);
+      const outPath = path.join(out, relative);
+      await mkdir(path.dirname(outPath), { recursive: true });
+      await writeFile(outPath, fullHtml, "utf-8");
 
       return { url: page.url, title: meta.title ?? page.url, html };
     },
@@ -218,6 +225,7 @@ async function renderPages(pages: Page[]): Promise<{ url: string; title: string;
 async function postBuild(
   pages: Page[],
   rendered: { url: string; title: string; html: string }[],
+  out: string,
 ): Promise<void> {
   const pageData = rendered.map((r) => ({
     url: r.url,
@@ -226,7 +234,7 @@ async function postBuild(
   }));
 
   for (const locale of documentationLocales) {
-    const outDir = locale === "en" ? config.out : path.join(config.out, locale);
+    const outDir = locale === "en" ? out : path.join(out, locale);
     await mkdir(outDir, { recursive: true });
     await buildMinimatchIndex(
       pageData.filter((page) => localeFor(page.url) === locale),
@@ -235,7 +243,7 @@ async function postBuild(
   }
 
   const hasSitemap = config.sitemap && Boolean(config.site);
-  await updateRobotsTxt(config.out, hasSitemap, config.site);
+  await updateRobotsTxt(out, hasSitemap, config.site);
 
   if (hasSitemap) {
     await buildSitemap(
@@ -248,7 +256,7 @@ async function postBuild(
         ),
       })),
       config.site!,
-      config.out,
+      out,
     );
   }
 
@@ -259,7 +267,7 @@ async function postBuild(
     text: htmlToText(r.html),
   }));
   for (const locale of documentationLocales) {
-    const outDir = locale === "en" ? config.out : path.join(config.out, locale);
+    const outDir = locale === "en" ? out : path.join(out, locale);
     const localeConfig =
       locale === "en" ? config : { ...config, description: translatorFor(locale)("description") };
     await generateLlmsTxt(
@@ -276,16 +284,16 @@ async function postBuild(
     );
   }
 
-  await copyStaticAssets();
-  await generateMarkdownAlternates(pages, config.out);
-  await generateNetlifyHeaders(config.out);
-  await generateAgentSkillsIndex(config.out);
-  await generateAiCatalog(config.out, config);
+  await copyStaticAssets(out);
+  await generateMarkdownAlternates(pages, out);
+  await generateNetlifyHeaders(out);
+  await generateAgentSkillsIndex(out);
+  await generateAiCatalog(out, config);
 
   for (const locale of documentationLocales) {
     const t = translatorFor(locale);
-    await renderError(404, t("notFoundTitle"), t("notFoundMessage"), locale);
-    await renderError(500, t("errorTitle"), t("errorMessage"), locale);
+    await renderError(404, t("notFoundTitle"), t("notFoundMessage"), locale, out);
+    await renderError(500, t("errorTitle"), t("errorMessage"), locale, out);
   }
 }
 
@@ -294,6 +302,7 @@ async function renderError(
   title: string,
   message: string,
   locale: Locale,
+  out: string,
 ): Promise<void> {
   const html = await renderDocument(() => {
     setVite(manifest!, { base: config.base });
@@ -325,14 +334,14 @@ async function renderError(
     });
   });
   await writeFile(
-    path.join(config.out, locale === "en" ? `${status}.html` : `${locale}/${status}.html`),
+    path.join(out, locale === "en" ? `${status}.html` : `${locale}/${status}.html`),
     "<!DOCTYPE html>\n" + html,
     "utf-8",
   );
 }
 
-async function copyStaticAssets(): Promise<void> {
-  const outDir = path.resolve(config.out);
+async function copyStaticAssets(out: string): Promise<void> {
+  const outDir = path.resolve(out);
   // `public/` is Vite's: it also lands in `dist/assets/`, so it stays limited
   // to browser assets. The agent-facing files (.well-known/) come
   // from `agent/` and only exist at the site root.
