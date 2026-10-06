@@ -2,7 +2,7 @@
 
 Statut : première version implémentée localement, 6 octobre 2026.
 `@vincle/site`, le site personnel et la documentation utilisent le moteur commun.
-Aucune publication sur le registre ni migration des serveurs de développement.
+`@vincle/site@0.1.0` est publié sur npm. Les serveurs de développement restent propres aux consommateurs.
 
 ## Objectif
 
@@ -94,9 +94,8 @@ sont pas pris en charge.
 La documentation prépare encore ses fichiers dérivés dans un répertoire temporaire
 avec ses producteurs existants, puis fournit l'ensemble au moteur. Leurs règles
 internes restent dans la doc ; le moteur remplace uniquement la publication et
-le nettoyage. Le site personnel utilise temporairement une dépendance `file:`
-vers le checkout Vincle voisin : sa distribution indépendante attend une version
-publiée du package.
+le nettoyage. Le site personnel utilise maintenant `@vincle/site@^0.1.0`
+depuis npm et peut être construit indépendamment du checkout Vincle.
 
 ## Répartition des packages
 
@@ -150,7 +149,6 @@ constitue déjà un contrat de migration.
 
 ## Suites possibles
 
-- Publier une version du package pour remplacer la dépendance locale de `home`.
 - Éprouver davantage la production de fichiers dérivés avant d'extraire MDX,
   recherche ou référencement dans une intégration dédiée.
 - Envisager un inventaire ou une publication atomique uniquement lorsqu'un
