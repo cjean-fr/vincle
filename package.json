@@ -35,14 +35,15 @@
   "type": "module",
   "scripts": {
     "build": "turbo build",
-    "check": "bun run check:static && tsc -p scripts/tsconfig.json && bun run check:ci && turbo check",
+    "check": "bun run check:static && tsc -p scripts/tsconfig.json && bun run check:ci && turbo check && bun run check:published",
     "dev": "turbo run dev",
     "format": "turbo run format",
     "lint": "turbo run build --filter=@vincle/eslint-plugin && oxlint .",
     "test": "turbo test",
     "test:coverage": "turbo run coverage",
     "check:static": "bun scripts/check-static.ts",
-    "check:ci": "bun scripts/check-workflows.ts && bun test scripts"
+    "check:ci": "bun scripts/check-workflows.ts && bun test scripts",
+    "check:published": "turbo run build --filter=@vincle/core --filter=@vincle/flow && bun scripts/check-published-types.ts"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
