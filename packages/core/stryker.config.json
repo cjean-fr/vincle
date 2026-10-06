@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "command",
   "commandRunner": {
-    "command": "bun test src tests/path-equivalence.test.ts tests/precompile-equivalence.test.ts tests/attr-equivalence.test.ts tests/errors.test.ts tests/execution-order.test.ts tests/bundle-graph.test.ts"
+    "command": "bun test --bail src tests/path-equivalence.test.ts tests/precompile-equivalence.test.ts tests/attr-equivalence.test.ts tests/errors.test.ts tests/execution-order.test.ts tests/bundle-graph.test.ts"
   },
   "mutate": ["index.ts", "src/**/*.ts", "!src/**/*.test.ts", "!src/jsx-namespace.ts"],
   "mutator": {

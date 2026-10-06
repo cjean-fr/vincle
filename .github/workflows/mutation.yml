@@ -1,8 +1,7 @@
 name: Mutation
 
-# Manual trigger only. The full suite runs ~10 min, ~6 of which are `core`:
-# running it on every PR cost more than it gave back, since the `break`
-# thresholds only move when the tested code itself changes.
+# Manual trigger only. Run each package on its own runner so Stryker's worker
+# pools do not compete for the same CPUs when selecting `all`.
 #
 # Thresholds live in each `stryker.config.json`. This workflow doesn't repeat
 # them: Stryker exits non-zero under threshold on its own, and the job fails
@@ -27,11 +26,13 @@ permissions:
 
 jobs:
   mutation:
-    name: Mutation testing (${{ inputs.package }})
+    name: Mutation testing (${{ matrix.package }})
     runs-on: ubuntu-latest
-    # `core` alone takes ~6 min on this machine; the default of 360 would let
-    # a stuck run tie up a runner for an hour.
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(inputs.package == 'all' && '["@vincle/core", "@vincle/flow", "@vincle/precompile", "@vincle/eslint-plugin"]' || format('["{0}"]', inputs.package)) }}
     env:
       DO_NOT_TRACK: 1
 
@@ -52,18 +53,16 @@ jobs:
       # input into a `run:` is the pattern we don't want copied elsewhere.
       - name: Mutation
         env:
-          PACKAGE: ${{ inputs.package }}
+          PACKAGE: ${{ matrix.package }}
         run: |
-          if [ "$PACKAGE" = "all" ]; then
-            bun x turbo run mutation
-          else
-            bun x turbo run mutation --filter="$PACKAGE"
-          fi
+          bun x turbo run mutation --filter="$PACKAGE" --output-logs=stream
 
       - name: Upload Mutation Reports
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: mutation-reports
-          path: packages/*/reports/
+          name: mutation-reports-${{ strategy.job-index }}
+          path: |
+            packages/*/reports/
+            packages/*/mutation/
           if-no-files-found: ignore

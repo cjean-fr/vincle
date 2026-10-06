@@ -2,10 +2,10 @@
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "command",
   "commandRunner": {
-    "command": "bun test src"
+    "command": "bun test --bail src"
   },
   "commandRunner_comment": [
-    "`bun test src`, like the other packages: mutation runs in a sandbox: a copy",
+    "`bun test --bail src`, like the other packages: mutation runs in a sandbox: a copy",
     "of this package alone, instrumented sources, a moved cwd. A test that depends",
     "on anything but the mutated code fails there and nowhere else."
   ],
