@@ -9,6 +9,9 @@ permissions:
   contents: read
   issues: write
 
+env:
+  VINCLE_FUZZ_SEEDS: ${{ github.run_id }}
+
 jobs:
   # ── Fuzz (core differential fuzzer) ──────────────────────────────────
   fuzz:
@@ -17,7 +20,6 @@ jobs:
     timeout-minutes: 45
     env:
       DO_NOT_TRACK: 1
-      VINCLE_FUZZ_SEEDS: ${{ github.run_id }}
 
     steps:
       - name: Checkout
@@ -33,7 +35,6 @@ jobs:
 
       - name: Run fuzz tests
         id: fuzz
-        continue-on-error: true
         run: bun run --filter=@vincle/core mutation:fuzz
 
       - name: Upload fuzz reports
@@ -54,7 +55,7 @@ jobs:
 
     strategy:
       matrix:
-        package: [flow, precompile]
+        package: ["@vincle/flow", "@vincle/precompile"]
 
     steps:
       - name: Checkout
@@ -69,14 +70,14 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Mutation — ${{ matrix.package }}
-        run: bun run --filter="@vincle/${{ matrix.package }}" mutation
+        run: bun x turbo run mutation --filter="${{ matrix.package }}" --log-order=stream
 
       - name: Upload reports
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: mutation-${{ matrix.package }}
-          path: packages/${{ matrix.package }}/reports/
+          name: mutation-${{ strategy.job-index }}
+          path: packages/*/reports/
           if-no-files-found: ignore
 
   # ── Issue management (runs after all test jobs) ───────────────────────
@@ -118,12 +119,11 @@ jobs:
               `Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               "",
               "### What it means",
-              "Differential fuzzer suite (path / attr / precompile equivalence) did not reach a branch in one of the mutated source files. Either a mutant survived or the input generator hasn't grown enough coverage yet.",
+              "The differential fuzz mutation run failed. Inspect the linked run and uploaded reports for the failing test or infrastructure error.",
               "",
               "### Reproduce locally",
               "```bash",
-              `VINCLE_FUZZ_SEEDS=${seed}`,
-              "bun run --filter=@vincle/core mutation:fuzz",
+              `VINCLE_FUZZ_SEEDS=${seed} bun run --filter=@vincle/core mutation:fuzz`,
               "```",
             ].join("\n");
 
