@@ -55,7 +55,7 @@ jobs:
         env:
           PACKAGE: ${{ matrix.package }}
         run: |
-          bun x turbo run mutation --filter="$PACKAGE" --output-logs=stream
+          bun x turbo run mutation --filter="$PACKAGE" --log-order=stream
 
       - name: Upload Mutation Reports
         uses: actions/upload-artifact@v7
