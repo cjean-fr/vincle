@@ -1,11 +1,8 @@
 import { readFile } from "node:fs/promises";
 
 import { RUNTIME_SOURCE } from "./core/index.js";
-import precompileTransform, {
-  type PluginConfig,
-  type RenderAttr,
-  type RenderEscape,
-} from "./index.js";
+import precompileTransform, { type PluginConfig } from "./index.js";
+import { declaredRuntimeHelpers } from "./runtime-helpers.js";
 
 export type { PluginConfig };
 
@@ -67,26 +64,18 @@ export default function precompileBun(config?: PluginConfig): BunPrecompilePlugi
       // precompiled page renders the same bytes as a dynamic one, so only that
       // one gets the corrected, sanitized output. Anything else gets Deno's,
       // which its own helpers were written against.
-      let renderAttr: RenderAttr | undefined;
-      let renderEscape: RenderEscape | undefined;
+      let mod: Parameters<typeof declaredRuntimeHelpers>[0] = {};
       try {
-        const mod = (await import(runtimeSource)) as {
-          jsxAttr?: RenderAttr;
-          jsxEscape?: RenderEscape;
-          precompileDialect?: unknown;
-        };
-        if (
-          mod.precompileDialect === "vincle" &&
-          typeof mod.jsxAttr === "function" &&
-          typeof mod.jsxEscape === "function"
-        ) {
-          renderAttr = mod.jsxAttr;
-          renderEscape = mod.jsxEscape;
-        }
+        mod = await import(runtimeSource);
       } catch {
-        // Nothing to read, so nothing to improve on: Deno's output it is. The
-        // generated code imports the helpers itself, so the page still renders.
+        // An unavailable build-time import keeps compatibility output; the
+        // generated code still imports its helpers at runtime.
       }
+      // Validation stays outside the import catch: a broken dialect promise
+      // must not silently disable build-time sanitization.
+      const helpers = declaredRuntimeHelpers(mod, runtimeSource);
+      const renderAttr = helpers?.jsxAttr;
+      const renderEscape = helpers?.jsxEscape;
 
       build.onLoad({ filter: JSX_FILE }, async ({ path }) => {
         if (path.includes("node_modules")) return undefined;
