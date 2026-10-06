@@ -404,9 +404,21 @@ html {
 /* === Content tabs: state driven by aria-selected, toggled in tabs/client.ts === */
 .docs-tabs [data-docs-tab-target] {
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.docs-tab-panel:not(.active) {
+.docs-package-manager-icon {
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.docs-tabs:not([data-docs-tabs-enhanced]) > .docs-tabs-header {
+  display: none;
+}
+
+.docs-tabs[data-docs-tabs-enhanced] > .docs-tab-panel:not(.active) {
   display: none;
 }
 

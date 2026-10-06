@@ -22,6 +22,12 @@ export const wrapTables = defineHastPlugin({
 const TAB_META = /\btab\s*=\s*"([^"]*)"/;
 const SYNC_META = /\bsync\s*=\s*"([^"]*)"/;
 
+const PACKAGE_MANAGER_ICONS: Record<string, string> = {
+  npm: "/package-managers/npm.png",
+  pnpm: "/package-managers/pnpm.png",
+  bun: "/package-managers/bun.png",
+};
+
 /** The element variants of satteri's hast node union. */
 type HastElement = Extract<HastContent, { type: "element" }>;
 
@@ -61,8 +67,8 @@ const tabGroupCounters = new WeakMap<object, number>();
  * ```
  *
  * Groups sharing a `sync` key share their active tab across pages: see
- * `tabs/client.ts`. The emitted DOM matches the former JSX `<Tabs>`
- * component, so the client script and the CSS are untouched.
+ * `tabs/client.ts`. All panels remain visible until the client enhances
+ * the group, so every command is readable without JavaScript.
  */
 export function fenceTabsFor(locale: Locale = "en") {
   return defineHastPlugin({
@@ -134,6 +140,7 @@ export function fenceTabsFor(locale: Locale = "en") {
               },
               children: run.map((pre, i) => {
                 const label = tabLabel(pre)!;
+                const icon = sync === "pkg-manager" ? PACKAGE_MANAGER_ICONS[label] : undefined;
                 const active = i === 0;
                 const tabId = `${groupId}-tab-${i}`;
                 const panelId = `${groupId}-panel-${i}`;
@@ -160,7 +167,26 @@ export function fenceTabsFor(locale: Locale = "en") {
                         : ["border-transparent", "text-gray-600", "dark:text-gray-400"]),
                     ],
                   },
-                  children: [{ type: "text", value: label }],
+                  children: [
+                    ...(icon
+                      ? [
+                          {
+                            type: "element" as const,
+                            tagName: "img",
+                            properties: {
+                              src: icon,
+                              alt: "",
+                              "aria-hidden": "true",
+                              width: 16,
+                              height: 16,
+                              className: ["docs-package-manager-icon"],
+                            },
+                            children: [],
+                          },
+                        ]
+                      : []),
+                    { type: "text", value: label },
+                  ],
                 };
               }),
             },
@@ -172,7 +198,6 @@ export function fenceTabsFor(locale: Locale = "en") {
                 role: "tabpanel",
                 "aria-labelledby": `${groupId}-tab-${i}`,
                 "data-docs-tab-panel": "",
-                hidden: i !== 0,
                 className: ["docs-tab-panel", ...(i === 0 ? ["active"] : [])],
               },
               children: [JSON.parse(JSON.stringify(pre)) as HastElement],

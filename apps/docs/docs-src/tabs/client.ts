@@ -21,6 +21,7 @@ function activate(container: Element, index: number): void {
     panel.classList.toggle("active", active);
     panel.toggleAttribute("hidden", !active);
   });
+  container.setAttribute("data-docs-tabs-enhanced", "");
 }
 
 function activateByLabel(container: Element, label: string): boolean {
@@ -97,7 +98,8 @@ document.addEventListener("click", (e) => {
   }
 });
 
-for (const container of document.querySelectorAll("[data-docs-tabs-sync]")) {
+for (const container of document.querySelectorAll(".docs-tabs")) {
+  activate(container, 0);
   const syncKey = container.getAttribute("data-docs-tabs-sync");
   if (!syncKey) continue;
   let stored: string | null = null;
