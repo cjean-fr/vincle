@@ -16,6 +16,7 @@
   "dependencies": {
     "@cjean-fr/i18n-tiny": "2.0.1",
     "@vincle/core": "workspace:*",
+    "@vincle/site": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
     "gray-matter": "^4.0.3",
     "satteri": "^0.10.5",

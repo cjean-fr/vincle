@@ -34,10 +34,11 @@ together, but core is a complete product on its own.
 
 ### Tooling
 
-| Package                                             | Description                                                      |
-| :-------------------------------------------------- | :--------------------------------------------------------------- |
-| [`@vincle/eslint-plugin`](./packages/eslint-plugin) | ESLint rules for safe @vincle/core usage.                        |
-| [`@vincle/precompile`](./packages/precompile)       | Deno-style JSX precompile transform, with Vite and Bun adapters. |
+| Package                                             | Description                                                                         |
+| :-------------------------------------------------- | :---------------------------------------------------------------------------------- |
+| [`@vincle/eslint-plugin`](./packages/eslint-plugin) | ESLint rules for safe @vincle/core usage.                                           |
+| [`@vincle/precompile`](./packages/precompile)       | Deno-style JSX precompile transform, with Vite and Bun adapters.                    |
+| [`@vincle/site`](./packages/site)                   | Static site output generation: text, binary files, resources and rebuild lifecycle. |
 
 ### Apps (internal)
 

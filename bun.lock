@@ -45,6 +45,7 @@
       "dependencies": {
         "@cjean-fr/i18n-tiny": "2.0.1",
         "@vincle/core": "workspace:*",
+        "@vincle/site": "workspace:*",
         "@vincle/vite-plugin": "workspace:*",
         "gray-matter": "^4.0.3",
         "satteri": "^0.10.5",
@@ -147,6 +148,15 @@
       "optionalPeers": [
         "vite",
       ],
+    },
+    "packages/site": {
+      "name": "@vincle/site",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/node": "^26.6.4",
+        "tsdown": "^0.23.0",
+        "typescript": "^6.0.3",
+      },
     },
     "packages/vite-plugin": {
       "name": "@vincle/vite-plugin",
@@ -683,6 +693,8 @@
     "@vincle/flow": ["@vincle/flow@workspace:packages/flow"],
 
     "@vincle/precompile": ["@vincle/precompile@workspace:packages/precompile"],
+
+    "@vincle/site": ["@vincle/site@workspace:packages/site"],
 
     "@vincle/vite-plugin": ["@vincle/vite-plugin@workspace:packages/vite-plugin"],
 
