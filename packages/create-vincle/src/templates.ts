@@ -64,33 +64,44 @@ function Page({ query }: { query: string }) {
 }
 `;
 
-const bunServer = `${page}
-const server = Bun.serve({
-  port: 3000,
-  async fetch(request) {
-    const url = new URL(request.url);
+const fetchHandler = `async function handleRequest(request: Request): Promise<Response> {
+  try {
+    let url: URL;
+    try {
+      url = new URL(request.url);
+    } catch {
+      return new Response("Bad Request", {
+        status: 400,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
     const query = url.searchParams.get("q") ?? "Vincle";
     const html = await renderToString(<Page query={query} />);
 
     return new Response("<!DOCTYPE html>" + html, {
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
-  },
-});
+  } catch (error) {
+    console.error("Request failed:", error);
+    return new Response("Internal Server Error", {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+}
+`;
+
+const bunServer = `${page}
+${fetchHandler}
+const server = Bun.serve({ port: 3000, fetch: handleRequest });
 
 console.log("Listening on " + server.url);
 `;
 
 const denoServer = `${page}
-const server = Deno.serve({ port: 3000 }, async (request) => {
-  const url = new URL(request.url);
-  const query = url.searchParams.get("q") ?? "Vincle";
-  const html = await renderToString(<Page query={query} />);
-
-  return new Response("<!DOCTYPE html>" + html, {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
-});
+${fetchHandler}
+const server = Deno.serve({ port: 3000 }, handleRequest);
 
 console.log("Listening on http://localhost:" + server.addr.port);
 `;
@@ -98,13 +109,32 @@ console.log("Listening on http://localhost:" + server.addr.port);
 const nodeServer = `import { createServer } from "node:http";
 ${page}
 const server = createServer(async (request, response) => {
-  const host = request.headers.host ?? "localhost";
-  const url = new URL(request.url ?? "/", "http://" + host);
-  const query = url.searchParams.get("q") ?? "Vincle";
-  const html = await renderToString(<Page query={query} />);
+  try {
+    let url: URL;
+    try {
+      // Only the query is used, so the base need not depend on the Host header.
+      url = new URL(request.url ?? "/", "http://localhost");
+    } catch {
+      response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Bad Request");
+      return;
+    }
 
-  response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  response.end("<!DOCTYPE html>" + html);
+    const query = url.searchParams.get("q") ?? "Vincle";
+    const html = await renderToString(<Page query={query} />);
+
+    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    response.end("<!DOCTYPE html>" + html);
+  } catch (error) {
+    console.error("Request failed:", error);
+    if (response.destroyed || response.writableEnded) return;
+    if (response.headersSent) {
+      response.destroy();
+      return;
+    }
+    response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+    response.end("Internal Server Error");
+  }
 });
 
 server.listen(3000, () => {
