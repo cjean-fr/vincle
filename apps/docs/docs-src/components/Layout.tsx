@@ -177,8 +177,8 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
           {t("skipContent")}
         </a>
 
-        {/* Sticky top header: logo + nav links + search + theme + mobile menu */}
-        <header class="docs-header sticky top-0 z-40 bg-[var(--docs-color-bg)]/80 [box-shadow:inset_0_-1px_0_var(--docs-color-border)] backdrop-blur-xl">
+        {/* Fixed top header: logo + nav links + search + theme + mobile menu */}
+        <header class="docs-header fixed inset-x-0 top-0 z-40 bg-[var(--docs-color-bg)]/80 [box-shadow:inset_0_-1px_0_var(--docs-color-border)] backdrop-blur-xl">
           <div class="mx-auto flex h-16 max-w-7xl items-center gap-1 px-4 md:px-6">
             <a
               href={localizedPath("/", locale)}

@@ -8,6 +8,7 @@ import { join, extname, resolve } from "node:path";
 
 import { localeFor } from "./i18n/locale.js";
 import { initBuild, rebuildAll, refreshPages } from "./lib/build-engine.js";
+import { injectLiveReload, LIVE_RELOAD_PATH, liveReloadResponse } from "./lib/live-reload.js";
 
 const PORT = Number(process.env["PORT"] ?? 3000);
 const APP_ROOT = resolve(import.meta.dirname!, "..");
@@ -16,17 +17,6 @@ const DIST = join(APP_ROOT, "dist");
 let watcher: ReturnType<typeof watch>;
 
 const clients = new Set<ServerWebSocket<undefined>>();
-
-function injectLiveReload(html: string): string {
-  const script = `<script>
-(function(){var ws=new WebSocket("ws://"+location.host+"/__hmr");
-ws.onmessage=function(e){if(e.data==="reload")location.reload()};
-ws.onclose=function(){setTimeout(function(){location.reload()},1000)}})()
-</script>`;
-  const idx = html.lastIndexOf("</body>");
-  if (idx === -1) return html;
-  return html.slice(0, idx) + script + "\n" + html.slice(idx);
-}
 
 const configFile = resolve(APP_ROOT, "docs.config.ts");
 
@@ -47,7 +37,9 @@ let rebuildTimer: ReturnType<typeof setTimeout> | undefined;
 function scheduleRebuild(filePath: string): void {
   if (
     filePath.includes("node_modules") ||
-    filePath.includes("/dist/") ||
+    filePath === DIST ||
+    filePath.startsWith(DIST + "/") ||
+    filePath.includes("/.vincle-site-") ||
     filePath.includes("/.git/") ||
     filePath.includes(".compiled")
   )
@@ -138,6 +130,8 @@ async function main(): Promise<void> {
     },
     fetch(req, server) {
       const url = new URL(req.url);
+
+      if (url.pathname === LIVE_RELOAD_PATH) return liveReloadResponse();
 
       if (url.pathname === "/__hmr") {
         server.upgrade(req);

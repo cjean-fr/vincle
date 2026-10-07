@@ -92,6 +92,8 @@ html {
 
 .docs-body {
   font-family: var(--docs-font-body);
+  /* Reserve the fixed header's space without sticky scroll rounding. */
+  padding-top: var(--docs-header-height);
   transition:
     background-color var(--docs-transition-slow),
     color var(--docs-transition-slow);
@@ -157,6 +159,7 @@ html {
   .docs-body {
     color: #000 !important;
     transition: none !important;
+    padding-top: 0 !important;
   }
 
   .docs-home-hero::before {
