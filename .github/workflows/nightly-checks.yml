@@ -10,7 +10,8 @@ permissions:
   issues: write
 
 env:
-  VINCLE_FUZZ_SEEDS: ${{ github.run_id }}
+  # Rotate the seed window while retaining each fuzzer's bounded default count.
+  VINCLE_FUZZ_OFFSET: ${{ github.run_id }}
 
 jobs:
   # ── Fuzz (core differential fuzzer) ──────────────────────────────────
@@ -112,10 +113,10 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const seed  = process.env.VINCLE_FUZZ_SEEDS;
-            const title = `Fuzz regression — seed ${seed}`;
+            const offset = process.env.VINCLE_FUZZ_OFFSET;
+            const title = `Fuzz regression — seed offset ${offset}`;
             const body  = [
-              `Nightly fuzz #${context.runNumber} failed on seed **${seed}** (${context.eventName}#${context.runId}).`,
+              `Nightly fuzz #${context.runNumber} failed with seed offset **${offset}** (${context.eventName}#${context.runId}).`,
               `Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               "",
               "### What it means",
@@ -123,7 +124,7 @@ jobs:
               "",
               "### Reproduce locally",
               "```bash",
-              `VINCLE_FUZZ_SEEDS=${seed} bun run --filter=@vincle/core mutation:fuzz`,
+              `VINCLE_FUZZ_OFFSET=${offset} bun run --filter=@vincle/core mutation:fuzz`,
               "```",
             ].join("\n");
 
