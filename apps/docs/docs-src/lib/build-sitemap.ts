@@ -1,6 +1,8 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { fullUrl } from "./full-url.js";
+
 export interface SitemapPage {
   url: string;
   draft?: boolean;
@@ -11,23 +13,22 @@ export async function buildSitemap(
   pages: SitemapPage[],
   siteUrl: string,
   outDir: string,
+  base = "/",
 ): Promise<void> {
   const visible = pages.filter((p) => !p.draft);
   if (visible.length === 0) return;
 
-  const base = siteUrl.replace(/\/+$/, "");
-
   const urls = visible
     .map((p) => {
-      const loc = base + p.url;
+      const loc = fullUrl(p.url, siteUrl, base);
       const alternates = (p.alternates ?? []).map(
         ({ locale, href }) =>
-          `    <xhtml:link rel="alternate" hreflang="${escapeXml(locale)}" href="${escapeXml(base + href)}" />`,
+          `    <xhtml:link rel="alternate" hreflang="${escapeXml(locale)}" href="${escapeXml(fullUrl(href, siteUrl, base))}" />`,
       );
       const english = p.alternates?.find(({ locale }) => locale === "en");
       if (english)
         alternates.push(
-          `    <xhtml:link rel="alternate" hreflang="x-default" href="${escapeXml(base + english.href)}" />`,
+          `    <xhtml:link rel="alternate" hreflang="x-default" href="${escapeXml(fullUrl(english.href, siteUrl, base))}" />`,
         );
       const depth = p.url === "/" ? 0 : p.url.split("/").filter(Boolean).length;
       const priority = Math.max(0.3, 1.0 - depth * 0.2).toFixed(1);

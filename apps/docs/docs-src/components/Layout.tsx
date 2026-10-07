@@ -1,9 +1,10 @@
-import type { JSX } from "@vincle/core";
-
+import { raw, renderToString, type JSX } from "@vincle/core";
 import { Asset } from "@vincle/vite-plugin";
 
 import { useDocs, useTranslation } from "../context.js";
 import { localeFor, localizedPath, markdownPath, unlocalizedPath } from "../i18n/locale.js";
+import { CspService, Script, withHash } from "../lib/csp.js";
+import { fullUrl } from "../lib/full-url.js";
 import { LanguageSwitcher } from "./LanguageSwitcher.js";
 import { Nav } from "./Nav.js";
 import { NavToggle } from "./NavToggle.js";
@@ -11,39 +12,7 @@ import { PageFooter } from "./PageFooter.js";
 import { SearchDialog } from "./SearchDialog.js";
 import { TableOfContents } from "./TableOfContents.js";
 import { Tabs } from "./Tabs.js";
-import { ThemeToggle, themeInitScript, themeScriptHash } from "./ThemeToggle.js";
-
-// The hosts the `<head>` below actually loads from: a 'self'-only policy
-// would block the site's own font stylesheets, font files and preconnects.
-const FONT_STYLES = "https://api.fontshare.com https://fonts.googleapis.com";
-// Fontshare's stylesheet points its @font-face files at a separate CDN host.
-const FONT_FILES = "https://cdn.fontshare.com https://fonts.gstatic.com";
-const FONT_PRECONNECTS = `${FONT_STYLES} ${FONT_FILES}`;
-
-/**
- * The default page CSP.
- *
- * - `script-src` allows the inline theme bootstrap **by hash**, not
- *   `'unsafe-inline'`: the hash is derived from `themeInitScriptSource` at
- *   render time, so it cannot drift from the script it authorizes.
- * - `style-src` keeps `'unsafe-inline'`: expressive-code emits per-token
- *   `style` attributes, which cannot be hashed.
- * - `frame-ancestors` is deliberately absent: it is ignored in a meta CSP, and
- *   only an HTTP header served by the host can enforce it.
- */
-async function defaultCsp(): Promise<string> {
-  const scriptHash = await themeScriptHash();
-  return [
-    "default-src 'self'",
-    `script-src 'self' ${scriptHash}`,
-    `style-src 'self' 'unsafe-inline' ${FONT_STYLES}`,
-    `font-src 'self' ${FONT_FILES}`,
-    "img-src 'self' data: https://img.shields.io https://github.com https://badge.fury.io https://unpkg.com https://img.badgesize.io",
-    `connect-src 'self' ${FONT_PRECONNECTS}`,
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join("; ");
-}
+import { ThemeToggle, themeInitScriptSource } from "./ThemeToggle.js";
 
 // The JSON goes out as an ordinary child: `<script>` is rawtext, and its
 // escaping neutralizes `</script` in a form JSON reads back (`\u003c`). No
@@ -79,14 +48,18 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
   const title = meta.title ? `${meta.title} — ${config.title}` : config.title;
   const description = meta.description ?? (locale === "en" ? config.description : t("description"));
   const image = meta.image ?? config.image;
-  const canonical = config.site ? config.site.replace(/\/+$/, "") + currentPage : null;
-  const csp = meta.csp ?? (await defaultCsp());
-  const is404 = route === "/404";
-  const isErrorPage = is404 || route === "/500";
+  const canonical = config.site ? fullUrl(currentPage, config.site, config.base) : null;
+  const collector = new CspService();
+  const HashedScript = withHash(Script, collector);
+  const themeScript = raw(
+    await renderToString(<HashedScript>{themeInitScriptSource}</HashedScript>),
+  );
+  const csp = meta.csp ?? collector.getCSPHeader();
+  const isErrorPage = ["/404", "/500"].includes(route);
   const isHome = route === "/";
 
   return (
-    <html lang={locale} class="docs-html">
+    <html lang={locale}>
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -100,18 +73,6 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
           http-equiv="Permissions-Policy"
           content="camera=(), microphone=(), geolocation=(), interest-cohort=()"
         />
-        <link rel="preconnect" href="https://api.fontshare.com" />
-        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap"
-        />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400,500,600,700&display=swap"
-        />
         {/* One icon only, because `public/` holds just the one. */}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <title>{title}</title>
@@ -123,7 +84,7 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
             <link
               rel="alternate"
               hrefLang={language}
-              href={config.site!.replace(/\/+$/, "") + href}
+              href={fullUrl(href, config.site!, config.base)}
             />
           ))}
         {config.site &&
@@ -132,10 +93,11 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
             <link
               rel="alternate"
               hrefLang="x-default"
-              href={
-                config.site.replace(/\/+$/, "") +
-                alternates.find((alternate) => alternate.locale === "en")!.href
-              }
+              href={fullUrl(
+                alternates.find((alternate) => alternate.locale === "en")!.href,
+                config.site,
+                config.base,
+              )}
             />
           )}
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
@@ -161,11 +123,11 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
         <meta name="twitter:title" content={title} />
         {description && <meta name="twitter:description" content={description} />}
         {image && <meta name="twitter:image" content={image} />}
-        {themeInitScript}
+        {themeScript}
         {config.site && (
           <StructuredData
             locale={locale}
-            siteUrl={config.site}
+            siteUrl={fullUrl("/", config.site, config.base)}
             title={title}
             description={description}
           />

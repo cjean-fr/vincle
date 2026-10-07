@@ -16,6 +16,7 @@ const config: ResolvedDocsConfig = {
   clientEntry: "docs-src/client.ts",
   out: "dist",
   base: "/",
+  assetBase: "/",
   viteManifest: "dist/assets/.vite/manifest.json",
   tabs: [{ label: "Guide", slug: "guide" }],
   editUrl: null,
@@ -73,6 +74,32 @@ async function sha256HashOf(text: string): Promise<string> {
   return `'sha256-${btoa(String.fromCharCode(...new Uint8Array(digest)))}'`;
 }
 
+it("uses the page base for canonical metadata independently of the Vite asset base", async () => {
+  const html = await Scope.with(async () => {
+    setVite(null, { base: "/bundles/" });
+    setDocs({
+      ...docsContext({ title: "Guide" }),
+      config: {
+        ...config,
+        site: "https://example.test/project/",
+        base: "/docs/",
+        assetBase: "/bundles/",
+      },
+      currentPage: "/fr/guide",
+      alternates: [
+        { locale: "en", href: "/guide" },
+        { locale: "fr", href: "/fr/guide" },
+      ],
+    });
+    return renderToString(Layout({ children: <main>body</main> }));
+  });
+  expect(html).toContain('rel="canonical" href="https://example.test/project/docs/fr/guide"');
+  expect(html).toContain('property="og:url" content="https://example.test/project/docs/fr/guide"');
+  expect(html).toContain('hreflang="en" href="https://example.test/project/docs/guide"');
+  expect(html).toContain('hreflang="x-default" href="https://example.test/project/docs/guide"');
+  expect(html).toContain('src="/bundles/docs-src/client.ts"');
+});
+
 describe("Layout CSP", () => {
   it("authorizes the theme script by hash, and that hash matches the emitted bytes", async () => {
     const html = await renderPage();
@@ -88,7 +115,7 @@ describe("Layout CSP", () => {
     expect(scriptSrc).toContain(await sha256HashOf(themeScript!));
   });
 
-  it("covers every external host the head loads (stylesheets + preconnects)", async () => {
+  it("uses system fonts without external stylesheets or preconnects", async () => {
     const html = await renderPage();
     const csp = cspOf(html);
     const head = html.slice(0, html.indexOf("</head>"));
@@ -96,10 +123,8 @@ describe("Layout CSP", () => {
       ...head.matchAll(/<link rel="(preconnect|stylesheet)" href="https:\/\/([^/"]+)/g),
     ];
 
-    expect(links.length, "the head must still reference the font hosts").toBeGreaterThan(0);
-    for (const [, , host] of links) {
-      expect(csp, `host ${host} must be covered by the CSP`).toContain(`https://${host}`);
-    }
+    expect(links).toHaveLength(0);
+    expect(csp).not.toContain("fontshare.com");
   });
 
   it("does not emit frame-ancestors: it is ignored in a meta CSP", async () => {

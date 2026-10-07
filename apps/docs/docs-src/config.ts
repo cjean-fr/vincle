@@ -13,6 +13,7 @@ const DEFAULTS = {
   clientEntry: "docs-src/client.ts",
   out: "./dist",
   base: "/",
+  assetBase: "/",
   viteManifest: "dist/assets/.vite/manifest.json",
 } as const;
 
@@ -38,6 +39,7 @@ export function defineConfig(config: DocsConfig): ResolvedDocsConfig {
     clientEntry: config.clientEntry ?? DEFAULTS.clientEntry,
     out: path.resolve(ROOT, config.out ?? DEFAULTS.out),
     base: normalizeBase(config.base ?? DEFAULTS.base),
+    assetBase: normalizeBase(config.assetBase ?? DEFAULTS.assetBase),
     viteManifest: path.resolve(ROOT, config.viteManifest ?? DEFAULTS.viteManifest),
     tabs: resolveTabs(config),
     editUrl: config.editUrl ?? null,
