@@ -51,7 +51,7 @@ test("dispatch matrix evaluates all and individual choices without changing pack
   );
 });
 
-test("a failed fuzz job reaches triage with the same seed and a usable reproduction command", async () => {
+test("a failed fuzz job reaches triage with the same seed window and a usable reproduction command", async () => {
   const workflow = Bun.YAML.parse(
     readFileSync(resolve(import.meta.dir, "../.github/workflows/nightly-checks.yml"), "utf8"),
   ) as any;
@@ -60,7 +60,8 @@ test("a failed fuzz job reaches triage with the same seed and a usable reproduct
   const run = fuzz.steps.find((step: any) => step.id === "fuzz");
   expect(run["continue-on-error"]).not.toBe(true);
   expect(fuzz["continue-on-error"]).not.toBe(true);
-  expect(workflow.env.VINCLE_FUZZ_SEEDS).toBe("${{ github.run_id }}");
+  expect(workflow.env.VINCLE_FUZZ_OFFSET).toBe("${{ github.run_id }}");
+  expect(workflow.env.VINCLE_FUZZ_SEEDS).toBeUndefined();
   expect(triage.needs).toContain("fuzz");
   expect(triage.if).toBe("always()");
   expect(fuzz.steps.find((step: any) => step.uses?.startsWith("actions/upload-artifact")).if).toBe(
@@ -79,7 +80,7 @@ test("a failed fuzz job reaches triage with the same seed and a usable reproduct
   };
   const context = {
     repo: { owner: "fixture", repo: "fixture" },
-    runId: 12345,
+    runId: 20_000_000_000,
     runNumber: 7,
     eventName: "schedule",
   };
@@ -89,10 +90,36 @@ test("a failed fuzz job reaches triage with the same seed and a usable reproduct
     "process",
     notification.with.script,
   );
-  await execute(github, context, { env: { VINCLE_FUZZ_SEEDS: String(context.runId) } });
-  expect(created).toHaveLength(1);
-  expect(created[0].title).toContain("12345");
-  expect(created[0].body).toContain(
-    "VINCLE_FUZZ_SEEDS=12345 bun run --filter=@vincle/core mutation:fuzz",
+  const env = Object.fromEntries(
+    Object.entries(workflow.env).map(([name, value]) => [
+      name,
+      String(value).replace("${{ github.run_id }}", String(context.runId)),
+    ]),
   );
+  await execute(github, context, { env });
+  expect(created).toHaveLength(1);
+  expect(created[0].title).toContain("seed window after 20000000000");
+  expect(created[0].body).toContain(
+    "VINCLE_FUZZ_OFFSET=20000000000 bun run --filter=@vincle/core mutation:fuzz",
+  );
+
+  // Exercise the initial Stryker test run with a realistic run ID. Treating it
+  // as a seed count exceeds Array.from's length limit before any test runs.
+  const result = Bun.spawnSync(
+    [
+      process.execPath,
+      "test",
+      "tests/path-equivalence.test.ts",
+      "tests/precompile-equivalence.test.ts",
+      "tests/attr-equivalence.test.ts",
+    ],
+    {
+      cwd: resolve(import.meta.dir, "../packages/core"),
+      env: { ...process.env, VINCLE_FUZZ_SEEDS: "", ...env },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+  expect(result.stderr.toString()).toContain("0 fail");
+  expect(result.exitCode).toBe(0);
 });
