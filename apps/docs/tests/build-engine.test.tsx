@@ -148,12 +148,14 @@ describe("SSG build", () => {
 
   it("produces the agent discovery files", async () => {
     const robots = await readFile(path.join(DIST_DIR, "robots.txt"), "utf-8");
-    expect(robots).toContain("Content-Signal: ai-train=yes, search=yes, ai-input=yes");
-    expect(robots).toContain("Agentmap: https://vincle.cjean.fr/.well-known/ai-catalog.json");
+    expect(robots).toBe(
+      "User-agent: *\nAllow: /\n\nSitemap: https://vincle.cjean.fr/sitemap.xml\n",
+    );
 
     const headers = await readFile(path.join(DIST_DIR, "_headers"), "utf-8");
     expect(headers).toContain('rel="alternate"; type="text/markdown"');
     expect(headers).toContain("Access-Control-Allow-Origin: *");
+    expect(headers).toContain('rel="service-desc"');
 
     const catalog = JSON.parse(
       await readFile(path.join(DIST_DIR, ".well-known/ai-catalog.json"), "utf-8"),

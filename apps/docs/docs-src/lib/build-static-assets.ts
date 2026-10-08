@@ -63,19 +63,15 @@ export async function updateRobotsTxt(
   siteUrl: string | null,
   base = "/",
 ): Promise<void> {
-  const lines: string[] = [
-    "User-agent: *",
-    "Allow: /",
-    "Content-Signal: ai-train=yes, search=yes, ai-input=yes",
-    "",
-  ];
+  // Keep only directives understood by search crawlers and Lighthouse.
+  // Agent discovery is advertised through Link headers instead.
+  const lines: string[] = ["User-agent: *", "Allow: /", ""];
 
   if (siteUrl) {
     if (hasSitemap) lines.push(`Sitemap: ${fullUrl("/sitemap.xml", siteUrl, base)}`);
-    lines.push(`Agentmap: ${fullUrl("/.well-known/ai-catalog.json", siteUrl, base)}`);
   }
 
-  await writeFile(path.join(outDir, "robots.txt"), lines.join("\n"), "utf-8");
+  await writeFile(path.join(outDir, "robots.txt"), lines.join("\n").trimEnd() + "\n", "utf-8");
 }
 
 /**
