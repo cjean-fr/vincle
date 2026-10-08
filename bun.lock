@@ -110,7 +110,7 @@
     },
     "packages/flow": {
       "name": "@vincle/flow",
-      "version": "0.10.0",
+      "version": "0.10.1",
       "devDependencies": {
         "@stryker-mutator/core": "catalog:",
         "@types/bun": "catalog:",

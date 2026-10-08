@@ -4,6 +4,7 @@ import type { Adapter } from "./adapters/index.js";
 import type { ShellContext } from "./adapters/shared.js";
 import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
 
+import { abortable } from "./abortable.js";
 import { assertAdapter, assertFlowOptions } from "./config.js";
 import { renderFlow, withFlow } from "./context.js";
 import { createStream } from "./create-stream.js";
@@ -126,7 +127,14 @@ export async function runSequence(
 
         // Fragment mode still renders the shell: that render is what registers
         // the fragments we are about to drain, but none of it reaches the wire.
-        const { shellBody, closingTag } = await renderShell(node, adapter, ctx);
+        let shell: Awaited<ReturnType<typeof renderShell>>;
+        try {
+          shell = await abortable(renderShell(node, adapter, ctx), signal);
+        } catch (error) {
+          if (signal.aborted) return;
+          throw error;
+        }
+        const { shellBody, closingTag } = shell;
         if (opts.mode !== "fragment" && shellBody !== "") {
           await emit({ type: "shell", html: shellBody });
         }

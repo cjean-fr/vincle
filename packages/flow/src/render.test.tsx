@@ -15,6 +15,36 @@ import { collectEvents, collect, type FragmentEvent } from "./test-utils.js";
 const FAKE_CTX: ShellContext = { fragments: { size: 0 } };
 
 describe("renderToFlowEvents", () => {
+  it("closes when the request is aborted during a pending shell render", async () => {
+    const started = Promise.withResolvers<void>();
+    const request = new AbortController();
+    function Pending() {
+      started.resolve();
+      return new Promise<never>(() => {});
+    }
+    const reader = renderToFlowEvents(() => <Pending />, TurboAdapter, {
+      signal: request.signal,
+    }).getReader();
+    const next = reader.read();
+    await started.promise;
+    request.abort();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const result = await Promise.race([
+        next,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("shell did not settle")), 500);
+        }),
+      ]);
+      expect(result.done).toBe(true);
+      expect(result.value).toBeUndefined();
+    } finally {
+      clearTimeout(timer);
+      await reader.cancel();
+      reader.releaseLock();
+    }
+  });
+
   it("keeps Provider values in deferred fragments across concurrent streams", async () => {
     const Locale = createContext("default");
     const Read = async () => {

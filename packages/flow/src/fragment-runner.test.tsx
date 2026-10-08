@@ -19,6 +19,96 @@ const bounded = async (done: Promise<void>) => {
 };
 
 describe("fragment lifecycle", () => {
+  for (const kind of ["value", "sync-error", "stream", "stream-chunk"] as const) {
+    it(`bounds a pending error fallback for ${kind} content`, async () => {
+      const failure = new Error("content failed");
+      let reported: unknown;
+      let reports = 0;
+      const events: FlowEvent[] = [];
+      async function* chunks() {
+        if (kind === "stream") throw failure;
+        yield Promise.reject(failure);
+      }
+      const content =
+        kind === "value"
+          ? new Promise<never>(() => {})
+          : kind === "sync-error"
+            ? () => {
+                throw failure;
+              }
+            : chunks();
+      const { done } = runFragment(
+        "blocked",
+        { content, merge: "replace", timeout: 5 },
+        async (event) => {
+          events.push(event);
+        },
+        {
+          onError: (error) => {
+            reports++;
+            reported = error;
+            return new Promise<never>(() => {});
+          },
+        },
+      );
+      const rejection = await bounded(done).then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      expect(rejection).toBe(reported);
+      expect(reports).toBe(1);
+      if (kind === "value") expect((reported as Error).message).toContain("timed out");
+      else expect(reported).toBe(failure);
+      expect(events).toEqual([]);
+    });
+  }
+
+  it("uses the default timeout for an error fallback", async () => {
+    const failure = new Error("content failed");
+    const { done } = runFragment(
+      "blocked",
+      {
+        content: () => {
+          throw failure;
+        },
+        merge: "replace",
+      },
+      async () => {},
+      { defaultTimeout: 5, onError: () => new Promise<never>(() => {}) },
+    );
+    await expect(bounded(done)).rejects.toBe(failure);
+  });
+
+  it("cancels a pending error fallback even without a timeout", async () => {
+    const started = Promise.withResolvers<void>();
+    const request = new AbortController();
+    const events: FlowEvent[] = [];
+    const failure = new Error("content failed");
+    const { done } = runFragment(
+      "blocked",
+      {
+        content: () => {
+          throw failure;
+        },
+        merge: "replace",
+      },
+      async (event) => {
+        events.push(event);
+      },
+      {
+        signal: request.signal,
+        onError: () => {
+          started.resolve();
+          return new Promise<never>(() => {});
+        },
+      },
+    );
+    await started.promise;
+    request.abort();
+    await expect(bounded(done)).rejects.toBe(failure);
+    expect(events).toEqual([]);
+  });
+
   it("times out content that never settles and emits the error fallback", async () => {
     const events: FlowEvent[] = [];
     let error: unknown;
