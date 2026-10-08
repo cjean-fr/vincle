@@ -1,5 +1,12 @@
 # @vincle/flow
 
+## 0.10.1 — 2026-10-08
+
+### Fixed
+
+- Stop waiting for a pending shell render when the request is cancelled, allowing the stream to close and fragment storage to be cleared.
+- Give error fallbacks a fresh render deadline using the fragment timeout or default timeout, and interrupt them on request cancellation. Preserve the original content error if fallback rendering fails or times out, without invoking the error handler again.
+
 ## 0.10.0 — 2026-10-05
 
 ### Breaking changes

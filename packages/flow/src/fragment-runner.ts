@@ -8,6 +8,7 @@ import { isAsyncIterable } from "@vincle/core/html";
 import type { FragmentEntry } from "./fragment-store.js";
 import type { DeferContent, FlowEvent, FlowOptions, MergeType } from "./types.js";
 
+import { abortable } from "./abortable.js";
 import { renderFlow } from "./context.js";
 import { createTimeoutSignal } from "./timeout.js";
 
@@ -32,43 +33,35 @@ function classifyEntry(entry: FragmentEntry, signal: AbortSignal): Classificatio
 
 type Emit = (ev: FlowEvent) => Promise<void>;
 
-/** Stop waiting on user work when it ignores the signal; remove the listener on every exit. */
-async function abortable<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
-  let onAbort!: () => void;
-  const aborted = new Promise<never>((_, reject) => {
-    onAbort = () => reject(signal.reason);
-    if (signal.aborted) onAbort();
-    else signal.addEventListener("abort", onAbort, { once: true });
-  });
-  try {
-    return await Promise.race([work, aborted]);
-  } finally {
-    signal.removeEventListener("abort", onAbort);
-  }
-}
-
 async function emitError(
   emit: Emit,
   onError: FlowOptions["onError"],
   id: string,
   kind: "fragment" | "stream",
   error: unknown,
+  opts: FlowOptions,
 ): Promise<void> {
   console.error(`[vincle/flow] Error rendering ${kind} "${id}"`, error);
+  if (opts.signal?.aborted) return;
   const ui = onError?.(error, { id, kind });
   if (ui != null) {
-    await emit({
-      type: "fragment",
-      id,
-      html: await renderFlow(ui),
-      merge: "replace",
-    });
+    // A fallback gets its own render deadline: the content's signal may
+    // already have timed out, but request cancellation still applies.
+    const { signal, cleanup } = createTimeoutSignal(opts.defaultTimeout, opts.signal, id);
+    let html: string;
+    try {
+      html = await abortable(renderFlow(ui), signal);
+    } finally {
+      cleanup();
+    }
+    if (signal.aborted) throw signal.reason;
+    await emit({ type: "fragment", id, html, merge: "replace" });
   }
 }
 
 /**
- * Route a failure to the error handler. When the handler's own emit fails too
- * the channel is broken, so the original error is the one that propagates.
+ * Route a failure to the error handler. If its fallback render or emit fails,
+ * propagate the original error without recursively invoking the handler.
  */
 async function reportOrThrow(
   emit: Emit,
@@ -76,13 +69,16 @@ async function reportOrThrow(
   id: string,
   kind: "fragment" | "stream",
   error: unknown,
+  opts: FlowOptions,
 ): Promise<void> {
   try {
-    await emitError(emit, onError, id, kind, error);
+    await emitError(emit, onError, id, kind, error, opts);
   } catch {
     throw error;
   }
 }
+
+type ReportError = (kind: "fragment" | "stream", error: unknown) => Promise<void>;
 
 type FragmentResult = { isStreaming: boolean; done: Promise<void> };
 
@@ -111,6 +107,9 @@ function runFragmentInScope(
   opts: FlowOptions,
 ): FragmentResult {
   const handle = entry.onError ?? opts.onError;
+  const errorOptions = { ...opts, defaultTimeout: entry.timeout ?? opts.defaultTimeout };
+  const report: ReportError = (kind, error) =>
+    reportOrThrow(emit, handle, id, kind, error, errorOptions);
   const { signal, cleanup } = createTimeoutSignal(
     entry.timeout ?? opts.defaultTimeout,
     opts.signal,
@@ -124,13 +123,13 @@ function runFragmentInScope(
       cleanup();
       return {
         isStreaming: false,
-        done: emitError(emit, handle, id, "fragment", classification.error),
+        done: report("fragment", classification.error),
       };
     }
     case "stream": {
       return {
         isStreaming: true,
-        done: runStream(id, classification.iterable, entry.merge, emit, handle, signal).finally(
+        done: runStream(id, classification.iterable, entry.merge, emit, report, signal).finally(
           cleanup,
         ),
       };
@@ -138,7 +137,7 @@ function runFragmentInScope(
     case "value": {
       return {
         isStreaming: false,
-        done: runValue(id, classification.value, entry.merge, emit, handle, signal, cleanup),
+        done: runValue(id, classification.value, entry.merge, emit, report, signal, cleanup),
       };
     }
   }
@@ -153,7 +152,7 @@ async function runValue(
   value: Awaitable<JSX.Element> | string,
   merge: MergeType,
   emit: Emit,
-  onError: FlowOptions["onError"],
+  report: ReportError,
   signal: AbortSignal,
   cleanup: () => void,
 ): Promise<void> {
@@ -161,7 +160,7 @@ async function runValue(
   try {
     html = await abortable(renderFlow(value), signal);
   } catch (renderError) {
-    await reportOrThrow(emit, onError, id, "fragment", renderError);
+    await report("fragment", renderError);
     return;
   } finally {
     cleanup();
@@ -170,7 +169,7 @@ async function runValue(
   // The render finished, but past the deadline: treat it like a render error
   // rather than emit content the client may already have given up on waiting for.
   if (signal.aborted) {
-    await reportOrThrow(emit, onError, id, "fragment", signal.reason);
+    await report("fragment", signal.reason);
     return;
   }
 
@@ -188,7 +187,7 @@ async function runStream(
   iterable: AsyncIterable<JSX.Element | string>,
   merge: MergeType,
   emit: Emit,
-  onError: FlowOptions["onError"],
+  report: ReportError,
   signal: AbortSignal,
 ): Promise<void> {
   const it = iterable[Symbol.asyncIterator]();
@@ -212,7 +211,12 @@ async function runStream(
       try {
         raw = await abortable(renderFlow(r.value), signal);
       } catch (renderError) {
-        await reportOrThrow(emit, onError, id, "stream", renderError);
+        try {
+          await report("stream", renderError);
+        } catch (error) {
+          fatal = true;
+          throw error;
+        }
         if (signal.aborted) break;
         continue;
       }
@@ -227,7 +231,7 @@ async function runStream(
     }
   } catch (error) {
     if (fatal) throw error;
-    await reportOrThrow(emit, onError, id, "stream", error);
+    await report("stream", error);
   } finally {
     if (!completed) {
       // A generator may queue return() behind a next() that never settles.

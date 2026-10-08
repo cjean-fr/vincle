@@ -51,6 +51,7 @@ export type OnError = (error: unknown, info: FlowErrorInfo) => JSX.Element | voi
 export interface FlowOptions {
   signal?: AbortSignal;
   onError?: OnError;
+  /** Render deadline in ms; error fallbacks receive a fresh deadline of the same duration. */
   defaultTimeout?: number;
 }
 
