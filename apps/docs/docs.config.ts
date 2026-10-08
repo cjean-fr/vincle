@@ -13,7 +13,8 @@ export default defineConfig({
   pages: "docs-src/pages",
   clientEntry: "docs-src/client.ts",
   out: "dist",
-  base: "/assets/",
+  base: "/",
+  assetBase: "/assets/",
   viteManifest: "dist/assets/.vite/manifest.json",
 
   tabs: [

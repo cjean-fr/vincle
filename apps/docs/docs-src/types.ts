@@ -100,7 +100,10 @@ export interface DocsConfig {
   pages?: string;
   clientEntry?: string;
   out?: string;
+  /** Deployment path for documentation pages. */
   base?: string;
+  /** URL prefix for Vite bundle files. */
+  assetBase?: string;
   viteManifest?: string;
   /** Top-level navigation tabs. Auto-detected from content roots when omitted. */
   tabs?: readonly TabConfig[];
@@ -123,6 +126,7 @@ export interface ResolvedDocsConfig {
   clientEntry: string;
   out: string;
   base: string;
+  assetBase: string;
   viteManifest: string;
   tabs: readonly TabConfig[];
   editUrl: string | null;

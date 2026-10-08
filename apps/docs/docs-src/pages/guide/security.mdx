@@ -172,9 +172,12 @@ Untrusted data concatenated into JS source is still an injection: the quote
 ends the string, `;` starts a statement:
 
 ```tsx
-<script>{`const name = "${user.name}";`}</script>  // ❌ user.name = '";alert(1);//'
-<script>{`const name = ${JSON.stringify(user.name)};`}</script>  // ✅
+<script>const name = "{user.name}";</script>  // ❌ user.name = '";alert(1);//'
+<script>const name = {JSON.stringify(user.name)};</script>  // ✅
 ```
+
+`JSON.stringify` escapes the value for JavaScript; vincle protects the script
+body against sequences such as `</script>` inside that value.
 
 **`dangerouslySetInnerHTML` on a `<script>` turns the rule off entirely**. It
 is trusted HTML by definition, so nothing is neutralised. It is the React idiom

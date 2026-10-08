@@ -343,7 +343,7 @@ element is neutralised, in the form the sub-language reads back
 
 ```tsx
 // ✅ Real JavaScript, untouched except where it would close the element
-<script>{`document.querySelector("#app").dataset.ready = "1";`}</script>;
+<script>document.querySelector("#app").dataset.ready = "1";</script>;
 
 // ✅ A JSON data block stays parseable whatever the data holds
 <script type="application/ld+json">{JSON.stringify({ name: title })}</script>;
@@ -358,11 +358,11 @@ Two things that rule does **not** do:
 // ❌ Untrusted data concatenated into JS source is still an injection: the quote
 // ends the string, `;` starts a statement. Rawtext escaping protects the HTML
 // boundary, not the JavaScript one.
-<script>{`const name = "${user.name}";`}</script>;
+<script>const name = "{user.name}";</script>;
 
 // ✅ Serialize instead. JSON.stringify escapes the quote, and the rawtext rule
 // handles a `</script>` inside the value.
-<script>{`const name = ${JSON.stringify(user.name)};`}</script>;
+<script>const name = {JSON.stringify(user.name)};</script>;
 
 // ❌ dangerouslySetInnerHTML turns the protection off entirely. It is the React
 // idiom for inline scripts *because React escapes script children*; vincle does

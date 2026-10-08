@@ -177,7 +177,7 @@ async function renderPages(
 
       const html = await renderDocument(
         () => {
-          setVite(manifest!, { base: config.base });
+          setVite(manifest!, { base: config.assetBase });
           setDocs({
             config,
             currentPage: page.url,
@@ -243,7 +243,7 @@ async function postBuild(
   }
 
   const hasSitemap = config.sitemap && Boolean(config.site);
-  await updateRobotsTxt(out, hasSitemap, config.site);
+  await updateRobotsTxt(out, hasSitemap, config.site, config.base);
 
   if (hasSitemap) {
     await buildSitemap(
@@ -257,6 +257,7 @@ async function postBuild(
       })),
       config.site!,
       out,
+      config.base,
     );
   }
 
@@ -305,7 +306,7 @@ async function renderError(
   out: string,
 ): Promise<void> {
   const html = await renderDocument(() => {
-    setVite(manifest!, { base: config.base });
+    setVite(manifest!, { base: config.assetBase });
     setDocs({
       config,
       currentPage: localizedPath(`/${status}`, locale),

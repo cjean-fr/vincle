@@ -33,24 +33,4 @@ export function ThemeToggle() {
   );
 }
 
-/**
- * The inline theme bootstrap, as source. It is emitted verbatim (a `RawString`
- * tag below), and the CSP hashes this exact text: the two can't drift.
- */
-const themeInitScriptSource = `(${applyTheme.toString()})();`;
-
-/**
- * CSP `sha256-` hash of the theme script: what `script-src` needs to allow it
- * without the blanket `'unsafe-inline'`. Same pattern as `nativePolyfillHash`
- * in `@vincle/flow`.
- */
-export async function themeScriptHash(): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(themeInitScriptSource),
-  );
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(digest)));
-  return `'sha256-${b64}'`;
-}
-
-export const themeInitScript = raw(`<script>${themeInitScriptSource}</script>`);
+export const themeInitScriptSource = `(${applyTheme.toString()})();`;

@@ -6,6 +6,7 @@ import path from "node:path";
 import type { ResolvedDocsConfig } from "../types.js";
 
 import { markdownPath, type Locale } from "../i18n/locale.js";
+import { fullUrl } from "./full-url.js";
 
 export async function generateLlmsTxt(
   pages: { url: string; title: string; html: string }[],
@@ -60,6 +61,7 @@ export async function updateRobotsTxt(
   outDir: string,
   hasSitemap: boolean,
   siteUrl: string | null,
+  base = "/",
 ): Promise<void> {
   const lines: string[] = [
     "User-agent: *",
@@ -69,9 +71,8 @@ export async function updateRobotsTxt(
   ];
 
   if (siteUrl) {
-    const base = siteUrl.replace(/\/+$/, "");
-    if (hasSitemap) lines.push(`Sitemap: ${base}/sitemap.xml`);
-    lines.push(`Agentmap: ${base}/.well-known/ai-catalog.json`);
+    if (hasSitemap) lines.push(`Sitemap: ${fullUrl("/sitemap.xml", siteUrl, base)}`);
+    lines.push(`Agentmap: ${fullUrl("/.well-known/ai-catalog.json", siteUrl, base)}`);
   }
 
   await writeFile(path.join(outDir, "robots.txt"), lines.join("\n"), "utf-8");
@@ -167,8 +168,7 @@ export async function generateAgentSkillsIndex(outDir: string): Promise<void> {
 export async function generateAiCatalog(outDir: string, config: ResolvedDocsConfig): Promise<void> {
   const site = config.site;
   if (site === null) return;
-  const base = site.replace(/\/+$/, "");
-  const host = new URL(base).hostname;
+  const host = new URL(site).hostname;
   const skills = await listAgentSkills(outDir);
   const catalog = {
     specVersion: "1.0",
@@ -177,7 +177,7 @@ export async function generateAiCatalog(outDir: string, config: ResolvedDocsConf
       identifier: `urn:air:${host}:skill:${skill.name}`,
       displayName: `${config.title}: ${skill.name}`,
       type: "text/markdown",
-      url: `${base}${skill.url}`,
+      url: fullUrl(skill.url, site, config.base),
       description: skill.description,
       representativeQueries: [
         "where can I find the Vincle documentation",
