@@ -48,7 +48,18 @@ export type FlowErrorInfo = { id: string; kind: "fragment" | "stream" };
 
 export type OnError = (error: unknown, info: FlowErrorInfo) => JSX.Element | void;
 
+export interface FlowObservation {
+  id: string;
+  phase: "start" | "complete" | "error" | "timeout" | "cancel";
+  durationMs: number;
+  error?: unknown;
+}
+
 export interface FlowOptions {
+  /** Maximum active fragments, including live streams. Omit for unlimited concurrency. */
+  maxConcurrency?: number;
+  /** Diagnostic callback. Exceptions are ignored so instrumentation cannot break rendering. */
+  onObserve?: (event: FlowObservation) => void;
   signal?: AbortSignal;
   onError?: OnError;
   /** Render deadline in ms; error fallbacks receive a fresh deadline of the same duration. */

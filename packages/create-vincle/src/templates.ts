@@ -1,6 +1,6 @@
 import { runtimeDevCommand, type Runtime } from "./runtime";
 
-export const CORE_VERSION = "0.9.0";
+export const CORE_VERSION = "0.9.1";
 export const BUN_TYPES_VERSION = "^1.4.2";
 export const NODE_TYPES_VERSION = "^26.6.2";
 export const TSX_VERSION = "^4.23.15";
@@ -15,7 +15,7 @@ const guides = [
   },
   {
     title: "Streaming HTML with Flow",
-    href: "https://vincle.cjean.fr/integration/first-stream",
+    href: "https://vincle.cjean.fr/integration/streaming",
   },
 ];
 
@@ -52,11 +52,13 @@ function Page({ query }: { query: string }) {
           <h1>Find a guide</h1>
           <form action="/" method="get">
             <label for="query">Search guides</label>
-            <input id="query" name="q" value={query} />
+            <input id="query" name="q" value={query} maxlength={100} />
             <button type="submit">Search</button>
           </form>
-          <h2>Results for {query}</h2>
-          <Results query={query} />
+          <section id="results" aria-live="polite">
+            <h2>Results for {query}</h2>
+            <Results query={query} />
+          </section>
         </main>
       </body>
     </html>
@@ -77,10 +79,14 @@ const fetchHandler = `async function handleRequest(request: Request): Promise<Re
     }
 
     const query = url.searchParams.get("q") ?? "Vincle";
-    const html = await renderToString(<Page query={query} />);
+    if (query.length > 100) {
+      return new Response("Search must contain at most 100 characters.", { status: 400 });
+    }
+    const partial = request.headers.get("X-Vincle-Fragment") === "results";
+    const html = await renderToString(partial ? <Results query={query} /> : <Page query={query} />);
 
-    return new Response("<!DOCTYPE html>" + html, {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+    return new Response((partial ? "" : "<!DOCTYPE html>") + html, {
+      headers: { "Content-Type": "text/html; charset=utf-8", Vary: "X-Vincle-Fragment" },
     });
   } catch (error) {
     console.error("Request failed:", error);
@@ -121,10 +127,16 @@ const server = createServer(async (request, response) => {
     }
 
     const query = url.searchParams.get("q") ?? "Vincle";
-    const html = await renderToString(<Page query={query} />);
+    if (query.length > 100) {
+      response.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Search must contain at most 100 characters.");
+      return;
+    }
+    const partial = request.headers["x-vincle-fragment"] === "results";
+    const html = await renderToString(partial ? <Results query={query} /> : <Page query={query} />);
 
-    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    response.end("<!DOCTYPE html>" + html);
+    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", Vary: "X-Vincle-Fragment" });
+    response.end((partial ? "" : "<!DOCTYPE html>") + html);
   } catch (error) {
     console.error("Request failed:", error);
     if (response.destroyed || response.writableEnded) return;
@@ -158,7 +170,7 @@ function packageJson(name: string, runtime: Runtime): string {
         scripts: {
           dev: "bun --watch server.tsx",
           start: "bun server.tsx",
-          check: "tsc --noEmit",
+          check: "bun check",
         },
         dependencies: {
           "@vincle/core": `^${CORE_VERSION}`,

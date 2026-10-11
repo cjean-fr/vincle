@@ -143,7 +143,9 @@ if (import.meta.main) {
         const values: Record<string, string> = {};
         for (const [key, value] of Object.entries(row)) values[`matrix.${key}`] = String(value);
         if (row.releasePackage)
-          values["steps.meta.outputs.package_name"] = `@vincle/${row.releasePackage}`;
+          values["steps.meta.outputs.package_name"] = JSON.parse(
+            readFileSync(resolve(ROOT, "packages", row.releasePackage, "package.json"), "utf8"),
+          ).name;
         for (const step of job.steps ?? []) {
           if (!step.run) continue;
           for (const line of step.run.split("\n")) {

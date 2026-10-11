@@ -24,6 +24,7 @@ function templateHandler(
     runtime === "node" ? "createServer" : runtime === "deno" ? "Deno" : "Bun",
     "renderToString",
     "Page",
+    "Results",
     "jsx",
     "console",
     transpiler.transformSync(callback) + "\nreturn server;",
@@ -34,6 +35,7 @@ function templateHandler(
         ? { serve: (_options: unknown, handler: unknown) => handler }
         : { serve: (options: { fetch: unknown }) => options.fetch },
     render,
+    () => null,
     () => null,
     (_component: unknown, props: { query: string }) => props,
     { error() {} },
@@ -236,8 +238,25 @@ describe("shared template", () => {
     for (const runtime of ["bun", "node", "deno"] as const) {
       const files = buildProjectFiles(runtime, "demo");
       expect(files["server.tsx"]).toContain("<h1>Find a guide</h1>");
-      expect(files["server.tsx"]).toContain("renderToString(<Page query={query} />)");
+      expect(files["server.tsx"]).toContain(
+        "renderToString(partial ? <Results query={query} /> : <Page query={query} />)",
+      );
       expect(files["README.md"]).toContain("Open http://localhost:3000");
     }
   });
 });
+
+for (const runtime of ["bun", "deno"] as const) {
+  it(`${runtime}: validates input and serves cache-safe partial results`, async () => {
+    const handler = fetchHandler(runtime, async ({ query }) => query);
+    const invalid = await handler(new Request("http://localhost/?q=" + "x".repeat(101)));
+    expect(invalid.status).toBe(400);
+    const partial = await handler(
+      new Request("http://localhost/?q=Flow", {
+        headers: { "X-Vincle-Fragment": "results" },
+      }),
+    );
+    expect(await partial.text()).toBe("Flow");
+    expect(partial.headers.get("Vary")).toBe("X-Vincle-Fragment");
+  });
+}

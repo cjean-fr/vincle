@@ -1,6 +1,6 @@
 {
   "name": "@vincle/flow",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "HTML document orchestration layer for @vincle/core",
   "keywords": [
     "deferred",
@@ -65,7 +65,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "check": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
+    "check": "bun check && bun check -p tsconfig.tests.json",
     "coverage": "bun test --coverage --coverage-reporter=lcov",
     "format": "oxfmt",
     "mutation": "stryker run",

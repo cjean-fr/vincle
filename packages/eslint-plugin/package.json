@@ -44,7 +44,7 @@
     "build": "rm -rf dist && tsc",
     "mutation": "stryker run",
     "test": "bun test",
-    "check": "tsc --noEmit",
+    "check": "bun check",
     "format": "oxfmt"
   },
   "dependencies": {

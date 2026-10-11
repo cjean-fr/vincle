@@ -57,6 +57,18 @@ export function assertFlowOptions(opts: FlowOptions | undefined, source: string)
     );
   }
   if (
+    opts.maxConcurrency !== undefined &&
+    (!Number.isSafeInteger(opts.maxConcurrency) || opts.maxConcurrency < 1)
+  ) {
+    throw vincleError(
+      `${PREFIX} ${source}: maxConcurrency must be a positive safe integer.`,
+      ERR_FLOW_CONFIG,
+    );
+  }
+  if (opts.onObserve !== undefined && typeof opts.onObserve !== "function") {
+    throw vincleError(`${PREFIX} ${source}: onObserve must be a function.`, ERR_FLOW_CONFIG);
+  }
+  if (
     opts.defaultTimeout !== undefined &&
     (!Number.isFinite(opts.defaultTimeout) || opts.defaultTimeout < 0)
   ) {

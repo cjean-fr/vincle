@@ -108,14 +108,39 @@ function runFragmentInScope(
 ): FragmentResult {
   const handle = entry.onError ?? opts.onError;
   const errorOptions = { ...opts, defaultTimeout: entry.timeout ?? opts.defaultTimeout };
-  const report: ReportError = (kind, error) =>
-    reportOrThrow(emit, handle, id, kind, error, errorOptions);
+  const started = performance.now();
+  let failed = false;
+  const observe = (
+    phase: "start" | "complete" | "error" | "timeout" | "cancel",
+    error?: unknown,
+  ) => {
+    try {
+      opts.onObserve?.({ id, phase, durationMs: performance.now() - started, error });
+    } catch {}
+  };
+  const report: ReportError = (kind, error) => {
+    failed = true;
+    observe(opts.signal?.aborted ? "cancel" : signal.aborted ? "timeout" : "error", error);
+    return reportOrThrow(emit, handle, id, kind, error, errorOptions);
+  };
   const { signal, cleanup } = createTimeoutSignal(
     entry.timeout ?? opts.defaultTimeout,
     opts.signal,
     id,
   );
 
+  observe("start");
+  const finish = (done: Promise<void>) =>
+    done.then(
+      () => {
+        if (!failed)
+          observe(opts.signal?.aborted ? "cancel" : signal.aborted ? "timeout" : "complete");
+      },
+      (error) => {
+        if (!failed) observe("error", error);
+        throw error;
+      },
+    );
   const classification = classifyEntry(entry, signal);
 
   switch (classification.kind) {
@@ -123,21 +148,25 @@ function runFragmentInScope(
       cleanup();
       return {
         isStreaming: false,
-        done: report("fragment", classification.error),
+        done: finish(report("fragment", classification.error)),
       };
     }
     case "stream": {
       return {
         isStreaming: true,
-        done: runStream(id, classification.iterable, entry.merge, emit, report, signal).finally(
-          cleanup,
+        done: finish(
+          runStream(id, classification.iterable, entry.merge, emit, report, signal).finally(
+            cleanup,
+          ),
         ),
       };
     }
     case "value": {
       return {
         isStreaming: false,
-        done: runValue(id, classification.value, entry.merge, emit, report, signal, cleanup),
+        done: finish(
+          runValue(id, classification.value, entry.merge, emit, report, signal, cleanup),
+        ),
       };
     }
   }

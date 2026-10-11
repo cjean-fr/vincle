@@ -1,8 +1,9 @@
 import { Scope, raw, renderToString, type JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
+import type { FlowOptions } from "./types.js";
 
-import { assertAdapter, PREFIX, describeValue } from "./config.js";
+import { assertAdapter, assertFlowOptions, PREFIX, describeValue } from "./config.js";
 import {
   withFlow,
   initFlowAssets,
@@ -39,7 +40,7 @@ export interface StaticContext extends PureStaticContext {
   emitFragments(cb: (id: string, url: string, html: string) => void | Promise<void>): Promise<void>;
 }
 
-export interface StaticOptions {
+export interface StaticOptions extends FlowOptions {
   /** Wire-format adapter for fragment framing. Required when using emitFragments. */
   adapter: Adapter;
   /** Fragment URL convention. Default: (id) => `/fragments/${id}.html`. */
@@ -55,6 +56,7 @@ function createStaticContext(
   ctx: FlowContext,
   adapter: Adapter | undefined,
   generatePath: (id: string) => string,
+  options?: FlowOptions,
 ): StaticContext {
   return {
     renderPage: (node) =>
@@ -80,14 +82,18 @@ function createStaticContext(
       // returns null rather than a tag a later pass would have to remove.
       await Scope.with(async () => {
         suppressFlowAssets();
-        await flushFragments(ctx, async (ev) => {
-          if (ev.type === "fragment") {
-            const framed = await renderToString(
-              adapter.Frame({ id: ev.id, children: raw(ev.html) }),
-            );
-            await cb(ev.id, generatePath(ev.id), framed);
-          }
-        });
+        await flushFragments(
+          ctx,
+          async (ev) => {
+            if (ev.type === "fragment") {
+              const framed = await renderToString(
+                adapter.Frame({ id: ev.id, children: raw(ev.html) }),
+              );
+              await cb(ev.id, generatePath(ev.id), framed);
+            }
+          },
+          options,
+        );
       }, Scope.snapshot());
       // Emitted fragments leave the store. `flushFragments` tracks what it has
       // processed only within one call, so without this the natural
@@ -127,6 +133,7 @@ export async function renderToStatic<T>(
 
   // Fail fast on the options, before a single page renders.
   assertAdapter(adapter, "renderToStatic");
+  assertFlowOptions(options, "renderToStatic");
   if (options?.generatePath !== undefined && typeof options.generatePath !== "function") {
     throw vincleError(
       `${PREFIX} renderToStatic: generatePath must be a function (id) => string, ` +
@@ -135,7 +142,7 @@ export async function renderToStatic<T>(
     );
   }
 
-  return withFlow((ctx) => handler(createStaticContext(ctx, adapter, generatePath)), {
+  return withFlow((ctx) => handler(createStaticContext(ctx, adapter, generatePath, options)), {
     adapter,
     mode: "static",
     generatePath,

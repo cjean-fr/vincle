@@ -50,7 +50,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "check": "tsc --noEmit",
+    "check": "bun check",
     "coverage": "bun test --coverage --coverage-reporter=lcov",
     "format": "oxfmt",
     "mutation": "stryker run",

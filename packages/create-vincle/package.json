@@ -1,6 +1,6 @@
 {
   "name": "create-vincle",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Interactive project bootstrapper for Vincle with Bun, Deno, and Node templates",
   "keywords": [
     "bootstrap",
@@ -29,6 +29,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "type": "module",
@@ -45,7 +46,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "check": "tsc --noEmit",
+    "check": "bun check",
     "format": "oxfmt",
     "test": "bun test"
   },
