@@ -36,7 +36,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "check": "tsc --noEmit",
+    "check": "bun check",
     "test": "bun test",
     "format": "oxfmt"
   },

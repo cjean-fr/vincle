@@ -17,6 +17,7 @@ export type {
   FlowErrorInfo,
   OnError,
   FlowOptions,
+  FlowObservation,
   FlowConfig,
   Negotiation,
   Negotiate,

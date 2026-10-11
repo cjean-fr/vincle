@@ -1,5 +1,16 @@
 # @vincle/flow
 
+## 0.11.0 — 2026-10-11
+
+### Added
+
+- Add optional `maxConcurrency` to streaming and static rendering options to limit active deferred fragments, including live streams. Concurrency remains unlimited by default; lazy factories start only when a slot is available, and queued factories do not start after request cancellation.
+- Add `onObserve` and the exported `FlowObservation` type for fragment lifecycle diagnostics: start, completion, error, timeout and cancellation, with the fragment ID, elapsed milliseconds and optional error. Observer exceptions do not affect rendering, and `onError` continues to control fallback rendering.
+
+### Changed
+
+- Allow `renderToStatic` to accept the shared Flow options, including cancellation, default timeouts, error fallbacks, concurrency limits and diagnostics, and forward them to fragment emission.
+
 ## 0.10.1 — 2026-10-08
 
 ### Fixed

@@ -56,3 +56,29 @@ Turbo, HTMX, WebPlatform (requires browser support) and ESI (static only).
 [API](https://vincle.cjean.fr/api/flow/renderToStream)
 
 MIT © Christophe Jean
+
+### Concurrency and diagnostics
+
+Streaming options and `renderToStatic` options accept `maxConcurrency` and
+`onObserve`:
+
+```ts
+const options = {
+  maxConcurrency: 8,
+  defaultTimeout: 5000,
+  onObserve(event) {
+    console.log(event.id, event.phase, event.durationMs);
+  },
+};
+```
+
+The limit counts active fragments, including live streams, until their output
+has been emitted. It defaults to unlimited concurrency. Use lazy factories to
+limit data fetching: a promise created before rendering has already started.
+Long-lived streams occupy a slot; set a timeout or reserve sufficient slots
+for the other fragments. Nested fragments retain generation ordering.
+
+Observations have phases `start`, `complete`, `error`, `timeout`, or `cancel`,
+a fragment ID, elapsed milliseconds, and an optional error. A recovered error
+remains an error observation. Observer exceptions are ignored. `onError` still
+controls fallback rendering; diagnostics do not replace it.

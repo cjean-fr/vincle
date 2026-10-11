@@ -1,6 +1,7 @@
 import type { FragmentStore } from "./fragment-store.js";
 import type { FlowEvent, FlowOptions } from "./types.js";
 
+import { assertFlowOptions } from "./config.js";
 import { runFragment } from "./fragment-runner.js";
 
 /**
@@ -66,6 +67,8 @@ export async function flushFragments(
   emit: (ev: FlowEvent) => Promise<void>,
   opts: FlowOptions = {},
 ): Promise<void> {
+  assertFlowOptions(opts, "flushFragments");
+  const active = new Set<Promise<void>>();
   const cursor = ctx.fragments.cursor();
   const live: Promise<void>[] = [];
   const serial = serializeEmit(emit);
@@ -75,7 +78,20 @@ export async function flushFragments(
     if (wave.length > 0) {
       const oneShots: Promise<void>[] = [];
       for (const [id, entry] of wave) {
+        while (active.size >= (opts.maxConcurrency ?? Infinity)) await Promise.race(active);
+        if (opts.signal?.aborted) break;
         const { isStreaming, done } = runFragment(id, entry, serial.emit, opts);
+        const tracked = done.then(
+          () => {
+            active.delete(tracked);
+          },
+          () => {
+            active.delete(tracked);
+          },
+        );
+        active.add(tracked);
+        // Streams may fail before their generation is awaited.
+        done.catch(() => {});
         (isStreaming ? live : oneShots).push(done);
       }
       await settleOrThrow(oneShots);

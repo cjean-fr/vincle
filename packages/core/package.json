@@ -79,7 +79,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "check": "tsc --noEmit && bun scripts/codegen.ts --check",
+    "check": "bun check && bun scripts/codegen.ts --check",
     "coverage": "bun test --coverage --coverage-reporter=lcov",
     "format": "oxfmt",
     "mutation": "stryker run",

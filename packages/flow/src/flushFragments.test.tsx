@@ -330,3 +330,92 @@ describe("flushFragments: timeout and AbortSignal wiring", () => {
     if (fragments[0]!.type === "fragment") expect(fragments[0]!.html).toContain("a");
   });
 });
+
+it("limits active lazy factories and reports their lifecycle", async () => {
+  const store = createFragmentStore(cfg);
+  let active = 0;
+  let peak = 0;
+  const phases: string[] = [];
+  for (let i = 0; i < 8; i++) {
+    store.register(`bounded-${i}`, {
+      merge: "replace",
+      content: async () => {
+        active++;
+        peak = Math.max(peak, active);
+        await Bun.sleep(2);
+        active--;
+        return <p>done</p>;
+      },
+    });
+  }
+  const results = await drain(store, {
+    maxConcurrency: 2,
+    onObserve: (event) => {
+      phases.push(event.phase);
+      expect(event.durationMs).toBeGreaterThanOrEqual(0);
+    },
+  });
+  expect(peak).toBe(2);
+  expect(results).toHaveLength(8);
+  expect(phases.filter((p) => p === "start")).toHaveLength(8);
+  expect(phases.filter((p) => p === "complete")).toHaveLength(8);
+});
+
+it("isolates observer failures and reports timeouts", async () => {
+  const store = createFragmentStore(cfg);
+  const phases: string[] = [];
+  store.register("slow", { merge: "replace", content: () => new Promise(() => {}) });
+  await drain(store, {
+    defaultTimeout: 2,
+    onObserve: ({ phase }) => {
+      phases.push(phase);
+      throw new Error("metrics unavailable");
+    },
+    onError: () => <p>fallback</p>,
+  });
+  expect(phases).toEqual(["start", "timeout"]);
+});
+
+it("rejects invalid concurrency before starting work", async () => {
+  for (const maxConcurrency of [0, -1, 1.5, Infinity]) {
+    await expect(drain(createFragmentStore(cfg), { maxConcurrency })).rejects.toThrow(
+      "maxConcurrency",
+    );
+  }
+});
+
+it("counts live streams and does not start queued factories after cancellation", async () => {
+  const store = createFragmentStore(cfg);
+  const controller = new AbortController();
+  let started = false;
+  const phases: string[] = [];
+  store.register("live", {
+    merge: "append",
+    content: async function* () {
+      yield <p>first</p>;
+      await new Promise(() => {});
+    },
+  });
+  store.register("queued", {
+    merge: "replace",
+    content: () => {
+      started = true;
+      return <p>queued</p>;
+    },
+  });
+  await flushFragments(
+    { fragments: store },
+    async () => {
+      controller.abort();
+    },
+    {
+      maxConcurrency: 1,
+      signal: controller.signal,
+      onObserve: ({ phase }) => {
+        phases.push(phase);
+      },
+    },
+  );
+  expect(started).toBe(false);
+  expect(phases).toEqual(["start", "cancel"]);
+});
