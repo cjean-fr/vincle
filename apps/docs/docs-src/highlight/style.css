@@ -340,3 +340,16 @@ html:not(.dark) .docs-terminal .hljs-section {
 html:not(.dark) .docs-terminal .hljs-meta {
   color: #953800;
 }
+
+.dark .docs-code-block.docs-terminal {
+  --docs-code-header: #272c30;
+}
+.dark .docs-terminal-bar {
+  border-bottom-color: #252b30;
+}
+.dark .docs-terminal-dots {
+  background: #484d51;
+  box-shadow:
+    0.75rem 0 #484d51,
+    1.5rem 0 #484d51;
+}
