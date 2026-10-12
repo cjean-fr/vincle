@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, open, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { ResolvedDocsConfig } from "../types.js";
@@ -9,7 +9,7 @@ import { markdownPath, type Locale } from "../i18n/locale.js";
 import { fullUrl } from "./full-url.js";
 
 export async function generateLlmsTxt(
-  pages: { url: string; title: string; html: string }[],
+  pages: { url: string; title: string }[],
   config: ResolvedDocsConfig,
   outDir: string,
   locale: Locale = "en",
@@ -35,26 +35,39 @@ export async function generateLlmsTxt(
 }
 
 export async function generateLlmsFullTxt(
-  pages: { url: string; title: string; html: string; text: string }[],
+  pages:
+    | Iterable<{ url: string; title: string; text: string }>
+    | AsyncIterable<{ url: string; title: string; text: string }>,
   config: ResolvedDocsConfig,
   outDir: string,
   locale: Locale = "en",
 ): Promise<void> {
-  const parts: string[] = [
-    `# ${config.title}: ${locale === "fr" ? "Documentation complète" : "Full documentation"}`,
-    "",
-    `> ${config.description}`,
-    "",
-  ];
-  for (const page of pages) {
-    parts.push(`---`);
-    parts.push(`# ${page.title}`);
-    parts.push(`Source: ${config.site ?? ""}${page.url}`);
-    parts.push("");
-    parts.push(page.text);
-    parts.push("");
+  const file = await open(path.join(outDir, "llms-full.txt"), "w");
+  try {
+    await file.writeFile(
+      [
+        `# ${config.title}: ${locale === "fr" ? "Documentation complète" : "Full documentation"}`,
+        "",
+        `> ${config.description}`,
+        "",
+      ].join("\n"),
+    );
+    for await (const page of pages) {
+      await file.writeFile(
+        [
+          "",
+          "---",
+          `# ${page.title}`,
+          `Source: ${config.site ?? ""}${page.url}`,
+          "",
+          page.text,
+          "",
+        ].join("\n"),
+      );
+    }
+  } finally {
+    await file.close();
   }
-  await writeFile(path.join(outDir, "llms-full.txt"), parts.join("\n"), "utf-8");
 }
 
 export async function updateRobotsTxt(

@@ -2,6 +2,8 @@ import path from "node:path";
 
 import type { Page, PageMeta, ResolvedDocsConfig } from "../types.js";
 
+import { normalizePublicationDate } from "./publication-date.js";
+
 export function createPage(
   file: string,
   pagesDir: string,
@@ -43,7 +45,11 @@ function normalizeMeta(raw: unknown, file: string): PageMeta {
   if (typeof meta.title !== "string" || meta.title.length === 0) {
     throw new Error(`[@vincle/docs] ${file}: title is required.`);
   }
-  return meta;
+  const published_at = normalizePublicationDate(meta.published_at, file);
+  return {
+    ...meta,
+    ...(published_at === undefined ? {} : { published_at }),
+  };
 }
 
 export function getRelativeRoute(file: string, pagesDir: string): string {

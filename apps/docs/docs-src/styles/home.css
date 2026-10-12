@@ -96,10 +96,15 @@
   font-weight: 400;
   color: var(--docs-color-text-secondary);
 }
-.docs-hero-example .docs-code-block + .docs-code-block {
-  margin-top: 0.5rem;
+.docs-hero-example .docs-code-block {
+  margin-block: 0;
+}
+.dark .docs-hero-example .docs-code-block {
+  --docs-code-header: #272c30;
 }
 /* Keep the complete example readable even on narrow screens. */
+.docs-hero-example .docs-code-block pre,
+.docs-hero-example .docs-code-block pre code,
 .docs-hero-example .expressive-code pre,
 .docs-hero-example .expressive-code pre code,
 .docs-hero-example .expressive-code .ec-line .code {

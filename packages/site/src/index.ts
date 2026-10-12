@@ -1,4 +1,4 @@
-import { lstat, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { copyFile, lstat, mkdir, mkdtemp, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export type SiteContent = string | Uint8Array | ArrayBuffer;
@@ -75,19 +75,29 @@ export async function generateSite(options: SiteOptions): Promise<{ files: strin
   await mkdir(path.dirname(out), { recursive: true });
   const stage = await mkdtemp(path.join(path.dirname(out), ".vincle-site-"));
   const files = new Set<string>();
-  async function write(name: string, content: SiteContent): Promise<void> {
+  const directories = new Set<string>();
+  async function prepareTarget(name: string): Promise<string> {
     filePath(name);
     if (preserve.has(name.split("/")[0]!))
       throw failure(`Output conflicts with preserved entry: ${name}`);
-    if (
-      [...files].some(
-        (other) => other === name || other.startsWith(name + "/") || name.startsWith(other + "/"),
-      )
-    )
-      throw failure(`Output collision: ${name}`);
+    if (files.has(name) || directories.has(name)) throw failure(`Output collision: ${name}`);
+    const parents: string[] = [];
+    for (
+      let parent = path.posix.dirname(name);
+      parent !== ".";
+      parent = path.posix.dirname(parent)
+    ) {
+      if (files.has(parent)) throw failure(`Output collision: ${name}`);
+      parents.push(parent);
+    }
     files.add(name);
+    for (const parent of parents) directories.add(parent);
     const target = path.join(stage, name);
     await mkdir(path.dirname(target), { recursive: true });
+    return target;
+  }
+  async function write(name: string, content: SiteContent): Promise<void> {
+    const target = await prepareTarget(name);
     await writeFile(target, content instanceof ArrayBuffer ? new Uint8Array(content) : content);
   }
   async function copy(from: string, prefix: string): Promise<void> {
@@ -97,7 +107,7 @@ export async function generateSite(options: SiteOptions): Promise<{ files: strin
       for (const entry of await readdir(from))
         await copy(path.join(from, entry), prefix ? `${prefix}/${entry}` : entry);
     } else if (info.isFile()) {
-      await write(prefix, await readFile(from));
+      await copyFile(from, await prepareTarget(prefix));
     } else throw failure(`Cannot copy special file: ${from}`);
   }
   try {

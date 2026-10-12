@@ -50,7 +50,7 @@ export function SearchDialog() {
             id="search-input"
             type="search"
             placeholder={t("loadingIndex")}
-            class="docs-search-input flex-1 bg-transparent px-1 text-[var(--docs-color-text)] outline-none placeholder:text-[var(--docs-color-text-secondary)] disabled:opacity-50"
+            class="docs-search-input min-w-0 flex-1 rounded-md bg-transparent px-3 py-2 text-[var(--docs-color-text)] outline-none placeholder:text-[var(--docs-color-text-secondary)] disabled:opacity-50"
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"

@@ -6,7 +6,8 @@ import path from "node:path";
 
 import { translatorFor } from "../docs-src/i18n/interface.js";
 import { initBuild, rebuildAll } from "../docs-src/lib/build-engine.js";
-import { editUrlFor } from "../docs-src/lib/page-history.js";
+import { codeHighlighter } from "../docs-src/lib/code-highlighter.js";
+import { editUrlFor, lastModified } from "../docs-src/lib/page-history.js";
 import { renderDocument } from "../docs-src/lib/render-document.js";
 import config from "../docs.config.js";
 
@@ -310,11 +311,19 @@ describe("code-block assets are shipped once, in the bundle", () => {
       expect(file, `no ${pattern} in dist/assets`).toBeDefined();
       return readFile(path.join(assets, file!), "utf-8");
     };
-    expect(await read("client-*.css")).toContain(".expressive-code{");
+    expect(await read("client-*.css")).toContain(
+      codeHighlighter === "expressive-code" ? ".expressive-code{" : ".docs-code-block",
+    );
     // Both modules from `getJsModules()`, identified by their own error labels.
     const js = await read("client-*.js");
-    expect(js).toContain("[EC] copy-js-module failed:");
-    expect(js).toContain("[EC] tabindex-js-module failed:");
+    if (codeHighlighter === "expressive-code") {
+      expect(js).toContain("[EC] copy-js-module failed:");
+      expect(js).toContain("[EC] tabindex-js-module failed:");
+    } else {
+      expect(js).toContain("data-docs-copy");
+      expect(js).not.toContain("highlight.js/lib/");
+      expect(js).not.toContain("[EC] copy-js-module failed:");
+    }
   });
 });
 
@@ -350,13 +359,15 @@ describe("page footer", () => {
     expect(broken).toEqual([]);
   });
 
-  it("carries a real commit date, not the build date", async () => {
-    const html = await readFile(path.join(DIST_DIR, "guide/faq.html"), "utf-8");
-    const match = /<time[^>]*datetime="([^"]+)"/.exec(html);
-    expect(match, "no <time> in the footer").not.toBeNull();
-    const date = new Date(match![1]!);
-    expect(Number.isNaN(date.getTime())).toBe(false);
-    expect(date.getTime()).toBeLessThanOrEqual(Date.now());
+  it("shows the Git modification date for the content directory only on the homepage", async () => {
+    const latest = await lastModified(config.pages);
+    expect(latest).not.toBeNull();
+    const home = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
+    expect(home).toContain(`datetime="${latest}"`);
+    for (const file of contentPages().filter((file) => file !== "index.html")) {
+      const html = await readFile(path.join(DIST_DIR, file), "utf-8");
+      expect(html, file).not.toContain("docs-page-footer-updated");
+    }
   });
 
   it("error pages have no footer: they have no source file", async () => {

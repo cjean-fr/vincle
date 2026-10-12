@@ -22,74 +22,13 @@ import {
 
 ## Choosing an adapter
 
-<table>
-  <thead>
-    <tr>
-      <th>Adapter</th>
-      <th>Client runtime</th>
-      <th>Streaming</th>
-      <th>Merge types</th>
-      <th>Best for</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <strong>NativeAdapter</strong>
-      </td>
-      <td>~1.5 kB polyfill, gzipped (auto-injected)</td>
-      <td>
-        <CheckIcon />
-      </td>
-      <td>all 5 positions</td>
-      <td>General purpose, no extra JS</td>
-    </tr>
-    <tr>
-      <td>
-        <strong>TurboAdapter</strong>
-      </td>
-      <td>Hotwire Turbo</td>
-      <td>
-        <CheckIcon />
-      </td>
-      <td>all 6</td>
-      <td>Rails / Hotwire stack</td>
-    </tr>
-    <tr>
-      <td>
-        <strong>HtmxAdapter</strong>
-      </td>
-      <td>HTMX</td>
-      <td>
-        <CheckIcon />
-      </td>
-      <td>all 6</td>
-      <td>Django / Laravel / any backend</td>
-    </tr>
-    <tr>
-      <td>
-        <strong>WebPlatformAdapter</strong>
-      </td>
-      <td>None (native browser support required)</td>
-      <td>
-        <CheckIcon />
-      </td>
-      <td>replace only</td>
-      <td>Browsers with declarative partial updates</td>
-    </tr>
-    <tr>
-      <td>
-        <strong>EsiAdapter</strong>
-      </td>
-      <td>None (CDN-level)</td>
-      <td>
-        <XIcon />
-      </td>
-      <td>replace only</td>
-      <td>Varnish / CDN edge composition</td>
-    </tr>
-  </tbody>
-</table>
+| Adapter                | Client runtime                            | Streaming | Merge types     | Best for                                  |
+| ---------------------- | ----------------------------------------- | --------- | --------------- | ----------------------------------------- |
+| **NativeAdapter**      | ~1.5 kB polyfill, gzipped (auto-injected) | Yes       | all 5 positions | General purpose, no extra JS              |
+| **TurboAdapter**       | Hotwire Turbo                             | Yes       | all 6           | Rails / Hotwire stack                     |
+| **HtmxAdapter**        | HTMX                                      | Yes       | all 6           | Django / Laravel / any backend            |
+| **WebPlatformAdapter** | None (native browser support required)    | Yes       | replace only    | Browsers with declarative partial updates |
+| **EsiAdapter**         | None (CDN-level)                          | No        | replace only    | Varnish / CDN edge composition            |
 
 `morph` needs a diffing client (Turbo, HTMX); an adapter refuses a merge type it
 does not support.

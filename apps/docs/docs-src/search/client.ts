@@ -41,6 +41,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchStatus = status;
   const searchResults = results;
   let selectedIndex = -1;
+  let dialogAnimation: Animation | undefined;
+  const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function clearResults() {
     searchResults.replaceChildren();
@@ -48,20 +50,14 @@ document.addEventListener("DOMContentLoaded", () => {
     searchStatus.classList.remove("hidden");
   }
 
-  async function open(trigger?: Element | null) {
-    // Morph origin: map trigger position relative to dialog center
-    if (trigger instanceof HTMLElement) {
-      const triggerRect = trigger.getBoundingClientRect();
-      // showModal first so dialog has its final layout
-      searchDialog.showModal();
-      const d = searchDialog.getBoundingClientRect();
-      const ox = ((triggerRect.left + triggerRect.width / 2 - d.left) / d.width) * 100;
-      const oy = ((triggerRect.top + triggerRect.height / 2 - d.top) / d.height) * 100;
-      searchDialog.style.setProperty("--search-origin-x", ox + "%");
-      searchDialog.style.setProperty("--search-origin-y", oy + "%");
-      searchDialog.style.transformOrigin = "var(--search-origin-x) var(--search-origin-y)";
-    } else {
-      searchDialog.showModal();
+  async function open() {
+    if (searchDialog.open) return;
+    searchDialog.showModal();
+    if (!reducedMotion()) {
+      dialogAnimation = searchDialog.animate([{ opacity: 0 }, { opacity: 1 }], {
+        duration: 160,
+        easing: "ease-out",
+      });
     }
     if (!index) {
       searchStatus.textContent = t("loadingSearch");
@@ -75,23 +71,27 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
     }
-    searchInput.focus();
-    render(searchInput.value);
+    if (searchDialog.open && !searchDialog.classList.contains("closing")) {
+      searchInput.focus();
+      render(searchInput.value);
+    }
   }
 
   function close() {
-    if (searchDialog.classList.contains("closing")) return;
-    // Animate out (transition) → then close dialog
+    if (!searchDialog.open || searchDialog.classList.contains("closing")) return;
+    dialogAnimation?.cancel();
     searchDialog.classList.add("closing");
-    searchDialog.addEventListener(
-      "transitionend",
-      () => {
-        searchDialog.close();
-        searchDialog.classList.remove("closing");
-      },
-      { once: true },
-    );
     selectedIndex = -1;
+    if (reducedMotion()) {
+      searchDialog.close();
+      return;
+    }
+    dialogAnimation = searchDialog.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: 120,
+      easing: "ease-in",
+      fill: "forwards",
+    });
+    dialogAnimation.onfinish = () => searchDialog.close();
   }
 
   async function render(q: string) {
@@ -166,12 +166,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Open via any [data-search-trigger] button: pass trigger for morph origin
+  // Open via any search trigger.
   document.addEventListener("click", (e) => {
     const trigger = (e.target as Element | null)?.closest("[data-search-trigger]");
     if (trigger) {
       e.preventDefault();
-      open(trigger);
+      open();
     }
   });
 
@@ -204,7 +204,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target === searchDialog) close();
   });
 
+  searchDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    close();
+  });
+
   searchDialog.addEventListener("close", () => {
+    dialogAnimation?.cancel();
     searchInput.value = "";
     searchInput.blur();
     searchDialog.classList.remove("closing");
