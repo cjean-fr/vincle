@@ -9,6 +9,7 @@
     "build:vite": "vite build",
     "build:ssg": "bun docs-src/build.tsx",
     "preview": "vite preview --outDir dist",
+    "bench:memory": "bun scripts/bench-memory.ts",
     "format": "oxfmt '**/*.{jsx,tsx,mdx}'",
     "test": "bun test",
     "check": "bun check"
@@ -19,6 +20,7 @@
     "@vincle/site": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
     "gray-matter": "^4.0.3",
+    "highlight.js": "^11.12.0",
     "satteri": "^0.10.5",
     "satteri-expressive-code": "^0.1.24",
     "vite-plugin-satteri": "^0.3.5"

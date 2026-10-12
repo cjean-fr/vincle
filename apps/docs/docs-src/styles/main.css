@@ -417,11 +417,7 @@ html {
   object-fit: contain;
 }
 
-.docs-tabs:not([data-docs-tabs-enhanced]) > .docs-tabs-header {
-  display: none;
-}
-
-.docs-tabs[data-docs-tabs-enhanced] > .docs-tab-panel:not(.active) {
+.docs-tabs > .docs-tab-panel:not(.active) {
   display: none;
 }
 
@@ -501,22 +497,31 @@ html.dark .docs-theme-toggle-sun {
   opacity: 1;
 }
 
+/* Give the search trigger a small tactile response before the dialog opens. */
+.docs-search-trigger {
+  transition:
+    transform var(--docs-transition-fast),
+    background-color var(--docs-transition-fast),
+    border-color var(--docs-transition-fast),
+    color var(--docs-transition-fast);
+}
+.docs-search-trigger:active {
+  transform: translateY(1px) scale(0.97);
+  background-color: var(--docs-color-surface);
+  border-color: var(--docs-color-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .docs-search-trigger:active {
+    transform: none;
+  }
+}
+
 /* === Search dialog: morph from trigger (open) / fade back (close) === */
 .docs-search-dialog {
-  transform-origin: top right;
-  transition:
-    opacity var(--docs-transition-normal),
-    scale var(--docs-transition-normal);
-  opacity: 0;
-  scale: 0.9;
+  transform-origin: top left;
 }
 .docs-search-dialog[open] {
   opacity: 1;
-  scale: 1;
-}
-.docs-search-dialog.closing {
-  opacity: 0;
-  scale: 0.9;
 }
 
 .docs-search-dialog::backdrop {
@@ -571,4 +576,112 @@ html.dark .docs-theme-toggle-sun {
   .docs-brand {
     margin-right: 0;
   }
+}
+
+html[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="npm"]
+  )
+  > .docs-tab-panel {
+  display: none;
+}
+html[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="npm"]
+  )
+  > .docs-tab-panel[data-docs-tab-label="npm"] {
+  display: block;
+}
+html[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="npm"]
+  )
+  [role="tab"] {
+  border-color: transparent;
+  color: var(--docs-color-text-secondary);
+}
+html[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="npm"]
+  )
+  [role="tab"][data-docs-tab-label="npm"] {
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+.dark[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced])
+  [role="tab"][data-docs-tab-label="npm"] {
+  color: #60a5fa;
+}
+
+html[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="pnpm"]
+  )
+  > .docs-tab-panel {
+  display: none;
+}
+html[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="pnpm"]
+  )
+  > .docs-tab-panel[data-docs-tab-label="pnpm"] {
+  display: block;
+}
+html[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="pnpm"]
+  )
+  [role="tab"] {
+  border-color: transparent;
+  color: var(--docs-color-text-secondary);
+}
+html[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="pnpm"]
+  )
+  [role="tab"][data-docs-tab-label="pnpm"] {
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+.dark[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced])
+  [role="tab"][data-docs-tab-label="pnpm"] {
+  color: #60a5fa;
+}
+
+html[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="bun"]
+  )
+  > .docs-tab-panel {
+  display: none;
+}
+html[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="bun"]
+  )
+  > .docs-tab-panel[data-docs-tab-label="bun"] {
+  display: block;
+}
+html[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="bun"]
+  )
+  [role="tab"] {
+  border-color: transparent;
+  color: var(--docs-color-text-secondary);
+}
+html[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="bun"]
+  )
+  [role="tab"][data-docs-tab-label="bun"] {
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+.dark[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced])
+  [role="tab"][data-docs-tab-label="bun"] {
+  color: #60a5fa;
 }

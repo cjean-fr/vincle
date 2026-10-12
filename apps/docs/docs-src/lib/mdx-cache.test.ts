@@ -1,9 +1,10 @@
-import { renderToString } from "@vincle/core";
+import { raw, renderToString } from "@vincle/core";
 import { describe, it, expect } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { MdxCache } from "./mdx-cache.js";
+import { codeHighlighter } from "./code-highlighter.js";
+import { COMPILED_DIR, MdxCache } from "./mdx-cache.js";
 
 const PAGES_DIR = path.resolve(import.meta.dirname, "../pages");
 const SCOPE_MDX = path.join(PAGES_DIR, "api/core/scope.mdx");
@@ -95,4 +96,82 @@ describe("MdxCache", () => {
 
     expect(cache.load(bogus)).rejects.toThrow();
   });
+});
+
+it("renders static Markdown without importing a module, preserving component overrides", async () => {
+  const sourceRoot = path.join(PAGES_DIR, ".compiled");
+  await mkdir(sourceRoot, { recursive: true });
+  const directory = await mkdtemp(path.join(sourceRoot, "mdx-static-test-"));
+  const file = path.join(directory, "page.mdx");
+  try {
+    await writeFile(file, "---\ntitle: Static page\n---\n# Static heading\n\nA paragraph.\n");
+    const { Component } = await freshCache().load(file);
+    expect(await renderToString(Component({}))).toContain(
+      '<h1 id="static-heading">Static heading</h1>',
+    );
+    const moduleDir = path.join(COMPILED_DIR, path.relative(PAGES_DIR, directory));
+    const files = await readdir(moduleDir).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return [];
+      throw error;
+    });
+    expect(files).toEqual([]);
+    expect(
+      await renderToString(Component({ components: { RawHtml: () => raw("override") } })),
+    ).toBe("override");
+    expect((await readdir(moduleDir)).length).toBe(1);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("keeps highlighted code and Markdown URLs static, but loads executable MDX", async () => {
+  const root = path.join(PAGES_DIR, ".compiled");
+  await mkdir(root, { recursive: true });
+  const directory = await mkdtemp(path.join(root, "mdx-runtime-test-"));
+  const moduleDir = path.join(COMPILED_DIR, path.relative(PAGES_DIR, directory));
+  try {
+    const file = path.join(directory, "page.mdx");
+    await writeFile(
+      file,
+      [
+        "---",
+        "title: Code page",
+        "---",
+        "# Code",
+        "",
+        "[link](javascript:alert%281%29) ![image](javascript:foo)",
+        "",
+        "```tsx",
+        'import { renderToString } from "@vincle/core";',
+        'const html = await renderToString(<h1>{"Hello"}</h1>);',
+        "```",
+        "",
+      ].join("\n"),
+    );
+    const { Component } = await freshCache().load(file);
+    const html = await renderToString(Component({}));
+    expect(html).toContain(
+      codeHighlighter === "expressive-code" ? 'class="expressive-code"' : 'class="docs-code-block"',
+    );
+    expect(html).toContain("<button");
+    if (codeHighlighter === "highlight.js") expect(html).toContain('class="hljs-keyword"');
+    expect(html).toContain('href="#blocked"');
+    expect(html).toContain('src="#blocked"');
+    expect(html).not.toContain('href="javascript:');
+    expect(
+      await readdir(moduleDir).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT") return [];
+        throw error;
+      }),
+    ).toEqual([]);
+    await writeFile(
+      file,
+      '---\ntitle: Runtime page\n---\nimport { raw } from "@vincle/core"\n\n{raw("<p>Executed</p>")}\n',
+    );
+    const runtime = await freshCache().load(file);
+    expect(await renderToString(runtime.Component({}))).toContain("<p>Executed</p>");
+    expect((await readdir(moduleDir)).length).toBe(1);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

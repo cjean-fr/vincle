@@ -1,0 +1,342 @@
+.docs-code-block {
+  --docs-code-bg: #ffffff;
+  --docs-code-header: #f6f8fa;
+  --docs-code-text: #24292f;
+  --docs-code-border: #dce1e7;
+  position: relative;
+  margin: 1.25rem 0;
+  overflow: hidden;
+  border: 1px solid var(--docs-code-border);
+  border-radius: 0.25rem;
+  background: var(--docs-code-bg);
+  color: var(--docs-code-text);
+}
+.docs-code-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0;
+  background: var(--docs-code-header);
+  border-bottom: 1px solid var(--docs-code-border);
+  font-size: 0.875rem;
+}
+.docs-code-title {
+  margin: 0 0 -1px -1px;
+  padding: 0.4rem 1rem;
+  border: 1px solid var(--docs-code-border);
+  border-top-color: #ff6673;
+  border-bottom-color: var(--docs-code-bg);
+  border-radius: 0.25rem 0.25rem 0 0;
+  background: var(--docs-code-bg);
+}
+.dark .docs-code-block {
+  --docs-code-bg: #0d1117;
+  --docs-code-header: #161b22;
+  --docs-code-text: #c9d1d9;
+  --docs-code-border: #30363d;
+}
+.docs-code-block [data-docs-copy] {
+  position: absolute;
+  z-index: 1;
+  top: 0.6rem;
+  right: 0.6rem;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--docs-code-border);
+  border-radius: 0.35rem;
+  background: var(--docs-code-bg);
+  color: var(--docs-code-text);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.docs-code-block [data-docs-copy][hidden] {
+  display: none;
+}
+.docs-code-block.has-title [data-docs-copy] {
+  top: 2.9rem;
+}
+.docs-code-block:hover [data-docs-copy],
+.docs-code-block [data-docs-copy]:focus {
+  opacity: 1;
+  pointer-events: auto;
+}
+.docs-copy-check,
+[data-copied] .docs-copy-icon {
+  display: none;
+}
+[data-copied] .docs-copy-check {
+  display: block;
+  color: #116329;
+}
+.dark [data-copied] .docs-copy-check {
+  color: #7ee787;
+}
+.docs-code-block pre {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  font-family: var(--docs-font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  scrollbar-width: thin;
+  scrollbar-color: var(--docs-code-border) transparent;
+}
+.docs-code-block pre code {
+  font: inherit;
+  display: block;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #6e7781;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal {
+  color: #ff2940;
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-meta .hljs-string {
+  color: #0048b7;
+}
+.hljs-number,
+.hljs-built_in,
+.hljs-attr,
+.hljs-variable,
+.hljs-symbol {
+  color: #0550ae;
+}
+.hljs-title,
+.hljs-section,
+.hljs-tag .hljs-attr {
+  color: #7540ff;
+}
+.hljs-name,
+.hljs-tag .hljs-name {
+  color: #116329;
+}
+.hljs-meta {
+  color: #953800;
+}
+.dark .hljs-comment,
+.dark .hljs-quote {
+  color: #8b949e;
+}
+.dark .hljs-keyword,
+.dark .hljs-selector-tag,
+.dark .hljs-literal {
+  color: #ff7b72;
+}
+.dark .hljs-string,
+.dark .hljs-regexp,
+.dark .hljs-meta .hljs-string {
+  color: #a5d6ff;
+}
+.dark .hljs-number,
+.dark .hljs-built_in,
+.dark .hljs-attr,
+.dark .hljs-variable,
+.dark .hljs-symbol {
+  color: #79c0ff;
+}
+.dark .hljs-title,
+.dark .hljs-section {
+  color: #d2a8ff;
+}
+.dark .hljs-name,
+.dark .hljs-tag .hljs-name {
+  color: #7ee787;
+}
+.dark .hljs-meta {
+  color: #ffa657;
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 600;
+}
+
+/* Shell commands keep their original text so copying excludes the visual prompt. */
+.docs-code-block.docs-terminal {
+  --docs-code-bg: #171c25;
+  --docs-code-header: #202733;
+  --docs-code-text: #e6edf3;
+  --docs-code-border: #343e4d;
+  border-radius: 0.4rem;
+}
+.docs-terminal pre {
+  padding-right: 3.5rem;
+}
+.docs-terminal pre code {
+  position: relative;
+  padding-left: 1.5rem;
+}
+.docs-terminal pre code::before {
+  content: "$";
+  position: absolute;
+  left: 0;
+  color: #8ad5a4;
+  user-select: none;
+}
+.docs-terminal .docs-code-title {
+  border-top-color: #8ad5a4;
+}
+.docs-terminal .hljs-comment,
+.docs-terminal .hljs-quote {
+  color: #9aa8b8;
+}
+.docs-terminal .hljs-keyword,
+.docs-terminal .hljs-selector-tag,
+.docs-terminal .hljs-literal {
+  color: #ff9c91;
+}
+.docs-terminal .hljs-string,
+.docs-terminal .hljs-regexp,
+.docs-terminal .hljs-meta .hljs-string {
+  color: #a5d6ff;
+}
+.docs-terminal .hljs-number,
+.docs-terminal .hljs-built_in,
+.docs-terminal .hljs-attr,
+.docs-terminal .hljs-variable,
+.docs-terminal .hljs-symbol {
+  color: #a6dfb5;
+}
+.docs-terminal .hljs-title,
+.docs-terminal .hljs-section {
+  color: #d2b7ff;
+}
+.docs-terminal .hljs-meta {
+  color: #ffd094;
+}
+.docs-terminal [data-copied] .docs-copy-check {
+  color: #8ad5a4;
+}
+
+.docs-terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 2rem;
+  padding: 0.4rem 1rem;
+  border-bottom: 1px solid var(--docs-code-border);
+  background: var(--docs-code-header);
+}
+.docs-terminal-dots {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 1.5rem;
+  border-radius: 50%;
+  background: #77818e;
+  box-shadow:
+    0.75rem 0 #77818e,
+    1.5rem 0 #77818e;
+}
+.docs-terminal-label {
+  color: #aab4c1;
+  font-family: var(--docs-font-mono);
+  font-size: 0.75rem;
+}
+.docs-code-block.docs-terminal [data-docs-copy] {
+  top: 2.6rem;
+}
+
+.docs-copy-tooltip {
+  position: absolute;
+  z-index: 2;
+  top: 0.6rem;
+  right: 3.2rem;
+  display: none;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.2rem;
+  background: #218739;
+  color: white;
+  font: 0.875rem/1.4 var(--docs-font-body);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.docs-copy-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -0.3rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  background: inherit;
+  transform: translateY(-50%) rotate(45deg);
+}
+[data-docs-copy][data-copied] + .docs-copy-tooltip {
+  display: block;
+}
+.docs-code-block.has-title .docs-copy-tooltip {
+  top: 2.9rem;
+}
+.docs-code-block.docs-terminal .docs-copy-tooltip {
+  top: 2.6rem;
+}
+/* Confirmation lives in the tooltip; keep the familiar copy icon. */
+.docs-code-block [data-copied] .docs-copy-icon {
+  display: block;
+}
+.docs-code-block [data-copied] .docs-copy-check {
+  display: none;
+}
+
+.docs-tabs .docs-tab-panel .docs-terminal {
+  margin-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+html:not(.dark) .docs-code-block.docs-terminal {
+  --docs-code-bg: #f6f8fa;
+  --docs-code-header: #ffffff;
+  --docs-code-text: #0a3069;
+  --docs-code-border: #dce1e7;
+}
+html:not(.dark) .docs-terminal-dots {
+  background: #dfe2e5;
+  box-shadow:
+    0.75rem 0 #dfe2e5,
+    1.5rem 0 #dfe2e5;
+}
+html:not(.dark) .docs-terminal-label {
+  color: #6e7781;
+}
+html:not(.dark) .docs-terminal pre code::before {
+  color: #8250df;
+}
+html:not(.dark) .docs-terminal .hljs-comment,
+html:not(.dark) .docs-terminal .hljs-quote {
+  color: #6e7781;
+}
+html:not(.dark) .docs-terminal .hljs-keyword,
+html:not(.dark) .docs-terminal .hljs-selector-tag,
+html:not(.dark) .docs-terminal .hljs-literal {
+  color: #cf222e;
+}
+html:not(.dark) .docs-terminal .hljs-string,
+html:not(.dark) .docs-terminal .hljs-regexp,
+html:not(.dark) .docs-terminal .hljs-meta .hljs-string {
+  color: #0a3069;
+}
+html:not(.dark) .docs-terminal .hljs-number,
+html:not(.dark) .docs-terminal .hljs-built_in,
+html:not(.dark) .docs-terminal .hljs-attr,
+html:not(.dark) .docs-terminal .hljs-variable,
+html:not(.dark) .docs-terminal .hljs-symbol,
+html:not(.dark) .docs-terminal .hljs-title,
+html:not(.dark) .docs-terminal .hljs-section {
+  color: #8250df;
+}
+html:not(.dark) .docs-terminal .hljs-meta {
+  color: #953800;
+}

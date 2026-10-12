@@ -198,6 +198,7 @@ export function fenceTabsFor(locale: Locale = "en") {
                 role: "tabpanel",
                 "aria-labelledby": `${groupId}-tab-${i}`,
                 "data-docs-tab-panel": "",
+                "data-docs-tab-label": tabLabel(pre)!,
                 className: ["docs-tab-panel", ...(i === 0 ? ["active"] : [])],
               },
               children: [JSON.parse(JSON.stringify(pre)) as HastElement],

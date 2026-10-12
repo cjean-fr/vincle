@@ -5,6 +5,7 @@ import { useDocs, useTranslation } from "../context.js";
 import { localeFor, localizedPath, markdownPath, unlocalizedPath } from "../i18n/locale.js";
 import { CspService, Script, withHash } from "../lib/csp.js";
 import { fullUrl } from "../lib/full-url.js";
+import { tabsInitScriptSource } from "../tabs/init.js";
 import { LanguageSwitcher } from "./LanguageSwitcher.js";
 import { Nav } from "./Nav.js";
 import { NavToggle } from "./NavToggle.js";
@@ -54,6 +55,7 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
   const themeScript = raw(
     await renderToString(<HashedScript>{themeInitScriptSource}</HashedScript>),
   );
+  const tabsScript = raw(await renderToString(<HashedScript>{tabsInitScriptSource}</HashedScript>));
   const csp = meta.csp ?? collector.getCSPHeader();
   const isErrorPage = ["/404", "/500"].includes(route);
   const isHome = route === "/";
@@ -124,6 +126,7 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
         {description && <meta name="twitter:description" content={description} />}
         {image && <meta name="twitter:image" content={image} />}
         {themeScript}
+        {tabsScript}
         {config.site && (
           <StructuredData
             locale={locale}

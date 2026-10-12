@@ -4,6 +4,8 @@ export interface PageMeta {
   image?: string;
   slug?: string;
   draft?: boolean;
+  /** Include the page only on builds at or after this date (date-only: UTC). */
+  published_at?: string;
   csp?: string;
   /** Opt out of the handler's prose wrapper (default for `.mdx`: on). */
   prose?: boolean;

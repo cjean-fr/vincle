@@ -1,15 +1,24 @@
-import type { MdxCompileOptions } from "satteri";
-
+import { raw as rawHtml } from "@vincle/core";
+import { jsxAttr } from "@vincle/core/jsx-precompile-runtime";
 import grayMatter from "gray-matter";
 import { readdirSync, rmSync } from "node:fs";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { mdxToJs, defineHastPlugin } from "satteri";
+import {
+  mdxToJs,
+  mdxToMdast,
+  markdownToHtml,
+  defineHastPlugin,
+  type MdxCompileOptions,
+} from "satteri";
 import expressiveCode from "satteri-expressive-code";
 
+import { codeBlocks } from "./code-blocks.js";
+import { codeHighlighter } from "./code-highlighter.js";
 import { EC_THEMES, getSharedRenderer } from "./expressive-code.js";
 import { fenceTabs, fenceTabsFor, wrapTables } from "./hast-plugins.js";
+import { staticMdxHtml } from "./static-mdx.js";
 
 /** Where compiled MDX lands before being imported. */
 const COMPILED_ROOT = path.resolve(import.meta.dirname, "../pages/.compiled");
@@ -124,9 +133,31 @@ const compileOptions: MdxCompileOptions = {
   ],
 };
 
+// Direct HTML must preserve Core's URL policy for Markdown links and images.
+const markdownUrls = defineHastPlugin({
+  name: "vincle-markdown-urls",
+  element: {
+    filter: ["a", "img"],
+    visit(node, ctx) {
+      const name = node.tagName === "a" ? "href" : "src";
+      const value = node.properties[name];
+      if (value !== undefined && String(jsxAttr(name, value)) === `${name}="#blocked"`) {
+        ctx.setProperty(node, name, "#blocked");
+      }
+    },
+  },
+});
+
+function requiresMdxRuntime(node: {
+  type: string;
+  children?: readonly { type: string }[];
+}): boolean {
+  if (node.type.startsWith("mdx")) return true;
+  return node.children?.some(requiresMdxRuntime) ?? false;
+}
+
 export class MdxCache {
   static readonly MAX_SIZE = 1000;
-  #compiled = new Map<string, string>();
   #modules = new Map<string, CompiledMdx>();
   #pending = new Map<string, Promise<CompiledMdx>>();
 
@@ -156,37 +187,65 @@ export class MdxCache {
     key: string,
     hash: string,
   ): Promise<CompiledMdx> {
-    const { data: frontmatter, content } = grayMatter(raw);
+    const { data: frontmatter, content } = grayMatter(raw, {});
     const stableIds = Array.isArray(frontmatter["headingIds"])
       ? frontmatter["headingIds"].filter((id): id is string => typeof id === "string")
       : [];
-    const { code } = await mdxToJs(content, {
-      ...compileOptions,
-      hastPlugins: [
-        fenceTabsFor(file.includes("/pages/fr/") ? "fr" : "en"),
-        expressiveCode({
-          themes: EC_THEMES,
-          customCreateRenderer: getSharedRenderer,
-          getBlockLocale: () => (file.includes("/pages/fr/") ? "fr" : "en"),
-        }),
-        headingPlugin(stableIds),
-        wrapTables,
-      ],
-    });
+    const createPlugins = () => [
+      fenceTabsFor(file.includes("/pages/fr/") ? "fr" : "en"),
+      ...(codeHighlighter === "expressive-code"
+        ? [
+            expressiveCode({
+              themes: EC_THEMES,
+              customCreateRenderer: getSharedRenderer,
+              getBlockLocale: () => (file.includes("/pages/fr/") ? "fr" : "en"),
+            }),
+          ]
+        : [codeBlocks(file.includes("/pages/fr/") ? "fr" : "en")]),
+      headingPlugin(stableIds),
+      wrapTables,
+    ];
+    const needsRuntime = requiresMdxRuntime(mdxToMdast(content, { position: false }));
+    let code: string | undefined;
+    const html = needsRuntime
+      ? null
+      : (await markdownToHtml(content, { hastPlugins: [...createPlugins(), markdownUrls] })).html;
+    if (needsRuntime)
+      code = (await mdxToJs(content, { ...compileOptions, hastPlugins: createPlugins() })).code;
 
     if (this.#modules.size >= MdxCache.MAX_SIZE) {
       const first = this.#modules.keys().next();
       if (!first.done) {
         this.#modules.delete(first.value);
-        this.#compiled.delete(first.value);
       }
     }
-    this.#compiled.set(key, code);
 
-    const mod = await this.#importModule(file, code, hash);
-    const Component = mod.default;
-    if (typeof Component !== "function") {
-      throw new Error(`[@vincle/docs] Compiled MDX ${file} has no default export.`);
+    const staticHtml = html ?? staticMdxHtml(code!);
+    let Component: CompiledMdx["Component"];
+    if (staticHtml !== null) {
+      // Fully static MDX needs no runtime module. Custom props still use the
+      // original module so component overrides and wrappers retain their meaning.
+      let module: Promise<{ default: CompiledMdx["Component"] }> | undefined;
+      Component = (props) => {
+        if (Object.keys(props).length === 0 && !("components" in props)) return rawHtml(staticHtml);
+        module ??= (async () => {
+          // Overrides opt into MDX component semantics, even for plain Markdown.
+          code ??= (
+            await mdxToJs(content, {
+              ...compileOptions,
+              hastPlugins: createPlugins(),
+            })
+          ).code;
+          return this.#importModule(file, code, hash);
+        })();
+        return module.then((mod) => mod.default(props));
+      };
+    } else {
+      const mod = await this.#importModule(file, code!, hash);
+      Component = mod.default;
+      if (typeof Component !== "function") {
+        throw new Error(`[@vincle/docs] Compiled MDX ${file} has no default export.`);
+      }
     }
 
     const entry: CompiledMdx = {
@@ -222,16 +281,14 @@ export class MdxCache {
 
   invalidate(file: string): void {
     const prefix = file + ":";
-    for (const key of this.#compiled.keys()) {
+    for (const key of this.#modules.keys()) {
       if (key.startsWith(prefix)) {
-        this.#compiled.delete(key);
         this.#modules.delete(key);
       }
     }
   }
 
   clear(): void {
-    this.#compiled.clear();
     this.#modules.clear();
     this.#pending.clear();
   }

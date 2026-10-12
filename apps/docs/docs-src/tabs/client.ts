@@ -99,16 +99,18 @@ document.addEventListener("click", (e) => {
 });
 
 for (const container of document.querySelectorAll(".docs-tabs")) {
-  activate(container, 0);
   const syncKey = container.getAttribute("data-docs-tabs-sync");
-  if (!syncKey) continue;
+  if (!syncKey) {
+    activate(container, 0);
+    continue;
+  }
   let stored: string | null = null;
   try {
     stored = localStorage.getItem(STORAGE_PREFIX + syncKey);
   } catch {
     /* ignore */
   }
-  if (stored) activateByLabel(container, stored);
+  if (!stored || !activateByLabel(container, stored)) activate(container, 0);
 }
 
 function cssEscape(s: string): string {

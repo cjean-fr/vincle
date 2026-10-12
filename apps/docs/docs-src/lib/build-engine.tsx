@@ -1,9 +1,9 @@
 import type { ViteManifest } from "@vincle/vite-plugin";
 
-import { generateSite, type SiteOutput } from "@vincle/site";
+import { generateSite } from "@vincle/site";
 import { loadViteManifest, setVite } from "@vincle/vite-plugin";
 import { existsSync } from "node:fs";
-import { writeFile, mkdir, rm, cp, readdir, mkdtemp, readFile } from "node:fs/promises";
+import { writeFile, mkdir, rm, cp, mkdtemp, readFile } from "node:fs/promises";
 import { availableParallelism, cpus, tmpdir } from "node:os";
 import path from "node:path";
 
@@ -24,10 +24,11 @@ import {
   generateNetlifyHeaders,
   updateRobotsTxt,
 } from "./build-static-assets.js";
+import { mapConcurrent } from "./concurrent.js";
 import { injectHeadingAnchors } from "./heading-anchors.js";
 import { htmlToText } from "./html-text.js";
 import { COMPILED_DIR } from "./mdx-cache.js";
-import { clearHistoryCache, editUrlFor, lastModified } from "./page-history.js";
+import { editUrlFor, lastModified } from "./page-history.js";
 import { discoverPages } from "./pages.js";
 import { renderDocument } from "./render-document.js";
 import {
@@ -38,28 +39,6 @@ import {
   tabFor,
 } from "./sidebar.js";
 import { injectToc, renderTocHtml } from "./toc.js";
-
-function mapConcurrent<T, R>(
-  items: T[],
-  fn: (item: T) => Promise<R>,
-  maxConcurrency: number,
-): Promise<R[]> {
-  const results: R[] = [];
-  let index = 0;
-  const worker = async () => {
-    while (index < items.length) {
-      const i = index++;
-      results[i] = await fn(items[i]!);
-    }
-  };
-  const pool = Math.min(maxConcurrency, items.length) || 1;
-  // Wait for every writer before disposing the prepared directory on failure.
-  return Promise.allSettled(Array.from({ length: pool }, worker)).then((settled) => {
-    const failed = settled.find((result) => result.status === "rejected");
-    if (failed?.status === "rejected") throw failed.reason;
-    return results;
-  });
-}
 
 function concurrency(): number {
   return Math.min(
@@ -95,7 +74,6 @@ export async function rebuildAll(): Promise<void> {
 async function rebuildSite(): Promise<void> {
   if (!manifest) await initBuild();
   clearMetaCache();
-  clearHistoryCache();
   allPages = await discoverPages(config);
   // Existing producers prepare the complete site together, including files
   // derived from the rendered HTML. Only the generator publishes it to dist.
@@ -106,7 +84,8 @@ async function rebuildSite(): Promise<void> {
     await generateSite({
       out: config.out,
       preserve: ["assets"],
-      outputs: preparedOutputs(prepared),
+      outputs: [],
+      copy: [{ from: prepared }],
     });
   } finally {
     await rm(prepared, { recursive: true, force: true });
@@ -117,27 +96,16 @@ async function cleanupCompiled(): Promise<void> {
   await rm(COMPILED_DIR, { recursive: true, force: true });
 }
 
-/** Walk the prepared site; binary files retain their original bytes. */
-async function* preparedOutputs(dir: string, prefix = ""): AsyncGenerator<SiteOutput> {
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
-    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
-    const file = path.join(dir, entry.name);
-    if (entry.isSymbolicLink()) throw new Error(`[@vincle/docs] symbolic output: ${relative}`);
-    if (entry.isDirectory()) yield* preparedOutputs(file, relative);
-    else yield { path: relative, content: () => readFile(file) };
-  }
-}
-
 export async function refreshPages(): Promise<void> {
   await rebuildSite();
   console.log(`[dev] Refreshed ${allPages.length} pages.`);
 }
 
-async function renderPages(
-  pages: Page[],
-  out: string,
-): Promise<{ url: string; title: string; html: string }[]> {
+async function renderPages(pages: Page[], out: string): Promise<RenderedPage[]> {
   const typedPages = allPages as (Page & { meta: PageMeta })[];
+  const siteLastUpdated = pages.some((page) => page.url === "/")
+    ? await lastModified(config.pages)
+    : null;
 
   const available = new Set(typedPages.filter((page) => !page.meta.draft).map((page) => page.url));
   if (available.size !== typedPages.filter((page) => !page.meta.draft).length) {
@@ -170,9 +138,7 @@ async function renderPages(
       const ext = path.extname(page.file);
       const prose = meta.prose === false ? false : (config.handlers[ext]?.prose ?? false);
 
-      // Resolved before the render: `setDocs` runs inside the scope and must be
-      // synchronous, so an await in there would set the context too late.
-      const lastUpdated = await lastModified(page.file);
+      const lastUpdated = page.url === "/" ? siteLastUpdated : null;
       const editUrl = editUrlFor(config.editUrl, page.file);
 
       const html = await renderDocument(
@@ -216,32 +182,42 @@ async function renderPages(
       await mkdir(path.dirname(outPath), { recursive: true });
       await writeFile(outPath, fullHtml, "utf-8");
 
-      return { url: page.url, title: meta.title ?? page.url, html };
+      return { url: page.url, title: meta.title ?? page.url, file: outPath };
     },
     concurrency(),
   );
 }
 
-async function postBuild(
-  pages: Page[],
-  rendered: { url: string; title: string; html: string }[],
-  out: string,
-): Promise<void> {
-  const pageData = rendered.map((r) => ({
-    url: r.url,
-    title: r.title,
-    html: r.html,
-  }));
+interface RenderedPage {
+  url: string;
+  title: string;
+  file: string;
+}
 
+async function* readRenderedPages(pages: RenderedPage[], locale: Locale) {
+  for (const page of pages) {
+    if (localeFor(page.url) !== locale) continue;
+    yield { url: page.url, title: page.title, html: await readFile(page.file, "utf-8") };
+  }
+}
+
+async function* readTextPages(pages: RenderedPage[], locale: Locale) {
+  for await (const page of readRenderedPages(pages, locale)) {
+    yield { url: page.url, title: page.title, text: htmlToText(page.html) };
+  }
+}
+
+async function postBuild(pages: Page[], rendered: RenderedPage[], out: string): Promise<void> {
   for (const locale of documentationLocales) {
     const outDir = locale === "en" ? out : path.join(out, locale);
     await mkdir(outDir, { recursive: true });
     await buildMinimatchIndex(
-      pageData.filter((page) => localeFor(page.url) === locale),
+      readRenderedPages(rendered, locale),
       path.join(outDir, "search-index.json"),
     );
   }
 
+  const available = new Set(pages.filter((page) => !page.meta.draft).map((page) => page.url));
   const hasSitemap = config.sitemap && Boolean(config.site);
   await updateRobotsTxt(out, hasSitemap, config.site, config.base);
 
@@ -250,10 +226,7 @@ async function postBuild(
       pages.map((p) => ({
         url: p.url,
         draft: p.meta.draft,
-        alternates: translationAlternates(
-          p.url,
-          new Set(pages.filter((page) => !page.meta.draft).map((page) => page.url)),
-        ),
+        alternates: translationAlternates(p.url, available),
       })),
       config.site!,
       out,
@@ -261,28 +234,17 @@ async function postBuild(
     );
   }
 
-  const textPages = rendered.map((r) => ({
-    url: r.url,
-    title: r.title,
-    html: r.html,
-    text: htmlToText(r.html),
-  }));
   for (const locale of documentationLocales) {
     const outDir = locale === "en" ? out : path.join(out, locale);
     const localeConfig =
       locale === "en" ? config : { ...config, description: translatorFor(locale)("description") };
     await generateLlmsTxt(
-      pageData.filter((page) => localeFor(page.url) === locale),
+      rendered.filter((page) => localeFor(page.url) === locale),
       localeConfig,
       outDir,
       locale,
     );
-    await generateLlmsFullTxt(
-      textPages.filter((page) => localeFor(page.url) === locale),
-      localeConfig,
-      outDir,
-      locale,
-    );
+    await generateLlmsFullTxt(readTextPages(rendered, locale), localeConfig, outDir, locale);
   }
 
   await copyStaticAssets(out);

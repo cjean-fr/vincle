@@ -1,5 +1,6 @@
 import type { Plugin } from "vite";
 
+import { codeHighlighter } from "./code-highlighter.js";
 import { expressiveCodeScript, expressiveCodeStyles } from "./expressive-code.js";
 
 const MODULES = {
@@ -26,7 +27,13 @@ export function expressiveCodeAssets(): Plugin {
     },
     load(id) {
       const bare = id.startsWith("\0") ? id.slice(1) : id;
-      return isVirtualId(bare) ? MODULES[bare]() : null;
+      return isVirtualId(bare)
+        ? codeHighlighter === "expressive-code"
+          ? MODULES[bare]()
+          : bare.endsWith(".css")
+            ? ""
+            : "export {};"
+        : null;
     },
   };
 }

@@ -4,14 +4,22 @@ import path from "node:path";
 
 import type { ResolvedDocsConfig, Page, HandlerEntry } from "../types.js";
 
-export async function discoverPages(config: ResolvedDocsConfig): Promise<Page[]> {
+import { mapConcurrent } from "./concurrent.js";
+import { isPublished } from "./publication-date.js";
+
+export async function discoverPages(config: ResolvedDocsConfig, now = new Date()): Promise<Page[]> {
   const pagesDir = path.resolve(config.pages);
   const handlers = config.handlers;
   const extensions = Object.keys(handlers);
   const found = await walk(pagesDir, extensions);
-  const pages = await Promise.all(found.map((file) => loadFile(file, pagesDir, config, handlers)));
-  pages.sort((a, b) => a.url.localeCompare(b.url));
-  return pages;
+  const pages = await mapConcurrent(
+    found,
+    (file) => loadFile(file, pagesDir, config, handlers),
+    16,
+  );
+  const published = pages.filter((page) => isPublished(page.meta, now));
+  published.sort((a, b) => a.url.localeCompare(b.url));
+  return published;
 }
 
 async function loadFile(

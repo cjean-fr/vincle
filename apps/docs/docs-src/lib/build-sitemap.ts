@@ -18,7 +18,35 @@ export async function buildSitemap(
   const visible = pages.filter((p) => !p.draft);
   if (visible.length === 0) return;
 
-  const urls = visible
+  const limit = 50_000;
+  if (visible.length <= limit) {
+    await writeSitemap(visible, siteUrl, outDir, "sitemap.xml", base);
+  } else {
+    const entries: string[] = [];
+    for (let start = 0; start < visible.length; start += limit) {
+      const name = `sitemap-${start / limit + 1}.xml`;
+      await writeSitemap(visible.slice(start, start + limit), siteUrl, outDir, name, base);
+      entries.push(
+        `  <sitemap>\n    <loc>${escapeXml(fullUrl("/" + name, siteUrl, base))}</loc>\n  </sitemap>`,
+      );
+    }
+    await writeFile(
+      path.join(outDir, "sitemap.xml"),
+      `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</sitemapindex>\n`,
+      "utf-8",
+    );
+  }
+  console.log(`[sitemap] Generated sitemap.xml with ${visible.length} URLs`);
+}
+
+async function writeSitemap(
+  pages: SitemapPage[],
+  siteUrl: string,
+  outDir: string,
+  name: string,
+  base: string,
+): Promise<void> {
+  const urls = pages
     .map((p) => {
       const loc = fullUrl(p.url, siteUrl, base);
       const alternates = (p.alternates ?? []).map(
@@ -35,11 +63,8 @@ export async function buildSitemap(
       return `  <url>\n    <loc>${escapeXml(loc)}</loc>\n${alternates.length ? alternates.join("\n") + "\n" : ""}    <priority>${priority}</priority>\n  </url>`;
     })
     .join("\n");
-
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>\n`;
-
-  await writeFile(path.join(outDir, "sitemap.xml"), xml, "utf-8");
-  console.log(`[sitemap] Generated sitemap.xml with ${visible.length} URLs`);
+  await writeFile(path.join(outDir, name), xml, "utf-8");
 }
 
 function escapeXml(s: string): string {

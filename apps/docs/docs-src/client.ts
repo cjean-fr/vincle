@@ -1,6 +1,7 @@
 // First: `main.css` refines `.expressive-code`, and unlayered rules go by source order.
 import "virtual:expressive-code.css";
 import "virtual:expressive-code.js";
+import "./highlight/client.js";
 import "./nav/client.js";
 import "./nav/prefetch.js";
 import "./nav/transitions.js";
