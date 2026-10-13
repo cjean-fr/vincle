@@ -1,0 +1,1 @@
+Official [Tabler outline icons](https://github.com/tabler/tabler-icons/tree/main/icons/outline), stored locally under their MIT licence. `src/lib/icons.ts` is the single registry for autocomplete and runtime checks.

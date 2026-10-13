@@ -29,7 +29,7 @@
       }
     },
     {
-      "files": ["apps/docs/docs-src/examples/**"],
+      "files": ["apps/docs/src/examples/**"],
       "rules": {
         "no-unused-vars": "off"
       }

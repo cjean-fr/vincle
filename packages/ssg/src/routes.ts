@@ -43,6 +43,7 @@ export function outputPathForRoute(route: string, extension = ".html"): string {
       context: { route },
     });
   }
+  if (path.posix.extname(stem) === extension) return stem;
   if (extension === ".html") return stem ? `${stem}/index.html` : "index.html";
   return `${stem || "index"}${extension}`;
 }

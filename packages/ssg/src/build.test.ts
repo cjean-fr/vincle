@@ -292,3 +292,91 @@ test("fallback compilation retains consumer tsconfig path aliases", () =>
     await build({ root });
     expect(await file(root, "index.html")).toBe("<h1>configured alias</h1>");
   }));
+
+test("search integrations consume final HTML and sitemap connects existing translations", () =>
+  fixture(async (root, put) => {
+    await put(
+      "welcome.tsx",
+      'export const meta = {title:"Welcome",locale:"en",translationKey:"intro"}; export default () => <main>Hello</main>',
+    );
+    await put(
+      "fr/bienvenue.tsx",
+      'export const meta = {title:"Bienvenue",locale:"fr",translationKey:"intro"}; export default () => <main>Bonjour</main>',
+    );
+    await put(
+      "fr/seul.tsx",
+      'export const meta = {locale:"fr",translationKey:"only-fr",search:false}; export default () => <main>Seul</main>',
+    );
+    await put(
+      "hidden.tsx",
+      "export const meta = {sitemap:false,search:false}; export default () => <main>Hidden</main>",
+    );
+    await put("_layout.tsx", "export default ({children}) => <html>{children}</html>");
+    const search: SsgPlugin = {
+      name: "search",
+      async publish(context) {
+        const documents = [];
+        for (const page of context.outputs)
+          if (page.meta.search !== false)
+            documents.push({
+              url: page.url,
+              title: page.meta.title,
+              locale: page.meta.locale,
+              html: await page.read(),
+            });
+        await context.emit({ path: "search.json", content: JSON.stringify(documents) });
+      },
+    };
+    const options = {
+      root,
+      site: "https://example.com/docs/",
+      i18n: { locales: ["en", "fr"], defaultLocale: "en" },
+      plugins: [search],
+    };
+    await build(options);
+    const documents = JSON.parse(await file(root, "search.json"));
+    expect(documents).toHaveLength(2);
+    expect(documents.find((doc: { locale: string }) => doc.locale === "fr")).toEqual({
+      url: "/fr/bienvenue/",
+      title: "Bienvenue",
+      locale: "fr",
+      html: "<html><main>Bonjour</main></html>",
+    });
+    const xml = await file(root, "sitemap.xml");
+    const entries = [...xml.matchAll(/<url>(.*?)<\/url>/g)].map((match) => match[1]!);
+    expect(entries).toHaveLength(3);
+    for (const entry of entries.filter(
+      (candidate) => !candidate.includes("<loc>https://example.com/docs/fr/seul/"),
+    )) {
+      expect(entry).toContain('hreflang="en" href="https://example.com/docs/welcome/"');
+      expect(entry).toContain('hreflang="fr" href="https://example.com/docs/fr/bienvenue/"');
+      expect(entry).toContain('hreflang="x-default" href="https://example.com/docs/welcome/"');
+    }
+    expect(
+      entries.find((entry) => entry.includes("<loc>https://example.com/docs/fr/seul/")),
+    ).not.toContain("x-default");
+    expect(xml).not.toContain("hidden");
+    await put(
+      "duplicate.tsx",
+      'export const meta={locale:"en",translationKey:"intro"};export default () => <p>Duplicate</p>',
+    );
+    await expect(build(options)).rejects.toThrow("Duplicate translation");
+    expect(await file(root, "sitemap.xml")).toBe(xml);
+    await expect(
+      build({ ...options, i18n: { locales: ["en"], defaultLocale: "fr" } }),
+    ).rejects.toThrow("Invalid i18n configuration");
+  }));
+
+test("src/pages isolates routes from sibling helpers and explicit src retains priority", () =>
+  fixture(async (root, put) => {
+    await put("_layout.tsx", "export default ({children}) => <html>{children}</html>");
+    await put("pages/index.tsx", "export default () => <main>pages convention</main>");
+    await put("components/Broken.tsx", 'throw new Error("helper must not be discovered");');
+    await put("other/index.tsx", "export default () => <main>explicit source</main>");
+    await build({ root, assets: false });
+    expect(await file(root, "index.html")).toBe("<html><main>pages convention</main></html>");
+    expect(await build({ root, src: "src/other", assets: false })).toEqual({
+      files: ["index.html"],
+    });
+    expect(await file(root, "index.html")).toBe("<main>explicit source</main>");
+  }));

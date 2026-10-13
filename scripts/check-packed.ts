@@ -138,6 +138,15 @@ ${imports
   .map((entry) => `await import(${JSON.stringify(entry)});`)
   .join("\n")}`,
   );
+  writeFileSync(
+    join(dir, "ssg.config.ts"),
+    `import {defineConfig} from "@vincle/ssg";
+export default defineConfig({src:"ssg-src",out:"cli-dist",assets:false,site:"https://example.test",dev:{mimeTypes:{".custom":"application/custom"}}});`,
+  );
+  const packedCli = join(modules, "@vincle/ssg/dist/bin.js");
+  run(["bun", packedCli, "build"], dir);
+  if (!existsSync(join(dir, "cli-dist/index.html"))) throw new Error("Packed SSG CLI failed");
+  if (Bun.which("node")) run(["node", packedCli, "build"], dir);
   run(["bun", "--conditions=dist", "smoke.mjs"], dir);
   if (Bun.which("node")) run(["node", "smoke.mjs"], dir);
   console.log(

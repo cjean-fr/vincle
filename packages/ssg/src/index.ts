@@ -21,6 +21,8 @@ export type {
   DiscoverPagesOptions,
   RenderedOutput,
   PublicationContext,
+  PublishedPage,
+  SsgI18n,
 } from "./types.js";
 export {
   generateSite,
@@ -33,3 +35,13 @@ export { discoverPages } from "./handlers.js";
 export { renderPage } from "./lifecycle.js";
 
 export { SsgError, ERR_SSG_BUILD, type SsgErrorReason, type SsgErrorDetails } from "./errors.js";
+
+export {
+  defineConfig,
+  type SsgConfig,
+  type SsgConfigEnv,
+  type SsgConfigFactory,
+  type SsgConfigExport,
+} from "./config.js";
+
+export { defaultMimeTypes, type MimeTypes } from "./mime.js";

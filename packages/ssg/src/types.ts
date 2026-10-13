@@ -5,6 +5,12 @@ type Awaitable<T> = T | Promise<T>;
 /** Shared metadata, supplied by every format and available to every plugin. */
 export interface SsgMeta {
   title?: string;
+  /** BCP 47 language of this page. */
+  locale?: string;
+  /** Stable identifier shared by existing translations, independent of their URLs. */
+  translationKey?: string;
+  /** Exclude this page from search integrations. */
+  search?: boolean;
   description?: string;
   sitemap?: boolean;
   /** Opt out of cached dev rendering for dynamic/time-dependent producers. */
@@ -45,6 +51,8 @@ export interface SsgOutput extends SiteOutput {
   sitemap?: boolean;
   /** Public URL path, when it differs from the output path. */
   url?: string;
+  /** Output-specific metadata, merged over the source metadata. */
+  meta?: SsgMeta;
 }
 
 export type SsgOutputs = SsgOutput | Iterable<SsgOutput> | AsyncIterable<SsgOutput>;
@@ -87,8 +95,23 @@ export interface RenderedOutput extends Omit<SsgOutput, "content"> {
   content: SiteContent;
 }
 
+/** A generated HTML page; content is read lazily from the prepared publication. */
+export interface PublishedPage {
+  path: string;
+  url: string;
+  meta: Readonly<SsgMeta>;
+  read(): Promise<string>;
+}
+
 export interface PublicationContext extends PreparedSite {
   pages: readonly PageContext[];
+  /** Final HTML outputs, including cached pages, available to search and other integrations. */
+  outputs: readonly PublishedPage[];
+}
+
+export interface SsgI18n {
+  locales: readonly string[];
+  defaultLocale: string;
 }
 
 export interface SsgPlugin {
@@ -127,9 +150,12 @@ export interface AssetBuild {
 export interface SsgOptions {
   /** Project root (default: cwd). All relative configuration paths use this root. */
   root?: string;
-  /** Route sources (default: src). Names starting with . or _ are not routes. */
+  /** Route sources (default: src/pages when present, otherwise src). Names starting with . or _ are not routes. */
   src?: string;
   out?: string;
+  /** Customize discovery while retaining the shared rendering/publication lifecycle. */
+  discover?(options: DiscoverPagesOptions): Awaitable<readonly DiscoveredPage[]>;
+  i18n?: SsgI18n;
   /** Overrides or extends built-in handlers; false disables an extension. */
   handlers?: Readonly<Record<string, PageHandler | false>>;
   runtime?: JsxRuntime;

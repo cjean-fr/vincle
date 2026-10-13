@@ -58,19 +58,25 @@ test("Vite publishes hashed JS/CSS with pages, installs the manifest, and retain
   }
 });
 
-test("private client entry enables Vite automatically without configuration", async () => {
+test("private script and stylesheet entries enable Vite automatically without configuration", async () => {
   const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-vite-convention-"));
   try {
     await mkdir(path.join(root, "src/_client"), { recursive: true });
     await writeFile(path.join(root, "src/_client/main.ts"), 'console.log("convention");');
+    await writeFile(path.join(root, "src/_client/main.css"), "body { color: tomato }");
+    await mkdir(path.join(root, "src/pages"));
     await writeFile(
-      path.join(root, "src/index.tsx"),
-      'import {Asset} from "@vincle/vite-plugin"; export default () => <Asset entry="src/_client/main.ts" />',
+      path.join(root, "src/pages/index.tsx"),
+      'import {Asset} from "@vincle/vite-plugin"; export default () => <><Asset entry="src/_client/main.ts" /><Asset entry="src/_client/main.css" /></>',
     );
     await mkdir(path.join(root, "public"));
     await writeFile(path.join(root, "public/favicon.svg"), "icon");
     const result = await build({ root });
     expect(result.files.some((name) => /^assets\/main-.*\.js$/.test(name))).toBe(true);
+    expect(result.files.some((name) => /^assets\/main-.*\.css$/.test(name))).toBe(true);
+    expect(await readFile(path.join(root, "dist/index.html"), "utf8")).toContain(
+      'rel="stylesheet"',
+    );
     expect(result.files).toContain("favicon.svg");
     expect(await readFile(path.join(root, "dist/index.html"), "utf8")).toContain('src="/assets/');
   } finally {
@@ -173,6 +179,36 @@ test("Vite configuration can serve page compilation without a browser entry", as
     );
     expect((await build({ root })).files).toEqual(["index.html"]);
     expect(await readFile(path.join(root, "dist/index.html"), "utf8")).toBe("<h1>source-only</h1>");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("installed Tailwind is automatic, scans server pages and removes obsolete utilities and assets", async () => {
+  // This consumer owns Tailwind; SSG resolves its plugin from that project.
+  const root = await mkdtemp(
+    path.resolve(import.meta.dirname, "../../../apps/docs/.ssg-tailwind-test-"),
+  );
+  try {
+    await mkdir(path.join(root, "src/_client"), { recursive: true });
+    await writeFile(path.join(root, "src/_client/main.css"), '@import "tailwindcss";');
+    const page = path.join(root, "src/index.tsx");
+    await writeFile(page, 'export default () => <main class="p-[137px]">Tailwind</main>');
+    const assets = viteAssets({ configFile: false, logLevel: "silent" });
+    const first = await build({ root, assets });
+    const oldCss = first.files.find((file) => file.endsWith(".css"))!;
+    const css = await readFile(path.join(root, "dist", oldCss), "utf8");
+    expect(css).toContain("137px");
+    expect(css).not.toContain("padding:139px");
+    expect(css).not.toContain('@import "tailwindcss"');
+    await writeFile(page, 'export default () => <main class="p-[139px]">Updated</main>');
+    const second = await build({ root, assets });
+    const newCss = second.files.find((file) => file.endsWith(".css"))!;
+    expect(newCss).not.toBe(oldCss);
+    const updated = await readFile(path.join(root, "dist", newCss), "utf8");
+    expect(updated).toContain("139px");
+    expect(updated).not.toContain("137px");
+    await expect(readFile(path.join(root, "dist", oldCss))).rejects.toThrow();
   } finally {
     await rm(root, { recursive: true, force: true });
   }

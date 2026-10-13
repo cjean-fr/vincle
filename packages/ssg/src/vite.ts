@@ -6,17 +6,17 @@ import {
   build as buildVite,
   createServer,
   isRunnableDevEnvironment,
-  loadConfigFromFile,
   mergeConfig,
   resolveConfig,
   type InlineConfig,
   type Plugin,
-  type PluginOption,
 } from "vite";
 
 import type { AssetIntegration, JsxRuntime } from "./types.js";
 
+import { clientEntries } from "./conventions.js";
 import { failure, diagnose } from "./errors.js";
+import { flattenPlugins, loadViteConfig } from "./vite-config.js";
 
 /** Assets and server pages share production configuration, aliases and plugins. */
 export function viteAssets(config: InlineConfig = {}): AssetIntegration {
@@ -32,16 +32,12 @@ export function viteAssets(config: InlineConfig = {}): AssetIntegration {
 }
 
 /** Keep the build-selected plugin set when using Vite's server module runner. */
-async function productionPlugins(options: PluginOption[], config: InlineConfig): Promise<Plugin[]> {
+async function productionPlugins(
+  options: NonNullable<InlineConfig["plugins"]>,
+  config: InlineConfig,
+): Promise<Plugin[]> {
   const plugins: Plugin[] = [];
-  for (const option of options) {
-    const candidate = await option;
-    const plugin: Plugin | PluginOption[] | false | null | undefined = candidate;
-    if (!plugin) continue;
-    if (Array.isArray(plugin)) {
-      plugins.push(...(await productionPlugins(plugin, config)));
-      continue;
-    }
+  for (const plugin of await flattenPlugins(options)) {
     if (plugin.apply === "serve") continue;
     if (
       typeof plugin.apply === "function" &&
@@ -58,16 +54,7 @@ async function prepareVite(
   { root, src, out, runtime }: { root: string; src: string; out: string; runtime: JsxRuntime },
 ) {
   const mode = config.mode ?? "production";
-  const loaded =
-    config.configFile === false
-      ? undefined
-      : await loadConfigFromFile(
-          { command: "build", mode },
-          typeof config.configFile === "string" ? path.resolve(root, config.configFile) : undefined,
-          root,
-          config.logLevel,
-        );
-  const user: InlineConfig = mergeConfig(loaded?.config ?? {}, config);
+  const user = await loadViteConfig(config, root, { command: "build", mode });
   const shared: InlineConfig = mergeConfig(user, {
     configFile: false,
     mode,
@@ -81,20 +68,13 @@ async function prepareVite(
     resolved.build.rolldownOptions.input || resolved.input || resolved.build.lib,
   );
   if (!hasClientInput) {
-    for (const extension of ["ts", "js", "tsx", "jsx", "css"]) {
-      const entry = path.join(src, "_client", `main.${extension}`);
-      try {
-        if ((await stat(entry)).isFile()) {
-          shared.build = {
-            ...shared.build,
-            rolldownOptions: { ...resolved.build.rolldownOptions, input: entry },
-          };
-          hasClientInput = true;
-          break;
-        }
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      }
+    const entries = await clientEntries(root, src);
+    if (entries.length) {
+      shared.build = {
+        ...shared.build,
+        rolldownOptions: { ...resolved.build.rolldownOptions, input: entries },
+      };
+      hasClientInput = true;
     }
   }
   if (!hasClientInput) {
@@ -136,18 +116,7 @@ export async function viteModules(config: InlineConfig = {}, importSource = "@vi
   const mode = config.mode ?? "production";
   return diagnose(
     async () => {
-      const loaded =
-        config.configFile === false
-          ? undefined
-          : await loadConfigFromFile(
-              { command: "build", mode },
-              typeof config.configFile === "string"
-                ? path.resolve(root, config.configFile)
-                : undefined,
-              root,
-              config.logLevel,
-            );
-      const user: InlineConfig = mergeConfig(loaded?.config ?? {}, config);
+      const user = await loadViteConfig(config, root, { command: "build", mode });
       const shared: InlineConfig = mergeConfig(user, {
         configFile: false,
         root,
@@ -196,6 +165,7 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
             "@vincle/core/jsx-runtime",
             "@vincle/core/jsx-dev-runtime",
             "@vincle/vite-plugin",
+            "@vincle/ssg",
           ],
           conditions: [
             ...(user.environments?.["ssr"]?.resolve?.conditions ??
@@ -215,7 +185,7 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
       external:
         user.ssr?.external === true
           ? true
-          : [...(user.ssr?.external ?? []), "@vincle/core", "@vincle/vite-plugin"],
+          : [...(user.ssr?.external ?? []), "@vincle/core", "@vincle/vite-plugin", "@vincle/ssg"],
       resolve: {
         ...user.ssr?.resolve,
         externalConditions: [

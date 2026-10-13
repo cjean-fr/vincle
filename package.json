@@ -49,10 +49,10 @@
   "devDependencies": {
     "@types/bun": "catalog:",
     "bun": "^1.4.3",
-    "lefthook": "^2.2.1",
+    "lefthook": "^2.2.2",
     "oxfmt": "^0.72.0",
-    "oxlint": "^1.87.0",
-    "turbo": "^2.11.7"
+    "oxlint": "^1.88.0",
+    "turbo": "^2.11.8"
   },
   "peerDependencies": {
     "typescript": "^6.0.3"

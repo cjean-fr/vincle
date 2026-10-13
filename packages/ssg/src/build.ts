@@ -1,5 +1,4 @@
-import { mkdtemp, rm, stat } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, mkdtemp, rm, stat } from "node:fs/promises";
 import path from "node:path";
 
 import type { PageCacheSession } from "./page-cache.js";
@@ -10,8 +9,10 @@ import type {
   RenderedOutput,
   JsxRuntime,
   AssetBuild,
+  SsgMeta,
 } from "./types.js";
 
+import { sourceDirectory, clientEntries } from "./conventions.js";
 import { failure, diagnose, contextualError } from "./errors.js";
 import { defaultHandlers, vincleRuntime } from "./formats.js";
 import { discoverPages } from "./handlers.js";
@@ -64,11 +65,19 @@ async function conventionalAssets(root: string, src: string) {
   ]) {
     if (await exists(path.join(root, name))) return (await import("./vite.js")).viteAssets();
   }
-  for (const extension of ["ts", "js", "tsx", "jsx", "css"]) {
-    if (await exists(path.join(src, "_client", `main.${extension}`)))
-      return (await import("./vite.js")).viteAssets({ configFile: false });
-  }
+  if ((await clientEntries(root, src)).length)
+    return (await import("./vite.js")).viteAssets({ configFile: false });
   return undefined;
+}
+
+/** One-line build report: generated HTML pages and elapsed time. */
+export function buildSummary(files: readonly string[], milliseconds: number): string {
+  const pages = files.filter((file) => file.endsWith(".html")).length;
+  const duration =
+    milliseconds < 1000
+      ? `${Math.round(milliseconds)} ms`
+      : `${(milliseconds / 1000).toFixed(2)} s`;
+  return `${pages} ${pages === 1 ? "page" : "pages"} generated in ${duration}`;
 }
 
 /** Build routes, all their outputs, assets and sitemap before publishing. */
@@ -103,7 +112,7 @@ async function buildInternal(
   publication?: PublicationCache,
 ): Promise<{ files: string[] }> {
   const root = path.resolve(options.root ?? process.cwd());
-  const src = path.resolve(root, options.src ?? "src");
+  const src = sourceDirectory(root, options.src);
   const out = path.resolve(root, options.out ?? "dist");
   if (out === src || src.startsWith(`${out}${path.sep}`) || out.startsWith(`${src}${path.sep}`)) {
     throw failure("Source and output directories must not contain one another.", {
@@ -135,6 +144,18 @@ async function buildInternal(
       });
     site.pathname = `${site.pathname.replace(/\/$/, "")}/`;
   }
+  if (
+    options.i18n &&
+    (!options.i18n.locales.length ||
+      new Set(options.i18n.locales).size !== options.i18n.locales.length ||
+      !options.i18n.locales.includes(options.i18n.defaultLocale) ||
+      options.i18n.locales.some((locale) => !/^[a-zA-Z]{2,8}(?:-[a-zA-Z0-9]{1,8})*$/.test(locale)))
+  )
+    throw failure("Invalid i18n configuration", {
+      reason: "INVALID_CONFIG",
+      hint: "Declare unique BCP 47 locales and a defaultLocale from that list.",
+      context: { phase: "configuration" },
+    });
   const handlers = { ...defaultHandlers, ...options.handlers };
   for (const extension of Object.keys(handlers)) {
     if (!/^\.[^.\\/]+$/.test(extension))
@@ -171,7 +192,9 @@ async function buildInternal(
       hint: "Set src to a directory containing route files, not to a file. The previous output was left untouched.",
       context: { root, src, out, phase: "discovery" },
     });
-  const work = await mkdtemp(path.join(tmpdir(), "vincle-ssg-assets-"));
+  // Temporary build files live beside out, like the publication stage.
+  await mkdir(path.dirname(out), { recursive: true });
+  const work = await mkdtemp(path.join(path.dirname(out), ".vincle-build-"));
   let disposeAssets: (() => void | Promise<void>) | undefined;
   try {
     const integration =
@@ -194,8 +217,9 @@ async function buildInternal(
     const publicDirectory = path.join(root, "public");
     const publicCopy = (await exists(publicDirectory)) ? [{ from: publicDirectory }] : [];
     const renderRuntime = assetRuntime(runtime, assets);
-    const urls = new Set<string>();
-    const pages = await discoverPages({
+    const urls = new Map<string, SsgMeta>();
+    const htmlOutputs: { path: string; url: string; meta: SsgMeta }[] = [];
+    const pages = await (options.discover ?? discoverPages)({
       src,
       handlers: cache
         ? Object.fromEntries(
@@ -212,7 +236,7 @@ async function buildInternal(
     async function* produce(): AsyncGenerator<SsgOutput> {
       for (const page of pages) {
         try {
-          const hit = cache?.rendered(page.source.file);
+          const hit = options.discover ? undefined : cache?.rendered(page.source.file);
           let context: PageContext | undefined;
           const rendered: RenderedOutput[] = [];
           if (hit?.context) contexts.push(hit.context);
@@ -226,12 +250,16 @@ async function buildInternal(
               },
             });
           for await (const output of outputs) {
+            const meta = { ...page.meta, ...output.meta };
+            if (output.path.endsWith(".html"))
+              htmlOutputs.push({ path: output.path, url: publicUrl(output), meta });
             if (output.sitemap && site && options.sitemap !== false)
-              urls.add(new URL(publicUrl(output).slice(1), site).href);
+              urls.set(new URL(publicUrl(output).slice(1), site).href, meta);
             if (cache && !hit) rendered.push(output);
             yield output;
           }
-          if (cache && !hit && context) cache.store(page.source.file, context, rendered);
+          if (cache && !options.discover && !hit && context)
+            cache.store(page.source.file, context, rendered);
         } catch (error) {
           throw contextualError(error, `Failed source ${page.source.relativePath}`, {
             reason: "SOURCE_FAILED",
@@ -240,7 +268,41 @@ async function buildInternal(
           });
         }
       }
-      if (site && options.sitemap !== false) yield* sitemapOutputs([...urls].toSorted(), site);
+      if (site && options.sitemap !== false) {
+        const groups = new Map<string, Map<string, string>>();
+        for (const [url, meta] of urls) {
+          if (!options.i18n || !meta.translationKey || !meta.locale) continue;
+          if (!options.i18n.locales.includes(meta.locale))
+            throw failure(`Undeclared page locale: ${meta.locale}`, {
+              reason: "INVALID_CONFIG",
+              hint: "Declare the page locale in i18n.locales.",
+              context: { url, locale: meta.locale },
+            });
+          const group = groups.get(meta.translationKey) ?? new Map<string, string>();
+          if (group.has(meta.locale))
+            throw failure(`Duplicate translation: ${meta.translationKey} (${meta.locale})`, {
+              reason: "INVALID_OUTPUT",
+              hint: "Use one public page per translation key and locale.",
+              context: { url, locale: meta.locale },
+            });
+          group.set(meta.locale, url);
+          groups.set(meta.translationKey, group);
+        }
+        yield* sitemapOutputs(
+          [...urls]
+            .toSorted(([a], [b]) => a.localeCompare(b))
+            .map(([url, meta]) => {
+              const group = meta.translationKey ? groups.get(meta.translationKey) : undefined;
+              const alternates = group
+                ? [...group].map(([locale, href]) => ({ locale, href }))
+                : [];
+              const fallback = options.i18n && group?.get(options.i18n.defaultLocale);
+              if (fallback) alternates.push({ locale: "x-default", href: fallback });
+              return { url, alternates };
+            }),
+          site,
+        );
+      }
     }
     const publish = publication
       ? (preparedSite: Parameters<typeof generateSite>[0]) =>
@@ -259,23 +321,26 @@ async function buildInternal(
       ],
       preserve: options.preserve,
       async beforePublish(prepared) {
+        const context = {
+          ...prepared,
+          get files() {
+            return prepared.files;
+          },
+          pages: contexts,
+          outputs: htmlOutputs.map((output) =>
+            Object.assign({}, output, {
+              async read() {
+                return new TextDecoder().decode(await prepared.read(output.path));
+              },
+            }),
+          ),
+        };
         for (const plugin of options.plugins ?? [])
-          await diagnose(
-            async () =>
-              plugin.publish?.({
-                ...prepared,
-                get files() {
-                  return prepared.files;
-                },
-                pages: contexts,
-              }),
-            "Plugin publish phase failed",
-            {
-              reason: "PLUGIN_FAILED",
-              hint: "Fix the named plugin's publication hook or generated output. Publication has not started.",
-              context: { plugin: plugin.name, hook: "publish", out },
-            },
-          );
+          await diagnose(async () => plugin.publish?.(context), "Plugin publish phase failed", {
+            reason: "PLUGIN_FAILED",
+            hint: "Fix the named plugin's publication hook or generated output. Publication has not started.",
+            context: { plugin: plugin.name, hook: "publish", out },
+          });
       },
     });
   } finally {

@@ -2,8 +2,8 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
-import { translatorFor } from "../docs-src/i18n/interface.js";
-import { applyTheme } from "../docs-src/theme/state.js";
+import { translatorFor } from "../src/lib/i18n/interface.js";
+import { applyTheme } from "../src/lib/theme.js";
 
 function setup(stored: string | null = null, dark = false, blocked = false) {
   const handlers: Record<string, (event: any) => void> = {};
@@ -24,7 +24,7 @@ function setup(stored: string | null = null, dark = false, blocked = false) {
   const media = {
     matches: dark,
     addEventListener(_name: string, callback: (event: any) => void) {
-      handlers.system = callback;
+      handlers["system"] = callback;
     },
   };
   const context = {
@@ -66,10 +66,10 @@ function setup(stored: string | null = null, dark = false, blocked = false) {
       },
     },
   };
-  const client = readFileSync(
-    new URL("../docs-src/theme/client.ts", import.meta.url),
-    "utf8",
-  ).replace(/^import .*;\n/, "");
+  const client = readFileSync(new URL("../src/_client/theme.ts", import.meta.url), "utf8").replace(
+    /^import .*;\n/,
+    "",
+  );
   runInNewContext(
     `const applyTheme = ${applyTheme.toString()};\n${new Bun.Transpiler({ loader: "ts" }).transformSync(client)}`,
     context,
@@ -78,10 +78,10 @@ function setup(stored: string | null = null, dark = false, blocked = false) {
     html,
     attributes,
     media,
-    click: () => handlers.click!({ target: new Element() }),
+    click: () => handlers["click"]!({ target: new Element() }),
     system: (value: boolean) => {
       media.matches = value;
-      handlers.system!({});
+      handlers["system"]!({});
     },
     dark: () => dark,
     stored: () => stored,
@@ -92,36 +92,36 @@ for (const systemDark of [false, true]) {
   test(`toggles auto and the opposite of a ${systemDark ? "dark" : "light"} system theme`, () => {
     const page = setup(null, systemDark);
     const opposite = systemDark ? "light" : "dark";
-    expect(page.html.dataset.theme).toBe("auto");
+    expect(page.html.dataset["theme"]).toBe("auto");
     expect(page.dark()).toBe(systemDark);
     expect(page.attributes["aria-label"]).toContain("Automatic");
     expect(page.attributes["title"]).toBe(page.attributes["aria-label"]);
-    page.click();
-    expect(page.html.dataset.theme).toBe(opposite);
+    page["click"]();
+    expect(page.html.dataset["theme"]).toBe(opposite);
     expect(page.dark()).toBe(!systemDark);
     expect(page.stored()).toBe(opposite);
     expect(page.attributes["aria-label"]).toContain("Return to Automatic");
-    page.click();
-    expect(page.html.dataset.theme).toBe("auto");
+    page["click"]();
+    expect(page.html.dataset["theme"]).toBe("auto");
     expect(page.dark()).toBe(systemDark);
     expect(page.stored()).toBeNull();
-    page.system(!systemDark);
+    page["system"](!systemDark);
     expect(page.dark()).toBe(!systemDark);
     expect(page.attributes["aria-label"]).toContain("Automatic");
   });
 
   test(`preserves a manual theme when the system changes from ${systemDark ? "dark" : "light"}`, () => {
     const page = setup(null, systemDark);
-    page.click();
-    page.system(!systemDark);
-    expect(page.html.dataset.theme).toBe(systemDark ? "light" : "dark");
+    page["click"]();
+    page["system"](!systemDark);
+    expect(page.html.dataset["theme"]).toBe(systemDark ? "light" : "dark");
     expect(page.dark()).toBe(!systemDark);
-    page.click();
-    expect(page.html.dataset.theme).toBe(systemDark ? "dark" : "light");
+    page["click"]();
+    expect(page.html.dataset["theme"]).toBe(systemDark ? "dark" : "light");
     expect(page.dark()).toBe(systemDark);
     expect(page.stored()).toBe(systemDark ? "dark" : "light");
-    page.click();
-    expect(page.html.dataset.theme).toBe("auto");
+    page["click"]();
+    expect(page.html.dataset["theme"]).toBe("auto");
     expect(page.stored()).toBeNull();
     expect(page.dark()).toBe(!systemDark);
   });
@@ -129,9 +129,9 @@ for (const systemDark of [false, true]) {
 
 test("restores saved preference and still works without localStorage", () => {
   expect(setup("light", true).dark()).toBe(false);
-  expect(setup("invalid", true).html.dataset.theme).toBe("auto");
+  expect(setup("invalid", true).html.dataset["theme"]).toBe("auto");
   const page = setup(null, true, true);
   expect(page.dark()).toBe(true);
-  page.click();
+  page["click"]();
   expect(page.dark()).toBe(false);
 });

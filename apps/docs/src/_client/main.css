@@ -1,0 +1,747 @@
+@import "./highlight/style.css";
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@import "./tokens.css";
+@import "./home.css";
+@import "./prose.css" layer(components);
+
+/* === Global focus styles === */
+:focus-visible {
+  outline: 2px solid var(--docs-color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.docs-search-input:focus-visible {
+  outline: 2px solid var(--docs-color-accent);
+  outline-offset: -1px;
+  border-radius: 4px;
+}
+
+/* === Skip to content === */
+.docs-skip-link {
+  position: fixed;
+  top: -100%;
+  left: 1rem;
+  z-index: 10000;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background: var(--docs-color-accent);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top var(--docs-transition-fast);
+}
+
+.docs-skip-link:focus {
+  top: 1rem;
+}
+
+/* === Smooth scroll & color transition === */
+html {
+  scroll-behavior: smooth;
+}
+
+/* === Themed text selection === */
+::selection {
+  background: color-mix(in srgb, var(--docs-color-accent) 25%, transparent);
+}
+
+/* === Anchor targets must clear the sticky header === */
+:is(h1, h2, h3, h4, h5, h6)[id] {
+  scroll-margin-top: calc(var(--docs-header-height) + 1.25rem);
+}
+
+/* === Heading permalinks (injected post-render) === */
+.docs-heading-anchor {
+  margin-left: 0.4em;
+  color: var(--docs-color-text-secondary);
+  text-decoration: none;
+  opacity: 0;
+  transition:
+    opacity var(--docs-transition-fast),
+    color var(--docs-transition-fast);
+}
+
+:is(h2, h3, h4):hover > .docs-heading-anchor,
+.docs-heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+.docs-heading-anchor:hover {
+  color: var(--docs-color-accent);
+  text-decoration: none;
+}
+
+/* No hover on touch devices: keep the permalink discoverable */
+@media (hover: none) {
+  .docs-heading-anchor {
+    opacity: 0.4;
+  }
+}
+
+/* === Subtle thin scrollbars on secondary scroll regions === */
+.docs-nav,
+.docs-toc-column,
+.docs-search-results {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--docs-color-text-secondary) 35%, transparent) transparent;
+}
+
+.docs-body {
+  font-family: var(--docs-font-body);
+  /* Reserve the fixed header's space without sticky scroll rounding. */
+  padding-top: var(--docs-header-height);
+  transition:
+    background-color var(--docs-transition-slow),
+    color var(--docs-transition-slow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* === Page transitions === */
+@view-transition {
+  navigation: auto;
+}
+
+/* The reset above does not reach ::view-transition-* pseudo-elements */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+
+/* === Print styles === */
+@media print {
+  /* Hide interactive chrome */
+  header,
+  .docs-nav,
+  .docs-nav-backdrop,
+  .docs-toc-column,
+  .docs-toc-track,
+  .docs-search-dialog,
+  [data-search-trigger],
+  [data-docs-theme-toggle],
+  .docs-nav-toggle,
+  .docs-skip-link,
+  .docs-heading-anchor,
+  .docs-page-footer-edit,
+  .docs-page-nav,
+  .docs-home .docs-card-glow,
+  .docs-home [src*="badge"],
+  .docs-home [src*="shields"],
+  .docs-home [src*="badge-size"] {
+    display: none !important;
+  }
+
+  /* Reset backgrounds, shadows, gradients: ink is expensive */
+  * {
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .docs-body {
+    color: #000 !important;
+    transition: none !important;
+    padding-top: 0 !important;
+  }
+
+  .docs-home-hero::before {
+    display: none !important;
+  }
+
+  .docs-home .bg-gradient-to-r {
+    background: none !important;
+    -webkit-text-fill-color: #000 !important;
+    color: #000 !important;
+  }
+
+  /* Force all text to black */
+  .docs-home h1,
+  .docs-home h2,
+  .docs-home h3,
+  .docs-home p,
+  .docs-home strong,
+  .docs-home span {
+    color: #000 !important;
+  }
+
+  .docs-home [class*="text-"] {
+    color: #000 !important;
+  }
+
+  /* Cards need visible borders */
+  .docs-home [class*="border"],
+  .docs-feature-card,
+  .docs-usecase-card,
+  .docs-stat-card {
+    border-color: #ccc !important;
+  }
+
+  .docs-stat-card {
+    border: 1px solid #ccc !important;
+  }
+
+  /* Use case cards: badges en noir */
+  .docs-usecase-card [class*="bg-red"],
+  .docs-usecase-card [class*="bg-green"] {
+    background: transparent !important;
+    border: 1px solid #000 !important;
+    color: #000 !important;
+  }
+
+  .docs-usecase-card [class*="text-red"],
+  .docs-usecase-card [class*="text-green"] {
+    color: #000 !important;
+  }
+
+  /* Links: show URL */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.75rem;
+    color: #666 !important;
+    font-weight: 400;
+  }
+
+  a[href^="/"]::after {
+    content: " (https://vincle.cjean.fr" attr(href) ")";
+  }
+
+  a[href^="#"]::after,
+  a[href^="javascript"]::after {
+    content: none;
+  }
+
+  .docs-shell {
+    max-width: 100% !important;
+    min-height: auto !important;
+  }
+
+  .docs-home {
+    max-width: 100% !important;
+    padding: 1in 0 !important;
+  }
+
+  .docs-main {
+    padding-top: 0 !important;
+  }
+
+  /* Code blocks: light bg + black text, never split across pages */
+  .docs-code-block {
+    border: 1px solid #ccc !important;
+    background: #fafafa !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .docs-code-block * {
+    color: #000 !important;
+  }
+
+  /* Avoid page breaks in the middle of cards */
+  .docs-use-case-grid,
+  .docs-feature-card,
+  .docs-usecase-card,
+  .docs-stat-card,
+  .docs-home .docs-code-example {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Tables */
+  .docs-prose table {
+    border-collapse: collapse !important;
+  }
+
+  .docs-prose th,
+  .docs-prose td {
+    border: 1px solid #ccc !important;
+    background: transparent !important;
+  }
+
+  .docs-prose thead {
+    background: transparent !important;
+  }
+
+  .docs-page-footer {
+    border-top: 1px solid #ccc !important;
+  }
+
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    page-break-after: avoid;
+  }
+
+  pre,
+  code {
+    page-break-inside: avoid;
+  }
+}
+
+/* === Forced colours mode === */
+@media (forced-colors: active) {
+  .docs-nav-link-current {
+    outline: 2px solid ButtonText;
+    outline-offset: -2px;
+  }
+
+  .docs-code-block {
+    border: 1px solid ButtonText;
+  }
+
+  .docs-feature-card {
+    border: 1px solid ButtonText;
+  }
+
+  :focus-visible {
+    outline: 3px solid CanvasText;
+    outline-offset: 2px;
+  }
+
+  .docs-skip-link:focus {
+    outline: 3px solid CanvasText;
+  }
+}
+
+/* === Prevent layout shift from scrollbar === */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* === Tabs bar in header (hide scroll affordance, keep touch/scroll-wheel scrolling) === */
+.docs-tabs-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.docs-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* === Sidebar nav === */
+.docs-nav {
+  transition:
+    transform var(--docs-transition-slow),
+    opacity var(--docs-transition-slow);
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.docs-nav[data-open] {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .docs-nav {
+    transform: translateZ(0);
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity var(--docs-transition-slow);
+  }
+}
+
+.docs-nav-backdrop {
+  transition: opacity var(--docs-transition-slow);
+  pointer-events: none;
+}
+
+.docs-nav-backdrop[data-open] {
+  pointer-events: auto;
+}
+
+/* === Nav toggle press === */
+.docs-nav-toggle {
+  transition:
+    transform var(--docs-transition-fast),
+    color var(--docs-transition-fast),
+    background-color var(--docs-transition-fast);
+}
+
+.docs-nav-toggle:active {
+  transform: scale(0.95);
+}
+
+/* === Content tabs: state driven by aria-selected, toggled in tabs/client.ts === */
+.docs-tabs [data-docs-tab-target] {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.docs-package-manager-icon {
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.docs-tabs > .docs-tab-panel:not(.active) {
+  display: none;
+}
+
+/* === Table of contents === */
+.docs-toc-track {
+  position: relative;
+}
+
+.docs-toc-marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  background: var(--docs-color-accent);
+  border-radius: 1px;
+  pointer-events: none;
+  transition: top 200ms var(--ease-in-out);
+  z-index: 1;
+}
+
+.docs-toc-track.is-animating .docs-toc-marker {
+  transition: none;
+}
+
+.docs-toc-link.is-active {
+  color: var(--docs-color-accent);
+}
+
+.docs-toc-sublist {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height var(--docs-transition-normal),
+    opacity var(--docs-transition-normal);
+}
+
+.docs-toc-entry:has(.is-active) > .docs-toc-sublist {
+  max-height: 1000px;
+  opacity: 1;
+}
+
+/* === Force GPU compositing to prevent 1px sticky jitter on scroll === */
+.docs-toc-column {
+  transform: translateZ(0);
+}
+
+/* === Theme toggle === */
+.docs-theme-toggle-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  grid-area: 1 / 1;
+  pointer-events: none;
+  transition:
+    opacity 200ms var(--ease-in-out),
+    scale 200ms var(--ease-in-out),
+    rotate 200ms var(--ease-in-out);
+}
+
+.docs-theme-toggle-icon {
+  opacity: 0;
+  scale: 0.75;
+}
+
+/* The icon shows the theme a click leads to: the opposite of the one displayed */
+html:not(.dark) .docs-theme-toggle-moon,
+html.dark .docs-theme-toggle-sun {
+  opacity: 1;
+  scale: 1;
+}
+
+.docs-search-results {
+  opacity: 0;
+  transition: opacity 100ms var(--ease-out);
+}
+.docs-search-results.active {
+  opacity: 1;
+}
+
+/* Give the search trigger a small tactile response before the dialog opens. */
+.docs-search-trigger {
+  transition:
+    transform var(--docs-transition-fast),
+    background-color var(--docs-transition-fast),
+    border-color var(--docs-transition-fast),
+    color var(--docs-transition-fast);
+}
+.docs-search-trigger:active {
+  transform: translateY(1px) scale(0.97);
+  background-color: var(--docs-color-surface);
+  border-color: var(--docs-color-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .docs-search-trigger:active {
+    transform: none;
+  }
+}
+
+/* === Search dialog: enter and exit fades === */
+.docs-search-dialog {
+  transform-origin: top left;
+}
+.docs-search-dialog[open] {
+  opacity: 1;
+}
+
+.docs-search-dialog::backdrop {
+  opacity: 0;
+  transition: opacity var(--docs-transition-normal);
+}
+.docs-search-dialog[open]::backdrop {
+  opacity: 1;
+}
+.docs-search-dialog.closing::backdrop {
+  opacity: 0;
+}
+
+/* Shared documentation shell. */
+.docs-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-right: 1.5rem;
+  font-size: 1.2rem;
+}
+.docs-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.5rem;
+  background: var(--docs-color-text);
+  color: var(--docs-color-bg);
+  font-weight: 700;
+  padding-bottom: 0.15rem;
+}
+.docs-nav-link {
+  margin-block: 0.125rem;
+}
+.docs-nav-link-current {
+  background: var(--docs-color-accent-soft);
+}
+.docs-article {
+  border-left: 1px solid var(--docs-color-border);
+}
+.docs-page-nav a {
+  max-width: 48%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--docs-color-surface);
+}
+@media (max-width: 767px) {
+  .docs-article {
+    border-left: 0;
+  }
+  .docs-brand {
+    margin-right: 0;
+  }
+}
+
+html[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="npm"]
+  )
+  > .docs-tab-panel {
+  display: none;
+}
+html[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="npm"]
+  )
+  > .docs-tab-panel[data-docs-tab-label="npm"] {
+  display: block;
+}
+html[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="npm"]
+  )
+  [role="tab"] {
+  border-color: transparent;
+  color: var(--docs-color-text-secondary);
+}
+html[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="npm"]
+  )
+  [role="tab"][data-docs-tab-label="npm"] {
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+.dark[data-docs-package-manager="npm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced])
+  [role="tab"][data-docs-tab-label="npm"] {
+  color: #60a5fa;
+}
+
+html[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="pnpm"]
+  )
+  > .docs-tab-panel {
+  display: none;
+}
+html[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="pnpm"]
+  )
+  > .docs-tab-panel[data-docs-tab-label="pnpm"] {
+  display: block;
+}
+html[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="pnpm"]
+  )
+  [role="tab"] {
+  border-color: transparent;
+  color: var(--docs-color-text-secondary);
+}
+html[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="pnpm"]
+  )
+  [role="tab"][data-docs-tab-label="pnpm"] {
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+.dark[data-docs-package-manager="pnpm"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced])
+  [role="tab"][data-docs-tab-label="pnpm"] {
+  color: #60a5fa;
+}
+
+html[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="bun"]
+  )
+  > .docs-tab-panel {
+  display: none;
+}
+html[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="bun"]
+  )
+  > .docs-tab-panel[data-docs-tab-label="bun"] {
+  display: block;
+}
+html[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="bun"]
+  )
+  [role="tab"] {
+  border-color: transparent;
+  color: var(--docs-color-text-secondary);
+}
+html[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced]):has(
+    > [data-docs-tab-label="bun"]
+  )
+  [role="tab"][data-docs-tab-label="bun"] {
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+.dark[data-docs-package-manager="bun"]
+  .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced])
+  [role="tab"][data-docs-tab-label="bun"] {
+  color: #60a5fa;
+}
+
+/* Interfaces refinements: shared reading and interaction details. */
+.docs-body :is(time, kbd),
+.docs-prose table {
+  font-variant-numeric: tabular-nums;
+}
+.docs-body :is(h4, h5, h6) {
+  text-wrap: balance;
+}
+.docs-body :is(.docs-page-footer, .docs-example-note) {
+  text-wrap: pretty;
+}
+.docs-search-dialog {
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(85dvh - 1rem);
+  overflow: hidden;
+  border: 0;
+  /* Input radius plus its horizontal inset. */
+  border-radius: calc(0.375rem + 1rem);
+  box-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.35);
+}
+.docs-search-input-row {
+  flex-shrink: 0;
+}
+.docs-search-results {
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.docs-theme-toggle,
+.docs-button,
+.docs-page-nav a {
+  transition:
+    background-color var(--docs-transition-fast),
+    color var(--docs-transition-fast),
+    transform var(--docs-transition-fast);
+}
+:is(.docs-theme-toggle, .docs-button, .docs-page-nav a):active {
+  transform: scale(0.97);
+}
+@media (pointer: coarse) {
+  :is(
+    .docs-theme-toggle,
+    .docs-nav-toggle,
+    .docs-search-trigger,
+    .docs-tab-link,
+    .docs-language-switcher a,
+    .docs-nav-link,
+    [data-docs-tab-target]
+  ) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .docs-language-switcher a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .docs-header > div {
+    padding-inline: 0.75rem;
+  }
+  .docs-header > div > div {
+    gap: 0.25rem;
+  }
+  .docs-search-trigger {
+    padding-inline: 0.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.docs-theme-toggle, .docs-button, .docs-page-nav a, .docs-nav-toggle):active {
+    transform: none;
+  }
+}
+@media (forced-colors: active) {
+  .docs-search-dialog {
+    outline: 1px solid CanvasText;
+  }
+}

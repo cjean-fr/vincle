@@ -37,8 +37,8 @@ Sources de référence :
 
 - `home/apps/website/build.ts`, `src/routes.ts`, `dev.ts`.
 - `home/apps/website/src/pages/site.css.ts`, `photo.jpg.ts`, `social.png.ts`.
-- `apps/docs/docs-src/lib/build-engine.tsx`, `pages.ts`, `render-document.ts`.
-- `apps/docs/docs-src/lib/build-static-assets.ts`, `dev-server.ts`.
+- `apps/docs/src/lib/build-engine.tsx`, `pages.ts`, `render-document.ts`.
+- `apps/docs/src/lib/build-static-assets.ts`, `dev-server.ts`.
 
 Les deux consommateurs justifient une seam de production de sorties. Ils ne
 justifient pas encore un serveur de développement commun : leurs modes de

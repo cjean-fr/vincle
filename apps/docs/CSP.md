@@ -3,15 +3,13 @@
 Local CSP helpers for documentation generation and the development server.
 
 ```tsx
-import { raw, renderToString } from "@vincle/core";
-
-import { CspService, Script, withHash } from "./docs-src/lib/csp.js";
+import { CspService, Script, withHash } from "./src/lib/csp.js";
 
 const csp = new CspService();
 const HashedScript = withHash(Script, csp);
-const bootstrap = raw(
-  await renderToString(<HashedScript>const name = {JSON.stringify(user.name)};</HashedScript>),
-);
+const bootstrap = await HashedScript({
+  children: ["const name = ", JSON.stringify(user.name), ";"],
+});
 const header = csp.getCSPHeader();
 // Set Content-Security-Policy on the response before sending the body,
 // or put the policy in a meta element before the authorized scripts.
