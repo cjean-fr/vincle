@@ -1,6 +1,6 @@
 {
   "name": "@vincle/ssg",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "File-based static generation with extensible content handlers and multiple outputs",
   "keywords": [
     "generator",

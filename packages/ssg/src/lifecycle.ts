@@ -11,6 +11,20 @@ import { metadata } from "./formats.js";
 import { layoutLoader } from "./layouts.js";
 import { iterateOutputs } from "./results.js";
 
+/** Cached runtimes retain their page, not a completed render generator's state. */
+function scopedRuntime(context: PageContext, runtime: JsxRuntime): JsxRuntime {
+  const findLayout = layoutLoader();
+  return {
+    ...runtime,
+    async render(create) {
+      const layout = await findLayout(context);
+      return runtime.render(
+        layout ? async () => layout({ ...context, children: await create() }) : create,
+      );
+    },
+  };
+}
+
 /** Shared lifecycle used by build() and consumers with specialized site shells. */
 export async function* renderPage(
   page: DiscoveredPage,
@@ -52,16 +66,7 @@ async function* renderPageInternal(
   metadata(context.meta, context.file);
   options.onContext?.(context);
   const runtime = options.runtime ?? context.runtime;
-  const findLayout = layoutLoader();
-  context.runtime = {
-    ...runtime,
-    async render(create) {
-      const layout = await findLayout(context);
-      return runtime.render(
-        layout ? async () => layout({ ...context, children: await create() }) : create,
-      );
-    },
-  };
+  context.runtime = scopedRuntime(context, runtime);
   for await (let output of iterateOutputs(await page.render(context))) {
     for (const plugin of plugins)
       output =

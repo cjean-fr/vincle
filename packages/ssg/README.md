@@ -141,7 +141,11 @@ await build({
 });
 ```
 
-Setting `site` enables `sitemap.xml`. By default, generated HTML outputs are
+Setting `site` enables `sitemap.xml`. Sitemaps split automatically at 50,000 URLs
+or 52,428,800 uncompressed UTF-8 bytes, counting XML escaping and tags. When
+multiple files are needed, `sitemap.xml` becomes an index referencing
+`sitemap-1.xml`, `sitemap-2.xml`, etc. The index is checked against the same
+entry and byte limits. By default, generated HTML outputs are
 included; other outputs are excluded. Set `meta.sitemap: false` per source (or
 `sitemap: false` in frontmatter). An output's `sitemap` overrides that source
 setting, including for JSON/images when explicitly enabled. `export const sitemap
@@ -302,3 +306,87 @@ artifacts such as a search index; these are not added to the built-in sitemap.
 Migrating from `@vincle/site`: update the package dependency and imports to
 `@vincle/ssg`. The lower-level writer's arguments remain unchanged. This repository
 contains the renamed package; renaming does not publish it to npm.
+
+## Development server
+
+```ts
+import { dev } from "@vincle/ssg";
+
+const server = await dev({ vite: { server: { port: 4321 } } });
+server.vite.printUrls();
+// await server.close();
+```
+
+`dev` accepts the same source, handler, runtime and SSG plugin options as `build`.
+Asset generation integrations belong to `build`; dev uses Vite source assets.
+It loads the project's Vite configuration, serves Vite's browser client and
+assets, watches sources/imports/layouts/public files, and reloads the browser
+after successful regeneration. Generated HTML passes through Vite's HTML
+transforms. Generated JSON, text and binary files are served directly.
+
+Page modules use the persistent SSR environment of the development Vite server,
+with `serve` plugins and development configuration. Production generation retains
+its separate `build` plugins, optimized assets and manifest. The source graph
+invalidates modified modules and their importers; unchanged modules keep their
+evaluations. MDX uses stable virtual module IDs in the same graph. Built-in
+handlers reuse the rendered outputs and metadata of unaffected pages. Imports,
+source files and layout candidates (including absent nearer layouts) determine
+which pages must reload and render. Deleted routes drop their cached outputs. Vite serves source assets and handles their HMR. The generated
+site lives in a temporary directory; `dist` is left intact. Rendering failures
+keep the last successful output and display a Vite error overlay. `rebuild()`
+allows explicit incremental regeneration; `rebuild({ force: true })` rerenders
+all pages. `close()` stops watchers and removes temporary
+output. Deleted pages release their compiled MDX, resolution and evaluation
+caches; recreating a page at the same path loads its new content. Rebuild requests
+received during an active build are coalesced into one pending regeneration,
+instead of retaining a growing queue. Host, port, base and other development server settings belong in
+`vite.config` or the `vite` option.
+
+### Incremental dependencies and extensions
+
+Declare direct filesystem reads with `context.watch(file)` in a handler,
+producer, component or page plugin hook. Relative paths resolve beside the page
+source, and missing paths are tracked so creating a file also invalidates its
+pages. Module imports and inherited/explicit layouts are tracked automatically.
+
+```ts
+import type { PageContext } from "@vincle/ssg";
+
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+export default async (context: PageContext) => {
+  const input = path.join(path.dirname(context.file), "_data.json");
+  context.watch(input);
+  return { path: context.outputPath(".json"), content: await readFile(input, "utf8") };
+};
+```
+
+Use `meta.incremental: false` (or frontmatter `incremental: false`) for dynamic
+producers depending on time, remote services or state that is not represented
+by watched files. These pages run on every regeneration.
+
+Custom handlers opt into caching with `incremental: true`. Custom plugins with
+`metadata`, `render` or `transform` hooks trigger conservative full rendering
+unless they declare `incremental: true`: their page hooks must be local to each
+page, and filesystem dependencies must use `context.watch`. Vite restarts
+invalidate the complete page cache. Changes received during rendering trigger a
+follow-up regeneration; failed renders or publication hooks never commit a new
+cache snapshot.
+
+Publication hooks always run with all page contexts and all outputs, including
+cached ones. The sitemap is regenerated from that complete set. Development
+publication compares content hashes, stages and replaces only added or changed
+files, and removes obsolete files and empty directories. Unchanged outputs keep
+their inode and modification time, including copied resources and plugin outputs.
+Copy sources are scanned for changes; their hashes are recalculated only when
+source identity, size or timestamps change. Hooks can read both staged changes
+and unchanged published outputs through `site.read`.
+
+Collisions are checked against the complete site before changing published files.
+Preparation and hook failures retain the last successful site. Filesystem failures
+during publication can leave an incomplete site, as with a production build; the
+next rebuild republishes everything. Source discovery, dependency checks, sitemap
+calculation and global publication hooks still run across the complete site.
+Production `build()` always runs every handler, renders every page and publishes
+the complete site.

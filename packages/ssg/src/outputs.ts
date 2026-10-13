@@ -1,4 +1,17 @@
-import { copyFile, lstat, mkdir, mkdtemp, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import {
+  copyFile,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  rmdir,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 
 import { failure, contextualError } from "./errors.js";
@@ -81,14 +94,41 @@ async function safeDirectory(dir: string): Promise<void> {
  * uses filesystem moves and is not atomic; concurrent builds to one out are
  * unsupported.
  */
+/** Internal, session-owned development snapshot; never shared across output directories. */
+export class PublicationCache {
+  entries = new Map<string, { digest: string; source?: string }>();
+  ready = false;
+  clear() {
+    this.entries.clear();
+    this.ready = false;
+  }
+}
+
 export async function generateSite(options: SiteOptions): Promise<{ files: string[] }> {
+  return publishSite(options);
+}
+
+/** Internal development writer; validation and hooks still see the complete site. */
+export function generateSiteCached(options: SiteOptions, cache: PublicationCache) {
+  return publishSite(options, cache);
+}
+
+async function publishSite(
+  options: SiteOptions,
+  cache?: PublicationCache,
+): Promise<{ files: string[] }> {
   const state: { phase: "prepare" | "publish" } = { phase: "prepare" };
   try {
-    return await generateSiteInternal(options, () => {
-      state.phase = "publish";
-    });
+    return await generateSiteInternal(
+      options,
+      () => {
+        state.phase = "publish";
+      },
+      cache,
+    );
   } catch (error) {
     const phase = state.phase;
+    if (phase === "publish") cache?.clear();
     throw contextualError(
       error,
       `Could not ${phase === "publish" ? "publish" : "prepare"} site outputs`,
@@ -107,6 +147,7 @@ export async function generateSite(options: SiteOptions): Promise<{ files: strin
 async function generateSiteInternal(
   options: SiteOptions,
   publishing: () => void,
+  cache?: PublicationCache,
 ): Promise<{ files: string[] }> {
   const out = path.resolve(options.out);
   if (out === path.parse(out).root || out === process.cwd())
@@ -127,6 +168,14 @@ async function generateSiteInternal(
   const stage = await mkdtemp(path.join(path.dirname(out), ".vincle-site-"));
   const files = new Set<string>();
   const directories = new Set<string>();
+  const next = new Map<string, { digest: string; source?: string }>();
+  const changed = new Set<string>();
+  const previous = cache?.ready ? cache.entries : undefined;
+  function digest(content: SiteContent): string {
+    return createHash("sha256")
+      .update(content instanceof ArrayBuffer ? new Uint8Array(content) : content)
+      .digest("hex");
+  }
   async function prepareTarget(name: string): Promise<string> {
     filePath(name);
     if (preserve.has(name.split("/")[0]!))
@@ -157,12 +206,15 @@ async function generateSiteInternal(
     }
     files.add(name);
     for (const parent of parents) directories.add(parent);
-    const target = path.join(stage, name);
-    await mkdir(path.dirname(target), { recursive: true });
-    return target;
+    return path.join(stage, name);
   }
   async function write(name: string, content: SiteContent): Promise<void> {
     const target = await prepareTarget(name);
+    const fingerprint = cache ? digest(content) : "";
+    if (cache) next.set(name, { digest: fingerprint });
+    if (previous?.get(name)?.digest === fingerprint) return;
+    changed.add(name);
+    await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, content instanceof ArrayBuffer ? new Uint8Array(content) : content);
   }
   async function copy(from: string, prefix: string): Promise<void> {
@@ -177,7 +229,24 @@ async function generateSiteInternal(
       for (const entry of await readdir(from))
         await copy(path.join(from, entry), prefix ? `${prefix}/${entry}` : entry);
     } else if (info.isFile()) {
-      await copyFile(from, await prepareTarget(prefix));
+      const target = await prepareTarget(prefix);
+      const source = JSON.stringify([from, info.size, info.mtimeMs, info.ctimeMs]);
+      const old = previous?.get(prefix);
+      if (old?.source === source) {
+        next.set(prefix, old);
+        return;
+      }
+      let fingerprint = "";
+      if (cache) {
+        const hash = createHash("sha256");
+        for await (const chunk of createReadStream(from)) hash.update(chunk);
+        fingerprint = hash.digest("hex");
+        next.set(prefix, { digest: fingerprint, source });
+      }
+      if (old?.digest === fingerprint) return;
+      changed.add(prefix);
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(from, target);
     } else
       throw failure(`Cannot copy special file: ${from}`, {
         reason: "COPY_FAILED",
@@ -226,7 +295,7 @@ async function generateSiteInternal(
             hint: "Read a path listed in the prepared site's files.",
             context: { path: name, out },
           });
-        return await import("node:fs/promises").then((fs) => fs.readFile(path.join(stage, name)));
+        return await readFile(path.join(changed.has(name) ? stage : out, name));
       },
       async emit(output) {
         await write(
@@ -239,10 +308,51 @@ async function generateSiteInternal(
     // Preparation is beside out so publication uses same-filesystem moves.
     await safeDirectory(out);
     await mkdir(out, { recursive: true });
-    for (const entry of await readdir(out))
-      if (!preserve.has(entry)) await rm(path.join(out, entry), { recursive: true, force: true });
-    for (const entry of await readdir(stage))
-      await rename(path.join(stage, entry), path.join(out, entry));
+    if (!previous) {
+      for (const entry of await readdir(out))
+        if (!preserve.has(entry)) await rm(path.join(out, entry), { recursive: true, force: true });
+      for (const entry of await readdir(stage))
+        await rename(path.join(stage, entry), path.join(out, entry));
+    } else {
+      const obsolete = [...previous.keys()].filter((name) => !files.has(name));
+      const oldDirectories = new Set<string>();
+      for (const name of obsolete) {
+        await safeDirectory(path.dirname(path.join(out, name)));
+        await rm(path.join(out, name), { force: true });
+        for (
+          let parent = path.posix.dirname(name);
+          parent !== ".";
+          parent = path.posix.dirname(parent)
+        )
+          oldDirectories.add(parent);
+      }
+      // Remove only empty owned directories, deepest first, including file/directory transitions.
+      for (const dir of [...oldDirectories].toSorted((a, b) => b.length - a.length)) {
+        try {
+          await rmdir(path.join(out, dir));
+        } catch (error) {
+          if (!["ENOENT", "ENOTEMPTY"].includes((error as NodeJS.ErrnoException).code ?? ""))
+            throw error;
+        }
+      }
+      for (const name of changed) {
+        const target = path.join(out, name);
+        await safeDirectory(path.dirname(target));
+        const info = await stat(target);
+        if (info?.isSymbolicLink() || (info && !info.isFile()))
+          throw failure(`Cannot replace non-file output: ${name}`, {
+            reason: "INVALID_OUTPUT",
+            hint: "Remove the conflicting directory or symbolic link from the generated output directory and rebuild.",
+            context: { path: name, out },
+          });
+        await mkdir(path.dirname(target), { recursive: true });
+        await rename(path.join(stage, name), target);
+      }
+    }
+    if (cache) {
+      cache.entries = next;
+      cache.ready = true;
+    }
     return { files: [...files].toSorted() };
   } finally {
     await rm(stage, { recursive: true, force: true });

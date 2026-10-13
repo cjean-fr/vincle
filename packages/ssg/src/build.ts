@@ -2,13 +2,28 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import type { PageContext, SsgOptions, SsgOutput } from "./types.js";
+import type { PageCacheSession } from "./page-cache.js";
+import type {
+  PageContext,
+  SsgOptions,
+  SsgOutput,
+  RenderedOutput,
+  JsxRuntime,
+  AssetBuild,
+} from "./types.js";
 
 import { failure, diagnose, contextualError } from "./errors.js";
 import { defaultHandlers, vincleRuntime } from "./formats.js";
 import { discoverPages } from "./handlers.js";
 import { renderPage } from "./lifecycle.js";
-import { generateSite } from "./outputs.js";
+import { generateSite, generateSiteCached, type PublicationCache } from "./outputs.js";
+import { sitemapOutputs } from "./sitemap.js";
+
+/** Cached page runtimes must not retain the surrounding build's page arrays. */
+function assetRuntime(runtime: JsxRuntime, assets?: AssetBuild): JsxRuntime {
+  const render = assets?.render?.bind(assets);
+  return render ? { ...runtime, render: (create) => render(runtime, create) } : runtime;
+}
 
 function publicUrl(output: SsgOutput): string {
   const url = output.url ?? `/${output.path.replace(/(^|\/)index\.html$/, "$1")}`;
@@ -26,15 +41,6 @@ function publicUrl(output: SsgOutput): string {
     });
   }
   return url;
-}
-
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
 }
 
 async function exists(file: string): Promise<boolean> {
@@ -67,7 +73,20 @@ async function conventionalAssets(root: string, src: string) {
 
 /** Build routes, all their outputs, assets and sitemap before publishing. */
 export async function build(options: SsgOptions = {}): Promise<{ files: string[] }> {
-  return diagnose(() => buildInternal(options), "SSG build failed", {
+  return runBuild(options);
+}
+
+/** Internal dev path; production builds never share this cache. */
+export function buildCached(
+  options: SsgOptions,
+  cache: PageCacheSession,
+  publication: PublicationCache,
+) {
+  return runBuild(options, cache, publication);
+}
+
+function runBuild(options: SsgOptions, cache?: PageCacheSession, publication?: PublicationCache) {
+  return diagnose(() => buildInternal(options, cache, publication), "SSG build failed", {
     reason: "BUILD_FAILED",
     hint: "Check the configuration and original cause. Correct the failing input or filesystem operation before retrying.",
     context: {
@@ -78,7 +97,11 @@ export async function build(options: SsgOptions = {}): Promise<{ files: string[]
   });
 }
 
-async function buildInternal(options: SsgOptions): Promise<{ files: string[] }> {
+async function buildInternal(
+  options: SsgOptions,
+  cache?: PageCacheSession,
+  publication?: PublicationCache,
+): Promise<{ files: string[] }> {
   const root = path.resolve(options.root ?? process.cwd());
   const src = path.resolve(root, options.src ?? "src");
   const out = path.resolve(root, options.out ?? "dist");
@@ -170,13 +193,18 @@ async function buildInternal(options: SsgOptions): Promise<{ files: string[] }> 
     disposeAssets = assets?.dispose;
     const publicDirectory = path.join(root, "public");
     const publicCopy = (await exists(publicDirectory)) ? [{ from: publicDirectory }] : [];
-    const renderRuntime = assets?.render
-      ? { ...runtime, render: (create: () => unknown) => assets.render!(runtime, create) }
-      : runtime;
+    const renderRuntime = assetRuntime(runtime, assets);
     const urls = new Set<string>();
     const pages = await discoverPages({
       src,
-      handlers,
+      handlers: cache
+        ? Object.fromEntries(
+            Object.entries(handlers).map(([extension, handler]) => [
+              extension,
+              handler ? cache.wrap(handler) : false,
+            ]),
+          )
+        : handlers,
       runtime: renderRuntime,
       modules: assets?.modules,
     });
@@ -184,16 +212,26 @@ async function buildInternal(options: SsgOptions): Promise<{ files: string[] }> 
     async function* produce(): AsyncGenerator<SsgOutput> {
       for (const page of pages) {
         try {
-          for await (const output of renderPage(page, {
-            plugins: options.plugins,
-            onContext: (context) => {
-              contexts.push(context);
-            },
-          })) {
+          const hit = cache?.rendered(page.source.file);
+          let context: PageContext | undefined;
+          const rendered: RenderedOutput[] = [];
+          if (hit?.context) contexts.push(hit.context);
+          const outputs =
+            hit?.outputs ??
+            renderPage(page, {
+              plugins: options.plugins,
+              onContext: (value) => {
+                context = value;
+                contexts.push(value);
+              },
+            });
+          for await (const output of outputs) {
             if (output.sitemap && site && options.sitemap !== false)
               urls.add(new URL(publicUrl(output).slice(1), site).href);
+            if (cache && !hit) rendered.push(output);
             yield output;
           }
+          if (cache && !hit && context) cache.store(page.source.file, context, rendered);
         } catch (error) {
           throw contextualError(error, `Failed source ${page.source.relativePath}`, {
             reason: "SOURCE_FAILED",
@@ -202,26 +240,13 @@ async function buildInternal(options: SsgOptions): Promise<{ files: string[] }> 
           });
         }
       }
-      if (site && options.sitemap !== false) {
-        if (urls.size > 50_000)
-          throw failure("A sitemap cannot contain more than 50,000 URLs.", {
-            reason: "INVALID_OUTPUT",
-            hint: "Disable the built-in sitemap and generate split sitemap files with an index, or reduce included outputs.",
-            context: { count: urls.size },
-          });
-        yield {
-          path: "sitemap.xml",
-          content:
-            '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
-            [...urls]
-              .toSorted()
-              .map((url) => `<url><loc>${escapeXml(url)}</loc></url>`)
-              .join("") +
-            "</urlset>\n",
-        };
-      }
+      if (site && options.sitemap !== false) yield* sitemapOutputs([...urls].toSorted(), site);
     }
-    return await generateSite({
+    const publish = publication
+      ? (preparedSite: Parameters<typeof generateSite>[0]) =>
+          generateSiteCached(preparedSite, publication)
+      : generateSite;
+    return await publish({
       out,
       outputs: produce(),
       copy: [

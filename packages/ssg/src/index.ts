@@ -1,3 +1,4 @@
+export { dev, type DevOptions, type DevServer } from "./dev.js";
 export { build } from "./build.js";
 export { routeForFile, outputPathForRoute } from "./routes.js";
 export { defaultHandlers } from "./formats.js";
