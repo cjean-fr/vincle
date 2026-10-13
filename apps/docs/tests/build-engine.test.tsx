@@ -103,12 +103,14 @@ describe("SSG build", () => {
     expect(data).toContain("Installation");
   });
 
-  it("produces a Markdown twin for every content page", async () => {
+  it("produces every advertised Markdown twin", async () => {
     const htmls = [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)]
       .filter((f) => !/(?:^|\/)(?:404|500)\.html$/.test(f))
       .toSorted();
     expect(htmls.length).toBeGreaterThan(0);
     for (const html of htmls) {
+      const rendered = await readFile(path.join(DIST_DIR, html), "utf-8");
+      if (!rendered.includes('type="text/markdown"')) continue;
       const twin =
         html === "fr.html"
           ? path.join(DIST_DIR, "fr/index.md")

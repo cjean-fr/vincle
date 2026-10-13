@@ -516,7 +516,7 @@ html.dark .docs-theme-toggle-sun {
   }
 }
 
-/* === Search dialog: morph from trigger (open) / fade back (close) === */
+/* === Search dialog: enter and exit fades === */
 .docs-search-dialog {
   transform-origin: top left;
 }
@@ -684,4 +684,81 @@ html[data-docs-package-manager="bun"]
   .docs-tabs[data-docs-tabs-sync="pkg-manager"]:not([data-docs-tabs-enhanced])
   [role="tab"][data-docs-tab-label="bun"] {
   color: #60a5fa;
+}
+
+/* Interfaces refinements: shared reading and interaction details. */
+.docs-body :is(time, kbd),
+.docs-prose table {
+  font-variant-numeric: tabular-nums;
+}
+.docs-body :is(h4, h5, h6) {
+  text-wrap: balance;
+}
+.docs-body :is(.docs-page-footer, .docs-example-note) {
+  text-wrap: pretty;
+}
+.docs-search-dialog {
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(85dvh - 1rem);
+  overflow: hidden;
+  border: 0;
+  /* Input radius plus its horizontal inset. */
+  border-radius: calc(0.375rem + 1rem);
+  box-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.35);
+}
+.docs-search-input-row {
+  flex-shrink: 0;
+}
+.docs-search-results {
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.docs-theme-toggle,
+.docs-button,
+.docs-page-nav a {
+  transition:
+    background-color var(--docs-transition-fast),
+    color var(--docs-transition-fast),
+    transform var(--docs-transition-fast);
+}
+:is(.docs-theme-toggle, .docs-button, .docs-page-nav a):active {
+  transform: scale(0.97);
+}
+@media (pointer: coarse) {
+  :is(
+    .docs-theme-toggle,
+    .docs-nav-toggle,
+    .docs-search-trigger,
+    .docs-tab-link,
+    .docs-language-switcher a,
+    .docs-nav-link,
+    [data-docs-tab-target]
+  ) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .docs-language-switcher a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .docs-header > div {
+    padding-inline: 0.75rem;
+  }
+  .docs-header > div > div {
+    gap: 0.25rem;
+  }
+  .docs-search-trigger {
+    padding-inline: 0.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.docs-theme-toggle, .docs-button, .docs-page-nav a, .docs-nav-toggle):active {
+    transform: none;
+  }
+}
+@media (forced-colors: active) {
+  .docs-search-dialog {
+    outline: 1px solid CanvasText;
+  }
 }

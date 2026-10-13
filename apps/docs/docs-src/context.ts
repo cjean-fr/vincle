@@ -10,6 +10,8 @@ export interface DocsRenderContext {
   config: ResolvedDocsConfig;
   alternates?: ReadonlyArray<{ locale: Locale; href: string }>;
   currentPage: string;
+  /** Whether this source has a generated Markdown alternate. */
+  hasMarkdownAlternate?: boolean;
   meta: PageMeta;
   sidebar: ResolvedSidebar;
   /** The tab matching the current page (null on tab-less pages like home). */

@@ -25,10 +25,12 @@
   font-size: clamp(3rem, 5vw, 4.5rem);
   line-height: 1.06;
   font-weight: 700;
-  letter-spacing: -0.055em;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 .docs-hero-description {
   max-width: 36ch;
+  text-wrap: pretty;
   margin-top: 1.5rem;
   font-size: 1.125rem;
   line-height: 1.75;
@@ -76,7 +78,7 @@
   min-width: 0;
   padding: 0.5rem;
   border: 1px solid var(--docs-color-border);
-  border-radius: 0.875rem;
+  border-radius: calc(0.25rem + 0.5rem + 1px);
   background: var(--docs-color-surface);
 }
 .docs-example-heading {

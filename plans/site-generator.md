@@ -1,3 +1,9 @@
+> Mise à jour : le package est renommé `@vincle/ssg`. Son API de haut niveau
+> suit les conventions `src/`, `dist/`, `_layout.tsx` et `_client/main.*`, avec
+> routes par fichiers, handlers extensibles, sorties multiples, métadonnées
+> communes, plugins, sitemap et assets Vite. Les mentions de `@vincle/site`
+> ci-dessous décrivent la première version publiée, avant cette refonte.
+
 # Générateur de site : premier plan
 
 Statut : première version implémentée localement, 6 octobre 2026.

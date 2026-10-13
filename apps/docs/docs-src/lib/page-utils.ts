@@ -1,36 +1,33 @@
+import type { DiscoveredPage } from "@vincle/ssg";
+
 import path from "node:path";
 
 import type { Page, PageMeta, ResolvedDocsConfig } from "../types.js";
 
+import { markdownPath } from "../i18n/locale.js";
 import { normalizePublicationDate } from "./publication-date.js";
 
-export function createPage(
-  file: string,
-  pagesDir: string,
-  config: ResolvedDocsConfig,
-  handlerName: string,
-  rawMeta: unknown,
-  Component: Page["Component"],
-): Page {
-  const rel = getRelativeRoute(file, pagesDir);
-  const ext = path.extname(file);
-  const route = rel.slice(0, -ext.length);
-  const meta = normalizeMeta(rawMeta, rel);
-  const url = meta.slug ?? routeToUrl(route);
+export function createPage(page: DiscoveredPage, config: ResolvedDocsConfig): Page {
+  const { source } = page;
+  const meta = normalizeMeta(page.meta, source.relativePath);
+  const url = meta.slug ?? source.route;
   return {
+    ...page,
     url,
-    file,
+    file: source.file,
     outPath: path.join(config.out, urlToOutPath(url)),
-    handler: handlerName,
     meta,
-    Component,
+    source: {
+      ...source,
+      route: url,
+      outputPath: (extension = ".html") =>
+        extension === ".html"
+          ? urlToOutPath(url)
+          : extension === ".md"
+            ? markdownPath(url).slice(1)
+            : `${url === "/" ? "index" : url.slice(1)}${extension}`,
+    },
   };
-}
-
-function routeToUrl(route: string): string {
-  if (route === "index") return "/";
-  if (route.endsWith("/index")) return "/" + route.slice(0, -"/index".length);
-  return "/" + route;
 }
 
 function urlToOutPath(url: string): string {

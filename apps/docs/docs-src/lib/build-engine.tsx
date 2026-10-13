@@ -1,6 +1,8 @@
+import type { Renderable } from "@vincle/core";
 import type { ViteManifest } from "@vincle/vite-plugin";
 
-import { generateSite } from "@vincle/site";
+import { generateSite, renderPage } from "@vincle/ssg";
+import { viteModules } from "@vincle/ssg/vite";
 import { loadViteManifest, setVite } from "@vincle/vite-plugin";
 import { existsSync } from "node:fs";
 import { writeFile, mkdir, rm, cp, mkdtemp, readFile } from "node:fs/promises";
@@ -20,7 +22,6 @@ import {
   generateAiCatalog,
   generateLlmsTxt,
   generateLlmsFullTxt,
-  generateMarkdownAlternates,
   generateNetlifyHeaders,
   updateRobotsTxt,
 } from "./build-static-assets.js";
@@ -74,7 +75,16 @@ export async function rebuildAll(): Promise<void> {
 async function rebuildSite(): Promise<void> {
   if (!manifest) await initBuild();
   clearMetaCache();
-  allPages = await discoverPages(config);
+  const compiler = await viteModules({
+    root: path.resolve(import.meta.dirname, "../.."),
+    mode: "production",
+  });
+  try {
+    allPages = await discoverPages(config, new Date(), compiler.modules);
+  } catch (error) {
+    await compiler.dispose();
+    throw error;
+  }
   // Existing producers prepare the complete site together, including files
   // derived from the rendered HTML. Only the generator publishes it to dist.
   const prepared = await mkdtemp(path.join(tmpdir(), "vincle-docs-"));
@@ -88,6 +98,7 @@ async function rebuildSite(): Promise<void> {
       copy: [{ from: prepared }],
     });
   } finally {
+    await compiler.dispose();
     await rm(prepared, { recursive: true, force: true });
   }
 }
@@ -141,46 +152,71 @@ async function renderPages(pages: Page[], out: string): Promise<RenderedPage[]> 
       const lastUpdated = page.url === "/" ? siteLastUpdated : null;
       const editUrl = editUrlFor(config.editUrl, page.file);
 
-      const html = await renderDocument(
-        () => {
-          setVite(manifest!, { base: config.assetBase });
-          setDocs({
-            config,
-            currentPage: page.url,
-            meta,
-            sidebar,
-            currentTab,
-            resolvedTabs: tabsByLocale[locale],
-            alternates: translationAlternates(page.url, available),
-            lastUpdated,
-            editUrl,
-            prev,
-            next,
-          });
-          const rawInner = page.Component({});
-          const inner = prose ? <div class="docs-prose">{rawInner}</div> : rawInner;
-          return config.layout({ children: inner });
-        },
-        {
-          transforms: [
-            (h) => injectToc(h, (entries) => renderTocHtml(entries, locale)),
-            (h) => injectHeadingAnchors(h, locale),
-          ],
-        },
-      );
-
-      const fullHtml = "<!DOCTYPE html>\n" + html;
-      const relative = path.relative(config.out, page.outPath);
-      if (
-        !relative ||
-        relative === ".." ||
-        relative.startsWith(`..${path.sep}`) ||
-        path.isAbsolute(relative)
-      )
-        throw new Error(`[@vincle/docs] page output escapes its directory: ${page.url}`);
-      const outPath = path.join(out, relative);
-      await mkdir(path.dirname(outPath), { recursive: true });
-      await writeFile(outPath, fullHtml, "utf-8");
+      const runtime = {
+        importSource: page.source.runtime.importSource,
+        render: (create: () => unknown) =>
+          renderDocument(() => {
+            setVite(manifest!, { base: config.assetBase });
+            setDocs({
+              config,
+              currentPage: page.url,
+              hasMarkdownAlternate: page.file.endsWith(".mdx"),
+              meta,
+              sidebar,
+              currentTab,
+              resolvedTabs: tabsByLocale[locale],
+              alternates: translationAlternates(page.url, available),
+              lastUpdated,
+              editUrl,
+              prev,
+              next,
+            });
+            const rawInner = create() as Renderable;
+            const inner = prose ? <div class="docs-prose">{rawInner}</div> : rawInner;
+            return config.layout({ children: inner });
+          }),
+      };
+      for await (const output of renderPage(page, {
+        runtime,
+        plugins: [
+          {
+            name: "docs-html",
+            transform(renderedOutput) {
+              if (
+                !renderedOutput.path.endsWith(".html") ||
+                typeof renderedOutput.content !== "string"
+              )
+                return renderedOutput;
+              return {
+                ...renderedOutput,
+                content:
+                  "<!DOCTYPE html>\n" +
+                  injectHeadingAnchors(
+                    injectToc(renderedOutput.content, (entries) => renderTocHtml(entries, locale)),
+                    locale,
+                  ),
+              };
+            },
+          },
+        ],
+      })) {
+        const target = path.resolve(out, output.path);
+        const relative = path.relative(out, target);
+        if (
+          !relative ||
+          relative === ".." ||
+          relative.startsWith(`..${path.sep}`) ||
+          path.isAbsolute(relative)
+        ) {
+          throw new Error(`[@vincle/docs] page output escapes its directory: ${page.url}`);
+        }
+        await mkdir(path.dirname(target), { recursive: true });
+        await writeFile(
+          target,
+          output.content instanceof ArrayBuffer ? new Uint8Array(output.content) : output.content,
+        );
+      }
+      const outPath = path.join(out, path.relative(config.out, page.outPath));
 
       return { url: page.url, title: meta.title ?? page.url, file: outPath };
     },
@@ -248,7 +284,6 @@ async function postBuild(pages: Page[], rendered: RenderedPage[], out: string): 
   }
 
   await copyStaticAssets(out);
-  await generateMarkdownAlternates(pages, out);
   await generateNetlifyHeaders(out);
   await generateAgentSkillsIndex(out);
   await generateAiCatalog(out, config);

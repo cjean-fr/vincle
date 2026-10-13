@@ -115,12 +115,24 @@ Call the transform itself, which is what both plugins do:
 
 ```ts
 import precompileTransform from "@vincle/precompile";
+import { jsxAttr, jsxEscape } from "@vincle/core/jsx-runtime";
 
-const result = precompileTransform(code, "/src/App.tsx", {
-  runtimeSource: "@vincle/core/jsx-runtime",
-});
+const result = precompileTransform(
+  code,
+  "/src/App.tsx",
+  { runtimeSource: "@vincle/core/jsx-runtime" },
+  jsxAttr, // Optional: sanitize and serialize static attributes at build time.
+  jsxEscape, // Optional: serialize static text with the runtime's escaping rules.
+);
 // → { code, map } | null: null when there was nothing to rewrite
 ```
+
+The last two parameters are optional. Pass both for output matching Vincle's
+runtime, including build-time sanitization. `runtimeSource` only controls the
+generated import; it does not load these helpers. Omitting `jsxAttr` selects
+compatibility output, including unfiltered static attributes. Passing `jsxAttr`
+alone enables attribute sanitization, with the transform's default escaping for
+static text. The Vite and Bun plugins supply both automatically for Vincle.
 
 ### Knowing it runs
 

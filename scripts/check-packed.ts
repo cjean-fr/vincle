@@ -23,29 +23,35 @@ try {
   mkdirSync(join(modules, "@vincle"), { recursive: true });
   // External dependencies use the installed lockfile versions. Vincle packages
   // themselves are exclusively extracted tarballs, with no workspace fallback.
-  for (const entry of readdirSync(join(root, "node_modules"))) {
-    if (entry === "@vincle" || entry === "create-vincle") continue;
-    symlinkSync(join(root, "node_modules", entry), join(modules, entry));
+  function linkExternalModules(localModules: string) {
+    if (!existsSync(localModules)) return;
+    for (const entry of readdirSync(localModules)) {
+      if (entry === "@vincle" || entry === "create-vincle" || entry.startsWith(".")) continue;
+      if (entry.startsWith("@")) {
+        mkdirSync(join(modules, entry), { recursive: true });
+        for (const dependency of readdirSync(join(localModules, entry))) {
+          const target = join(modules, entry, dependency);
+          if (!existsSync(target)) symlinkSync(join(localModules, entry, dependency), target);
+        }
+      } else if (!existsSync(join(modules, entry))) {
+        symlinkSync(join(localModules, entry), join(modules, entry));
+      }
+    }
   }
+  linkExternalModules(join(root, "node_modules"));
   const manifests = [];
   for (const name of [
     "core",
     "flow",
     "vite-plugin",
     "precompile",
-    "site",
+    "ssg",
     "eslint-plugin",
     "create-vincle",
   ]) {
     const source = join(root, "packages", name);
     const manifest = JSON.parse(readFileSync(join(source, "package.json"), "utf8"));
-    const localModules = join(source, "node_modules");
-    if (existsSync(localModules))
-      for (const entry of readdirSync(localModules)) {
-        if (entry.startsWith("@") || entry.startsWith(".") || existsSync(join(modules, entry)))
-          continue;
-        symlinkSync(join(localModules, entry), join(modules, entry));
-      }
+    linkExternalModules(join(source, "node_modules"));
     const archive = join(dir, `${name}.tgz`);
     run(["bun", "pm", "pack", "--ignore-scripts", "--filename", archive], source);
     const target = join(modules, manifest.name);
@@ -78,7 +84,9 @@ try {
     imports
       .map((entry, i) => `import * as p${i} from ${JSON.stringify(entry)}; void p${i};`)
       .join("\n") +
-      '\nimport {renderToString} from "@vincle/core"; void renderToString(<p>packed</p>);\n',
+      '\nimport {renderToString} from "@vincle/core"; void renderToString(<p>packed</p>);\n' +
+      'declare module "@vincle/ssg" { interface SsgMeta { customField?: string } }\n' +
+      'import type {SsgPlugin} from "@vincle/ssg"; const plugin: SsgPlugin = {name:"types",metadata(context) { const value: string | undefined = context.meta.customField; void value; }}; void plugin;\n',
   );
   run(
     [
@@ -98,10 +106,32 @@ try {
     ],
     dir,
   );
+  mkdirSync(join(dir, "ssg-src"));
+  writeFileSync(join(dir, "ssg-src/index.tsx"), "export default () => <h1>Packed SSG</h1>");
+  writeFileSync(
+    join(dir, "ssg-src/_layout.tsx"),
+    "export default ({children}) => <main>{children}</main>",
+  );
+  writeFileSync(
+    join(dir, "ssg-src/article.mdx"),
+    "---\nsitemap: false\n---\n# Article\n\n<span>MDX</span>",
+  );
+  writeFileSync(
+    join(dir, "ssg-src/data.json.ts"),
+    "export default () => JSON.stringify({packed:true})",
+  );
   writeFileSync(
     join(dir, "smoke.mjs"),
     `import {renderToString} from "@vincle/core";
 import {jsx} from "@vincle/core/jsx-runtime";
+import {build as buildSsg} from "@vincle/ssg";
+import {readFile} from "node:fs/promises";
+const root = new URL(".", import.meta.url);
+await buildSsg({root:root.pathname, src:"ssg-src", out:"ssg-dist", site:"https://example.test/"});
+if (await readFile(new URL("ssg-dist/index.html",root),"utf8") !== "<main><h1>Packed SSG</h1></main>") throw new Error("Packed SSG JSX/layout failed");
+if (!(await readFile(new URL("ssg-dist/article/index.html",root),"utf8")).includes("<span>MDX</span>")) throw new Error("Packed MDX failed");
+if ((await readFile(new URL("ssg-dist/sitemap.xml",root),"utf8")).includes("article")) throw new Error("Packed sitemap opt-out failed");
+if (JSON.parse(await readFile(new URL("ssg-dist/data.json",root),"utf8")).packed !== true) throw new Error("Packed JSON failed");
 if (await renderToString(jsx("p", {children: "<packed>"})) !== "<p>&lt;packed&gt;</p>") throw new Error("Packed rendering failed");
 ${imports
   .filter((entry) => !entry.endsWith("/bun"))
@@ -111,7 +141,7 @@ ${imports
   run(["bun", "--conditions=dist", "smoke.mjs"], dir);
   if (Bun.which("node")) run(["node", "smoke.mjs"], dir);
   console.log(
-    "Tarball exports, declarations and Bun/available Node imports passed for all packages.",
+    "Tarball exports/declarations, imports and SSG builds passed in Bun/available Node for all packages.",
   );
 } finally {
   rmSync(dir, { recursive: true, force: true });

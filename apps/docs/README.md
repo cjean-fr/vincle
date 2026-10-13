@@ -30,3 +30,13 @@ bun run --cwd apps/docs bench:memory
 DOCS_HIGHLIGHTER=expressive-code bun run --cwd apps/docs bench:memory
 BENCH_CODE_BLOCKS=0 bun run --cwd apps/docs bench:memory
 ```
+
+Articles use `PageHandler` from `@vincle/ssg`: `load(source)` returns metadata and
+`render(context)` emits outputs. The docs MDX handler keeps Sätteri compilation
+lazy until publication and emits HTML and source Markdown together. JSX uses the
+SSG's built-in handler.
+
+Page imports use the same Vite configuration as the client assets, through
+`viteModules`. The shared `renderPage` lifecycle installs the documentation shell
+and transforms materialized HTML for the table of contents and heading anchors.
+Each build/refresh closes its module runner, so changed imports reload.
