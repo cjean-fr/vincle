@@ -201,7 +201,6 @@ describe("the vite adapter", () => {
   });
 
   describe("runtime probe", () => {
-    // @ts-expect-error: internal virtual module resolved ID
     const RID = "\0virtual:vincle-precompile-runtime";
 
     it("uses preact/jsx-runtime when jsxImportSource is preact (compatible)", async () => {
@@ -250,7 +249,7 @@ describe("the vite adapter", () => {
       ];
 
       for (const compatibility of [true, false]) {
-        const plugin = precompile({ compatibility });
+        const plugin = precompile();
         // @ts-expect-error: internal hook
         plugin.configResolved({ esbuild: {} });
         // @ts-expect-error: internal hook

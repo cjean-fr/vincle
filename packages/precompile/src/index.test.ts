@@ -8,6 +8,12 @@ import { parseSync } from "oxc-parser";
 
 import precompileTransform from "./index.js";
 
+function staticEscape(value: unknown): { value: string } {
+  const result = jsxEscape(value);
+  if ("value" in result && typeof result.value === "string") return { value: result.value };
+  throw new Error("Expected synchronous escaped text for a static compiler input");
+}
+
 const RT = "@vincle/core/jsx-runtime";
 
 /**
@@ -24,7 +30,7 @@ function transform(code: string, id = "/src/app.tsx"): string {
 
 /** A runtime declaring the `"vincle"` dialect: corrected, sanitized output. */
 function transformVincle(code: string, id = "/src/app.tsx"): string {
-  const result = precompileTransform(code, id, { runtimeSource: RT }, jsxAttr, jsxEscape);
+  const result = precompileTransform(code, id, { runtimeSource: RT }, jsxAttr, staticEscape);
   if (!result) throw new Error("expected a transform result, got null");
   return result.code;
 }
@@ -546,7 +552,7 @@ describe("precompileTransform", () => {
         "/src/app.tsx",
         { runtimeSource: RT },
         jsxAttr,
-        jsxEscape,
+        staticEscape,
       );
       const outputPath = join(TMP, `iso-pre-${id}.tsx`);
       writeFileSync(outputPath, `/** @jsxImportSource @vincle/core */\n${result!.code}`);
@@ -747,7 +753,7 @@ describe("precompileTransform", () => {
           "/src/app.tsx",
           { runtimeSource: RT },
           jsxAttr,
-          jsxEscape,
+          staticEscape,
         ),
       ).toBeNull();
       const nested = transformVincle("const a = <div><style>{css}</style></div>;");
@@ -986,7 +992,7 @@ describe("precompileTransform", () => {
         "/src/app.tsx",
         { runtimeSource: RT },
         jsxAttr,
-        jsxEscape,
+        staticEscape,
       );
       const outputPath = join(TMP, `pre-${id}.tsx`);
       writeFileSync(outputPath, `/** @jsxImportSource @vincle/core */\n${result!.code}`);
@@ -1107,7 +1113,7 @@ describe("precompileTransform", () => {
         "/src/app.tsx",
         { runtimeSource: RT },
         jsxAttr,
-        jsxEscape,
+        staticEscape,
       );
       expect(result!.code).toContain("jsxTemplateDeferred`<section><i>static</i>");
       expect(result!.code).toContain("[0, 1].map(() => <Reader />)");
@@ -1363,7 +1369,7 @@ describe("precompileTransform", () => {
           const out = precompileTransform(
             code,
             "/src/app.tsx",
-            { runtimeSource: RT, compatibility },
+            { runtimeSource: RT },
             compatibility ? undefined : jsxAttr,
           );
           if (!out) continue;

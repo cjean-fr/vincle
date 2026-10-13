@@ -43,6 +43,10 @@ declare function fetchPrice(symbol: string): Promise<{ value: number }>;
 export default async function handler(req: Request): Promise<Response> {
   const symbol = new URL(req.url).searchParams.get("symbol");
   if (!symbol) return new Response("Missing symbol", { status: 400 });
+  // This example accepts only symbols safe to embed in a fragment id.
+  if (!/^[A-Za-z0-9_-]+$/.test(symbol)) {
+    return new Response("Invalid symbol", { status: 400 });
+  }
 
   const price = await fetchPrice(symbol);
   const { url, html } = await renderFragment(
@@ -64,3 +68,8 @@ id already points at `url`.
 `content` accepts anything `<Defer>` does, but resolves once, to the last value
 produced: an `AsyncIterable` that never completes never resolves. For content
 over time, use [streaming](/integration/streaming).
+
+Fragment ids must start with a letter and contain only ASCII letters, digits,
+hyphens and underscores. This example rejects symbols such as `BRK.B` or
+`^GSPC` with a 400 response. To support them, map each symbol to a unique valid
+id and use the same mapping in the full build and regeneration handler.

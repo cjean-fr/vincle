@@ -1,4 +1,4 @@
-import { raw, renderToString, type JSX } from "@vincle/core";
+import { raw, renderToString, type JSX, type Renderable } from "@vincle/core";
 import { Asset } from "@vincle/vite-plugin";
 
 import { useDocs, useTranslation } from "../context.js";
@@ -41,8 +41,8 @@ const StructuredData = ({
   </script>
 );
 
-export async function Layout({ children }: { children: JSX.Element }): Promise<JSX.Element> {
-  const { config, meta, currentPage, alternates = [] } = useDocs();
+export async function Layout({ children }: { children: Renderable }): Promise<JSX.Element> {
+  const { config, meta, currentPage, hasMarkdownAlternate = false, alternates = [] } = useDocs();
   const locale = localeFor(currentPage);
   const t = useTranslation();
   const route = unlocalizedPath(currentPage);
@@ -104,7 +104,7 @@ export async function Layout({ children }: { children: JSX.Element }): Promise<J
           )}
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
         {/* Markdown twin of this page, for agents (RSS-style alternate). */}
-        {!isErrorPage && (
+        {!isErrorPage && hasMarkdownAlternate && (
           <link rel="alternate" type="text/markdown" href={markdownPath(currentPage)} />
         )}
         <meta property="og:type" content="website" />

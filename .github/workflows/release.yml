@@ -13,7 +13,7 @@ on:
           - eslint-plugin
           - vite-plugin
           - precompile
-          - site
+          - ssg
           - create-vincle
 
 jobs:
@@ -50,7 +50,7 @@ jobs:
           PACKAGE: ${{ github.event.inputs.package }}
         run: |
           case "$PACKAGE" in
-            core|flow|eslint-plugin|vite-plugin|precompile|site|create-vincle) ;;
+            core|flow|eslint-plugin|vite-plugin|precompile|ssg|create-vincle) ;;
             *) echo "::error::Package is not available for release: $PACKAGE"; exit 1 ;;
           esac
           PACKAGE_DIR="packages/$PACKAGE"
@@ -80,10 +80,16 @@ jobs:
           fi
 
       - name: Verify core is published
-        if: github.event.inputs.package != 'core' && github.event.inputs.package != 'site'
+        if: github.event.inputs.package != 'core'
         run: |
           CORE_VERSION="$(jq -r '.version' packages/core/package.json)"
           npm view "@vincle/core@${CORE_VERSION}" version
+
+      - name: Verify SSG integration is published
+        if: github.event.inputs.package == 'ssg'
+        run: |
+          PLUGIN_VERSION="$(jq -r '.version' packages/vite-plugin/package.json)"
+          npm view "@vincle/vite-plugin@${PLUGIN_VERSION}" version
 
       # `bun pm pack`, not `npm pack`: only bun resolves the `workspace:` protocol
       # to a real version. Going through npm would publish `workspace:^` as is.

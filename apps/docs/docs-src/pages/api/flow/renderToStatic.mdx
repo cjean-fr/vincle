@@ -56,10 +56,8 @@ await renderToStatic(
     for (const page of pages) {
       const html = await ctx.renderPage(() => <page.Component />);
       await writeFile(page.out, "<!DOCTYPE html>\n" + html);
+      await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
     }
-
-    // One .html file per deferred fragment, already Frame-wrapped.
-    await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
   },
   { adapter: NativeAdapter },
 );
@@ -67,3 +65,11 @@ await renderToStatic(
 
 Each placeholder's `src` defaults to `generatePath(id)`, the same path, so the
 browser finds each fragment.
+
+`emitFragments` drains the pending fragment registry, so a shared layout can
+reuse a target on the next page. Rendering multiple pages before draining
+requires targets unique across those pages, otherwise
+`ERR_VINCLE_FLOW_DUP_FRAGMENT` is thrown. With the default URL convention,
+reused targets write the same file: reuse them only for identical content.
+For page-specific content, use globally unique targets or a separate
+`renderToStatic` call per page with a page-specific `generatePath`.

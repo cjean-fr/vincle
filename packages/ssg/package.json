@@ -1,7 +1,7 @@
 {
-  "name": "@vincle/site",
+  "name": "@vincle/ssg",
   "version": "0.1.0",
-  "description": "Static file generation for Vincle sites",
+  "description": "File-based static generation with extensible content handlers and multiple outputs",
   "keywords": [
     "generator",
     "ssg",
@@ -17,7 +17,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cjean-fr/vincle.git",
-    "directory": "packages/site"
+    "directory": "packages/ssg"
   },
   "files": [
     "dist",
@@ -29,6 +29,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
     }
   },
   "publishConfig": {
@@ -39,6 +43,14 @@
     "check": "bun check",
     "test": "bun test",
     "format": "oxfmt"
+  },
+  "dependencies": {
+    "@mdx-js/mdx": "^3.1.1",
+    "@vincle/core": "workspace:*",
+    "@vincle/vite-plugin": "workspace:*",
+    "esbuild": "^0.28.2",
+    "gray-matter": "catalog:",
+    "vite": "catalog:"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

@@ -24,6 +24,6 @@ describe("error codes", () => {
     expect(err).toHaveProperty("code", "ERR_VINCLE_PRECOMPILE_HELPER");
     // Enumerable: a logger that spreads the error carries the code with it.
     expect(Object.keys(err)).toContain("code");
-    expect(Object.assign({}, err).code).toBe("ERR_VINCLE_PRECOMPILE_HELPER");
+    expect(Object.assign({}, err)).toHaveProperty("code", "ERR_VINCLE_PRECOMPILE_HELPER");
   });
 });

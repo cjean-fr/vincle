@@ -7,7 +7,10 @@ export function LanguageSwitcher() {
   const current = localeFor(currentPage);
   const t = useTranslation();
   return (
-    <nav aria-label={t("language")} class="flex shrink-0 items-center gap-1 text-xs">
+    <nav
+      aria-label={t("language")}
+      class="docs-language-switcher flex shrink-0 items-center gap-1 text-xs"
+    >
       {alternates.map(({ locale, href }) => (
         <a
           href={href}

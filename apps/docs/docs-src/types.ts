@@ -1,4 +1,7 @@
-export interface PageMeta {
+import type { PageHandler, DiscoveredPage, SsgMeta } from "@vincle/ssg";
+export type { PageHandler } from "@vincle/ssg";
+
+export interface PageMeta extends SsgMeta {
   title: string;
   description?: string;
   image?: string;
@@ -85,11 +88,6 @@ export interface MetaEntry {
 /** Per-directory metadata loaded from `_meta.json` files. */
 export type DirMeta = Readonly<Record<string, MetaEntry>>;
 
-export interface PageHandler {
-  name: string;
-  load(file: string, pagesDir: string, config: ResolvedDocsConfig): Promise<Page>;
-}
-
 export interface HandlerEntry {
   handler: PageHandler;
   prose?: boolean;
@@ -116,8 +114,8 @@ export interface DocsConfig {
   handlers?: Record<string, HandlerEntry>;
   /** Override the default page shell (Layout). Receives children already wrapped by the handler's prose wrapper. May be async: `renderDocument` awaits it. */
   layout?: (props: {
-    children: import("@vincle/core").JSX.Element;
-  }) => import("@vincle/core").Awaitable<import("@vincle/core").JSX.Element>;
+    children: import("@vincle/core").Renderable;
+  }) => import("@vincle/core").Awaitable<import("@vincle/core").Renderable>;
 }
 
 export interface ResolvedDocsConfig {
@@ -137,15 +135,14 @@ export interface ResolvedDocsConfig {
   sitemap: boolean;
   handlers: Record<string, HandlerEntry>;
   layout: (props: {
-    children: import("@vincle/core").JSX.Element;
-  }) => import("@vincle/core").Awaitable<import("@vincle/core").JSX.Element>;
+    children: import("@vincle/core").Renderable;
+  }) => import("@vincle/core").Awaitable<import("@vincle/core").Renderable>;
 }
 
-export interface Page {
+export interface Page extends DiscoveredPage {
   url: string;
   file: string;
   outPath: string;
   handler: string;
   meta: PageMeta;
-  Component: (props: object) => import("@vincle/core").JSX.Element;
 }

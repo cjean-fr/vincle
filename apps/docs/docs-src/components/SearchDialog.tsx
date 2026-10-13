@@ -5,8 +5,9 @@ export function SearchDialog() {
     <search>
       <button
         data-search-trigger
+        aria-label={t("searchDocumentation")}
         type="button"
-        class="docs-search-trigger inline-flex items-center gap-1.5 rounded-lg border border-[var(--docs-color-border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--docs-color-text-secondary)] transition-colors hover:border-[var(--docs-color-accent)] hover:text-[var(--docs-color-text)] max-sm:hidden md:px-3"
+        class="docs-search-trigger inline-flex items-center gap-1.5 rounded-lg border border-[var(--docs-color-border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--docs-color-text-secondary)] transition-colors hover:border-[var(--docs-color-accent)] hover:text-[var(--docs-color-text)] md:px-3"
       >
         <svg
           class="docs-search-icon size-4 shrink-0"

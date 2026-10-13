@@ -1,6 +1,9 @@
+import type { ModuleLoader } from "@vincle/ssg";
+
 import { raw as rawHtml } from "@vincle/core";
 import { jsxAttr } from "@vincle/core/jsx-precompile-runtime";
 import grayMatter from "gray-matter";
+import { createHash } from "node:crypto";
 import { readdirSync, rmSync } from "node:fs";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -118,7 +121,7 @@ const compileOptions: MdxCompileOptions = {
     // Preserve Vincle's serialization for elements carrying special attributes.
     ignoreElements: ["button", "th", "td", "a", "section"],
   },
-  providerImportSource: pathToFileURL(path.resolve(import.meta.dirname, "../mdx-components.jsx"))
+  providerImportSource: pathToFileURL(path.resolve(import.meta.dirname, "../mdx-components.tsx"))
     .href,
   hastPlugins: [
     // Before expressive-code: wraps tabbed fences into the `.docs-tabs` DOM
@@ -160,11 +163,18 @@ export class MdxCache {
   static readonly MAX_SIZE = 1000;
   #modules = new Map<string, CompiledMdx>();
   #pending = new Map<string, Promise<CompiledMdx>>();
+  #loaderIds = new WeakMap<ModuleLoader, number>();
+  #nextLoader = 0;
 
-  async load(file: string): Promise<CompiledMdx> {
+  async load(file: string, modules?: ModuleLoader): Promise<CompiledMdx> {
     const raw = await readFile(file, "utf-8");
     const hash = await this.#hash(raw);
-    const key = `${file}:${hash}`;
+    let loaderId = 0;
+    if (modules) {
+      loaderId = this.#loaderIds.get(modules) ?? ++this.#nextLoader;
+      this.#loaderIds.set(modules, loaderId);
+    }
+    const key = `${file}:${hash}:${loaderId}`;
 
     const existing = this.#modules.get(key);
     if (existing) return existing;
@@ -172,7 +182,7 @@ export class MdxCache {
     const prev = this.#pending.get(key);
     if (prev) return prev;
 
-    const promise = this.#compileAndLoad(file, raw, key, hash);
+    const promise = this.#compileAndLoad(file, raw, key, hash, modules);
     this.#pending.set(key, promise);
     try {
       return await promise;
@@ -186,6 +196,7 @@ export class MdxCache {
     raw: string,
     key: string,
     hash: string,
+    modules?: ModuleLoader,
   ): Promise<CompiledMdx> {
     const { data: frontmatter, content } = grayMatter(raw, {});
     const stableIds = Array.isArray(frontmatter["headingIds"])
@@ -223,11 +234,11 @@ export class MdxCache {
     const staticHtml = html ?? staticMdxHtml(code!);
     let Component: CompiledMdx["Component"];
     if (staticHtml !== null) {
-      // Fully static MDX needs no runtime module. Custom props still use the
-      // original module so component overrides and wrappers retain their meaning.
+      // Fully static MDX needs no runtime module. Only component overrides
+      // require the original module; standard SSG context does not alter it.
       let module: Promise<{ default: CompiledMdx["Component"] }> | undefined;
       Component = (props) => {
-        if (Object.keys(props).length === 0 && !("components" in props)) return rawHtml(staticHtml);
+        if (!("components" in props)) return rawHtml(staticHtml);
         module ??= (async () => {
           // Overrides opt into MDX component semantics, even for plain Markdown.
           code ??= (
@@ -236,12 +247,12 @@ export class MdxCache {
               hastPlugins: createPlugins(),
             })
           ).code;
-          return this.#importModule(file, code, hash);
+          return this.#importModule(file, code, hash, modules);
         })();
         return module.then((mod) => mod.default(props));
       };
     } else {
-      const mod = await this.#importModule(file, code!, hash);
+      const mod = await this.#importModule(file, code!, hash, modules);
       Component = mod.default;
       if (typeof Component !== "function") {
         throw new Error(`[@vincle/docs] Compiled MDX ${file} has no default export.`);
@@ -260,10 +271,25 @@ export class MdxCache {
     file: string,
     code: string,
     hash: string,
+    modules?: ModuleLoader,
   ): Promise<{
     default: (props: object) => import("@vincle/core").JSX.Element;
   }> {
-    const rel = path.relative(path.resolve(import.meta.dirname, "../pages"), file);
+    if (modules) {
+      const mod = await modules.load(file, "@vincle/core", code);
+      if (typeof mod["default"] !== "function")
+        throw new Error(`[@vincle/docs] Compiled MDX ${file} has no default export.`);
+      return { default: mod["default"] as CompiledMdx["Component"] };
+    }
+    const relative = path.relative(path.resolve(import.meta.dirname, "../pages"), file);
+    const rel =
+      relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
+        ? path.join(
+            "external",
+            createHash("sha256").update(file).digest("hex"),
+            path.basename(file),
+          )
+        : relative;
     // A new URL is required for each content version: the module loader caches imports.
     const tmpFile = path.join(COMPILED_DIR, rel.replace(/\.mdx$/, `.${hash}.tsx`));
     // `recursive` is idempotent; checking first would just open a race window.

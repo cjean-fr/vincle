@@ -47,7 +47,7 @@ await renderToStatic(async (ctx) => {
 
 ## With deferred fragments
 
-Pass an adapter and call `ctx.emitFragments` after rendering all pages. Each
+Pass an adapter and call `ctx.emitFragments` after rendering each page. Each
 deferred fragment is rendered, already `Frame`-wrapped, and passed to your
 callback with its id, its URL and its HTML.
 
@@ -65,10 +65,8 @@ await renderToStatic(
     for (const page of pages) {
       const html = await ctx.renderPage(() => <page.Component />);
       await writeFile(page.out, "<!DOCTYPE html>\n" + html);
+      await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
     }
-
-    // One .html file per deferred fragment.
-    await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
   },
   { adapter: NativeAdapter },
 );
@@ -83,6 +81,14 @@ The `generatePath` option sets each fragment's URL:
 | Option         | Default                              | Description                |
 | -------------- | ------------------------------------ | -------------------------- |
 | `generatePath` | ``(id) => `/fragments/${id}.html` `` | URL path for each fragment |
+
+`emitFragments` drains the pending fragment registry, so a shared layout can
+reuse a target on the next page. Rendering multiple pages before draining
+requires targets unique across those pages, otherwise
+`ERR_VINCLE_FLOW_DUP_FRAGMENT` is thrown. With the default URL convention,
+reused targets write the same file: reuse them only for identical content.
+For page-specific content, use globally unique targets or a separate
+`renderToStatic` call per page with a page-specific `generatePath`.
 
 ## On-demand regeneration
 
@@ -105,6 +111,10 @@ declare function fetchPrice(symbol: string): Promise<{ value: number }>;
 export default async function handler(req: Request): Promise<Response> {
   const symbol = new URL(req.url).searchParams.get("symbol");
   if (!symbol) return new Response("Missing symbol", { status: 400 });
+  // This example accepts only symbols safe to embed in a fragment id.
+  if (!/^[A-Za-z0-9_-]+$/.test(symbol)) {
+    return new Response("Invalid symbol", { status: 400 });
+  }
 
   const price = await fetchPrice(symbol);
   const { url, html } = await renderFragment(
@@ -123,3 +133,8 @@ export default async function handler(req: Request): Promise<Response> {
 How you publish those bytes at `url` (a blob store, a revalidation call, a CDN
 purge and re-upload) depends on the host and stays in your handler. See
 [`renderFragment`](/api/flow/renderFragment) for the full API.
+
+Fragment ids must start with a letter and contain only ASCII letters, digits,
+hyphens and underscores. This example rejects symbols such as `BRK.B` or
+`^GSPC` with a 400 response. To support them, map each symbol to a unique valid
+id and use the same mapping in the full build and regeneration handler.

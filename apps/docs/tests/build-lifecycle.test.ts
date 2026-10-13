@@ -15,7 +15,6 @@ test("refresh removes deleted and renamed routes while preserving Vite and publi
     import path from "node:path";
     import config from ${JSON.stringify(path.join(app, "docs.config.ts"))};
     import { rebuildAll, refreshPages } from ${JSON.stringify(path.join(app, "docs-src/lib/build-engine.tsx"))};
-    import { createPage } from ${JSON.stringify(path.join(app, "docs-src/lib/page-utils.ts"))};
 
     const root = ${JSON.stringify(dir)};
     const pages = path.join(root, "docs-src/pages");
@@ -34,9 +33,12 @@ test("refresh removes deleted and renamed routes while preserving Vite and publi
       layout: ({ children }) => children,
       handlers: { ".mdx": { handler: {
         name: "fixture",
-        async load(file, pagesDir, config) {
+        async load({file}) {
           const text = await readFile(file, "utf8");
-          return createPage(file, pagesDir, config, "fixture", { title: path.basename(file) }, () => text);
+          return { meta: {title:path.basename(file)}, render(context) { return [
+            {path:context.outputPath(),content:()=>context.runtime.render(()=>text)},
+            {path:context.outputPath(".md"),content:text,sitemap:false},
+          ]; } };
         },
       } } },
     });
