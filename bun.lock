@@ -151,7 +151,7 @@
       "name": "@vincle/ssg",
       "version": "0.3.0",
       "bin": {
-        "ssg": "./dist/bin.js",
+        "ssg": "./bin.js",
       },
       "dependencies": {
         "@vincle/core": "workspace:*",

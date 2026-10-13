@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runCli } from "./cli.js";
+import { runCli } from "./dist/cli.js";
 
 try {
   await runCli(process.argv.slice(2));

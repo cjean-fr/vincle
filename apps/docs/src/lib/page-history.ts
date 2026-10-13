@@ -1,5 +1,9 @@
+import { execFile } from "node:child_process";
 /** Source links and the homepage content modification date. */
 import path from "node:path";
+import { promisify } from "node:util";
+
+const run = promisify(execFile);
 
 const APP_ROOT = path.resolve(import.meta.dirname!, "../..");
 
@@ -15,13 +19,11 @@ export function editUrlFor(base: string | null, file: string): string | null {
 /** One history lookup for the whole content directory, used by the homepage. */
 export async function lastModified(pagesDir: string): Promise<string | null> {
   try {
-    const proc = Bun.spawn(["git", "log", "-1", "--format=%cI", "--", "."], {
+    const { stdout } = await run("git", ["log", "-1", "--format=%cI", "--", "."], {
       cwd: path.resolve(pagesDir),
-      stdout: "pipe",
-      stderr: "ignore",
     });
-    const date = (await new Response(proc.stdout).text()).trim();
-    return (await proc.exited) === 0 && Number.isFinite(Date.parse(date)) ? date : null;
+    const date = stdout.trim();
+    return Number.isFinite(Date.parse(date)) ? date : null;
   } catch {
     return null;
   }

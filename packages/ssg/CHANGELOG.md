@@ -2,6 +2,8 @@
 
 ## 0.3.0
 
+- Keep the CLI launcher in the package before compilation so clean workspace installs create the `ssg` executable.
+
 - Consolidate layout rendering and CLI configuration loading; remove the generated-JavaScript recognizer in favor of direct static HTML or normal MDX module evaluation.
 
 - Use Sätteri as the only Markdown/MDX compiler, including the default handlers; preserve module metadata, additional outputs and custom JSX runtimes. Remove `@mdx-js/mdx`.

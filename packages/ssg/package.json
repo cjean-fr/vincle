@@ -20,9 +20,10 @@
     "directory": "packages/ssg"
   },
   "bin": {
-    "ssg": "./dist/bin.js"
+    "ssg": "./bin.js"
   },
   "files": [
+    "bin.js",
     "dist",
     "README.md",
     "LICENSE"
