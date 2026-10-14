@@ -4,6 +4,7 @@ import { once } from "node:events";
 import { mkdtemp, mkdir, writeFile, readdir, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 const roots: string[] = [];
 const bin = path.resolve(import.meta.dirname, "../bin.js");
@@ -73,7 +74,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
         timeout = setTimeout(() => reject(new Error("CLI dev startup timed out")), 10000);
         const receive = (chunk: Buffer) => {
           output += chunk.toString();
-          if (output.includes("Local:")) resolve();
+          if (stripVTControlCharacters(output).includes("Local:")) resolve();
         };
         child.stdout.on("data", receive);
         child.stderr.on("data", receive);
@@ -81,7 +82,9 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
         child.once("exit", () => reject(new Error(output)));
       });
       clearTimeout(timeout!);
-      const url = output.match(/http:\/\/(?:localhost|127\.0\.0\.1):\d+\//)?.[0];
+      const url = stripVTControlCharacters(output).match(
+        /http:\/\/(?:localhost|127\.0\.0\.1):\d+\//,
+      )?.[0];
       expect(url).toBeDefined();
       expect(await (await fetch(url!)).text()).toContain("CLI first");
       await writeFile(
