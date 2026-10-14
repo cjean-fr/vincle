@@ -72,7 +72,9 @@ async function prepareVite(
     if (entries.length) {
       shared.build = {
         ...shared.build,
-        rolldownOptions: { ...resolved.build.rolldownOptions, input: entries },
+        // Keep user options, not resolved defaults: resolveConfig also resolves
+        // the SSR environment, whose Node platform must not leak into clients.
+        rolldownOptions: { ...shared.build?.rolldownOptions, input: entries },
       };
       hasClientInput = true;
     }
