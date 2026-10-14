@@ -1,6 +1,7 @@
 import { raw as rawHtml } from "@vincle/core";
 import { jsxAttr } from "@vincle/core/jsx-precompile-runtime";
 import grayMatter from "gray-matter";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import {
   mdxToJs,
@@ -66,8 +67,7 @@ export class MdxCache<T = undefined> {
     this.options = options;
   }
   static readonly MAX_SIZE = 1000;
-  #modules = new Map<string, CompiledMdx<T>>();
-  #pending = new Map<string, Promise<CompiledMdx<T>>>();
+  #modules = new Map<string, Promise<CompiledMdx<T>>>();
   #loaderIds = new WeakMap<ModuleLoader, number>();
   #nextLoader = 0;
 
@@ -77,7 +77,7 @@ export class MdxCache<T = undefined> {
     importSource = "@vincle/core",
   ): Promise<CompiledMdx<T>> {
     const raw = await readFile(file, "utf-8");
-    const hash = await this.#hash(raw);
+    const hash = createHash("sha256").update(raw).digest("hex");
     const loaderId = this.#loaderIds.get(modules) ?? ++this.#nextLoader;
     this.#loaderIds.set(modules, loaderId);
     const key = `${file}:${hash}:${loaderId}:${importSource}`;
@@ -85,22 +85,23 @@ export class MdxCache<T = undefined> {
     const existing = this.#modules.get(key);
     if (existing) return existing;
 
-    const prev = this.#pending.get(key);
-    if (prev) return prev;
-
-    const promise = this.#compileAndLoad(file, raw, key, modules, importSource);
-    this.#pending.set(key, promise);
+    const promise = this.#compileAndLoad(file, raw, modules, importSource);
+    this.#modules.set(key, promise);
+    if (this.#modules.size > MdxCache.MAX_SIZE) {
+      const first = this.#modules.keys().next();
+      if (!first.done) this.#modules.delete(first.value);
+    }
     try {
       return await promise;
-    } finally {
-      this.#pending.delete(key);
+    } catch (error) {
+      if (this.#modules.get(key) === promise) this.#modules.delete(key);
+      throw error;
     }
   }
 
   async #compileAndLoad(
     file: string,
     raw: string,
-    key: string,
     modules: ModuleLoader,
     importSource: string,
   ): Promise<CompiledMdx<T>> {
@@ -137,13 +138,6 @@ export class MdxCache<T = undefined> {
         importSource,
       );
 
-    if (this.#modules.size >= MdxCache.MAX_SIZE) {
-      const first = this.#modules.keys().next();
-      if (!first.done) {
-        this.#modules.delete(first.value);
-      }
-    }
-
     let Component: MdxComponent;
     let loaded: Record<string, unknown> | undefined;
     if (html !== null) {
@@ -159,14 +153,12 @@ export class MdxCache<T = undefined> {
       Component = loaded["default"] as MdxComponent;
     }
 
-    const entry: CompiledMdx<T> = {
+    return {
       Component,
       meta: loaded ? moduleMeta(loaded, file, meta) : meta,
       module: loaded,
       data: preparation?.data as T,
     };
-    this.#modules.set(key, entry);
-    return entry;
   }
 
   async #importModule(
@@ -185,13 +177,6 @@ export class MdxCache<T = undefined> {
     return mod;
   }
 
-  async #hash(content: string): Promise<string> {
-    const data = new TextEncoder().encode(content);
-    const hash = await crypto.subtle.digest("SHA-256", data);
-    const hex = Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
-    return hex.slice(0, 16);
-  }
-
   invalidate(file: string): void {
     const prefix = file + ":";
     for (const key of this.#modules.keys()) {
@@ -203,7 +188,6 @@ export class MdxCache<T = undefined> {
 
   clear(): void {
     this.#modules.clear();
-    this.#pending.clear();
   }
 }
 
