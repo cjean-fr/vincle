@@ -1,9 +1,10 @@
+import { fullUrl } from "@vincle/ssg";
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import config from "../../docs.config.js";
-import { fullUrl } from "../lib/full-url.js";
+import ssg from "../../ssg.config.js";
 
 export const meta = { title: "Agent discovery", sitemap: false, search: false };
 
@@ -61,8 +62,8 @@ export default async function* wellKnown() {
         skills,
       }),
     };
-  const site = config.site;
-  if (site === null) return;
+  const site = ssg.site;
+  if (!site) return;
   const host = new URL(site).hostname;
   yield {
     path: ".well-known/ai-catalog.json",
@@ -73,7 +74,7 @@ export default async function* wellKnown() {
         identifier: `urn:air:${host}:skill:${skill.name}`,
         displayName: `${config.title}: ${skill.name}`,
         type: "text/markdown",
-        url: fullUrl(skill.url, site, config.base),
+        url: fullUrl(skill.url, site),
         description: skill.description,
         representativeQueries: [
           "where can I find the Vincle documentation",

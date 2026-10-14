@@ -1,6 +1,8 @@
+import { fullUrl } from "@vincle/ssg";
+
 import type { DocsRenderContext } from "../lib/context.js";
 
-import { fullUrl } from "../lib/full-url.js";
+import ssg from "../../ssg.config.js";
 import { markdownPath } from "../lib/i18n/locale.js";
 import { getHeaders, getStructuredData } from "../lib/seo.js";
 
@@ -8,7 +10,6 @@ type SEOProps = { page: DocsRenderContext };
 
 export function SEOHeader({ page }: SEOProps) {
   const {
-    config,
     title,
     description,
     canonical,
@@ -27,24 +28,16 @@ export function SEOHeader({ page }: SEOProps) {
       <title>{title}</title>
       {description && <meta name="description" content={description} />}
       {canonical && !isErrorPage && <link rel="canonical" href={canonical} />}
-      {config.site &&
+      {ssg.site &&
         !isErrorPage &&
         alternates.map(({ locale: language, href }) => (
-          <link
-            rel="alternate"
-            hrefLang={language}
-            href={fullUrl(href, config.site!, config.base)}
-          />
+          <link rel="alternate" hrefLang={language} href={fullUrl(href, ssg.site)} />
         ))}
-      {config.site && !isErrorPage && alternates.some((alternate) => alternate.locale === "en") && (
+      {ssg.site && !isErrorPage && alternates.some((alternate) => alternate.locale === "en") && (
         <link
           rel="alternate"
           hrefLang="x-default"
-          href={fullUrl(
-            alternates.find((alternate) => alternate.locale === "en")!.href,
-            config.site,
-            config.base,
-          )}
+          href={fullUrl(alternates.find((alternate) => alternate.locale === "en")!.href, ssg.site)}
         />
       )}
       <link rel="sitemap" type="application/xml" href="/sitemap.xml" />

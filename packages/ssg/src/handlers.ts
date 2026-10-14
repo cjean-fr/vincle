@@ -11,7 +11,7 @@ import type {
 
 import { sourceDirectory } from "./conventions.js";
 import { failure, diagnose, contextualError } from "./errors.js";
-import { defaultHandlers, vincleRuntime } from "./formats.js";
+import { resolveHandlers, vincleRuntime } from "./formats.js";
 import { metadata } from "./metadata.js";
 import { loadModule } from "./module.js";
 import { routeForFile, outputPathForRoute } from "./routes.js";
@@ -69,14 +69,7 @@ async function discover(options: DiscoverPagesOptions): Promise<DiscoveredPage[]
       hint: "Set concurrency to an integer greater than zero, such as 16.",
       context: { concurrency: String(concurrency) },
     });
-  const handlers = { ...defaultHandlers, ...options.handlers };
-  for (const extension of Object.keys(handlers))
-    if (!/^\.[^.\\/]+$/.test(extension))
-      throw failure(`Invalid handler extension: ${extension}`, {
-        reason: "INVALID_HANDLER",
-        hint: "Use one dotted extension such as .mdx or .pt as each handler key.",
-        context: { extension },
-      });
+  const handlers = resolveHandlers(options.handlers);
   let info;
   try {
     info = await stat(src);
@@ -145,7 +138,7 @@ async function discover(options: DiscoverPagesOptions): Promise<DiscoveredPage[]
         throw contextualError(error, "Page handler failed", {
           reason: "SOURCE_FAILED",
           hint: "Fix the named handler or source file. Inspect the cause for the original failure.",
-          context: { file, handler: handler.name },
+          context: { file, handler: handler.name, phase: "load" },
         });
       }
     }

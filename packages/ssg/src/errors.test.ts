@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -30,6 +30,81 @@ async function capture(run: () => unknown | Promise<unknown>): Promise<SsgError>
   }
   throw new Error("Expected an SsgError");
 }
+
+test("encoded traversal URLs fail before replacing the published site", () =>
+  fixture(async (root) => {
+    await mkdir(path.join(root, "src"));
+    await writeFile(path.join(root, "src/page.fixture"), "fixture");
+    await generateSite({
+      out: path.join(root, "dist"),
+      outputs: [{ path: "index.html", content: "old" }],
+    });
+    for (const segment of ["%2e", "%2E%2e", ".%2e", "%2E."]) {
+      const error = await capture(() =>
+        build({
+          root,
+          assets: false,
+          site: "https://example.test/docs/",
+          handlers: {
+            ".fixture": {
+              name: "fixture",
+              load: () => ({
+                render: () => ({ path: "page.html", url: `/${segment}/outside`, content: "new" }),
+              }),
+            },
+          },
+        }),
+      );
+      expect(error.reason).toBe("INVALID_ROUTE");
+      expect(await readFile(path.join(root, "dist/index.html"), "utf8")).toBe("old");
+    }
+  }));
+
+test("failing asset disposal cleans temporary files and preserves the original build error", () =>
+  fixture(async (root) => {
+    await mkdir(path.join(root, "src"));
+    await writeFile(path.join(root, "src/page.fixture"), "fixture");
+    let failRender = false;
+    const run = () =>
+      build({
+        root,
+        handlers: {
+          ".fixture": {
+            name: "fixture",
+            load: () => ({
+              render() {
+                if (failRender) throw new Error("original render failure");
+                return { path: "index.html", content: "published" };
+              },
+            }),
+          },
+        },
+        assets: {
+          async prepare({ out }) {
+            await mkdir(out);
+            return {
+              directory: out,
+              dispose() {
+                throw new Error("dispose failure");
+              },
+            };
+          },
+        },
+      });
+    const cleanup = await capture(run);
+    expect(cleanup.reason).toBe("ASSETS_FAILED");
+    expect(cleanup.context["phase"]).toBe("cleanup");
+    expect(cleanup.hint).toContain("published successfully");
+    expect(cleanup.message).toContain("dispose failure");
+    expect(await readFile(path.join(root, "dist/index.html"), "utf8")).toBe("published");
+    expect((await readdir(root)).filter((name) => name.startsWith(".vincle-"))).toEqual([]);
+    failRender = true;
+    const original = await capture(run);
+    expect(original.reason).toBe("SOURCE_FAILED");
+    expect(original.message).toContain("original render failure");
+    expect(original.message).not.toContain("dispose failure");
+    expect((await readdir(root)).filter((name) => name.startsWith(".vincle-"))).toEqual([]);
+  }));
 
 test("missing default/custom src aborts before assets, plugins or output publication", () =>
   fixture(async (root) => {

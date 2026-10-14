@@ -1,9 +1,9 @@
 import { renderToString, Scope, type Renderable } from "@vincle/core";
 import path from "node:path";
 
-import type { JsxRuntime, PageHandler, SsgProducer, SiteContent } from "./types.js";
+import type { DiscoverPagesOptions, JsxRuntime, PageHandler, SiteContent } from "./types.js";
 
-import { failure, diagnose } from "./errors.js";
+import { failure } from "./errors.js";
 import { createMdxHandler } from "./mdx.js";
 import { moduleMeta } from "./metadata.js";
 import { withAdditionalOutputs } from "./results.js";
@@ -20,6 +20,7 @@ function isContent(value: unknown): value is SiteContent {
 function scriptHandler(name: "module" | "jsx"): PageHandler {
   return {
     name,
+    incremental: true,
     async load(source) {
       const mod = await source.modules.load(source.file, source.runtime.importSource);
       const producer = mod["default"];
@@ -58,28 +59,24 @@ const moduleHandler = scriptHandler("module");
 const jsxHandler = scriptHandler("jsx");
 const markdownHandler = createMdxHandler();
 
-function checked(handler: PageHandler): PageHandler {
-  return {
-    ...handler,
-    incremental: true,
-    load: (source) =>
-      diagnose(async () => handler.load(source), "Could not load source", {
-        reason: "SOURCE_FAILED",
-        hint: "Check this file's syntax, metadata and imports. Inspect the cause for the original parser or filesystem error.",
-        context: { file: source.file, handler: handler.name, phase: "load" },
-      }),
-  };
-}
-
 /** Override or add an extension in build({ handlers }). */
 export const defaultHandlers: Readonly<Record<string, PageHandler>> = {
-  ".js": checked(moduleHandler),
-  ".ts": checked(moduleHandler),
-  ".jsx": checked(jsxHandler),
-  ".tsx": checked(jsxHandler),
-  ".md": checked(markdownHandler),
-  ".mdx": checked(markdownHandler),
+  ".js": moduleHandler,
+  ".ts": moduleHandler,
+  ".jsx": jsxHandler,
+  ".tsx": jsxHandler,
+  ".md": markdownHandler,
+  ".mdx": markdownHandler,
 };
 
-// Publicly typed producer contracts are intentionally independent of JSX values.
-export type { SsgProducer };
+export function resolveHandlers(overrides: DiscoverPagesOptions["handlers"]) {
+  const handlers = { ...defaultHandlers, ...overrides };
+  for (const extension of Object.keys(handlers))
+    if (!/^\.[^.\\/]+$/.test(extension))
+      throw failure(`Invalid handler extension: ${extension}`, {
+        reason: "INVALID_HANDLER",
+        hint: "Use one dotted extension such as .mdx or .pt as each handler key; false disables a format.",
+        context: { extension },
+      });
+  return handlers;
+}

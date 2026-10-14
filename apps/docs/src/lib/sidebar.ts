@@ -1,9 +1,7 @@
-import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type {
-  PageMeta,
   DirMeta,
   ResolvedSidebar,
   ResolvedSidebarItem,
@@ -19,16 +17,14 @@ export interface NavLink {
   href: string;
 }
 
-type DocsPage = Page & { meta: PageMeta };
-
 /** A node in the content tree built from the pages directory structure. */
 interface TreeNode {
   /** URL segment / slug of this node (e.g. "getting-started"). */
   name: string;
   /** Absolute path of the directory this node represents, if any. */
-  dir: string | null;
+  dir: string;
   /** Index page sitting directly at this node's directory, if any. */
-  page: DocsPage | null;
+  page: Page | null;
   children: Map<string, TreeNode>;
 }
 
@@ -44,7 +40,6 @@ function readDirMeta(dir: string): Promise<DirMeta> {
 
   const load = async (): Promise<DirMeta> => {
     const file = path.join(dir, "_meta.json");
-    if (!existsSync(file)) return NO_META;
     try {
       const parsed = JSON.parse(await readFile(file, "utf-8")) as Record<string, unknown>;
       return parsed && typeof parsed === "object" ? (parsed as DirMeta) : NO_META;
@@ -70,7 +65,7 @@ export function clearMetaCache(): void {
  */
 export async function resolveSidebar(
   config: ResolvedDocsConfig,
-  pages: readonly DocsPage[],
+  pages: readonly Page[],
   currentUrl: string,
 ): Promise<ResolvedSidebar> {
   const tab = tabFor(config.tabs, currentUrl);
@@ -108,7 +103,7 @@ export function tabFor(tabs: readonly TabConfig[], url: string): TabConfig | nul
   return tabs.find((t) => t.slug === top) ?? null;
 }
 
-function insert(root: TreeNode, page: DocsPage): void {
+function insert(root: TreeNode, page: Page): void {
   // url like /guide/getting-started/installation → segments after the tab.
   const withoutTab = unlocalizedPath(page.url).replace(/^\/[^/]+\/?/, "");
   const segments = withoutTab.split("/").filter(Boolean);
@@ -118,7 +113,7 @@ function insert(root: TreeNode, page: DocsPage): void {
     if (!child) {
       child = {
         name: seg,
-        dir: node.dir ? path.join(node.dir, seg) : null,
+        dir: path.join(node.dir, seg),
         page: null,
         children: new Map(),
       };
@@ -130,7 +125,6 @@ function insert(root: TreeNode, page: DocsPage): void {
 }
 
 async function treeToItems(node: TreeNode, currentUrl: string): Promise<ResolvedSidebarItem[]> {
-  if (!node.dir) return [];
   const meta = await readDirMeta(node.dir);
   const entries = [...node.children.values()];
 
@@ -211,28 +205,15 @@ export function resolveNavigation(
   const idx = flat.findIndex((p) => p.href === currentUrl);
   if (idx === -1) return { prev: null, next: null };
 
-  const prevPage = idx > 0 ? flat[idx - 1] : null;
-  const nextPage = idx < flat.length - 1 ? flat[idx + 1] : null;
-  return {
-    prev: prevPage ? { label: prevPage.label, href: prevPage.href } : null,
-    next: nextPage ? { label: nextPage.label, href: nextPage.href } : null,
-  };
+  return { prev: flat[idx - 1] ?? null, next: flat[idx + 1] ?? null };
 }
 
-function flattenPages(sidebar: ResolvedSidebar): { label: string; href: string }[] {
-  const out: { label: string; href: string }[] = [];
-  for (const group of sidebar.groups) {
-    for (const item of group.items) collectPages(item, out);
-  }
-  return out;
-}
-
-function collectPages(item: ResolvedSidebarItem, out: { label: string; href: string }[]): void {
-  if (item.kind === "page") {
-    out.push({ label: item.label, href: item.href });
-  } else if (item.kind === "category") {
-    for (const child of item.items) collectPages(child, out);
-  }
+function flattenPages(sidebar: ResolvedSidebar): NavLink[] {
+  const collect = (items: readonly ResolvedSidebarItem[]): NavLink[] =>
+    items.flatMap((item) =>
+      item.kind === "page" ? [{ label: item.label, href: item.href }] : collect(item.items),
+    );
+  return sidebar.groups.flatMap((group) => collect(group.items));
 }
 
 /**
@@ -242,7 +223,7 @@ function collectPages(item: ResolvedSidebarItem, out: { label: string; href: str
  */
 export async function firstPageOfTab(
   config: ResolvedDocsConfig,
-  pages: readonly DocsPage[],
+  pages: readonly Page[],
   tab: TabConfig,
   locale: import("./i18n/locale.js").Locale = "en",
 ): Promise<string> {

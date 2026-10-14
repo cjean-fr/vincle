@@ -78,6 +78,62 @@ test("static Markdown preserves Core URL policy and executable MDX uses the acti
     expect(imports).toBe(1);
   }));
 
+test("a discovered page uses one source snapshot for its HTML, metadata and Markdown", () =>
+  fixture(async (src) => {
+    const file = path.join(src, "article.mdx");
+    const text = "---\ntitle: Original\n---\n# Original\n";
+    await writeFile(file, text);
+    let compilations = 0;
+    const handler = createMdxHandler({
+      prepare() {
+        compilations++;
+        return { data: undefined };
+      },
+    });
+    const discover = () => discoverPages({ src, handlers: { ".mdx": handler } });
+    const [original] = await discover();
+    await writeFile(file, "---\ntitle: Changed\n---\n# Changed\n");
+    const outputs = [];
+    for await (const output of renderPage(original!)) outputs.push(output);
+    expect(original!.meta.title).toBe("Original");
+    expect(outputs[0]!.content).toContain("<h1>Original</h1>");
+    expect(outputs[1]!.content).toBe(text);
+    for await (const _ of renderPage(original!)) {
+      /* Reuse this page's compilation. */
+    }
+    expect(compilations).toBe(1);
+    const [changed] = await discover();
+    for await (const output of renderPage(changed!))
+      if (output.path.endsWith(".html")) expect(output.content).toContain("<h1>Changed</h1>");
+    expect(compilations).toBe(2);
+  }));
+
+test("a discovered MDX page compiles for the renderer's runtime and module loader", () =>
+  fixture(async (src) => {
+    await writeFile(path.join(src, "article.mdx"), '# Article {"executed"}');
+    const imports: string[] = [];
+    const modules: ModuleLoader = {
+      async load(_file, source, code) {
+        imports.push(source);
+        expect(code).toContain(source + "/jsx-runtime");
+        return { default: () => raw(source) };
+      },
+    };
+    const [page] = await discoverPages({ src, modules });
+    for await (const _ of renderPage(page!)) {
+      /* Compile for Core. */
+    }
+    const runtime = { importSource: "custom-runtime", render: async () => "custom" };
+    for await (const _ of renderPage(page!, { runtime })) {
+      /* Compile for the override. */
+    }
+    page!.source.modules = { ...modules };
+    for await (const _ of renderPage(page!, { runtime })) {
+      /* Compile with the new loader. */
+    }
+    expect(imports).toEqual(["@vincle/core", "custom-runtime", "custom-runtime"]);
+  }));
+
 test("cache deduplicates concurrent loads but separates loaders, source edits and runtimes", () =>
   fixture(async (src) => {
     const file = path.join(src, "article.mdx");
