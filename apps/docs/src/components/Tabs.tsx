@@ -14,7 +14,7 @@ export function Tabs() {
 
   return (
     <nav
-      class="docs-tabs-bar ml-2 flex items-center gap-0.5 overflow-x-auto max-sm:hidden"
+      class="docs-tabs-bar ml-2 flex items-center gap-0.5 overflow-x-auto max-md:hidden"
       aria-label={t("sections")}
     >
       {resolvedTabs.map((tab) => (
@@ -27,6 +27,39 @@ export function Tabs() {
           {tab.label}
         </a>
       ))}
+    </nav>
+  );
+}
+
+/** The header tabs, as a segmented control at the top of the mobile drawer where the header has no room. */
+export function DrawerTabs() {
+  const t = useTranslation();
+  const { resolvedTabs, currentTab, currentPage } = useDocs();
+
+  if (currentTab === null && unlocalizedPath(currentPage) !== "/") return null;
+
+  return (
+    <nav
+      class="docs-drawer-tabs grid auto-cols-fr grid-flow-col gap-1 rounded-lg bg-[var(--docs-color-surface)] p-1"
+      aria-label={t("sections")}
+    >
+      {resolvedTabs.map((tab) => {
+        const current = currentTab !== null && tab.slug === currentTab.slug;
+        return (
+          <a
+            key={tab.slug}
+            href={tab.href}
+            aria-current={current ? "page" : undefined}
+            class={`docs-tab-link flex min-h-9 items-center justify-center truncate rounded-md px-2 text-sm font-medium transition-colors ${
+              current
+                ? "bg-[var(--docs-color-bg)] text-[var(--docs-color-accent)] shadow-[0_1px_2px_rgb(0_0_0/0.12)]"
+                : "text-[var(--docs-color-text-secondary)] hover:text-[var(--docs-color-text)]"
+            }`}
+          >
+            {tab.label}
+          </a>
+        );
+      })}
     </nav>
   );
 }

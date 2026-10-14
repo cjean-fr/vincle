@@ -1,15 +1,13 @@
 import { useDocs, useTranslation } from "../lib/context.js";
-import { localeFor, type Locale } from "../lib/i18n/locale.js";
+import { localeFor, unlocalizedPath, type Locale } from "../lib/i18n/locale.js";
 import { Icon } from "./Icon.js";
 
 export function PageFooter() {
   const t = useTranslation();
-  const { editUrl, lastUpdated, prev, next, currentPage } = useDocs();
+  const { config, editUrl, lastUpdated, prev, next, currentPage } = useDocs();
   const locale = localeFor(currentPage);
   const hasNav = prev !== null || next !== null;
-  const hasFooter = editUrl !== null || lastUpdated !== null;
-
-  if (!hasNav && !hasFooter) return null;
+  const isHome = unlocalizedPath(currentPage) === "/";
 
   return (
     <div class="docs-page-footer-wrapper mt-16">
@@ -47,27 +45,39 @@ export function PageFooter() {
           )}
         </nav>
       )}
-      {hasFooter && (
-        <footer class="docs-page-footer mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--docs-color-border)] pt-6 text-sm text-[var(--docs-color-text-secondary)]">
-          {editUrl ? (
-            <a
-              class="docs-page-footer-edit inline-flex items-center gap-1 transition-colors hover:text-[var(--docs-color-text)]"
-              href={editUrl}
-              target="_blank"
-              rel="noopener"
-            >
-              {t("editPage")}
-            </a>
-          ) : (
-            <span />
-          )}
-          {lastUpdated && (
-            <time class="docs-page-footer-updated" dateTime={lastUpdated}>
-              {t("lastUpdated", { date: formatDate(lastUpdated, locale) })}
-            </time>
-          )}
-        </footer>
-      )}
+      <footer class="docs-page-footer mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--docs-color-border)] pt-6 text-sm text-[var(--docs-color-text-secondary)]">
+        <span>
+          {config.title} · {t("createdBy")}{" "}
+          <a
+            href="https://www.cjean.fr/"
+            rel="author"
+            class="transition-colors hover:text-[var(--docs-color-text)]"
+          >
+            Christophe Jean
+          </a>
+        </span>
+        {isHome && (
+          <>
+            <a href="https://www.npmjs.com/package/@vincle/core">{t("onNpm")}</a>
+            <a href="https://github.com/cjean-fr/vincle/blob/main/LICENSE">{t("mitLicensed")}</a>
+          </>
+        )}
+        {editUrl && (
+          <a
+            class="docs-page-footer-edit inline-flex items-center gap-1 transition-colors hover:text-[var(--docs-color-text)]"
+            href={editUrl}
+            target="_blank"
+            rel="noopener"
+          >
+            {t("editPage")}
+          </a>
+        )}
+        {lastUpdated && (
+          <time class="docs-page-footer-updated" dateTime={lastUpdated}>
+            {t("lastUpdated", { date: formatDate(lastUpdated, locale) })}
+          </time>
+        )}
+      </footer>
     </div>
   );
 }

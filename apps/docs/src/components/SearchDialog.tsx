@@ -8,7 +8,7 @@ export function SearchDialog() {
         data-search-trigger
         aria-label={t("searchDocumentation")}
         type="button"
-        class="docs-search-trigger inline-flex items-center gap-1.5 rounded-lg border border-[var(--docs-color-border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--docs-color-text-secondary)] transition-colors hover:border-[var(--docs-color-accent)] hover:text-[var(--docs-color-text)] md:px-3"
+        class="docs-search-trigger inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--docs-color-border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--docs-color-text-secondary)] transition-colors hover:border-[var(--docs-color-accent)] hover:text-[var(--docs-color-text)] md:px-3"
       >
         <Icon name="tabler:search" size={16} class="docs-search-icon size-4 shrink-0" />
         <span class="docs-search-trigger-label hidden md:inline">{t("search")}</span>
@@ -26,13 +26,13 @@ export function SearchDialog() {
           <Icon
             name="tabler:search"
             size={20}
-            class="docs-search-icon size-5 shrink-0 text-gray-400"
+            class="docs-search-icon size-5 shrink-0 text-[var(--docs-color-text-secondary)]"
           />
           <input
             id="search-input"
             type="search"
             placeholder={t("loadingIndex")}
-            class="docs-search-input min-w-0 flex-1 rounded-md bg-transparent px-3 py-2 text-[var(--docs-color-text)] outline-none placeholder:text-[var(--docs-color-text-secondary)] disabled:opacity-50"
+            class="docs-search-input min-w-0 flex-1 bg-transparent py-2 text-base text-[var(--docs-color-text)] outline-none placeholder:text-[var(--docs-color-text-secondary)] disabled:opacity-50"
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
@@ -56,7 +56,7 @@ export function SearchDialog() {
 
         <ul
           id="search-results"
-          class="docs-search-results m-0 max-h-[60vh] overflow-y-auto py-2"
+          class="docs-search-results m-0 max-h-[60vh] space-y-0.5 overflow-y-auto p-2"
           role="listbox"
           aria-label={t("searchResults")}
         ></ul>

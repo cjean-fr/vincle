@@ -74,7 +74,7 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
                 <LanguageSwitcher />
                 <SearchDialog />
                 <ThemeToggle />
-                {!isHome && <NavToggle />}
+                <NavToggle />
               </div>
             </div>
           </header>
@@ -86,7 +86,7 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
           />
 
           <div class="docs-shell mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl px-4 md:px-6">
-            {!isHome && <Nav />}
+            <Nav drawerOnly={isHome} />
             <div
               class={`flex min-w-0 flex-1 flex-col ${isHome ? "mx-auto w-full max-w-6xl" : "docs-article px-1 sm:px-6 md:px-8 lg:px-12"}`}
             >
