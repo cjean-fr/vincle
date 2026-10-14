@@ -36,7 +36,9 @@ const html = await renderToString(<Greeting name="world" />);
 ```
 
 Components can return promises or iterables. Text and attributes are escaped
-by default; use `raw()` only for trusted HTML. `createContext` / `useContext`
+by default; use `raw()` only for trusted HTML. Surfaces whose purpose _is_
+HTML or JavaScript — `<iframe srcdoc>`, `on*` handlers — are escaped, not
+sanitized: see [Security](https://vincle.cjean.fr/guide/security). `createContext` / `useContext`
 provide tree-scoped values, and `Scope` holds per-render state.
 
 For deferred fragments and streaming, add `@vincle/flow`.
