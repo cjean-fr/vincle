@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const roots: string[] = [];
-const bin = path.resolve(import.meta.dirname, "../dist/bin.js");
+const bin = path.resolve(import.meta.dirname, "../bin.js");
 async function fixture() {
   const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-cli-test-"));
   roots.push(root);
