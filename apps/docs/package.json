@@ -14,10 +14,12 @@
   },
   "dependencies": {
     "@cjean-fr/i18n-tiny": "2.0.1",
+    "@shikijs/core": "4.5.0",
+    "@shikijs/engine-javascript": "4.5.0",
+    "@shikijs/langs": "4.5.0",
     "@vincle/core": "workspace:*",
     "@vincle/ssg": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
-    "highlight.js": "^11.12.0",
     "satteri": "^0.10.5"
   },
   "devDependencies": {

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { build, type PageHandler, type SsgPlugin } from "./index.js";
+import { build, discoverPages, type PageHandler, type SsgPlugin } from "./index.js";
 
 async function fixture(
   run: (root: string, put: (name: string, content: string) => Promise<void>) => Promise<void>,
@@ -21,6 +21,46 @@ async function fixture(
 }
 
 const file = (root: string, name: string) => readFile(path.join(root, "dist", name), "utf8");
+
+test("build consumes pages in discovery order without mutating the caller's catalog", () =>
+  fixture(async (root, put) => {
+    await put("a.fixture", "");
+    await put("b.fixture", "");
+    const seen: string[] = [];
+    const catalog = Object.freeze(
+      await discoverPages({
+        src: path.join(root, "src"),
+        handlers: {
+          ".fixture": {
+            name: "fixture",
+            load: ({ route }) => ({
+              meta: { title: route },
+              render: ({ outputPath }) => ({ path: outputPath(), content: route }),
+            }),
+          },
+        },
+      }),
+    );
+    await build({
+      root,
+      assets: false,
+      discover: () => catalog,
+      plugins: [
+        {
+          name: "observe-order",
+          metadata: ({ meta }) => {
+            seen.push(meta.title!);
+          },
+        },
+      ],
+    });
+    expect(seen).toEqual(["/a", "/b"]);
+    expect(catalog.map((page) => page.source.route)).toEqual(["/a", "/b"]);
+    for (const page of catalog) {
+      const output = await page.render({ ...page.source, meta: page.meta });
+      expect(output).toMatchObject({ content: page.source.route });
+    }
+  }));
 
 test("all default formats, file routes, multiple outputs and source Markdown", () =>
   fixture(async (root, put) => {
@@ -212,6 +252,33 @@ test("nearest layouts, page overrides and opt-out share metadata and leave alter
     );
     expect(await file(root, "bare/index.html")).toBe("<p>Bare</p>");
     expect(await file(root, "nested/page.md")).toBe("---\ntitle: Nested\n---\n# Nested");
+
+    // Missing and present layout probes must not survive into the next build.
+    await rm(path.join(root, "src/nested/_layout.tsx"));
+    await build({ root, assets: false });
+    expect(await file(root, "nested/page/index.html")).toContain("<html><head>");
+    await put("nested/_layout.jsx", "export default ({children}) => <main>{children}</main>");
+    await build({ root, assets: false });
+    expect(await file(root, "nested/page/index.html")).toContain("<main><h1>Nested</h1>");
+  }));
+
+test("shared layout discovery keeps custom module loaders isolated", () =>
+  fixture(async (root, put) => {
+    await put("_layout.tsx", "// Resolved by the custom module loaders.");
+    await put("first.md", "# First");
+    await put("second.md", "# Second");
+    const pages = await discoverPages({ src: path.join(root, "src") });
+    for (const page of pages) {
+      const label = page.source.route;
+      page.source.modules = {
+        async load() {
+          return { default: ({ children }: { children: unknown }) => [label, children] };
+        },
+      };
+    }
+    await build({ root, assets: false, discover: () => pages });
+    expect(await file(root, "first/index.html")).toBe("/first<h1>First</h1>");
+    expect(await file(root, "second/index.html")).toBe("/second<h1>Second</h1>");
   }));
 
 test("public assets and resource paths follow conventions", () =>

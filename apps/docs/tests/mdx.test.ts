@@ -6,6 +6,7 @@ import { MdxCache } from "@vincle/ssg/mdx";
 import { beforeAll, it, expect } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { htmlToHast } from "satteri";
 
 import { docsMdxOptions } from "../src/lib/mdx.js";
 
@@ -75,7 +76,7 @@ it("keeps highlighted code and Markdown URLs static, but loads executable MDX", 
     const html = await renderToString(Component({}));
     expect(html).toContain('class="docs-code-block"');
     expect(html).toContain("<button");
-    expect(html).toContain('class="hljs-keyword"');
+    expect(html).toContain("var(--shiki-token-");
     expect(html).toContain('href="#blocked"');
     expect(html).toContain('src="#blocked"');
     expect(html).not.toContain('href="javascript:');
@@ -87,6 +88,51 @@ it("keeps highlighted code and Markdown URLs static, but loads executable MDX", 
     const runtime = await freshCache().load(file, modules);
     expect(await renderToString(runtime.Component({}))).toContain("<p>Executed</p>");
     expect(imports).toBe(before + 1);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("colors JSX/TSX without changing the source copied from the code element", async () => {
+  const directory = await fixtureDirectory("mdx-jsx-test");
+  const source = [
+    'import { Button } from "./button";',
+    'const label = "a & b < c";',
+    "const view = <><Button disabled={false} {...props}>{label}</Button><input /></>;",
+  ].join("\n");
+  function text(node: ReturnType<typeof htmlToHast>): string {
+    if (node.type === "text") return node.value;
+    return "children" in node ? node.children.map(text).join("") : "";
+  }
+  try {
+    for (const language of ["jsx", "tsx"]) {
+      const file = path.join(directory, `${language}.mdx`);
+      await writeFile(
+        file,
+        `# Example\n\n\`\`\`${language} title="component.${language}"\n${source}\n\`\`\``,
+      );
+      const { Component } = await freshCache().load(file, modules);
+      const html = await renderToString(Component({}));
+      const tree = htmlToHast(html, { fragment: true });
+      if (tree.type !== "root") throw new Error("Expected an HTML fragment");
+      const figure = tree.children.find(
+        (node) => node.type === "element" && node.tagName === "figure",
+      );
+      const pre =
+        figure?.type === "element"
+          ? figure.children.find((node) => node.type === "element" && node.tagName === "pre")
+          : undefined;
+      const code =
+        pre?.type === "element"
+          ? pre.children.find((node) => node.type === "element" && node.tagName === "code")
+          : undefined;
+      expect(code).toBeDefined();
+      expect(text(code!)).toBe(source + "\n");
+      expect(html).toContain("var(--shiki-token-");
+      expect(html).toContain(`component.${language}`);
+      expect(html).toContain("data-docs-copy");
+      expect(html).not.toContain("<Button");
+    }
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

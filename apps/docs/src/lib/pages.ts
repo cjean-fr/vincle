@@ -1,6 +1,7 @@
 import {
   discoverPages as discoverSitePages,
   type ModuleLoader,
+  type DiscoverPagesOptions,
   type DiscoveredPage,
 } from "@vincle/ssg";
 
@@ -12,8 +13,9 @@ export async function discoverPages(
   config: ResolvedDocsConfig,
   now = new Date(),
   modules?: ModuleLoader,
+  discover: (options: DiscoverPagesOptions) => Promise<DiscoveredPage[]> = discoverSitePages,
 ): Promise<Page[]> {
-  const pages = await discoverSitePages({
+  const pages = await discover({
     src: config.pages,
     modules,
     handlers: config.handlers,

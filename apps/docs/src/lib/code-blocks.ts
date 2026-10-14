@@ -1,38 +1,29 @@
-import hljs from "highlight.js/lib/core";
-import bash from "highlight.js/lib/languages/bash";
-import javascript from "highlight.js/lib/languages/javascript";
-import json from "highlight.js/lib/languages/json";
-import php from "highlight.js/lib/languages/php";
-import twig from "highlight.js/lib/languages/twig";
-import typescript from "highlight.js/lib/languages/typescript";
-import xml from "highlight.js/lib/languages/xml";
-import yaml from "highlight.js/lib/languages/yaml";
-import { defineHastPlugin, htmlToHast } from "satteri";
+import { createHighlighterCoreSync, createCssVariablesTheme } from "@shikijs/core";
+import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
+import bash from "@shikijs/langs/bash";
+import html from "@shikijs/langs/html";
+import javascript from "@shikijs/langs/javascript";
+import json from "@shikijs/langs/json";
+import jsx from "@shikijs/langs/jsx";
+import php from "@shikijs/langs/php";
+import tsx from "@shikijs/langs/tsx";
+import twig from "@shikijs/langs/twig";
+import typescript from "@shikijs/langs/typescript";
+import yaml from "@shikijs/langs/yaml";
+import { defineHastPlugin } from "satteri";
 
 import type { Locale } from "./i18n/locale.js";
 
 import { translatorFor } from "./i18n/interface.js";
 
-for (const [name, grammar] of Object.entries({
-  xml,
-  javascript,
-  typescript,
-  bash,
-  json,
-  php,
-  yaml,
-  twig,
-}))
-  hljs.registerLanguage(name, grammar);
-const aliases: Record<string, string> = {
-  ts: "typescript",
-  tsx: "typescript",
-  js: "javascript",
-  jsx: "javascript",
-  html: "xml",
-  sh: "bash",
-  shell: "bash",
-};
+// One instance per build/module graph, with only the grammars and themes used by docs.
+const highlighter = createHighlighterCoreSync({
+  langs: [bash, javascript, jsx, json, php, twig, typescript, tsx, html, yaml],
+  themes: [createCssVariablesTheme()],
+  engine: createJavaScriptRegexEngine(),
+});
+const languages = new Set(highlighter.getLoadedLanguages());
+const aliases: Record<string, string> = { xml: "html", shell: "bash" };
 
 /** Highlight at build time so the first paint already contains token colors. */
 export function codeBlocks(locale: Locale) {
@@ -57,21 +48,28 @@ export function codeBlocks(locale: Locale) {
         const language = typeof requested === "string" ? requested.slice(9) : undefined;
         const canonical = language && (aliases[language] ?? language);
         let renderedPre = node;
-        if (canonical && hljs.getLanguage(canonical)) {
+        if (canonical && languages.has(canonical)) {
           const source = code.children
             .map((child) => (child.type === "text" ? child.value : ""))
             .join("");
-          const highlighted = htmlToHast(
-            hljs.highlight(source, { language: canonical, ignoreIllegals: true }).value,
-            { fragment: true },
+          const highlighted = highlighter.codeToHast(source, {
+            lang: canonical,
+            theme: "css-variables",
+          });
+          const pre = highlighted.children.find(
+            (child) => child.type === "element" && child.tagName === "pre",
           );
-          if (highlighted.type === "root")
+          const tokens =
+            pre?.type === "element"
+              ? pre.children.find((child) => child.type === "element" && child.tagName === "code")
+              : undefined;
+          if (tokens?.type === "element")
             renderedPre = {
               ...node,
               children: [
                 {
                   ...code,
-                  children: highlighted.children.filter(
+                  children: tokens.children.filter(
                     (child) => child.type === "element" || child.type === "text",
                   ),
                 },

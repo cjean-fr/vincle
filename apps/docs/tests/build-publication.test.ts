@@ -69,3 +69,44 @@ test("a later discovery does not replace an earlier page's navigation context", 
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("navigation render keys ignore body edits and invalidate titles, sidebar metadata and catalog changes", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "vincle-docs-navigation-key-"));
+  const originalPages = config.pages;
+  const put = (name: string, title: string, body = "Content") =>
+    writeFile(path.join(directory, "guide", `${name}.mdx`), `---\ntitle: ${title}\n---\n# ${body}`);
+  const discover = () => discoverDocumentation({});
+  try {
+    config.pages = directory;
+    await mkdir(path.join(directory, "guide"));
+    await put("a", "A");
+    await put("b", "B");
+    const initial = await discover();
+    const key = initial[0]!.meta.renderKey;
+    expect(initial.every((page) => page.meta.renderKey === key)).toBe(true);
+    await put("a", "A", "Changed body");
+    expect((await discover())[0]!.meta.renderKey).toBe(key);
+    await put("a", "Renamed");
+    const renamed = await discover();
+    expect(renamed[0]!.meta.renderKey).not.toBe(key);
+    const beforeSidebar = renamed[0]!.meta.renderKey;
+    await writeFile(
+      path.join(directory, "guide/_meta.json"),
+      JSON.stringify({ b: { order: 0 }, a: { order: 1 } }),
+    );
+    const reordered = await discover();
+    expect(reordered[0]!.meta.renderKey).not.toBe(beforeSidebar);
+    const resolve = reordered[0]!.meta["documentation"] as () => Promise<DocsRenderContext>;
+    expect(JSON.stringify((await resolve()).sidebar).indexOf('"/guide/b"')).toBeLessThan(
+      JSON.stringify((await resolve()).sidebar).indexOf('"/guide/a"'),
+    );
+    await put("c", "C");
+    const added = await discover();
+    expect(added[0]!.meta.renderKey).not.toBe(reordered[0]!.meta.renderKey);
+    await rm(path.join(directory, "guide/c.mdx"));
+    expect((await discover())[0]!.meta.renderKey).toBe(reordered[0]!.meta.renderKey);
+  } finally {
+    config.pages = originalPages;
+    await rm(directory, { recursive: true, force: true });
+  }
+});

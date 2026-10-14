@@ -150,6 +150,11 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
       return compiled.get(id);
     },
   };
+  const ssr = user.ssr ?? {};
+  const ssrEnvironment = user.environments?.["ssr"] ?? {};
+  const resolve = ssrEnvironment.resolve ?? {};
+  const fallback = ssr.resolve ?? {};
+  const conditions = "Bun" in globalThis ? ["bun"] : [];
   const server = await createServer({
     ...shared,
     plugins: [bridge, ...(await productionPlugins(user.plugins ?? [], shared))],
@@ -159,9 +164,9 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
     environments: {
       ...user.environments,
       ssr: {
-        ...user.environments?.["ssr"],
+        ...ssrEnvironment,
         resolve: {
-          ...user.environments?.["ssr"]?.resolve,
+          ...resolve,
           external: [
             "@vincle/core",
             "@vincle/core/jsx-runtime",
@@ -169,31 +174,23 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
             "@vincle/vite-plugin",
             "@vincle/ssg",
           ],
-          conditions: [
-            ...(user.environments?.["ssr"]?.resolve?.conditions ??
-              user.ssr?.resolve?.conditions ?? ["node"]),
-            ...("Bun" in globalThis ? ["bun"] : []),
-          ],
+          conditions: [...(resolve.conditions ?? fallback.conditions ?? ["node"]), ...conditions],
           externalConditions: [
-            ...(user.environments?.["ssr"]?.resolve?.externalConditions ??
-              user.ssr?.resolve?.externalConditions ?? ["node"]),
-            ...("Bun" in globalThis ? ["bun"] : []),
+            ...(resolve.externalConditions ?? fallback.externalConditions ?? ["node"]),
+            ...conditions,
           ],
         },
       },
     },
     ssr: {
-      ...user.ssr,
+      ...ssr,
       external:
-        user.ssr?.external === true
+        ssr.external === true
           ? true
-          : [...(user.ssr?.external ?? []), "@vincle/core", "@vincle/vite-plugin", "@vincle/ssg"],
+          : [...(ssr.external ?? []), "@vincle/core", "@vincle/vite-plugin", "@vincle/ssg"],
       resolve: {
-        ...user.ssr?.resolve,
-        externalConditions: [
-          ...(user.ssr?.resolve?.externalConditions ?? ["node"]),
-          ...("Bun" in globalThis ? ["bun"] : []),
-        ],
+        ...fallback,
+        externalConditions: [...(fallback.externalConditions ?? ["node"]), ...conditions],
       },
     },
   });

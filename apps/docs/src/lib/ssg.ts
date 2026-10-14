@@ -1,9 +1,9 @@
-import type { DiscoverPagesOptions, DiscoveredPage, SsgPlugin } from "@vincle/ssg";
+import type { SsgOptions, SsgPlugin } from "@vincle/ssg";
 
 import path from "node:path";
 
 interface DocumentationEngine {
-  discoverDocumentation(options: DiscoverPagesOptions): Promise<DiscoveredPage[]>;
+  discoverDocumentation: NonNullable<SsgOptions["discover"]>;
   documentationArtifacts: SsgPlugin;
 }
 
@@ -11,13 +11,14 @@ interface DocumentationEngine {
 export function documentation() {
   let engine: DocumentationEngine | undefined;
   return {
-    async discover(options: DiscoverPagesOptions) {
+    async discover(...args: Parameters<NonNullable<SsgOptions["discover"]>>) {
+      const [options] = args;
       if (!options.modules) throw new Error("Documentation requires a module integration.");
       engine = (await options.modules.load(
         path.resolve("src/lib/documentation.ts"),
         "@vincle/core",
       )) as unknown as DocumentationEngine;
-      return engine.discoverDocumentation(options);
+      return engine.discoverDocumentation(...args);
     },
     artifacts: {
       name: "documentation-artifacts",

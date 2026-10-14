@@ -255,10 +255,15 @@ describe("code-block assets are shipped once, in the bundle", () => {
         await Promise.all(files.map((file) => readFile(path.join(assets, file), "utf-8")))
       ).join("\n");
     };
-    expect(await read("main-*.css")).toContain(".docs-code-block");
+    const css = await read("main-*.css");
+    expect(css).toContain(".docs-code-block");
+    expect(css).toContain("--shiki-token-keyword");
+    expect(css).toContain("--shiki-token-function");
+    expect(css).not.toContain(".hljs-");
     const js = await read("main-*.js");
     expect(js).toContain("data-docs-copy");
-    expect(js).not.toContain("highlight.js/lib/");
+    expect(js).not.toContain("@shikijs/");
+    expect(js).not.toContain("createHighlighter");
   });
 });
 
