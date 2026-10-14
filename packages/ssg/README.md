@@ -8,23 +8,78 @@ import { build } from "@vincle/ssg";
 await build();
 ```
 
-The project root is the current directory. Routes live in `src/`, outputs go to
+The project root is the current directory. Routes live in `src/pages/` when present (otherwise `src/` for existing projects), outputs go to
 `dist/`, and `public/` is copied to the output root. No configuration is needed
 for JavaScript, TypeScript, JSX, TSX, Markdown or MDX. Private files/directories
 starting with `_` or `.` and test/declaration files are not routes; use these for
 shared components, layouts and helpers. Symbolic source entries are ignored.
 
-| Source                  | Route            | Default output                                           |
-| ----------------------- | ---------------- | -------------------------------------------------------- |
-| `src/index.tsx`         | `/`              | `dist/index.html`                                        |
-| `src/about.jsx`         | `/about`         | `dist/about/index.html`                                  |
-| `src/guide/index.md`    | `/guide`         | `dist/guide/index.html`, `dist/guide.md`                 |
-| `src/guide/article.mdx` | `/guide/article` | `dist/guide/article/index.html`, `dist/guide/article.md` |
-| `src/data.json.ts`      | `/data.json`     | `dist/data.json` when returning text or bytes            |
-| `src/robots.txt.js`     | `/robots.txt`    | `dist/robots.txt` when returning text or bytes           |
+| Source                        | Route            | Default output                                           |
+| ----------------------------- | ---------------- | -------------------------------------------------------- |
+| `src/pages/index.tsx`         | `/`              | `dist/index.html`                                        |
+| `src/pages/about.jsx`         | `/about`         | `dist/about/index.html`                                  |
+| `src/pages/guide/index.md`    | `/guide`         | `dist/guide/index.html`, `dist/guide.md`                 |
+| `src/pages/guide/article.mdx` | `/guide/article` | `dist/guide/article/index.html`, `dist/guide/article.md` |
+| `src/pages/data.json.ts`      | `/data.json`     | `dist/data.json` when returning text or bytes            |
+| `src/pages/robots.txt.js`     | `/robots.txt`    | `dist/robots.txt` when returning text or bytes           |
 
 HTML uses directory indexes. Markdown alternates retain the exact source,
 including MDX syntax. There is no browser runtime or hydration added by SSG.
+
+## CLI and typed configuration
+
+Install `@vincle/ssg`, then use its `ssg` executable:
+
+```json
+{ "scripts": { "dev": "ssg dev", "build": "ssg build" } }
+```
+
+The CLI automatically loads `ssg.config.ts` (also `.mts`, `.js`, `.mjs`,
+`.cts` and `.cjs`). With no file, the source/output/public conventions apply.
+`--config`, `--root` and `--mode` override configuration discovery; `ssg dev`
+also accepts `--port` and `--host`. Run `ssg --help` for usage.
+
+```ts
+// ssg.config.ts
+import { defineConfig } from "@vincle/ssg";
+
+export default defineConfig({
+  site: "https://example.com",
+  dev: {
+    vite: { server: { port: 4321 } },
+    notFound: "/404.html",
+    statuses: { "/404.html": 404 },
+    redirects: { "/old": "/new" },
+    mimeTypes: {
+      ".custom": "application/vnd.example.custom",
+      ".md": "text/markdown; charset=utf-8",
+    },
+  },
+});
+```
+
+`defineConfig` is an identity helper with typed `SsgConfig`, `SsgConfigEnv`
+and `SsgConfigFactory` exports. It accepts a plain object, a promise, or a
+sync/async function receiving `{ command, mode }`; command is `serve` for dev
+and `build` for production, matching Vite. Shared fields use `SsgOptions`;
+`dev` is development-only. Vite asset settings still belong in `vite.config`.
+Projects whose renderers use Bun APIs run the executable with
+`bun run --bun ssg dev` / `bun run --bun ssg build`; the package CLI also works with Node.
+
+Dev output lives in the OS temporary directory, outside Vite's watched project.
+Both `DevServer.close()` and `server.vite.close()` perform full SSG cleanup;
+the CLI handles SIGINT/SIGTERM. SIGKILL cannot be intercepted. Configuration
+is read on startup; restart the CLI after changing `ssg.config`.
+
+### Extending formats and media types
+
+`handlers` registers source-format loaders/producers (see Other runtimes and
+handlers below). `dev.mimeTypes` adds or overrides HTTP content types for generated
+and copied files. Keys include their leading dot and match case-insensitively.
+Built-ins include `.jxl` → `image/jxl` and `.md` → `text/markdown; charset=utf-8`;
+`defaultMimeTypes` and `MimeTypes` are public exports. Unknown files fall back to
+`application/octet-stream`. Invalid extensions/media types fail with
+`INVALID_CONFIG`. Production content types are controlled by the deployment server.
 
 ## Pages and layouts
 
@@ -157,7 +212,9 @@ under it. `build({ sitemap: false })` disables sitemap generation globally.
 
 A `vite.config.*` at the project root or `src/_client/main.{ts,js,tsx,jsx,css}`
 automatically enables Vite. The private client entry is the default input when
-Vite has no configured input; import CSS, images and other browser assets there.
+Vite has no configured input. A sibling `main.css` is also built as a standalone
+entry, so a layout can link it before JavaScript runs. Import other browser
+assets from the client script.
 Vite's hashed files and manifest are prepared and published alongside all routes.
 `public/` is copied once by SSG. Production JSX can reference the manifest with
 `Asset` and `assetUrl` from `@vincle/vite-plugin`.
@@ -198,8 +255,7 @@ that same compiler without rebuilding assets. Pass its `modules` to
 `discoverPages` and call `dispose()` when all pages have rendered.
 
 `assets: false` disables automatic Vite integration. Other bundlers can implement
-`AssetIntegration`. This is a production build API; development servers remain
-owned by the consumer.
+`AssetIntegration`. The CLI and `dev()` supply the corresponding development server.
 
 ## Other runtimes and handlers
 
@@ -292,10 +348,36 @@ There is one handler API: `PageHandler.load(SourceContext)` returns metadata and
 metadata/render/transform lifecycle for specialized consumers. The old generic
 handler and `SsgHandler` name are removed.
 
-The documentation uses a custom `PageHandler` for its specialized Markdown
-compiler, plus the shared Vite module loader and `renderPage` lifecycle. Its
-handler emits HTML and Markdown together. Navigation, publication dates and the
-site shell remain documentation features.
+Markdown and MDX use Sätteri by default. `createMdxHandler` from
+`@vincle/ssg/mdx` configures that same pipeline for custom transforms. It defers compilation until rendering, caches compiled pages,
+uses direct HTML for static Markdown, and emits the original source as a
+Markdown alternate. Navigation, code highlighting, headings and the site shell
+remain documentation features.
+
+```ts
+import { build } from "@vincle/ssg";
+import { createMdxHandler } from "@vincle/ssg/mdx";
+
+await build({ handlers: { ".mdx": createMdxHandler() } });
+```
+
+`compile` accepts Sätteri's `MdxCompileOptions`, including a component provider.
+`prepare({ file, meta })` returns per-document `data` and an optional
+`createPlugins()` factory; `beforeRender(compiled, context)` receives that data
+inside the render scope before layouts run. Static HTML shortcuts preserve
+Core's link/image URL policy. Custom runtimes and component providers use the
+compiled module path; a provider can explicitly enable the `RawHtml`/`html`
+static optimization. Component overrides also load the compiled module lazily.
+
+`MdxCache` is available from the same entry for custom producers; it separates
+entries by source contents, module loader and JSX import source. It provides
+`invalidate(file)` and `clear()` for explicit invalidation.
+
+The default handler supports module metadata and additional `outputs` exports.
+Modules with named exports are evaluated during discovery so metadata is
+available to navigation and layouts; other documents compile when rendered.
+`.md` files treat expressions, JSX and import/export statements as ordinary
+Markdown. There is one compiler and no backend selection.
 
 The lower-level `generateSite` writer remains available for existing output
 pipelines. Its `beforePublish` callback exposes prepared `files`, `read(path)` and
@@ -390,3 +472,87 @@ next rebuild republishes everything. Source discovery, dependency checks, sitema
 calculation and global publication hooks still run across the complete site.
 Production `build()` always runs every handler, renders every page and publishes
 the complete site.
+
+### Search and other page integrations
+
+`plugin.publish(context)` receives `context.outputs`: the final generated HTML
+pages, including unchanged pages reused in development. Each entry has `path`,
+`url`, `meta` and an async `read()` that reads its HTML from the prepared site.
+Content stays on disk until the plugin needs it. Use `meta.search: false` to opt a
+page out; output-specific `meta` overrides the source metadata. The search engine
+and HTML-to-text conversion belong to the plugin, not the SSG core.
+
+```ts
+const search = {
+  name: "search",
+  async publish(context: PublicationContext) {
+    const documents = [];
+    for (const page of context.outputs) {
+      if (page.meta.search === false) continue;
+      documents.push({
+        url: page.url,
+        title: page.meta.title,
+        locale: page.meta.locale,
+        html: await page.read(),
+      });
+    }
+    await context.emit({ path: "search.json", content: JSON.stringify(documents) });
+  },
+};
+```
+
+Specialized sites can supply `discover(options)` in their configuration. It
+returns `DiscoveredPage[]` using the supplied handlers, runtime and module loader,
+while SSG still owns page hooks, assets, sitemap and publication. Custom discovery
+is conservatively rerendered in development; publication still avoids rewriting
+unchanged files.
+
+### Multilingual sitemap
+
+```ts
+export default defineConfig({
+  site: "https://example.com/docs/",
+  i18n: { locales: ["en", "fr"], defaultLocale: "en" },
+});
+// Each page exports metadata (or equivalent frontmatter):
+export const meta = {
+  title: "Bienvenue",
+  locale: "fr",
+  translationKey: "getting-started",
+};
+```
+
+Pages sharing a `translationKey` form a translation group, independent of their
+URL spelling. SSG emits reciprocal `xhtml:link` alternates for existing included
+pages, including each page itself, and `x-default` when the default-language page
+exists. Missing translations and pages excluded from the sitemap are not invented.
+Duplicate key/language pairs fail before publication. Site base paths, XML escaping
+and the sitemap size limits also apply to these links.
+
+### Tailwind and development defaults
+
+SSG automatically enables the project's installed `@tailwindcss/vite` plugin.
+Install `tailwindcss` and `@tailwindcss/vite`, then import `tailwindcss` from your
+client CSS. An explicitly configured Tailwind plugin is kept without duplication.
+Vite and Tailwind scan the project's source files and optimize production CSS;
+SSG publishes the hashed assets with the pages and removes obsolete assets only
+after a successful build. Dynamically assembled class names still need Tailwind's
+standard source declarations or complete class strings.
+
+Development listens on `127.0.0.1`, with `Number(process.env.PORT ?? 4321)` as the
+default port. Vite project settings and CLI `--host` / `--port` override these defaults.
+
+SSG excludes private tooling directories (`.aws`, `.agents`, `.codex`), dependency
+and Git directories, and generated output from dev watching. When native file
+watching reaches the system limit (`ENOSPC`), SSG uses polling automatically,
+including recovery after startup. Explicit polling options remain configurable
+through `dev.vite.server.watch`; `watch: null` still disables watching.
+
+The recommended structure separates `src/pages/` (routes), `src/_layout.tsx` (shared layout),
+`src/components/`, `src/lib/`, `src/_client/` and `tests/`. Explicit `src` always
+wins; an existing flat `src/` remains supported. Client entries are auto-detected
+in `src/_client/main.{ts,js,tsx,jsx,css}`, with the route directory's `_client/`
+retained as a fallback. Helpers beside `src/pages/` are never discovered as routes.
+
+For `src/pages`, layout discovery reaches the shared `src/_layout.tsx`.
+A closer layout in `src/pages` or a subsection overrides that shared layout.

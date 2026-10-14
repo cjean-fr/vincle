@@ -11,6 +11,6 @@
     ]
   },
   "sortTailwindcss": {
-    "stylesheet": "./apps/docs/docs-src/styles/main.css"
+    "stylesheet": "./apps/docs/src/_client/main.css"
   }
 }

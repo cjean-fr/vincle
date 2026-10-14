@@ -4,10 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun docs-src/dev-server.ts",
-    "build": "bun run build:vite && bun run build:ssg",
-    "build:vite": "vite build",
-    "build:ssg": "bun docs-src/build.tsx",
+    "dev": "ssg dev",
+    "build": "ssg build",
     "preview": "vite preview --outDir dist",
     "bench:memory": "bun scripts/bench-memory.ts",
     "format": "oxfmt '**/*.{jsx,tsx,mdx}'",
@@ -19,11 +17,8 @@
     "@vincle/core": "workspace:*",
     "@vincle/ssg": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
-    "gray-matter": "^4.0.3",
     "highlight.js": "^11.12.0",
-    "satteri": "^0.10.5",
-    "satteri-expressive-code": "^0.1.24",
-    "vite-plugin-satteri": "^0.3.5"
+    "satteri": "^0.10.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",

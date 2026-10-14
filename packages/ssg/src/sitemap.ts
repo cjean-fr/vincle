@@ -7,6 +7,11 @@ import { failure } from "./errors.js";
 const MAX_ENTRIES = 50_000;
 const MAX_BYTES = 50 * 1024 * 1024;
 const declaration = '<?xml version="1.0" encoding="UTF-8"?>\n';
+export interface SitemapEntry {
+  url: string;
+  alternates?: readonly { locale: string; href: string }[];
+}
+
 const namespace = 'xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"';
 
 function escapeXml(value: string): string {
@@ -24,15 +29,25 @@ function entryLimit(message: string, context: Record<string, string | number | b
 }
 
 /** Size includes XML escaping, the declaration and the enclosing tags. */
-export function* sitemapOutputs(urls: Iterable<string>, site: URL): Generator<SiteOutput> {
-  const head = `${declaration}<urlset ${namespace}>`;
+export function* sitemapOutputs(
+  urls: Iterable<string | SitemapEntry>,
+  site: URL,
+): Generator<SiteOutput> {
+  const head = `${declaration}<urlset ${namespace} xmlns:xhtml="http://www.w3.org/1999/xhtml">`;
   const tail = "</urlset>\n";
   const overhead = Buffer.byteLength(head + tail);
   const chunks: string[] = [];
   let entries: string[] = [];
   let bytes = overhead;
-  for (const url of urls) {
-    const entry = `<url><loc>${escapeXml(url)}</loc></url>`;
+  for (const value of urls) {
+    const { url, alternates = [] } = typeof value === "string" ? { url: value } : value;
+    const links = alternates
+      .map(
+        ({ locale, href }) =>
+          `<xhtml:link rel="alternate" hreflang="${escapeXml(locale)}" href="${escapeXml(href)}" />`,
+      )
+      .join("");
+    const entry = `<url><loc>${escapeXml(url)}</loc>${links}</url>`;
     const size = Buffer.byteLength(entry);
     if (overhead + size > MAX_BYTES)
       entryLimit("A single sitemap entry exceeds the uncompressed size limit.", {

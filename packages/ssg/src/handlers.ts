@@ -9,8 +9,10 @@ import type {
   JsxRuntime,
 } from "./types.js";
 
+import { sourceDirectory } from "./conventions.js";
 import { failure, diagnose, contextualError } from "./errors.js";
-import { defaultHandlers, metadata, vincleRuntime } from "./formats.js";
+import { defaultHandlers, vincleRuntime } from "./formats.js";
+import { metadata } from "./metadata.js";
 import { loadModule } from "./module.js";
 import { routeForFile, outputPathForRoute } from "./routes.js";
 
@@ -59,7 +61,7 @@ export async function discoverPages(options: DiscoverPagesOptions = {}): Promise
 }
 
 async function discover(options: DiscoverPagesOptions): Promise<DiscoveredPage[]> {
-  const src = path.resolve(options.src ?? "src");
+  const src = sourceDirectory(process.cwd(), options.src);
   const concurrency = options.concurrency ?? 16;
   if (!Number.isInteger(concurrency) || concurrency < 1)
     throw failure("Discovery concurrency must be a positive integer.", {

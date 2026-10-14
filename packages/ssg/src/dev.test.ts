@@ -1,4 +1,5 @@
-import { expect, test } from "bun:test";
+import { expect, test, spyOn } from "bun:test";
+import fs from "node:fs";
 import { mkdtemp, mkdir, writeFile, readFile, lstat, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -299,6 +300,10 @@ test("incremental rendering isolates pages, tracks raw data and nearest layouts,
           publications++;
           publishedOut = ctx.out;
           expect(new TextDecoder().decode(await ctx.read("two/b/index.html"))).toContain(":B");
+          expect(ctx.outputs).toHaveLength(ctx.pages.length);
+          const finalB = ctx.outputs.find((output) => output.url === "/two/b/")!;
+          expect(await finalB.read()).toContain(":B");
+          expect(finalB.meta.title).toBe("B");
           if (fail) throw new Error("publication failed");
           await ctx.emit({
             path: "catalog.json",
@@ -675,3 +680,114 @@ test("cached binary outputs snapshot Buffer bytes independently of producer muta
     await rm(root, { recursive: true, force: true });
   }
 }, 20_000);
+
+test("dev defaults use loopback and PORT, with explicit options taking precedence", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "vincle-dev-defaults-"));
+  const previous = process.env["PORT"];
+  try {
+    await mkdir(path.join(root, "src"));
+    await writeFile(path.join(root, "src/index.ts"), 'export default "hello"');
+    process.env["PORT"] = "0";
+    const server = await dev({ root, vite: { configFile: false, logLevel: "silent" } });
+    try {
+      expect(server.vite.config.server.host).toBe("127.0.0.1");
+      expect(server.vite.config.server.port).toBeGreaterThan(0);
+      const address = server.vite.httpServer!.address();
+      expect(address).toMatchObject({ address: "127.0.0.1" });
+    } finally {
+      await server.close();
+    }
+    process.env["PORT"] = "4321";
+    const override = await dev({
+      root,
+      vite: { configFile: false, logLevel: "silent", server: { port: 0 } },
+    });
+    try {
+      expect(override.vite.config.server.port).not.toBe(4321);
+    } finally {
+      await override.close();
+    }
+  } finally {
+    if (previous === undefined) delete process.env["PORT"];
+    else process.env["PORT"] = previous;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("ENOSPC switches dev to polling and excludes private tooling directories", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "vincle-watcher-limit-"));
+  await mkdir(path.join(root, "src"));
+  await mkdir(path.join(root, ".aws/cache"), { recursive: true });
+  await writeFile(path.join(root, ".aws/cache/unused.json"), "{}");
+  const file = path.join(root, "src/index.ts");
+  await writeFile(file, 'export default "<html><body>before limit</body></html>"');
+  const server = await dev({
+    root,
+    vite: { configFile: false, logLevel: "silent", server: { port: 0 } },
+  });
+  try {
+    server.vite.watcher.emit(
+      "error",
+      Object.assign(new Error("System limit for number of file watchers reached"), {
+        code: "ENOSPC",
+      }),
+    );
+    for (let i = 0; i < 100; i++) {
+      if (server.vite.config.server.watch && server.vite.config.server.watch.usePolling) break;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    expect(server.vite.config.server.watch && server.vite.config.server.watch.usePolling).toBe(
+      true,
+    );
+    for (let i = 0; i < 100 && !server.vite.httpServer?.listening; i++)
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected restarted HTTP server");
+    const url = `http://127.0.0.1:${address.port}/`;
+    await writeFile(file, 'export default "<html><body>after limit</body></html>"');
+    let html = "";
+    for (let i = 0; i < 100; i++) {
+      html = await (await fetch(url)).text();
+      if (html.includes("after limit")) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(html).toContain("after limit");
+    const activeWatcher = server.vite.watcher;
+    await server.close();
+    expect(Object.keys(activeWatcher.getWatched())).toHaveLength(0);
+    expect(
+      Object.keys(server.vite.watcher.getWatched()).some((directory) =>
+        directory.includes("/.aws"),
+      ),
+    ).toBe(false);
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);
+
+test("dev detects native watcher exhaustion before starting Vite", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "vincle-watcher-probe-"));
+  await mkdir(path.join(root, "src"));
+  await writeFile(path.join(root, "src/index.ts"), 'export default "hello"');
+  const native = spyOn(fs, "watch").mockImplementation(() => {
+    throw Object.assign(new Error("native watch exhausted"), { code: "ENOSPC" });
+  });
+  try {
+    const server = await dev({
+      root,
+      vite: { configFile: false, logLevel: "silent", server: { port: 0 } },
+    });
+    try {
+      expect(server.vite.config.server.watch && server.vite.config.server.watch.usePolling).toBe(
+        true,
+      );
+      expect(native).toHaveBeenCalledTimes(1);
+    } finally {
+      await server.close();
+    }
+  } finally {
+    native.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});

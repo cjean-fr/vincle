@@ -1,6 +1,7 @@
+import { build } from "@vincle/ssg";
 // Synthetic content-only build: 10,000 MDX pages, 100 paragraphs and 3 code blocks each.
-// Includes a homepage to exercise the single content-history Git lookup.
-// Prerequisite: build the site package and the docs Vite assets.
+// Measures the docs MDX pipeline and SSG publication, without layout or Vite assets.
+// Prerequisite: build the ssg package.
 // BENCH_MAX_RSS_MIB=512 bun run --cwd apps/docs bench:memory
 // BENCH_PAGES, BENCH_PARAGRAPHS and BENCH_CODE_BLOCKS adjust the input.
 // BENCH_CODE_BLOCKS=0 restores the prose-only fixture; Linux RSS includes children.
@@ -8,16 +9,14 @@ import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { initBuild, rebuildAll } from "../docs-src/lib/build-engine.js";
-import { codeHighlighter } from "../docs-src/lib/code-highlighter.js";
 import config from "../docs.config.js";
+import { discoverPages } from "../src/lib/pages.js";
 
 const count = Number(process.env["BENCH_PAGES"] ?? 10000);
 const paragraphs = Number(process.env["BENCH_PARAGRAPHS"] ?? 100);
 const codeBlocks = Number(process.env["BENCH_CODE_BLOCKS"] ?? 3);
-const fixtureParent = path.join(config.pages, ".compiled");
-await mkdir(fixtureParent, { recursive: true });
-const root = await mkdtemp(path.join(fixtureParent, "memory-bench-"));
+// Inside the app, so compiled MDX resolves @vincle/core from its node_modules.
+const root = await mkdtemp(path.resolve(import.meta.dirname, "../.memory-bench-"));
 const pages = path.join(root, "pages");
 const out = path.join(root, "out");
 let totalPeakKiB = 0;
@@ -83,18 +82,15 @@ try {
       `---\ntitle: Page ${i}\n---\n\n# Page ${i}\n\n${sections.join("\n\n")}\n`,
     );
   }
-  Object.assign(config, {
-    pages,
-    out,
-    tabs: [],
-    site: null,
-    sitemap: false,
-    editUrl: null,
-    layout: ({ children }: { children: import("@vincle/core").JSX.Element }) => children,
-  });
+  const fixture = { ...config, pages, tabs: [], site: null, sitemap: false, editUrl: null };
   const start = performance.now();
-  await initBuild();
-  await rebuildAll();
+  await build({
+    root,
+    src: pages,
+    out,
+    assets: false,
+    discover: (options) => discoverPages(fixture, new Date(), options.modules),
+  });
   const parentPeakMiB = process.resourceUsage().maxRSS / 1024;
   const rssMiB = Math.max(parentPeakMiB, totalPeakKiB / 1024);
   const seconds = (performance.now() - start) / 1000;
@@ -103,7 +99,7 @@ try {
       pages: count,
       paragraphs,
       codeBlocks,
-      highlighter: codeHighlighter,
+      highlighter: "highlight.js",
       peakRssMiB: Math.round(rssMiB),
       parentPeakRssMiB: Math.round(parentPeakMiB),
       seconds,

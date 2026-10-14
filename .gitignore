@@ -37,8 +37,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cache
 *.tsbuildinfo
 
-# compiled MDX pages (generated docs artifact)
-.compiled/
 # transient fences: `output` execution scratch, `check-fences` tsc project
 .fence-output/
 .fence-check/

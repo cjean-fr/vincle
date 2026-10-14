@@ -1,73 +1,17 @@
-import { compile } from "@mdx-js/mdx";
 import { renderToString, Scope, type Renderable } from "@vincle/core";
-import matter from "gray-matter";
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type {
-  JsxRuntime,
-  PageHandler,
-  SsgMeta,
-  SsgPage,
-  SsgProducer,
-  SiteContent,
-} from "./types.js";
+import type { JsxRuntime, PageHandler, SsgProducer, SiteContent } from "./types.js";
 
 import { failure, diagnose } from "./errors.js";
+import { createMdxHandler } from "./mdx.js";
+import { moduleMeta } from "./metadata.js";
 import { withAdditionalOutputs } from "./results.js";
 
 export const vincleRuntime: JsxRuntime = {
   importSource: "@vincle/core",
   render: (create) => Scope.with(() => renderToString(create() as Renderable)),
 };
-
-export function metadata(value: unknown, file: string): SsgMeta {
-  if (value === undefined) return {};
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw failure(`Metadata must be an object: ${file}`, {
-      reason: "INVALID_METADATA",
-      hint: "Use a metadata object in export const meta or YAML frontmatter; arrays and null are not valid.",
-      context: { file },
-    });
-  }
-  const meta = { ...value } as SsgMeta;
-  if (meta.sitemap !== undefined && typeof meta.sitemap !== "boolean") {
-    throw failure(`Metadata sitemap must be a boolean: ${file}`, {
-      reason: "INVALID_METADATA",
-      hint: "Set meta.sitemap to true or false, not a quoted string or another value.",
-      context: { file, field: "sitemap" },
-    });
-  }
-  if (meta.incremental !== undefined && typeof meta.incremental !== "boolean")
-    throw failure(`Metadata incremental must be a boolean: ${file}`, {
-      reason: "INVALID_METADATA",
-      hint: "Set meta.incremental to true or false. Use false for dynamic producers that must run on every dev rebuild.",
-      context: { file, field: "incremental" },
-    });
-  if (
-    meta.layout !== undefined &&
-    meta.layout !== false &&
-    (typeof meta.layout !== "string" || !meta.layout)
-  ) {
-    throw failure(`Metadata layout must be a file path or false: ${file}`, {
-      reason: "INVALID_METADATA",
-      hint: "Set meta.layout to a non-empty layout file path relative to the page, or false to disable layouts.",
-      context: { file, field: "layout" },
-    });
-  }
-  return meta;
-}
-
-function moduleMeta(mod: Record<string, unknown>, file: string, initial: SsgMeta = {}): SsgMeta {
-  return metadata(
-    {
-      ...initial,
-      ...metadata(mod["meta"], file),
-      ...(mod["sitemap"] === undefined ? {} : { sitemap: mod["sitemap"] }),
-    },
-    file,
-  );
-}
 
 function isContent(value: unknown): value is SiteContent {
   return typeof value === "string" || value instanceof Uint8Array || value instanceof ArrayBuffer;
@@ -124,36 +68,7 @@ const jsxHandler: PageHandler = {
   },
 };
 
-const markdownHandler: PageHandler = {
-  name: "markdown",
-  async load(source): Promise<SsgPage> {
-    const text = await readFile(source.file, "utf8");
-    const { data, content } = matter(text);
-    const code = await compile(content, {
-      format: source.file.endsWith(".mdx") ? "mdx" : "md",
-      jsxImportSource: source.runtime.importSource,
-      development: false,
-    });
-    const mod = await source.modules.load(source.file, source.runtime.importSource, String(code));
-    const Component = mod["default"];
-    if (typeof Component !== "function")
-      throw failure(`No Markdown component: ${source.file}`, {
-        reason: "SOURCE_FAILED",
-        hint: "Check Markdown/MDX syntax and exports. The compiled document must provide a default component.",
-        context: { file: source.file },
-      });
-    return {
-      meta: moduleMeta(mod, source.file, metadata(data, source.file)),
-      render: withAdditionalOutputs(mod, (context) => [
-        {
-          path: context.outputPath(),
-          content: () => context.runtime.render(() => Component(context)),
-        },
-        { path: context.outputPath(".md"), content: text, sitemap: false },
-      ]),
-    };
-  },
-};
+const markdownHandler = createMdxHandler();
 
 function checked(handler: PageHandler): PageHandler {
   return {

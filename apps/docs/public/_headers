@@ -1,0 +1,12 @@
+/
+  Link: </index.md>; rel="alternate"; type="text/markdown", </llms.txt>; rel="service-doc", </llms-full.txt>; rel="service-doc", </.well-known/ai-catalog.json>; rel="service-desc"
+
+/.well-known/ai-catalog.json
+  Content-Type: application/json
+  Access-Control-Allow-Origin: *
+
+/.well-known/agent-skills/index.json
+  Content-Type: application/json
+
+/llms.txt, /llms-full.txt, /search-index.json
+  Access-Control-Allow-Origin: *

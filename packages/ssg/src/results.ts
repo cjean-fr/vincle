@@ -31,3 +31,19 @@ export function withAdditionalOutputs(
     yield* iterateOutputs(additional as SsgOutputs);
   };
 }
+
+/** Markdown handlers share scoped HTML rendering and an exact source alternate. */
+export function markdownOutputs(
+  context: PageContext,
+  text: string,
+  create: () => unknown,
+): SsgOutput[] {
+  return [
+    {
+      path: context.outputPath(),
+      url: context.route,
+      content: () => context.runtime.render(create),
+    },
+    { path: context.outputPath(".md"), content: text, sitemap: false },
+  ];
+}

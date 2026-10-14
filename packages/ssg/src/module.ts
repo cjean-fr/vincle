@@ -1,5 +1,6 @@
 import { build, transform, type Loader } from "esbuild";
-import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { rm, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -27,9 +28,8 @@ async function loadModuleInternal(
   importSource: string,
   compiled?: string,
 ): Promise<Record<string, unknown>> {
-  const temporary = await mkdtemp(path.join(path.dirname(file), ".vincle-ssg-"));
-  // Keep import.meta.url directory-relative resources beside the original source.
-  const outfile = `${temporary}.mjs`;
+  // Beside the source, installed packages resolve from the same node_modules and package scope.
+  const outfile = path.join(path.dirname(file), `.vincle-ssg-${randomUUID()}.mjs`);
   const artifacts = new Set<string>([outfile]);
   const sourceDefines = (source: string) => ({
     "import.meta.url": JSON.stringify(pathToFileURL(source).href),
@@ -100,9 +100,8 @@ async function loadModuleInternal(
     });
     for (const output of result.outputFiles) artifacts.add(output.path);
     await Promise.all(result.outputFiles.map((output) => writeFile(output.path, output.contents)));
-    return await import(pathToFileURL(outfile).href);
+    return await import(/* @vite-ignore */ pathToFileURL(outfile).href);
   } finally {
     await Promise.all([...artifacts].map((artifact) => rm(artifact, { force: true })));
-    await rm(temporary, { recursive: true, force: true });
   }
 }

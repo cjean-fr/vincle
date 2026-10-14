@@ -6,6 +6,9 @@ import type { ModuleLoader } from "./types.js";
 
 import { diagnose, failure } from "./errors.js";
 
+const suffix = ".vincle-compiled.js";
+const sourceOf = (file: string) => (file.endsWith(suffix) ? file.slice(0, -suffix.length) : file);
+
 export function developmentModules(importSource: string, sourceDirectory: string) {
   const compiled = new Map<string, string>();
   const watched = new Set<string>();
@@ -13,13 +16,11 @@ export function developmentModules(importSource: string, sourceDirectory: string
   const forgotten = new Set<unknown>();
   const stamps = new Map<string, string>();
   let server: ViteDevServer;
-  let generation = 0;
   const plugin: Plugin = {
     name: "vincle-ssg-development-modules",
     enforce: "pre",
     configureServer(value) {
       server = value;
-      generation++;
       if (watched.size) value.watcher.add([...watched]);
     },
     resolveId(id) {
@@ -28,7 +29,7 @@ export function developmentModules(importSource: string, sourceDirectory: string
     },
     load(id) {
       if (compiled.has(id)) {
-        this.addWatchFile(id.slice(0, -".vincle-compiled.js".length));
+        this.addWatchFile(sourceOf(id));
         return compiled.get(id);
       }
       return undefined;
@@ -111,7 +112,7 @@ export function developmentModules(importSource: string, sourceDirectory: string
           hint: "Use the same runtime.importSource for all handlers and layouts.",
           context: { file, importSource: source, expected: importSource },
         });
-      const id = code === undefined ? file : `${file}.vincle-compiled.js`;
+      const id = code === undefined ? file : file + suffix;
       if (code !== undefined) {
         originals.add(file);
         if (compiled.get(id) !== code) {
@@ -144,14 +145,15 @@ export function developmentModules(importSource: string, sourceDirectory: string
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
         }
-        if (stamps.has(file) && stamps.get(file) !== stamp) changed.add(file);
+        const modified = stamps.has(file) && stamps.get(file) !== stamp;
+        if (modified) changed.add(file);
         if (stamp === "missing") {
           for (const node of env.moduleGraph.getModulesByFile(file) ?? [])
             if (node.id) forget(node.id);
           for (const node of env.runner.evaluatedModules.getModulesByFile(file) ?? [])
             forget(node.id);
           if (originals.delete(file)) {
-            const id = `${file}.vincle-compiled.js`;
+            const id = file + suffix;
             forget(id);
             compiled.delete(id);
           }
@@ -159,10 +161,10 @@ export function developmentModules(importSource: string, sourceDirectory: string
           else stamps.delete(file);
           return;
         }
-        if (stamps.has(file) && stamps.get(file) !== stamp) {
+        if (modified) {
           for (const node of env.moduleGraph.getModulesByFile(file) ?? [])
             if (node.id) invalidate(node.id);
-          if (originals.has(file)) invalidate(`${file}.vincle-compiled.js`);
+          if (originals.has(file)) invalidate(file + suffix);
         }
         stamps.set(file, stamp);
       }),
@@ -197,15 +199,10 @@ export function developmentModules(importSource: string, sourceDirectory: string
     const visit = (node: NonNullable<ReturnType<typeof graph.getModuleById>>) => {
       if (seen.has(node)) return;
       seen.add(node);
-      if (node.file)
-        files.add(
-          node.file.endsWith(".vincle-compiled.js")
-            ? node.file.slice(0, -".vincle-compiled.js".length)
-            : node.file,
-        );
+      if (node.file) files.add(sourceOf(node.file));
       for (const dependency of node.importedModules) visit(dependency);
     };
-    const node = graph.getModuleById(file) ?? graph.getModuleById(`${file}.vincle-compiled.js`);
+    const node = graph.getModuleById(file) ?? graph.getModuleById(file + suffix);
     if (node) visit(node);
     const evaluated = environment().runner.evaluatedModules;
     const evaluatedSeen = new Set<string>();
@@ -214,23 +211,15 @@ export function developmentModules(importSource: string, sourceDirectory: string
       evaluatedSeen.add(id);
       const current = evaluated.getModuleById(id);
       if (!current) return;
-      if (path.isAbsolute(current.file))
-        files.add(
-          current.file.endsWith(".vincle-compiled.js")
-            ? current.file.slice(0, -".vincle-compiled.js".length)
-            : current.file,
-        );
+      if (path.isAbsolute(current.file)) files.add(sourceOf(current.file));
       for (const dependency of current.imports) collect(dependency);
     };
     collect(file);
-    collect(`${file}.vincle-compiled.js`);
+    collect(file + suffix);
     return files;
   }
   return {
     plugin,
-    get generation() {
-      return generation;
-    },
     modules,
     refresh,
     dependencies,

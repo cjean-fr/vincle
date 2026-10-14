@@ -1,6 +1,6 @@
 {
   "name": "@vincle/ssg",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "File-based static generation with extensible content handlers and multiple outputs",
   "keywords": [
     "generator",
@@ -19,6 +19,9 @@
     "url": "git+https://github.com/cjean-fr/vincle.git",
     "directory": "packages/ssg"
   },
+  "bin": {
+    "ssg": "./dist/bin.js"
+  },
   "files": [
     "dist",
     "README.md",
@@ -33,6 +36,10 @@
     "./vite": {
       "types": "./dist/vite.d.ts",
       "default": "./dist/vite.js"
+    },
+    "./mdx": {
+      "types": "./dist/mdx.d.ts",
+      "default": "./dist/mdx.js"
     }
   },
   "publishConfig": {
@@ -45,11 +52,11 @@
     "format": "oxfmt"
   },
   "dependencies": {
-    "@mdx-js/mdx": "^3.1.1",
     "@vincle/core": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
     "esbuild": "^0.28.2",
     "gray-matter": "catalog:",
+    "satteri": "^0.10.5",
     "vite": "catalog:"
   },
   "devDependencies": {
