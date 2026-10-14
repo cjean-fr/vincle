@@ -28,15 +28,18 @@ export function layoutLoader() {
   }
   return async (context: PageContext): Promise<Layout | undefined> => {
     if (context.meta.layout === false) return undefined;
-    if (typeof context.meta.layout === "string")
+    if (typeof context.meta.layout === "string") {
+      context.watch(path.resolve(path.dirname(context.file), context.meta.layout));
       return load(
         path.resolve(path.dirname(context.file), context.meta.layout),
         context.runtime.importSource,
         context.modules,
       );
+    }
     for (let directory = path.dirname(context.file); ; directory = path.dirname(directory)) {
       for (const extension of ["tsx", "jsx", "ts", "js"]) {
         const file = path.join(directory, `_layout.${extension}`);
+        context.watch(file);
         try {
           if ((await stat(file)).isFile())
             return load(file, context.runtime.importSource, context.modules);

@@ -38,6 +38,12 @@ export function metadata(value: unknown, file: string): SsgMeta {
       context: { file, field: "sitemap" },
     });
   }
+  if (meta.incremental !== undefined && typeof meta.incremental !== "boolean")
+    throw failure(`Metadata incremental must be a boolean: ${file}`, {
+      reason: "INVALID_METADATA",
+      hint: "Set meta.incremental to true or false. Use false for dynamic producers that must run on every dev rebuild.",
+      context: { file, field: "incremental" },
+    });
   if (
     meta.layout !== undefined &&
     meta.layout !== false &&
@@ -152,6 +158,7 @@ const markdownHandler: PageHandler = {
 function checked(handler: PageHandler): PageHandler {
   return {
     ...handler,
+    incremental: true,
     load: (source) =>
       diagnose(async () => handler.load(source), "Could not load source", {
         reason: "SOURCE_FAILED",

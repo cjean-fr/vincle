@@ -7,6 +7,8 @@ export interface SsgMeta {
   title?: string;
   description?: string;
   sitemap?: boolean;
+  /** Opt out of cached dev rendering for dynamic/time-dependent producers. */
+  incremental?: boolean;
   /** Override the nearest _layout.tsx; relative to the source file. */
   layout?: string | false;
   [key: string]: unknown;
@@ -29,6 +31,8 @@ export interface SourceContext {
   outputPath(extension?: string): string;
   runtime: JsxRuntime;
   modules: ModuleLoader;
+  /** Track a filesystem dependency; relative paths resolve beside the source. */
+  watch(file: string): void;
 }
 
 export interface PageContext extends SourceContext {
@@ -53,11 +57,14 @@ export interface SsgPage {
 
 export interface PageHandler {
   name: string;
+  /** Dev may reuse outputs until watched files/imports change. */
+  incremental?: boolean;
   load(context: SourceContext): Awaitable<SsgPage>;
 }
 
 /** Source compilation can reuse the active asset integration's resolver/plugins. */
 export interface ModuleLoader {
+  watchFile?(file: string): void;
   load(file: string, importSource: string, compiled?: string): Promise<Record<string, unknown>>;
 }
 
@@ -86,6 +93,8 @@ export interface PublicationContext extends PreparedSite {
 
 export interface SsgPlugin {
   name: string;
+  /** Page hooks are local and all file dependencies are declared with context.watch. */
+  incremental?: boolean;
   /** Enrich shared metadata before layouts or rendering. */
   metadata?(context: PageContext): Awaitable<void>;
   /** Modify a lazy output before its producer is evaluated. */

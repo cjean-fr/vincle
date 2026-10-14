@@ -1,7 +1,13 @@
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-import type { DiscoverPagesOptions, DiscoveredPage, ModuleLoader } from "./types.js";
+import type {
+  DiscoverPagesOptions,
+  DiscoveredPage,
+  ModuleLoader,
+  SourceContext,
+  JsxRuntime,
+} from "./types.js";
 
 import { failure, diagnose, contextualError } from "./errors.js";
 import { defaultHandlers, metadata, vincleRuntime } from "./formats.js";
@@ -20,6 +26,26 @@ function defaultModules(): ModuleLoader {
       }
       return pending;
     },
+  };
+}
+
+/** Keep cached source closures independent of a discovery's worker/result arrays. */
+function sourceContext(
+  file: string,
+  src: string,
+  runtime: JsxRuntime,
+  modules: ModuleLoader,
+): SourceContext {
+  const route = routeForFile(file, src);
+  return {
+    file,
+    src,
+    route,
+    relativePath: path.relative(src, file).replace(/\\/g, "/"),
+    outputPath: (extension) => outputPathForRoute(route, extension),
+    runtime,
+    modules,
+    watch: (dependency) => modules.watchFile?.(path.resolve(path.dirname(file), dependency)),
   };
 }
 
@@ -109,16 +135,7 @@ async function discover(options: DiscoverPagesOptions): Promise<DiscoveredPage[]
       const handler = handlers[path.extname(file)];
       if (!handler) continue;
       try {
-        const route = routeForFile(file, src);
-        const source = {
-          file,
-          src,
-          route,
-          relativePath: path.relative(src, file).replace(/\\/g, "/"),
-          outputPath: (extension?: string) => outputPathForRoute(route, extension),
-          runtime: options.runtime ?? vincleRuntime,
-          modules,
-        };
+        const source = sourceContext(file, src, options.runtime ?? vincleRuntime, modules);
         const page = await handler.load(source);
         pages[i] = { ...page, source, handler: handler.name, meta: metadata(page.meta, file) };
       } catch (error) {

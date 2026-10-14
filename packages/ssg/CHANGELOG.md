@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
+
+- Publish development changes incrementally, preserving unchanged outputs and removing obsolete files while retaining complete hook inspection and collision checks.
 
 - Consolidate content loading under the modern `PageHandler` contract and migrate documentation handlers/rendering.
 - Add metadata, render, transform and pre-publication plugin phases, including staged file inspection and derived outputs.
@@ -23,3 +25,10 @@
 - Copy public resources, preserve external assets, and remove obsolete generated files.
 - Reject invalid paths, symbolic copies, and file collisions.
 - Prepare outputs before publication so production failures retain the previous site.
+
+- Split built-in sitemaps at 50,000 URLs or 52,428,800 UTF-8 bytes and generate a bounded sitemap index when needed.
+- Add `dev()` with Vite middleware, file watching, browser reload and error overlays, using isolated generated output.
+
+- Release deleted development pages from MDX, Vite resolution and runner caches; clear owned caches on close and coalesce concurrent rebuild requests.
+
+- Cache dev page rendering with import/layout/file dependency invalidation, `context.watch`, per-page opt-out, conservative extension policies and forced rebuilds. Publication and sitemap retain the complete output set.
