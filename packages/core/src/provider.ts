@@ -1,5 +1,5 @@
-import { resolveAsyncLocalStorage } from "./als.js";
-import { ERR_CONTEXT_CHILDREN, ERR_SCOPE_COLLISION, noAlsHint, vincleError } from "./errors.js";
+import { resolveAsyncLocalStorage, SyncStore } from "./als.js";
+import { ERR_CONTEXT_CHILDREN, noAlsHint, vincleError } from "./errors.js";
 import { providerMarker, type ProvideFn, type Renderable } from "./types.js";
 
 interface Frame {
@@ -13,64 +13,14 @@ interface Store {
   getStore(): Frame | undefined;
 }
 
-/**
- * Synchronous fallback for runtimes with no `AsyncLocalStorage` - correct for
- * one render at a time, but unable to tell a second concurrent render from the
- * one it serves, since both enter `run()` while the first is still in flight.
- * It refuses the second case rather than returning the wrong value: a render
- * leaking another request's context is a cross-request data leak no test would
- * catch, while a named error is a one-line runtime config fix.
- *
- * @internal Exported for `provider.test.tsx` - `initialize` never reaches this
- * on a runtime that actually has `AsyncLocalStorage`.
- */
-export class SyncTreeStore implements Store {
-  #current: Frame | undefined;
-  /** An async render still in flight owns the current frame. */
-  #pending = false;
-
-  getStore(): Frame | undefined {
-    return this.#current;
-  }
-
-  run<T>(frame: Frame, callback: () => T): T {
-    if (this.#pending) {
-      throw vincleError(
-        "[vincle/core] a Provider was entered while another render was still awaiting, " +
-          "and this runtime has no AsyncLocalStorage to tell the two apart. " +
-          noAlsHint("concurrent renders cannot share a synchronous tree"),
-        ERR_SCOPE_COLLISION,
-      );
-    }
-
-    const previous = this.#current;
-    this.#current = frame;
-
-    let result: T;
-    try {
-      result = callback();
-    } catch (error) {
-      this.#current = previous;
-      throw error;
-    }
-
-    // A synchronous callback closes its frame right away, so nesting works.
-    // An async one keeps the frame installed until it settles - otherwise
-    // `useContext` after the first `await` would see nothing.
-    if (result instanceof Promise) {
-      this.#pending = true;
-      const settle = (): void => {
-        this.#pending = false;
-        this.#current = previous;
-      };
-      // Attached alongside rather than chained, so `callback`'s result passes
-      // through untouched and the caller stays the sole recipient of a rejection.
-      result.then(settle, settle);
-      return result;
-    }
-
-    this.#current = previous;
-    return result;
+/** The no-`AsyncLocalStorage` fallback (see `SyncStore`), exported for `provider.test.tsx`. */
+export class SyncTreeStore extends SyncStore<Frame> {
+  constructor() {
+    super(
+      "[vincle/core] a Provider was entered while another render was still awaiting, " +
+        "and this runtime has no AsyncLocalStorage to tell the two apart. " +
+        noAlsHint("concurrent renders cannot share a synchronous tree"),
+    );
   }
 }
 
