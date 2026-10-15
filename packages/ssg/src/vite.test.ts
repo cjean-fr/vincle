@@ -73,6 +73,12 @@ test("private script and stylesheet entries enable Vite automatically without co
     await writeFile(path.join(root, "public/favicon.svg"), "icon");
     const result = await build({ root });
     expect(result.files.some((name) => /^assets\/main-.*\.js$/.test(name))).toBe(true);
+    const script = result.files.find((name) => /^assets\/main-.*\.js$/.test(name))!;
+    // Execute the published module graph: a Node-only Rolldown runtime can
+    // introduce a circular browser-external chunk that fails before entry code.
+    const executed = Bun.spawnSync(["node", path.join(root, "dist", script)]);
+    expect(executed.stderr.toString()).toBe("");
+    expect(executed.exitCode).toBe(0);
     expect(result.files.some((name) => /^assets\/main-.*\.css$/.test(name))).toBe(true);
     expect(await readFile(path.join(root, "dist/index.html"), "utf8")).toContain(
       'rel="stylesheet"',
