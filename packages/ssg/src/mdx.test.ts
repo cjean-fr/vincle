@@ -108,6 +108,55 @@ test("cache deduplicates concurrent loads but separates loaders, source edits an
     expect(imports).toBe(6);
   }));
 
+test.each(["invalidate", "clear"] as const)(
+  "%s discards an in-flight MDX compilation after it completes",
+  (operation) =>
+    fixture(async (src) => {
+      const file = path.join(src, "article.mdx");
+      await writeFile(file, '{"Article"}');
+      const started = Promise.withResolvers<void>();
+      const pending = Promise.withResolvers<Record<string, unknown>>();
+      const mod = { default: () => raw("Article") };
+      let imports = 0;
+      const modules: ModuleLoader = {
+        async load() {
+          if (++imports > 1) return mod;
+          started.resolve();
+          return pending.promise;
+        },
+      };
+      const cache = new MdxCache();
+      const stale = cache.load(file, modules);
+      await started.promise;
+      if (operation === "clear") cache.clear();
+      else cache.invalidate(file);
+      pending.resolve(mod);
+      const previous = await stale;
+      const fresh = await cache.load(file, modules);
+      expect(fresh).not.toBe(previous);
+      expect(await cache.load(file, modules)).toBe(fresh);
+      expect(imports).toBe(2);
+    }),
+);
+
+test("a failed MDX import can be retried", () =>
+  fixture(async (src) => {
+    const file = path.join(src, "article.mdx");
+    await writeFile(file, '{"Article"}');
+    let imports = 0;
+    const modules: ModuleLoader = {
+      async load() {
+        if (++imports === 1) throw new Error("Import unavailable");
+        return { default: () => raw("Article") };
+      },
+    };
+    const cache = new MdxCache();
+    await expect(cache.load(file, modules)).rejects.toThrow("Import unavailable");
+    const page = await cache.load(file, modules);
+    expect(await renderToString(page.Component({}))).toBe("Article");
+    expect(imports).toBe(2);
+  }));
+
 test("a component provider disables the direct HTML shortcut unless explicitly optimized", () =>
   fixture(async (src) => {
     const file = path.join(src, "article.mdx");

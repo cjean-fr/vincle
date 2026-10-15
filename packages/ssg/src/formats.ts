@@ -17,57 +17,45 @@ function isContent(value: unknown): value is SiteContent {
   return typeof value === "string" || value instanceof Uint8Array || value instanceof ArrayBuffer;
 }
 
-const moduleHandler: PageHandler = {
-  name: "module",
-  async load(source) {
-    const mod = await source.modules.load(source.file, source.runtime.importSource);
-    const producer = mod["default"];
-    if (producer === undefined)
-      throw failure(`No default export: ${source.file}`, {
-        reason: "SOURCE_FAILED",
-        hint: "Add a default component for JSX/TSX, or a default content/output producer for JS/TS.",
-        context: { file: source.file },
-      });
-    return {
-      meta: moduleMeta(mod, source.file),
-      render: withAdditionalOutputs(mod, async (context) => {
-        const result = typeof producer === "function" ? await producer(context) : producer;
-        if (isContent(result)) {
-          // data.json.ts and robots.txt.js preserve their explicit output suffix.
-          const extension = path.posix.extname(context.route);
-          const outputPath = extension ? context.route.slice(1) : context.outputPath();
-          return { path: outputPath, content: result };
-        }
-        return result;
-      }),
-    };
-  },
-};
+function scriptHandler(name: "module" | "jsx"): PageHandler {
+  return {
+    name,
+    async load(source) {
+      const mod = await source.modules.load(source.file, source.runtime.importSource);
+      const producer = mod["default"];
+      if (producer === undefined)
+        throw failure(`No default export: ${source.file}`, {
+          reason: "SOURCE_FAILED",
+          hint: "Add a default component for JSX/TSX, or a default content/output producer for JS/TS.",
+          context: { file: source.file },
+        });
+      return {
+        meta: moduleMeta(mod, source.file),
+        render: withAdditionalOutputs(mod, async (context) => {
+          const create = () => (typeof producer === "function" ? producer(context) : producer);
+          if (name === "jsx")
+            return {
+              path: context.outputPath(),
+              content: () => context.runtime.render(create),
+            };
+          const result = await create();
+          if (isContent(result)) {
+            // data.json.ts and robots.txt.js preserve their explicit output suffix.
+            const extension = path.posix.extname(context.route);
+            return {
+              path: extension ? context.route.slice(1) : context.outputPath(),
+              content: result,
+            };
+          }
+          return result;
+        }),
+      };
+    },
+  };
+}
 
-const jsxHandler: PageHandler = {
-  name: "jsx",
-  async load(source) {
-    const mod = await source.modules.load(source.file, source.runtime.importSource);
-    const Component = mod["default"];
-    if (Component === undefined)
-      throw failure(`No default export: ${source.file}`, {
-        reason: "SOURCE_FAILED",
-        hint: "Add a default component for JSX/TSX, or a default content/output producer for JS/TS.",
-        context: { file: source.file },
-      });
-    return {
-      meta: moduleMeta(mod, source.file),
-      render: withAdditionalOutputs(mod, (context) => ({
-        path: context.outputPath(),
-        content: () =>
-          context.runtime.render(() =>
-            typeof Component === "function" ? Component(context) : Component,
-          ),
-      })),
-    };
-  },
-};
-
+const moduleHandler = scriptHandler("module");
+const jsxHandler = scriptHandler("jsx");
 const markdownHandler = createMdxHandler();
 
 function checked(handler: PageHandler): PageHandler {
