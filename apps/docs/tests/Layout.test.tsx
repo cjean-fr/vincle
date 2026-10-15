@@ -14,12 +14,9 @@ const config: ResolvedDocsConfig = {
   description: "The small, safe way to render JSX into HTML strings.",
   pages: "src/pages",
   clientEntry: "src/_client/main.ts",
-  base: "/",
   tabs: [{ label: "Guide", slug: "guide" }],
   editUrl: null,
-  site: "https://vincle.cjean.fr",
   image: null,
-  sitemap: true,
   handlers: {},
   layout: Layout,
 };
@@ -71,16 +68,11 @@ async function sha256HashOf(text: string): Promise<string> {
   return `'sha256-${btoa(String.fromCharCode(...new Uint8Array(digest)))}'`;
 }
 
-it("uses the page base for canonical metadata independently of the Vite asset base", async () => {
+it("uses the SSG site for canonical metadata independently of the Vite asset base", async () => {
   const html = await Scope.with(async () => {
     setVite(null, { base: "/bundles/" });
     setDocs({
       ...docsContext({ title: "Guide" }),
-      config: {
-        ...config,
-        site: "https://example.test/project/",
-        base: "/docs/",
-      },
       currentPage: "/fr/guide",
       alternates: [
         { locale: "en", href: "/guide" },
@@ -89,10 +81,10 @@ it("uses the page base for canonical metadata independently of the Vite asset ba
     });
     return renderToString(Layout({ children: <main>body</main> }));
   });
-  expect(html).toContain('rel="canonical" href="https://example.test/project/docs/fr/guide"');
-  expect(html).toContain('property="og:url" content="https://example.test/project/docs/fr/guide"');
-  expect(html).toContain('hreflang="en" href="https://example.test/project/docs/guide"');
-  expect(html).toContain('hreflang="x-default" href="https://example.test/project/docs/guide"');
+  expect(html).toContain('rel="canonical" href="https://vincle.cjean.fr/fr/guide"');
+  expect(html).toContain('property="og:url" content="https://vincle.cjean.fr/fr/guide"');
+  expect(html).toContain('hreflang="en" href="https://vincle.cjean.fr/guide"');
+  expect(html).toContain('hreflang="x-default" href="https://vincle.cjean.fr/guide"');
   expect(html).toContain('src="/bundles/src/_client/main.ts"');
 });
 

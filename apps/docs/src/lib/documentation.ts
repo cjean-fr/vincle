@@ -1,17 +1,10 @@
-import type {
-  DiscoverPagesOptions,
-  DiscoveredPage,
-  PageContext,
-  PublicationContext,
-  SsgPlugin,
-} from "@vincle/ssg";
+import type { DiscoverPagesOptions, DiscoveredPage, PageContext } from "@vincle/ssg";
 
 import path from "node:path";
 
 import type { Page } from "./types.js";
 
 import config from "../../docs.config.js";
-import { htmlToText } from "./html-text.js";
 import { translatorFor } from "./i18n/interface.js";
 import {
   localeFor,
@@ -20,7 +13,6 @@ import {
   type Locale,
   unlocalizedPath,
 } from "./i18n/locale.js";
-import { llmsFullTxt, llmsTxt } from "./llms.js";
 import { editUrlFor, lastModified } from "./page-history.js";
 import { discoverPages } from "./pages.js";
 import {
@@ -112,38 +104,4 @@ export async function discoverDocumentation(
   });
 }
 
-/** llms.txt and llms-full.txt need every rendered page. */
-export const documentationArtifacts: SsgPlugin = {
-  name: "documentation-artifacts",
-  async publish(context: PublicationContext) {
-    const rendered = context.outputs
-      .filter((output) => output.meta.search !== false)
-      .map((output) => ({
-        url: output.url,
-        title: output.meta.title ?? output.url,
-        read: () => output.read(),
-      }));
-    for (const locale of documentationLocales) {
-      const pages = rendered.filter((page) => localeFor(page.url) === locale);
-      const prefix = locale === "en" ? "" : `${locale}/`;
-      const localeConfig =
-        locale === "en" ? config : { ...config, description: translatorFor(locale)("description") };
-      await context.emit({
-        path: `${prefix}llms.txt`,
-        content: llmsTxt(pages, localeConfig, locale),
-      });
-      await context.emit({
-        path: `${prefix}llms-full.txt`,
-        content: () =>
-          llmsFullTxt(
-            (async function* () {
-              for (const page of pages)
-                yield { url: page.url, title: page.title, text: htmlToText(await page.read()) };
-            })(),
-            localeConfig,
-            locale,
-          ),
-      });
-    }
-  },
-};
+export { documentationArtifacts } from "./publication.js";

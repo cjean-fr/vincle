@@ -1,5 +1,6 @@
-import config from "../../docs.config.js";
-import { fullUrl } from "../lib/full-url.js";
+import { fullUrl } from "@vincle/ssg";
+
+import ssg from "../../ssg.config.js";
 
 export const meta = { title: "robots.txt", sitemap: false, search: false };
 
@@ -7,7 +8,7 @@ export const meta = { title: "robots.txt", sitemap: false, search: false };
 // discovery is advertised through Link headers instead.
 export default function robots(): string {
   const lines = ["User-agent: *", "Allow: /"];
-  if (config.site && config.sitemap)
-    lines.push("", `Sitemap: ${fullUrl("/sitemap.xml", config.site, config.base)}`);
+  if (ssg.site && ssg.sitemap !== false)
+    lines.push("", `Sitemap: ${fullUrl("/sitemap.xml", ssg.site)}`);
   return lines.join("\n") + "\n";
 }

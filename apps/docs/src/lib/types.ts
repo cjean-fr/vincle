@@ -82,14 +82,10 @@ export interface DocsConfig {
   description?: string;
   pages?: string;
   clientEntry?: string;
-  /** Deployment path for documentation pages. */
-  base?: string;
   /** Explicit top-level navigation tabs. */
   tabs: readonly TabConfig[];
   editUrl?: string | null;
-  site?: string | null;
   image?: string;
-  sitemap?: boolean;
   handlers?: Record<string, PageHandler>;
   /** Override the default page shell (Layout). Receives children already wrapped by the handler's prose wrapper. */
   layout?: (props: {
@@ -97,23 +93,11 @@ export interface DocsConfig {
   }) => import("@vincle/core").Awaitable<import("@vincle/core").Renderable>;
 }
 
-export interface ResolvedDocsConfig {
-  title: string;
+export type ResolvedDocsConfig = Required<Omit<DocsConfig, "tagline" | "editUrl" | "image">> & {
   tagline: string | null;
-  description: string;
-  pages: string;
-  clientEntry: string;
-  base: string;
-  tabs: readonly TabConfig[];
   editUrl: string | null;
-  site: string | null;
   image: string | null;
-  sitemap: boolean;
-  handlers: Record<string, PageHandler>;
-  layout: (props: {
-    children: import("@vincle/core").Renderable;
-  }) => import("@vincle/core").Awaitable<import("@vincle/core").Renderable>;
-}
+};
 
 export interface Page extends DiscoveredPage {
   url: string;

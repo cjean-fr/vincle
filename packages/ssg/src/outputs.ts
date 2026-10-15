@@ -46,14 +46,9 @@ function filePath(value: string): string {
     value.includes("\\") ||
     value.includes("\0") ||
     path.isAbsolute(value) ||
-    /^[a-z]:/i.test(value)
+    /^[a-z]:/i.test(value) ||
+    value.split("/").some((part) => !part || part === "." || part === "..")
   )
-    throw failure(`Invalid relative output path: ${JSON.stringify(value)}`, {
-      reason: "INVALID_OUTPUT_PATH",
-      hint: "Use a non-empty path relative to out, with forward slashes and no empty, . or .. segments.",
-      context: { path: value },
-    });
-  if (value.split("/").some((part) => !part || part === "." || part === ".."))
     throw failure(`Invalid relative output path: ${JSON.stringify(value)}`, {
       reason: "INVALID_OUTPUT_PATH",
       hint: "Use a non-empty path relative to out, with forward slashes and no empty, . or .. segments.",
@@ -176,7 +171,7 @@ async function generateSiteInternal(
       .update(content instanceof ArrayBuffer ? new Uint8Array(content) : content)
       .digest("hex");
   }
-  async function prepareTarget(name: string): Promise<string> {
+  function prepareTarget(name: string): string {
     filePath(name);
     if (preserve.has(name.split("/")[0]!))
       throw failure(`Output conflicts with preserved entry: ${name}`, {
@@ -209,7 +204,7 @@ async function generateSiteInternal(
     return path.join(stage, name);
   }
   async function write(name: string, content: SiteContent): Promise<void> {
-    const target = await prepareTarget(name);
+    const target = prepareTarget(name);
     const fingerprint = cache ? digest(content) : "";
     if (cache) next.set(name, { digest: fingerprint });
     if (previous?.get(name)?.digest === fingerprint) return;
@@ -229,7 +224,7 @@ async function generateSiteInternal(
       for (const entry of await readdir(from))
         await copy(path.join(from, entry), prefix ? `${prefix}/${entry}` : entry);
     } else if (info.isFile()) {
-      const target = await prepareTarget(prefix);
+      const target = prepareTarget(prefix);
       const source = JSON.stringify([from, info.size, info.mtimeMs, info.ctimeMs]);
       const old = previous?.get(prefix);
       if (old?.source === source) {

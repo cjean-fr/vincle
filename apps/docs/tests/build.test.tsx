@@ -6,6 +6,7 @@ import path from "node:path";
 
 import config from "../docs.config.js";
 import { editUrlFor, lastModified } from "../src/lib/page-history.js";
+import ssg from "../ssg.config.js";
 
 const PROJECT_DIR = path.resolve(import.meta.dirname, "..");
 const DIST_DIR = path.join(PROJECT_DIR, "dist");
@@ -47,13 +48,13 @@ describe("SSG build", () => {
     expect(html).toMatch(/<link.*?rel="stylesheet".*?href="\/assets\/main-.*?\.css".*?>/);
   });
 
-  it("the print stylesheet agrees with config.site", async () => {
+  it("the print stylesheet agrees with ssg.site", async () => {
     // `@media print` repeats the host, and CSS cannot read the config.
     const css = await readFile(path.join(PROJECT_DIR, "src/_client/main.css"), "utf-8");
     const match = /content: " \((https:\/\/[^"]*?)" attr\(href\)/.exec(css);
     expect(match, "no absolute-URL rule in the print stylesheet").not.toBeNull();
-    expect(config.site, "config.site is unset: nothing to agree with").toBeTruthy();
-    expect(match![1]).toBe(config.site!);
+    expect(ssg.site, "ssg.site is unset: nothing to agree with").toBeTruthy();
+    expect(match![1]).toBe(ssg.site!);
   });
 
   it("produces llms.txt", async () => {

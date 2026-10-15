@@ -345,14 +345,15 @@ try {
 There is one handler API: `PageHandler.load(SourceContext)` returns metadata and
 `render(PageContext)`, which produces one or more outputs. `build()` and
 `discoverPages()` use this same contract; `renderPage()` exposes the same
-metadata/render/transform lifecycle for specialized consumers. The old generic
-handler and `SsgHandler` name are removed.
+metadata/render/transform lifecycle for specialized consumers.
 
 Markdown and MDX use Sätteri by default. `createMdxHandler` from
 `@vincle/ssg/mdx` configures that same pipeline for custom transforms. It defers compilation until rendering, caches compiled pages,
 uses direct HTML for static Markdown, and emits the original source as a
 Markdown alternate. Navigation, code highlighting, headings and the site shell
 remain documentation features.
+Each discovery reads a document once, so metadata, HTML and the Markdown
+alternate use the same source snapshot. Edits are picked up by the next discovery.
 
 ```ts
 import { build } from "@vincle/ssg";
@@ -386,8 +387,7 @@ preparation stage, adding page contexts. Publication hooks may emit derived
 artifacts such as a search index; these are not added to the built-in sitemap.
 
 Migrating from `@vincle/site`: update the package dependency and imports to
-`@vincle/ssg`. The lower-level writer's arguments remain unchanged. This repository
-contains the renamed package; renaming does not publish it to npm.
+`@vincle/ssg`. The lower-level writer's arguments remain unchanged.
 
 ## Development server
 
@@ -506,6 +506,19 @@ returns `DiscoveredPage[]` using the supplied handlers, runtime and module loade
 while SSG still owns page hooks, assets, sitemap and publication. Custom discovery
 is conservatively rerendered in development; publication still avoids rewriting
 unchanged files.
+
+### Public URLs
+
+`fullUrl(route, site)` resolves a route under the `site` URL from your SSG config,
+including its deployment path. Without `site`, it returns the route unchanged.
+
+```ts
+import { fullUrl } from "@vincle/ssg";
+
+import config from "./ssg.config.js";
+
+fullUrl("/guide", config.site); // https://example.com/docs/guide
+```
 
 ### Multilingual sitemap
 

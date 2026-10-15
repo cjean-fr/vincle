@@ -1,8 +1,7 @@
 import { renderToString } from "@vincle/core";
 import { describe, expect, it } from "bun:test";
 
-import { Script, withHash } from "../src/lib/csp/script.js";
-import { CspService } from "../src/lib/csp/service.js";
+import { CspService, Script, withHash } from "../src/lib/csp.js";
 
 async function expectedHash(body: string) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body));

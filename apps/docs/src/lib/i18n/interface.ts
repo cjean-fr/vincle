@@ -1,97 +1,53 @@
-import { createTypedTranslator } from "@cjean-fr/i18n-tiny";
+import { createTypedTranslator, type InferSpec } from "@cjean-fr/i18n-tiny";
 
 import type { Locale } from "./locale.js";
 
-type InterfaceSpec = {
-  copyCode: readonly [];
-  copiedCode: readonly [];
-  terminalWindow: readonly [];
-  skipContent: readonly [];
-  primaryNavigation: readonly [];
-  sections: readonly [];
-  guide: readonly [];
-  integration: readonly [];
-  api: readonly [];
-  search: readonly [];
-  searchDocumentation: readonly [];
-  loadingIndex: readonly [];
-  loading: readonly [];
-  searchQuery: readonly [];
-  searchResults: readonly [];
-  loadingSearch: readonly [];
-  searchPlaceholder: readonly [];
-  searchFailed: readonly [];
-  typeToSearch: readonly [];
-  noResults: readonly [];
-  resultCount: readonly ["count"];
-  editPage: readonly [];
-  lastUpdated: readonly ["date"];
-  contents: readonly [];
-  onThisPage: readonly [];
-  sectionLink: readonly [];
-  codeAlternatives: readonly [];
-  openNavigation: readonly [];
-  closeNavigation: readonly [];
-  language: readonly [];
-  notFoundTitle: readonly [];
-  notFoundMessage: readonly [];
-  backHome: readonly [];
-  description: readonly [];
-  themeInitial: readonly [];
-  themeAutoDark: readonly [];
-  themeAutoLight: readonly [];
-  themeLightAuto: readonly [];
-  themeLightDark: readonly [];
-  themeDarkLight: readonly [];
-  themeDarkAuto: readonly [];
-};
+const messages = {
+  copyCode: "Copy to clipboard",
+  copiedCode: "Copied!",
+  terminalWindow: "Terminal window",
+  skipContent: "Skip to content",
+  primaryNavigation: "Primary navigation",
+  sections: "Sections",
+  guide: "Guide",
+  integration: "Integration",
+  api: "API",
+  search: "Search",
+  searchDocumentation: "Search documentation",
+  loadingIndex: "Loading index…",
+  loading: "Loading…",
+  searchQuery: "Search query",
+  searchResults: "Search results",
+  loadingSearch: "Loading search…",
+  searchPlaceholder: "Search docs…",
+  searchFailed: "Failed to load search",
+  typeToSearch: "Type to search",
+  noResults: "No results",
+  resultCount: "{count} results",
+  editPage: "Edit this page on GitHub →",
+  lastUpdated: "Last updated: {date}",
+  contents: "Table of contents",
+  onThisPage: "On this page",
+  sectionLink: "Direct link to this section",
+  codeAlternatives: "Code example alternatives",
+  openNavigation: "Open navigation",
+  closeNavigation: "Close navigation",
+  language: "Language",
+  notFoundTitle: "Page Not Found",
+  notFoundMessage: "Page not found.",
+  backHome: "← Back to home",
+  description: "The small, safe way to render JSX into HTML strings.",
+  themeInitial: "Theme: Automatic. Switch to Light",
+  themeAutoDark: "Theme: Automatic (system dark). Switch to light",
+  themeAutoLight: "Theme: Automatic (system light). Switch to dark",
+  themeLightAuto: "Theme: Light. Return to Automatic",
+  themeLightDark: "Theme: Light. Switch to Dark",
+  themeDarkLight: "Theme: Dark. Switch to Light",
+  themeDarkAuto: "Theme: Dark. Return to Automatic",
+} as const;
 
-const en = createTypedTranslator<InterfaceSpec>()(
-  {
-    copyCode: "Copy to clipboard",
-    copiedCode: "Copied!",
-    terminalWindow: "Terminal window",
-    skipContent: "Skip to content",
-    primaryNavigation: "Primary navigation",
-    sections: "Sections",
-    guide: "Guide",
-    integration: "Integration",
-    api: "API",
-    search: "Search",
-    searchDocumentation: "Search documentation",
-    loadingIndex: "Loading index…",
-    loading: "Loading…",
-    searchQuery: "Search query",
-    searchResults: "Search results",
-    loadingSearch: "Loading search…",
-    searchPlaceholder: "Search docs…",
-    searchFailed: "Failed to load search",
-    typeToSearch: "Type to search",
-    noResults: "No results",
-    resultCount: "{count} results",
-    editPage: "Edit this page on GitHub →",
-    lastUpdated: "Last updated: {date}",
-    contents: "Table of contents",
-    onThisPage: "On this page",
-    sectionLink: "Direct link to this section",
-    codeAlternatives: "Code example alternatives",
-    openNavigation: "Open navigation",
-    closeNavigation: "Close navigation",
-    language: "Language",
-    notFoundTitle: "Page Not Found",
-    notFoundMessage: "Page not found.",
-    backHome: "← Back to home",
-    description: "The small, safe way to render JSX into HTML strings.",
-    themeInitial: "Theme: Automatic. Switch to Light",
-    themeAutoDark: "Theme: Automatic (system dark). Switch to light",
-    themeAutoLight: "Theme: Automatic (system light). Switch to dark",
-    themeLightAuto: "Theme: Light. Return to Automatic",
-    themeLightDark: "Theme: Light. Switch to Dark",
-    themeDarkLight: "Theme: Dark. Switch to Light",
-    themeDarkAuto: "Theme: Dark. Return to Automatic",
-  },
-  { locale: "en" },
-);
+type InterfaceSpec = InferSpec<typeof messages>;
+const en = createTypedTranslator<InterfaceSpec>()(messages, { locale: "en" });
 
 const fr = createTypedTranslator<InterfaceSpec>()(
   {

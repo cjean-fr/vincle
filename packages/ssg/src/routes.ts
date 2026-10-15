@@ -47,3 +47,13 @@ export function outputPathForRoute(route: string, extension = ".html"): string {
   if (extension === ".html") return stem ? `${stem}/index.html` : "index.html";
   return `${stem || "index"}${extension}`;
 }
+
+/** Resolve a route under the configured public site URL, including its deployment path. */
+export function fullUrl(route: string, site?: string | URL): string {
+  if (site === undefined) return route;
+  const root = new URL(site);
+  root.search = "";
+  root.hash = "";
+  root.pathname = root.pathname.replace(/\/+$/, "") + "/";
+  return new URL(route.replace(/^\/+/, ""), root).href;
+}

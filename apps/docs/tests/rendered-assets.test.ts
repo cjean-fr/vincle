@@ -1,7 +1,8 @@
 import { expect, it } from "bun:test";
 
 import config from "../docs.config.js";
-import { llmsFullTxt } from "../src/lib/llms.js";
+import { llmsFullTxt } from "../src/lib/publication.js";
+import ssg from "../ssg.config.js";
 
 it("keeps the llms-full.txt format", async () => {
   const pages = [
@@ -16,13 +17,13 @@ it("keeps the llms-full.txt format", async () => {
       "",
       "---",
       `# ${pages[0]!.title}`,
-      `Source: ${config.site ?? ""}/first`,
+      `Source: ${ssg.site ?? ""}/first`,
       "",
       "First & body.",
       "",
       "---",
       "# Second",
-      `Source: ${config.site ?? ""}/second`,
+      `Source: ${ssg.site ?? ""}/second`,
       "",
       "Second body.",
       "",
