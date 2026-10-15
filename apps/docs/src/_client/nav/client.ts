@@ -62,6 +62,10 @@ document.addEventListener("click", (e) => {
     return;
   }
   const navOpen = document.querySelector(`${NAV_SELECTOR}[data-open]`);
+  if (navOpen && !navOpen.contains(target)) {
+    setOpen(false);
+    return;
+  }
   if (navOpen && target.closest("a")) {
     setOpen(false);
   }

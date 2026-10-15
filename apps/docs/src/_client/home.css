@@ -231,21 +231,6 @@
 .docs-feature-link:hover h3 {
   color: var(--docs-color-accent);
 }
-.docs-home-footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 1.5rem;
-  padding-block: 1.5rem;
-  border-top: 1px solid var(--docs-color-border);
-  font-size: 0.8125rem;
-  color: var(--docs-color-text-secondary);
-}
-.docs-home-footer > span {
-  margin-right: auto;
-}
-.docs-home-footer a:hover {
-  color: var(--docs-color-accent);
-}
 @media (max-width: 900px) {
   .docs-home-hero {
     grid-template-columns: 1fr;

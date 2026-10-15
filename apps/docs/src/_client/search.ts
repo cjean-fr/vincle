@@ -147,8 +147,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateSelection(items: NodeListOf<HTMLElement>) {
     items.forEach((el, i) => {
       el.setAttribute("aria-selected", String(i === selectedIndex));
-      const link = el.querySelector("a");
-      if (link) link.setAttribute("aria-selected", String(i === selectedIndex));
     });
     if (selectedIndex >= 0 && items[selectedIndex]) {
       items[selectedIndex]!.scrollIntoView({ block: "nearest" });
@@ -288,20 +286,37 @@ function createResultItem(data: {
 
   const link = document.createElement("a");
   link.href = data.url;
-  link.className =
-    "flex flex-col gap-0.5 px-4 py-2.5 rounded transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-950 aria-selected:border-l-2 aria-selected:border-blue-500 aria-selected:pl-3.5";
+  link.className = "docs-search-result";
 
   const title = document.createElement("span");
-  title.className = "font-medium text-sm text-gray-900 dark:text-gray-100";
+  title.className = "docs-search-result-title";
   appendSegments(title, highlightTitle(data.title, data.query));
 
+  const section = document.createElement("span");
+  section.className = "docs-search-result-section";
+  section.textContent = sectionOf(data.url);
+
   const excerpt = document.createElement("span");
-  excerpt.className = "text-xs text-gray-500 dark:text-gray-400";
+  excerpt.className = "docs-search-result-excerpt";
   appendSegments(excerpt, data.excerpt);
 
-  link.append(title, excerpt);
+  const heading = document.createElement("span");
+  heading.className = "docs-search-result-heading";
+  heading.append(title, section);
+
+  link.append(heading, excerpt);
   item.append(link);
   return item;
+}
+
+/** Pages sharing a title (three "Components") stay distinguishable by where they live. */
+function sectionOf(url: string): string {
+  const lang = document.documentElement.lang;
+  return url
+    .split("/")
+    .filter((segment, i) => segment && !(i === 1 && segment === lang))
+    .slice(0, -1)
+    .join(" / ");
 }
 
 function snippet(text: string, query: string, radius = 50): Segment[] {
@@ -376,7 +391,6 @@ function appendSegments(target: HTMLElement, segments: Segment[]): void {
   for (const seg of segments) {
     if (seg.marked) {
       const mark = document.createElement("mark");
-      mark.className = "bg-yellow-200 dark:bg-yellow-800 rounded px-0.5";
       mark.textContent = seg.text;
       target.append(mark);
     } else if (seg.text) {
