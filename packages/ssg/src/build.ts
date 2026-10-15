@@ -4,6 +4,7 @@ import path from "node:path";
 import type { PageCacheSession } from "./page-cache.js";
 import type {
   PageContext,
+  DiscoverPagesOptions,
   SsgOptions,
   SsgOutput,
   RenderedOutput,
@@ -16,7 +17,7 @@ import { sourceDirectory, clientEntries } from "./conventions.js";
 import { failure, diagnose, contextualError } from "./errors.js";
 import { resolveHandlers, vincleRuntime } from "./formats.js";
 import { discoverPages } from "./handlers.js";
-import { renderPage } from "./lifecycle.js";
+import { createPageRenderer } from "./lifecycle.js";
 import { generateSite, generateSiteCached, type PublicationCache } from "./outputs.js";
 import { fullUrl } from "./routes.js";
 import { sitemapOutputs } from "./sitemap.js";
@@ -107,21 +108,8 @@ function runBuild(options: SsgOptions, cache?: PageCacheSession, publication?: P
   });
 }
 
-async function buildInternal(
-  options: SsgOptions,
-  cache?: PageCacheSession,
-  publication?: PublicationCache,
-): Promise<{ files: string[] }> {
-  const root = path.resolve(options.root ?? process.cwd());
-  const src = sourceDirectory(root, options.src);
-  const out = path.resolve(root, options.out ?? "dist");
-  if (out === src || src.startsWith(`${out}${path.sep}`) || out.startsWith(`${src}${path.sep}`)) {
-    throw failure("Source and output directories must not contain one another.", {
-      reason: "INVALID_CONFIG",
-      hint: "Choose separate src and out directories, such as src and dist. Neither may be an ancestor of the other.",
-      context: { root, src, out },
-    });
-  }
+/** Validate the public URL and locale configuration before preparing assets. */
+function siteConfiguration(options: SsgOptions): URL | undefined {
   let site: URL | undefined;
   if (options.site !== undefined) {
     try {
@@ -157,6 +145,30 @@ async function buildInternal(
       hint: "Declare unique BCP 47 locales and a defaultLocale from that list.",
       context: { phase: "configuration" },
     });
+  return site;
+}
+
+function buildPaths(options: SsgOptions) {
+  const root = path.resolve(options.root ?? process.cwd());
+  const src = sourceDirectory(root, options.src);
+  const out = path.resolve(root, options.out ?? "dist");
+  if (out === src || src.startsWith(`${out}${path.sep}`) || out.startsWith(`${src}${path.sep}`)) {
+    throw failure("Source and output directories must not contain one another.", {
+      reason: "INVALID_CONFIG",
+      hint: "Choose separate src and out directories, such as src and dist. Neither may be an ancestor of the other.",
+      context: { root, src, out },
+    });
+  }
+  return { root, src, out };
+}
+
+async function buildInternal(
+  options: SsgOptions,
+  cache?: PageCacheSession,
+  publication?: PublicationCache,
+): Promise<{ files: string[] }> {
+  const { root, src, out } = buildPaths(options);
+  const site = siteConfiguration(options);
   const handlers = resolveHandlers(options.handlers);
   let sourceInfo;
   try {
@@ -214,24 +226,31 @@ async function buildInternal(
       const renderRuntime = assetRuntime(runtime, assets);
       const urls = new Map<string, SsgMeta>();
       const htmlOutputs: { path: string; url: string; meta: SsgMeta }[] = [];
-      const pages = await (options.discover ?? discoverPages)({
-        src,
-        handlers: cache
-          ? Object.fromEntries(
-              Object.entries(handlers).map(([extension, handler]) => [
-                extension,
-                handler ? cache.wrap(handler) : false,
-              ]),
-            )
-          : handlers,
-        runtime: renderRuntime,
-        modules: assets?.modules,
-      });
+      const discover = (discovery: DiscoverPagesOptions) =>
+        discoverPages({
+          ...discovery,
+          handlers: cache
+            ? Object.fromEntries(
+                Object.entries(resolveHandlers(discovery.handlers)).map(([extension, handler]) => [
+                  extension,
+                  handler ? cache.wrap(handler) : false,
+                ]),
+              )
+            : discovery.handlers,
+        });
+      const discovery = { src, handlers, runtime: renderRuntime, modules: assets?.modules };
+      const pages = (
+        await (options.discover ? options.discover(discovery, discover) : discover(discovery))
+      ).toReversed();
+      const renderPage = createPageRenderer();
       const contexts: PageContext[] = [];
+      const pageCache = cache;
       async function* produce(): AsyncGenerator<SsgOutput> {
-        for (const page of pages) {
+        // Drop rendered page closures as we advance; publication only needs their contexts.
+        while (pages.length) {
+          const page = pages.pop()!;
           try {
-            const hit = options.discover ? undefined : cache?.rendered(page.source.file);
+            const hit = pageCache?.rendered(page);
             let context: PageContext | undefined;
             const rendered: RenderedOutput[] = [];
             if (hit?.context) contexts.push(hit.context);
@@ -250,11 +269,10 @@ async function buildInternal(
                 htmlOutputs.push({ path: output.path, url: publicUrl(output), meta });
               if (output.sitemap && site && options.sitemap !== false)
                 urls.set(fullUrl(publicUrl(output), site), meta);
-              if (cache && !hit) rendered.push(output);
+              if (pageCache && !hit) rendered.push(output);
               yield output;
             }
-            if (cache && !options.discover && !hit && context)
-              cache.store(page.source.file, context, rendered);
+            if (pageCache && !hit && context) pageCache.store(page.source.file, context, rendered);
           } catch (error) {
             throw contextualError(error, `Failed source ${page.source.relativePath}`, {
               reason: "SOURCE_FAILED",
@@ -263,41 +281,7 @@ async function buildInternal(
             });
           }
         }
-        if (site && options.sitemap !== false) {
-          const groups = new Map<string, Map<string, string>>();
-          for (const [url, meta] of urls) {
-            if (!options.i18n || !meta.translationKey || !meta.locale) continue;
-            if (!options.i18n.locales.includes(meta.locale))
-              throw failure(`Undeclared page locale: ${meta.locale}`, {
-                reason: "INVALID_CONFIG",
-                hint: "Declare the page locale in i18n.locales.",
-                context: { url, locale: meta.locale },
-              });
-            const group = groups.get(meta.translationKey) ?? new Map<string, string>();
-            if (group.has(meta.locale))
-              throw failure(`Duplicate translation: ${meta.translationKey} (${meta.locale})`, {
-                reason: "INVALID_OUTPUT",
-                hint: "Use one public page per translation key and locale.",
-                context: { url, locale: meta.locale },
-              });
-            group.set(meta.locale, url);
-            groups.set(meta.translationKey, group);
-          }
-          yield* sitemapOutputs(
-            [...urls]
-              .toSorted(([a], [b]) => a.localeCompare(b))
-              .map(([url, meta]) => {
-                const group = meta.translationKey ? groups.get(meta.translationKey) : undefined;
-                const alternates = group
-                  ? [...group].map(([locale, href]) => ({ locale, href }))
-                  : [];
-                const fallback = options.i18n && group?.get(options.i18n.defaultLocale);
-                if (fallback) alternates.push({ locale: "x-default", href: fallback });
-                return { url, alternates };
-              }),
-            site,
-          );
-        }
+        if (site && options.sitemap !== false) yield* translatedSitemap(urls, site, options.i18n);
       }
       const publish = publication
         ? (preparedSite: Parameters<typeof generateSite>[0]) =>
@@ -356,4 +340,43 @@ async function buildInternal(
   } finally {
     await rm(work, { recursive: true, force: true });
   }
+}
+
+/** Validate translation groups and add their alternate links to the sitemap. */
+function* translatedSitemap(
+  urls: ReadonlyMap<string, SsgMeta>,
+  site: URL,
+  i18n?: SsgOptions["i18n"],
+) {
+  const groups = new Map<string, Map<string, string>>();
+  for (const [url, meta] of urls) {
+    if (!i18n || !meta.translationKey || !meta.locale) continue;
+    if (!i18n.locales.includes(meta.locale))
+      throw failure(`Undeclared page locale: ${meta.locale}`, {
+        reason: "INVALID_CONFIG",
+        hint: "Declare the page locale in i18n.locales.",
+        context: { url, locale: meta.locale },
+      });
+    const group = groups.get(meta.translationKey) ?? new Map<string, string>();
+    if (group.has(meta.locale))
+      throw failure(`Duplicate translation: ${meta.translationKey} (${meta.locale})`, {
+        reason: "INVALID_OUTPUT",
+        hint: "Use one public page per translation key and locale.",
+        context: { url, locale: meta.locale },
+      });
+    group.set(meta.locale, url);
+    groups.set(meta.translationKey, group);
+  }
+  yield* sitemapOutputs(
+    [...urls]
+      .toSorted(([a], [b]) => a.localeCompare(b))
+      .map(([url, meta]) => {
+        const group = meta.translationKey ? groups.get(meta.translationKey) : undefined;
+        const alternates = group ? [...group].map(([locale, href]) => ({ locale, href })) : [];
+        const fallback = i18n && group?.get(i18n.defaultLocale);
+        if (fallback) alternates.push({ locale: "x-default", href: fallback });
+        return { url, alternates };
+      }),
+    site,
+  );
 }

@@ -34,7 +34,7 @@ const NO_META: DirMeta = {};
 const metaCache = new Map<string, Promise<DirMeta>>();
 
 /** Reads a directory's `_meta.json`, caching the result per build. */
-function readDirMeta(dir: string): Promise<DirMeta> {
+export function readDirMeta(dir: string): Promise<DirMeta> {
   const cached = metaCache.get(dir);
   if (cached) return cached;
 

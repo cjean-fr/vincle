@@ -501,11 +501,18 @@ const search = {
 };
 ```
 
-Specialized sites can supply `discover(options)` in their configuration. It
-returns `DiscoveredPage[]` using the supplied handlers, runtime and module loader,
-while SSG still owns page hooks, assets, sitemap and publication. Custom discovery
-is conservatively rerendered in development; publication still avoids rewriting
-unchanged files.
+Specialized sites can supply `discover(options, discover)` in their configuration.
+Call the supplied `discover(options)` function, including any handler overrides,
+to retain incremental loading and rendering in development. It returns
+`DiscoveredPage[]` for filtering or enrichment; SSG still owns page hooks, assets,
+sitemap and publication. Pages loaded independently remain conservatively rerendered.
+
+For discovery-derived state such as a navigation catalog, assign a stable
+`meta.renderKey` string to affected pages. Changing this key rerenders those pages
+while unchanged keys allow cached HTML to be reused. Include every input that can
+change their rendered output in the key, and use `context.watch()` for filesystem
+dependencies. `meta.incremental: false` still disables reuse. Publication hooks
+continue to receive the complete catalog and final HTML, including cached pages.
 
 ### Public URLs
 

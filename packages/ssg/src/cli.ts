@@ -28,7 +28,8 @@ const help = `Usage: ssg <dev|build> [options]
 Automatically loads ssg.config.ts (also .mts, .js, .mjs, .cts and .cjs).
 `;
 
-export async function runCli(args: string[]): Promise<void> {
+/** Parse and validate command-line inputs before loading project configuration. */
+function cliArguments(args: string[]) {
   const { values, positionals } = parseArgs({
     args,
     allowPositionals: true,
@@ -56,6 +57,13 @@ export async function runCli(args: string[]): Promise<void> {
     (!/^\d+$/.test(values.port!) || !Number.isInteger(port) || port < 0 || port > 65535)
   )
     throw invalidCommand("--port must be an integer between 0 and 65535.");
+  return { values, command, port };
+}
+
+export async function runCli(args: string[]): Promise<void> {
+  const parsed = cliArguments(args);
+  if (!parsed) return;
+  const { values, command, port } = parsed;
   const root = path.resolve(values.root ?? process.cwd());
   const config = await loadSsgConfig(
     root,
@@ -87,6 +95,11 @@ export async function runCli(args: string[]): Promise<void> {
       },
     }),
   });
+  await serveCli(serverPromise);
+}
+
+/** Keep startup and signal-driven shutdown in one lifecycle. */
+async function serveCli(serverPromise: ReturnType<typeof dev>): Promise<void> {
   let stopping = false;
   const stop = async () => {
     if (stopping) return;

@@ -15,8 +15,11 @@ import { metadata } from "./metadata.js";
 import { iterateOutputs } from "./results.js";
 
 /** Cached runtimes retain their page, not a completed render generator's state. */
-function scopedRuntime(context: PageContext, runtime: JsxRuntime): JsxRuntime {
-  const findLayout = layoutLoader();
+function scopedRuntime(
+  context: PageContext,
+  runtime: JsxRuntime,
+  findLayout: ReturnType<typeof layoutLoader>,
+): JsxRuntime {
   return {
     ...runtime,
     async render(create) {
@@ -28,14 +31,28 @@ function scopedRuntime(context: PageContext, runtime: JsxRuntime): JsxRuntime {
   };
 }
 
+interface RenderOptions {
+  plugins?: readonly SsgPlugin[];
+  runtime?: JsxRuntime;
+  onContext?: (context: PageContext) => void;
+}
+
+/** Internal build session: layout probes and imports are shared only by this build. */
+export function createPageRenderer() {
+  const findLayout = layoutLoader();
+  return (page: DiscoveredPage, options: RenderOptions = {}) =>
+    renderPageInternal(page, options, findLayout);
+}
+
 /** Shared lifecycle used by build() and consumers with specialized site shells. */
-export async function* renderPage(
+export function renderPage(page: DiscoveredPage, options: RenderOptions = {}) {
+  return createPageRenderer()(page, options);
+}
+
+async function* renderPageInternal(
   page: DiscoveredPage,
-  options: {
-    plugins?: readonly SsgPlugin[];
-    runtime?: JsxRuntime;
-    onContext?: (context: PageContext) => void;
-  } = {},
+  options: RenderOptions,
+  findLayout: ReturnType<typeof layoutLoader>,
 ): AsyncGenerator<RenderedOutput> {
   try {
     const context: PageContext = { ...page.source, meta: page.meta };
@@ -51,7 +68,7 @@ export async function* renderPage(
     metadata(context.meta, context.file);
     options.onContext?.(context);
     const runtime = options.runtime ?? context.runtime;
-    context.runtime = scopedRuntime(context, runtime);
+    context.runtime = scopedRuntime(context, runtime, findLayout);
     for await (let output of iterateOutputs(await page.render(context))) {
       for (const plugin of plugins)
         output =
@@ -70,24 +87,7 @@ export async function* renderPage(
         rendered =
           (await runHook(plugin, "transform", async () => plugin.transform?.(rendered, context))) ??
           rendered;
-      if (
-        typeof rendered.content !== "string" &&
-        !(rendered.content instanceof Uint8Array) &&
-        !(rendered.content instanceof ArrayBuffer)
-      )
-        throw failure("A transform must return materialized content.", {
-          reason: "INVALID_OUTPUT",
-          hint: "Return a string, Uint8Array or ArrayBuffer as content, not a deferred producer.",
-          context: { file: context.file, path: rendered.path },
-        });
-      yield {
-        ...rendered,
-        meta: metadata({ ...context.meta, ...rendered.meta }, context.file),
-        sitemap:
-          rendered.sitemap ??
-          (rendered.path.endsWith(".html") &&
-            (rendered.meta?.sitemap ?? context.meta.sitemap) !== false),
-      };
+      yield finalizeOutput(rendered, context);
     }
   } catch (error) {
     throw contextualError(error, "Page rendering failed", {
@@ -98,13 +98,53 @@ export async function* renderPage(
   }
 }
 
+/** Validate transformed content and resolve metadata and sitemap defaults once. */
+function finalizeOutput(rendered: RenderedOutput, context: PageContext): RenderedOutput {
+  if (
+    typeof rendered.content !== "string" &&
+    !(rendered.content instanceof Uint8Array) &&
+    !(rendered.content instanceof ArrayBuffer)
+  )
+    throw failure("A transform must return materialized content.", {
+      reason: "INVALID_OUTPUT",
+      hint: "Return a string, Uint8Array or ArrayBuffer as content, not a deferred producer.",
+      context: { file: context.file, path: rendered.path },
+    });
+  return {
+    ...rendered,
+    meta: metadata({ ...context.meta, ...rendered.meta }, context.file),
+    sitemap:
+      rendered.sitemap ??
+      (rendered.path.endsWith(".html") &&
+        (rendered.meta?.sitemap ?? context.meta.sitemap) !== false),
+  };
+}
+
 type Layout = (props: PageContext & { children: unknown }) => unknown;
 
 /** The nearest layout replaces its ancestor; page metadata can override it. */
 function layoutLoader() {
-  const loaded = new Map<string, Promise<Layout>>();
+  const files = new Map<string, Promise<boolean>>();
+  const loaded = new WeakMap<ModuleLoader, Map<string, Promise<Layout>>>();
+  function exists(file: string) {
+    let pending = files.get(file);
+    if (!pending) {
+      pending = stat(file).then(
+        (info) => info.isFile(),
+        (error) => {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+          throw error;
+        },
+      );
+      files.set(file, pending);
+    }
+    return pending;
+  }
   async function load(file: string, importSource: string, modules: ModuleLoader): Promise<Layout> {
-    let pending = loaded.get(file);
+    let cache = loaded.get(modules);
+    if (!cache) loaded.set(modules, (cache = new Map()));
+    const key = `${importSource}\0${file}`;
+    let pending = cache.get(key);
     if (!pending) {
       pending = modules.load(file, importSource).then((mod) => {
         if (typeof mod["default"] !== "function")
@@ -115,7 +155,7 @@ function layoutLoader() {
           });
         return mod["default"] as Layout;
       });
-      loaded.set(file, pending);
+      cache.set(key, pending);
     }
     return pending;
   }
@@ -137,12 +177,7 @@ function layoutLoader() {
       for (const extension of ["tsx", "jsx", "ts", "js"]) {
         const file = path.join(directory, `_layout.${extension}`);
         context.watch(file);
-        try {
-          if ((await stat(file)).isFile())
-            return load(file, context.runtime.importSource, context.modules);
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-        }
+        if (await exists(file)) return load(file, context.runtime.importSource, context.modules);
       }
       if (directory === boundary) return undefined;
     }

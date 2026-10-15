@@ -2,15 +2,12 @@ import { build } from "@vincle/ssg";
 // Synthetic content-only build: 10,000 MDX pages, 100 paragraphs and 3 code blocks each.
 // Measures the docs MDX pipeline and SSG publication, without layout or Vite assets.
 // Prerequisite: build the ssg package.
-// BENCH_MAX_RSS_MIB=512 bun run --cwd apps/docs bench:memory
+// Optional memory gate: BENCH_MAX_RSS_MIB=<budget in MiB>.
 // BENCH_PAGES, BENCH_PARAGRAPHS and BENCH_CODE_BLOCKS adjust the input.
 // BENCH_CODE_BLOCKS=0 restores the prose-only fixture; Linux RSS includes children.
 import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-
-import config from "../docs.config.js";
-import { discoverPages } from "../src/lib/pages.js";
 
 const count = Number(process.env["BENCH_PAGES"] ?? 10000);
 const paragraphs = Number(process.env["BENCH_PARAGRAPHS"] ?? 100);
@@ -82,9 +79,11 @@ try {
       `---\ntitle: Page ${i}\n---\n\n# Page ${i}\n\n${sections.join("\n\n")}\n`,
     );
   }
-  const fixture = { ...config, pages, tabs: [], site: null, sitemap: false, editUrl: null };
   const start = performance.now();
-  await build({
+  const { default: config } = await import("../docs.config.js");
+  const { discoverPages } = await import("../src/lib/pages.js");
+  const fixture = { ...config, pages, tabs: [], editUrl: null };
+  const result = await build({
     root,
     src: pages,
     out,
@@ -97,9 +96,10 @@ try {
   console.log(
     JSON.stringify({
       pages: count,
+      outputs: result.files.length,
       paragraphs,
       codeBlocks,
-      highlighter: "highlight.js",
+      highlighter: "shiki-javascript",
       peakRssMiB: Math.round(rssMiB),
       parentPeakRssMiB: Math.round(parentPeakMiB),
       seconds,

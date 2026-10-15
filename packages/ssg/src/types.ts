@@ -15,6 +15,8 @@ export interface SsgMeta {
   sitemap?: boolean;
   /** Opt out of cached dev rendering for dynamic/time-dependent producers. */
   incremental?: boolean;
+  /** Invalidate cached HTML when discovery-derived dependencies change. */
+  renderKey?: string;
   /** Override the nearest _layout.tsx; relative to the source file. */
   layout?: string | false;
   [key: string]: unknown;
@@ -153,8 +155,11 @@ export interface SsgOptions {
   /** Route sources (default: src/pages when present, otherwise src). Names starting with . or _ are not routes. */
   src?: string;
   out?: string;
-  /** Customize discovery while retaining the shared rendering/publication lifecycle. */
-  discover?(options: DiscoverPagesOptions): Awaitable<readonly DiscoveredPage[]>;
+  /** Customize discovery; use the supplied discover function to retain dev caching. */
+  discover?(
+    options: DiscoverPagesOptions,
+    discover: (options: DiscoverPagesOptions) => Promise<DiscoveredPage[]>,
+  ): Awaitable<readonly DiscoveredPage[]>;
   i18n?: SsgI18n;
   /** Overrides or extends built-in handlers; false disables an extension. */
   handlers?: Readonly<Record<string, PageHandler | false>>;

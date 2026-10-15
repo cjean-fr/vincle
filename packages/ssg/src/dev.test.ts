@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { isRunnableDevEnvironment } from "vite";
 
+import type { PageContext } from "./types.js";
+
 import { dev } from "./dev.js";
 
 test("serves generated outputs, injects Vite, rebuilds watched sources and retains the last successful output", async () => {
@@ -791,3 +793,107 @@ test("dev detects native watcher exhaustion before starting Vite", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("custom discovery retains incremental pages, catalog keys and dependencies across failed rebuilds", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-custom-discovery-"));
+  const src = path.join(root, "src");
+  await mkdir(src);
+  const a = path.join(src, "a.mdx");
+  const shared = path.join(src, "_shared.txt");
+  await writeFile(a, "---\ntitle: A\n---\n# First");
+  await writeFile(path.join(src, "b.mdx"), "---\ntitle: B\n---\n# Stable");
+  await writeFile(shared, "one");
+  await writeFile(
+    path.join(src, "_layout.tsx"),
+    "export default ({children,meta}) => <main data-version={meta.renderKey}>{children}</main>",
+  );
+  let version = "one";
+  let fail = false;
+  const rendered: string[] = [];
+  const server = await dev({
+    root,
+    async discover(options, discover) {
+      const pages = await discover(options);
+      const key = JSON.stringify([
+        version,
+        pages.map((page) => [page.source.route, page.meta.title]),
+      ]);
+      return pages.map((page) =>
+        Object.assign({}, page, {
+          meta: { ...page.meta, renderKey: key },
+          render(context: PageContext) {
+            if (version === "two") context.watch(shared);
+            return page.render(context);
+          },
+        }),
+      );
+    },
+    plugins: [
+      {
+        name: "incremental-probe",
+        incremental: true,
+        metadata(context) {
+          rendered.push(context.route);
+        },
+        async publish(context) {
+          if (fail) throw new Error("failed publication");
+          await context.emit({
+            path: "catalog.json",
+            content: JSON.stringify(context.pages.map((page) => page.meta.title)),
+          });
+        },
+      },
+    ],
+    vite: {
+      configFile: false,
+      logLevel: "silent",
+      server: { host: "127.0.0.1", port: 0, watch: null },
+    },
+  });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected listening server");
+    const get = (name: string) =>
+      fetch(`http://127.0.0.1:${address.port}/${name}`).then((response) => response.text());
+    expect(rendered.splice(0)).toEqual(["/a", "/b"]);
+    await server.rebuild();
+    expect(rendered.splice(0)).toEqual([]);
+    await writeFile(a, "---\ntitle: A\n---\n# Changed");
+    await server.rebuild();
+    expect(rendered.splice(0)).toEqual(["/a"]);
+    expect(await get("a/")).toContain("Changed");
+    expect(await get("a.md")).toBe("---\ntitle: A\n---\n# Changed");
+    version = "two";
+    await server.rebuild();
+    expect(rendered.splice(0)).toEqual(["/a", "/b"]);
+    expect(await get("b/")).toContain("two");
+    await server.rebuild();
+    expect(rendered.splice(0)).toEqual([]);
+    // A dependency first registered while re-rendering a cached source stays tracked.
+    await writeFile(shared, "two");
+    await server.rebuild();
+    expect(rendered.splice(0)).toEqual(["/a", "/b"]);
+    await writeFile(a, "---\ntitle: Renamed\n---\n# Retry");
+    fail = true;
+    await expect(server.rebuild()).rejects.toMatchObject({ reason: "PLUGIN_FAILED" });
+    expect(await get("a/")).toContain("Changed");
+    fail = false;
+    rendered.length = 0;
+    await server.rebuild();
+    expect(rendered.splice(0)).toEqual(["/a", "/b"]);
+    expect(await get("a/")).toContain("Retry");
+    expect(JSON.parse(await get("catalog.json"))).toEqual(["Renamed", "B"]);
+    await writeFile(path.join(src, "c.mdx"), "---\ntitle: C\n---\n# Added");
+    await server.rebuild();
+    expect(rendered.splice(0)).toEqual(["/a", "/b", "/c"]);
+    await rm(a);
+    await server.rebuild();
+    expect(rendered.splice(0)).toEqual(["/b", "/c"]);
+    expect(JSON.parse(await get("catalog.json"))).toEqual(["B", "C"]);
+    await server.rebuild();
+    expect(rendered).toEqual([]);
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);

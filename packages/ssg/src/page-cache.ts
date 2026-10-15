@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import type {
+  DiscoveredPage,
   PageContext,
   PageHandler,
   RenderedOutput,
@@ -11,6 +12,7 @@ import type {
 
 interface Entry {
   page: SsgPage;
+  source: SourceContext;
   handler: PageHandler;
   direct: Set<string>;
   roots: Set<string>;
@@ -88,7 +90,9 @@ export class PageCache {
             old.context?.meta.incremental !== false &&
             !dirty(old)
           ) {
-            staged.set(source.file, old);
+            source.watch = old.source.watch;
+            source.modules = old.source.modules;
+            staged.set(source.file, { ...old });
             return old.page;
           }
           const { context, direct, roots, watch } = trackedSource(source);
@@ -97,16 +101,30 @@ export class PageCache {
           // dependency collector alive for layouts, producers and plugin hooks.
           source.watch = watch;
           source.modules = context.modules;
-          staged.set(source.file, { page, handler, direct, roots, dependencies: new Set(direct) });
+          staged.set(source.file, {
+            page,
+            source,
+            handler,
+            direct,
+            roots,
+            dependencies: new Set(direct),
+          });
           return page;
         },
       }),
-      rendered(file: string) {
-        const entry = staged.get(file);
-        return entry?.outputs && entry.context ? entry : undefined;
+      rendered(page: DiscoveredPage) {
+        const entry = staged.get(page.source.file);
+        return entry?.outputs &&
+          entry.context &&
+          page.meta.incremental !== false &&
+          entry.context.route === page.source.route &&
+          entry.context.meta.renderKey === page.meta.renderKey
+          ? entry
+          : undefined;
       },
       store: (file: string, context: PageContext, outputs: RenderedOutput[]) => {
-        const entry = staged.get(file)!;
+        const entry = staged.get(file);
+        if (!entry) return;
         entry.context = context;
         entry.outputs = outputs.map((output) => ({
           ...output,

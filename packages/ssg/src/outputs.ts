@@ -209,7 +209,7 @@ async function generateSiteInternal(
     if (cache) next.set(name, { digest: fingerprint });
     if (previous?.get(name)?.digest === fingerprint) return;
     changed.add(name);
-    await mkdir(path.dirname(target), { recursive: true });
+    if (path.dirname(target) !== stage) await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, content instanceof ArrayBuffer ? new Uint8Array(content) : content);
   }
   async function copy(from: string, prefix: string): Promise<void> {
@@ -240,7 +240,7 @@ async function generateSiteInternal(
       }
       if (old?.digest === fingerprint) return;
       changed.add(prefix);
-      await mkdir(path.dirname(target), { recursive: true });
+      if (path.dirname(target) !== stage) await mkdir(path.dirname(target), { recursive: true });
       await copyFile(from, target);
     } else
       throw failure(`Cannot copy special file: ${from}`, {
@@ -303,47 +303,8 @@ async function generateSiteInternal(
     // Preparation is beside out so publication uses same-filesystem moves.
     await safeDirectory(out);
     await mkdir(out, { recursive: true });
-    if (!previous) {
-      for (const entry of await readdir(out))
-        if (!preserve.has(entry)) await rm(path.join(out, entry), { recursive: true, force: true });
-      for (const entry of await readdir(stage))
-        await rename(path.join(stage, entry), path.join(out, entry));
-    } else {
-      const obsolete = [...previous.keys()].filter((name) => !files.has(name));
-      const oldDirectories = new Set<string>();
-      for (const name of obsolete) {
-        await safeDirectory(path.dirname(path.join(out, name)));
-        await rm(path.join(out, name), { force: true });
-        for (
-          let parent = path.posix.dirname(name);
-          parent !== ".";
-          parent = path.posix.dirname(parent)
-        )
-          oldDirectories.add(parent);
-      }
-      // Remove only empty owned directories, deepest first, including file/directory transitions.
-      for (const dir of [...oldDirectories].toSorted((a, b) => b.length - a.length)) {
-        try {
-          await rmdir(path.join(out, dir));
-        } catch (error) {
-          if (!["ENOENT", "ENOTEMPTY"].includes((error as NodeJS.ErrnoException).code ?? ""))
-            throw error;
-        }
-      }
-      for (const name of changed) {
-        const target = path.join(out, name);
-        await safeDirectory(path.dirname(target));
-        const info = await stat(target);
-        if (info?.isSymbolicLink() || (info && !info.isFile()))
-          throw failure(`Cannot replace non-file output: ${name}`, {
-            reason: "INVALID_OUTPUT",
-            hint: "Remove the conflicting directory or symbolic link from the generated output directory and rebuild.",
-            context: { path: name, out },
-          });
-        await mkdir(path.dirname(target), { recursive: true });
-        await rename(path.join(stage, name), target);
-      }
-    }
+    if (previous) await updateSite(out, stage, files, changed, previous);
+    else await replaceSite(out, stage, preserve);
     if (cache) {
       cache.entries = next;
       cache.ready = true;
@@ -351,5 +312,53 @@ async function generateSiteInternal(
     return { files: [...files].toSorted() };
   } finally {
     await rm(stage, { recursive: true, force: true });
+  }
+}
+
+/** Replace generated entries while retaining explicitly preserved resources. */
+async function replaceSite(out: string, stage: string, preserve: ReadonlySet<string>) {
+  for (const entry of await readdir(out))
+    if (!preserve.has(entry)) await rm(path.join(out, entry), { recursive: true, force: true });
+  for (const entry of await readdir(stage))
+    await rename(path.join(stage, entry), path.join(out, entry));
+}
+
+/** Publish only changed files and remove obsolete files owned by this session. */
+async function updateSite(
+  out: string,
+  stage: string,
+  files: ReadonlySet<string>,
+  changed: ReadonlySet<string>,
+  previous: ReadonlyMap<string, unknown>,
+) {
+  const obsolete = [...previous.keys()].filter((name) => !files.has(name));
+  const oldDirectories = new Set<string>();
+  for (const name of obsolete) {
+    await safeDirectory(path.dirname(path.join(out, name)));
+    await rm(path.join(out, name), { force: true });
+    for (let parent = path.posix.dirname(name); parent !== "."; parent = path.posix.dirname(parent))
+      oldDirectories.add(parent);
+  }
+  // Remove only empty owned directories, deepest first, including file/directory transitions.
+  for (const dir of [...oldDirectories].toSorted((a, b) => b.length - a.length)) {
+    try {
+      await rmdir(path.join(out, dir));
+    } catch (error) {
+      if (!["ENOENT", "ENOTEMPTY"].includes((error as NodeJS.ErrnoException).code ?? ""))
+        throw error;
+    }
+  }
+  for (const name of changed) {
+    const target = path.join(out, name);
+    await safeDirectory(path.dirname(target));
+    const info = await stat(target);
+    if (info?.isSymbolicLink() || (info && !info.isFile()))
+      throw failure(`Cannot replace non-file output: ${name}`, {
+        reason: "INVALID_OUTPUT",
+        hint: "Remove the conflicting directory or symbolic link from the generated output directory and rebuild.",
+        context: { path: name, out },
+      });
+    await mkdir(path.dirname(target), { recursive: true });
+    await rename(path.join(stage, name), target);
   }
 }

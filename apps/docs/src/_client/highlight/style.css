@@ -3,6 +3,17 @@
   --docs-code-header: #f6f8fa;
   --docs-code-text: #24292f;
   --docs-code-border: #dce1e7;
+  --shiki-foreground: var(--docs-code-text);
+  --shiki-background: var(--docs-code-bg);
+  --shiki-token-constant: #0550ae;
+  --shiki-token-string: #0a3069;
+  --shiki-token-comment: #6e7781;
+  --shiki-token-keyword: #cf222e;
+  --shiki-token-parameter: #953800;
+  --shiki-token-function: #8250df;
+  --shiki-token-string-expression: #116329;
+  --shiki-token-punctuation: var(--docs-code-text);
+  --shiki-token-link: #0969da;
   position: relative;
   margin: 1.25rem 0;
   overflow: hidden;
@@ -35,6 +46,14 @@
   --docs-code-header: #161b22;
   --docs-code-text: #c9d1d9;
   --docs-code-border: #30363d;
+  --shiki-token-constant: #79c0ff;
+  --shiki-token-string: #a5d6ff;
+  --shiki-token-comment: #8b949e;
+  --shiki-token-keyword: #ff7b72;
+  --shiki-token-parameter: #ffa657;
+  --shiki-token-function: #d2a8ff;
+  --shiki-token-string-expression: #7ee787;
+  --shiki-token-link: #58a6ff;
 }
 .docs-code-block [data-docs-copy] {
   position: absolute;
@@ -93,77 +112,7 @@
   background: transparent;
   color: inherit;
 }
-.hljs-comment,
-.hljs-quote {
-  color: #6e7781;
-}
-.hljs-keyword,
-.hljs-selector-tag,
-.hljs-literal {
-  color: #ff2940;
-}
-.hljs-string,
-.hljs-regexp,
-.hljs-meta .hljs-string {
-  color: #0048b7;
-}
-.hljs-number,
-.hljs-built_in,
-.hljs-attr,
-.hljs-variable,
-.hljs-symbol {
-  color: #0550ae;
-}
-.hljs-title,
-.hljs-section,
-.hljs-tag .hljs-attr {
-  color: #7540ff;
-}
-.hljs-name,
-.hljs-tag .hljs-name {
-  color: #116329;
-}
-.hljs-meta {
-  color: #953800;
-}
-.dark .hljs-comment,
-.dark .hljs-quote {
-  color: #8b949e;
-}
-.dark .hljs-keyword,
-.dark .hljs-selector-tag,
-.dark .hljs-literal {
-  color: #ff7b72;
-}
-.dark .hljs-string,
-.dark .hljs-regexp,
-.dark .hljs-meta .hljs-string {
-  color: #a5d6ff;
-}
-.dark .hljs-number,
-.dark .hljs-built_in,
-.dark .hljs-attr,
-.dark .hljs-variable,
-.dark .hljs-symbol {
-  color: #79c0ff;
-}
-.dark .hljs-title,
-.dark .hljs-section {
-  color: #d2a8ff;
-}
-.dark .hljs-name,
-.dark .hljs-tag .hljs-name {
-  color: #7ee787;
-}
-.dark .hljs-meta {
-  color: #ffa657;
-}
-.hljs-emphasis {
-  font-style: italic;
-}
-.hljs-strong {
-  font-weight: 600;
-}
+/* The same token markup uses the active CSS palette, without re-tokenizing code. */
 
 /* Shell commands keep their original text so copying excludes the visual prompt. */
 .docs-code-block.docs-terminal {
@@ -189,34 +138,6 @@
 }
 .docs-terminal .docs-code-title {
   border-top-color: #8ad5a4;
-}
-.docs-terminal .hljs-comment,
-.docs-terminal .hljs-quote {
-  color: #9aa8b8;
-}
-.docs-terminal .hljs-keyword,
-.docs-terminal .hljs-selector-tag,
-.docs-terminal .hljs-literal {
-  color: #ff9c91;
-}
-.docs-terminal .hljs-string,
-.docs-terminal .hljs-regexp,
-.docs-terminal .hljs-meta .hljs-string {
-  color: #a5d6ff;
-}
-.docs-terminal .hljs-number,
-.docs-terminal .hljs-built_in,
-.docs-terminal .hljs-attr,
-.docs-terminal .hljs-variable,
-.docs-terminal .hljs-symbol {
-  color: #a6dfb5;
-}
-.docs-terminal .hljs-title,
-.docs-terminal .hljs-section {
-  color: #d2b7ff;
-}
-.docs-terminal .hljs-meta {
-  color: #ffd094;
 }
 .docs-terminal [data-copied] .docs-copy-check {
   color: #8ad5a4;
@@ -314,33 +235,6 @@ html:not(.dark) .docs-terminal-label {
 html:not(.dark) .docs-terminal pre code::before {
   color: #8250df;
 }
-html:not(.dark) .docs-terminal .hljs-comment,
-html:not(.dark) .docs-terminal .hljs-quote {
-  color: #6e7781;
-}
-html:not(.dark) .docs-terminal .hljs-keyword,
-html:not(.dark) .docs-terminal .hljs-selector-tag,
-html:not(.dark) .docs-terminal .hljs-literal {
-  color: #cf222e;
-}
-html:not(.dark) .docs-terminal .hljs-string,
-html:not(.dark) .docs-terminal .hljs-regexp,
-html:not(.dark) .docs-terminal .hljs-meta .hljs-string {
-  color: #0a3069;
-}
-html:not(.dark) .docs-terminal .hljs-number,
-html:not(.dark) .docs-terminal .hljs-built_in,
-html:not(.dark) .docs-terminal .hljs-attr,
-html:not(.dark) .docs-terminal .hljs-variable,
-html:not(.dark) .docs-terminal .hljs-symbol,
-html:not(.dark) .docs-terminal .hljs-title,
-html:not(.dark) .docs-terminal .hljs-section {
-  color: #8250df;
-}
-html:not(.dark) .docs-terminal .hljs-meta {
-  color: #953800;
-}
-
 .dark .docs-code-block.docs-terminal {
   --docs-code-header: #272c30;
 }
