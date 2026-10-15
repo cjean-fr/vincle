@@ -1196,7 +1196,7 @@ describe("precompileTransform", () => {
     });
 
     it("entities: precompiled output is byte-identical to the dynamic runtime path", async () => {
-      // The invariant that matters (I-04): toggling the plugin on/off must never
+      // The invariant that matters (I-03): toggling the plugin on/off must never
       // change output. The runtime file lets Bun compile the JSX with the
       // automatic runtime (its own entity decoding); the precompiled file uses
       // our decode + escapeContent. Both must land on the same bytes.
