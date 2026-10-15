@@ -8,6 +8,20 @@ export function PageFooter() {
   const locale = localeFor(currentPage);
   const hasNav = prev !== null || next !== null;
   const isHome = unlocalizedPath(currentPage) === "/";
+  const pageFacts = (editUrl || lastUpdated) && (
+    <p class="docs-footer-list">
+      {lastUpdated && (
+        <time class="docs-page-footer-updated" dateTime={lastUpdated}>
+          {t("lastUpdated", { date: formatDate(lastUpdated, locale) })}
+        </time>
+      )}
+      {editUrl && (
+        <a class="docs-page-footer-edit" href={editUrl} target="_blank" rel="noopener">
+          {t("editPage")}
+        </a>
+      )}
+    </p>
+  );
 
   return (
     <div class="docs-page-footer-wrapper mt-16">
@@ -45,40 +59,50 @@ export function PageFooter() {
           )}
         </nav>
       )}
-      <footer class="docs-page-footer mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--docs-color-border)] pt-6 text-sm text-[var(--docs-color-text-secondary)]">
-        <span>
-          {config.title} · {t("createdBy")}{" "}
-          <a
-            href="https://www.cjean.fr/"
-            rel="author"
-            class="transition-colors hover:text-[var(--docs-color-text)]"
-          >
-            Christophe Jean
-          </a>
-        </span>
+      <footer
+        class={`docs-page-footer mt-8 border-t border-[var(--docs-color-border)] pt-6 pb-2 text-[0.8125rem] text-[var(--docs-color-text-secondary)]${isHome ? " docs-page-footer-home" : ""}`}
+      >
+        <div class="docs-footer-row">
+          <p class="docs-footer-identity">
+            <span class="docs-footer-mark" aria-hidden="true">
+              v.
+            </span>
+            <span class="font-semibold text-[var(--docs-color-text)]">{config.title}</span>
+            {isHome ? (
+              <span class="docs-footer-tagline">{config.description}</span>
+            ) : (
+              <Author label={t("createdBy")} />
+            )}
+          </p>
+          {isHome ? (
+            <p class="docs-footer-list">
+              <a href="https://github.com/cjean-fr/vincle">GitHub</a>
+              <a href="https://www.npmjs.com/package/@vincle/core">{t("onNpm")}</a>
+              <a href="https://github.com/cjean-fr/vincle/blob/main/LICENSE">{t("mitLicensed")}</a>
+            </p>
+          ) : (
+            pageFacts
+          )}
+        </div>
         {isHome && (
-          <>
-            <a href="https://www.npmjs.com/package/@vincle/core">{t("onNpm")}</a>
-            <a href="https://github.com/cjean-fr/vincle/blob/main/LICENSE">{t("mitLicensed")}</a>
-          </>
-        )}
-        {editUrl && (
-          <a
-            class="docs-page-footer-edit inline-flex items-center gap-1 transition-colors hover:text-[var(--docs-color-text)]"
-            href={editUrl}
-            target="_blank"
-            rel="noopener"
-          >
-            {t("editPage")}
-          </a>
-        )}
-        {lastUpdated && (
-          <time class="docs-page-footer-updated" dateTime={lastUpdated}>
-            {t("lastUpdated", { date: formatDate(lastUpdated, locale) })}
-          </time>
+          <div class="docs-footer-row docs-footer-credit">
+            <Author label={t("createdBy")} />
+            {pageFacts}
+          </div>
         )}
       </footer>
     </div>
+  );
+}
+
+function Author({ label }: { label: string }) {
+  return (
+    <span>
+      {label}{" "}
+      <a href="https://www.cjean.fr/" rel="author">
+        Christophe Jean
+      </a>
+    </span>
   );
 }
 
