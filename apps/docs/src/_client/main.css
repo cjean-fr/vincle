@@ -541,6 +541,68 @@ html.dark .docs-theme-toggle-sun {
   color: inherit;
 }
 
+/* Footer: identity on the left, page facts on the right; items joined by a quiet dot that never starts a line. */
+.docs-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+}
+.docs-footer-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+.docs-footer-mark {
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.3125rem;
+  background: var(--docs-color-text);
+  color: var(--docs-color-bg);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  padding-bottom: 0.1rem;
+}
+/* On the home page the tagline wraps on phones, where a trailing dot would dangle. */
+.docs-page-footer:not(.docs-page-footer-home) .docs-footer-identity > :nth-child(2)::after {
+  content: "·";
+  margin-left: 0.5rem;
+  font-weight: 400;
+  opacity: 0.5;
+}
+.docs-footer-list > * {
+  white-space: nowrap;
+}
+.docs-footer-list > :not(:last-child)::after {
+  /* Inline-block: a link's underline does not reach it. */
+  display: inline-block;
+  content: "·";
+  margin-inline: 0.5rem;
+  opacity: 0.5;
+}
+.docs-footer-credit {
+  margin-top: 0.75rem;
+}
+.docs-page-footer-home {
+  padding-block: 1.75rem 1rem;
+}
+.docs-page-footer a {
+  text-decoration: underline 1px transparent;
+  text-underline-offset: 3px;
+  transition:
+    color var(--docs-transition-fast),
+    text-decoration-color var(--docs-transition-fast);
+}
+.docs-page-footer a:hover {
+  color: var(--docs-color-text);
+  text-decoration-color: var(--docs-color-accent);
+}
+
 /* Give the search trigger a small tactile response before the dialog opens. */
 .docs-search-trigger {
   transition:
