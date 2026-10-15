@@ -6,8 +6,7 @@ export default defineConfig({
   tagline: "Documentation",
   description: "The small, safe way to render JSX into HTML strings.",
 
-  // No `image` until a 1200×630 visual exists: a favicon as `og:image` would
-  // make the card promise `summary_large_image`.
+  // No `image`: every page gets its own 1200×630 card (src/lib/social-card.ts).
 
   tabs: [
     { label: "Guide", slug: "guide" },

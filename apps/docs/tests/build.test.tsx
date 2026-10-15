@@ -206,6 +206,32 @@ describe("everything a page declares exists", () => {
   });
 });
 
+/** A shared link's card is built per page; a 404 on it would only show on the social network. */
+describe("social cards", () => {
+  it("every content page points og:image at a published 1200×630 PNG", async () => {
+    const broken: string[] = [];
+    for (const file of [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)].toSorted()) {
+      if (/(?:^|\/)404\.html$/.test(file)) continue;
+      const html = await readFile(path.join(DIST_DIR, file), "utf-8");
+      const image = /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1];
+      if (!image?.startsWith(`${ssg.site}/`)) {
+        broken.push(`${file} → ${image ?? "no og:image"}`);
+        continue;
+      }
+      const png = Bun.file(path.join(DIST_DIR, image.slice(ssg.site!.length)));
+      if (!(await png.exists())) {
+        broken.push(`${file} → ${image}`);
+        continue;
+      }
+      // The PNG header: width and height are the big-endian words at 16 and 20.
+      const header = new DataView(await png.slice(0, 24).arrayBuffer());
+      const size = `${header.getUint32(16)}×${header.getUint32(20)}`;
+      if (size !== "1200×630") broken.push(`${file} → ${size}`);
+    }
+    expect(broken).toEqual([]);
+  });
+});
+
 /** Nothing may inline the code-block assets: they belong to the client bundle. */
 describe("code-block assets are shipped once, in the bundle", () => {
   const pageFiles = (): string[] => [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)].toSorted();

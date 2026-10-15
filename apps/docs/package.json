@@ -20,7 +20,8 @@
     "@vincle/core": "workspace:*",
     "@vincle/ssg": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
-    "satteri": "^0.10.5"
+    "satteri": "^0.10.5",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",

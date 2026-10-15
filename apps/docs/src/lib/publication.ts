@@ -5,6 +5,8 @@ import type { ResolvedDocsConfig } from "./types.js";
 import docs from "../../docs.config.js";
 import ssg from "../../ssg.config.js";
 import { localeFor, type Locale } from "./i18n/locale.js";
+import { tabFor } from "./sidebar.js";
+import { hasSocialCard, socialCardPath, socialCardPng, summarize } from "./social-card.js";
 
 export function llmsTxt(
   pages: readonly { url: string; title: string }[],
@@ -71,6 +73,12 @@ const NAMED_ENTITIES: ReadonlyArray<readonly [RegExp, string]> = [
   [/&#x2F;/g, "/"],
 ];
 
+/** The text of the first paragraph in `<main>`: what a page says before its first heading. */
+function firstParagraph(html: string): string | undefined {
+  const paragraph = mainContent(html)?.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i)?.[1];
+  return paragraph === undefined ? undefined : htmlToText(paragraph) || undefined;
+}
+
 /** The `<main>` content of a page, or `undefined` when the page has none. */
 function mainContent(html: string): string | undefined {
   return html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1];
@@ -95,7 +103,7 @@ function htmlToText(html: string, options?: { mainOnly?: boolean }): string {
   return body.replace(/\s+/g, " ").trim();
 }
 
-/** Search and LLM artifacts consume the same final HTML, read once per page. */
+/** Search, LLM and social artifacts consume the same final HTML, read once per page. */
 export const documentationArtifacts: SsgPlugin = {
   name: "documentation-artifacts",
   async publish(context) {
@@ -107,7 +115,17 @@ export const documentationArtifacts: SsgPlugin = {
       const title = page.meta.title ?? page.url;
       const locale = page.meta.locale ?? "en";
       const documents = search.get(locale) ?? [];
-      documents.push({ url: page.url, title, text: htmlToText(html, { mainOnly: true }) });
+      const main = htmlToText(html, { mainOnly: true });
+      documents.push({ url: page.url, title, text: main });
+      if (hasSocialCard(page.url)) {
+        const description = (page.meta as { description?: string }).description;
+        const card = {
+          title,
+          section: tabFor(docs.tabs, page.url)?.label ?? null,
+          summary: description ?? summarize(firstParagraph(html) ?? main, title),
+        };
+        await context.emit({ path: socialCardPath(page.url), content: () => socialCardPng(card) });
+      }
       search.set(locale, documents);
       if (localeFor(page.url) === "en")
         pages.push({ url: page.url, title, text: htmlToText(html) });
