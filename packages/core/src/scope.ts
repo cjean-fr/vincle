@@ -1,13 +1,12 @@
 import type { Awaitable } from "./types.js";
 
-import { resolveAsyncLocalStorage } from "./als.js";
+import { resolveAsyncLocalStorage, SyncStore } from "./als.js";
 import {
   ERR_CONTEXT_KEY,
   ERR_CONTEXT_LIMIT,
   ERR_CONTEXT_UNSET,
   ERR_NO_SCOPE,
   ERR_NO_STORE,
-  ERR_SCOPE_COLLISION,
   noAlsHint,
   vincleError,
 } from "./errors.js";
@@ -37,64 +36,14 @@ interface ContextStore {
   getStore(): ScopeMap | undefined;
 }
 
-/**
- * Synchronous fallback for runtimes with no `AsyncLocalStorage`: correct for
- * one scope at a time, but unable to tell a nested scope from a second
- * concurrent request, since both enter `run()` while the first `fn` is in
- * flight. It refuses the second case rather than returning the wrong value: a
- * render leaking another request's context is a cross-request data leak no
- * test would catch, while a named error is a one-line runtime config fix.
- *
- * @internal Exported for `context.test.ts`: `ensureStore` never reaches this
- * on a runtime that actually has `AsyncLocalStorage`.
- */
-export class SyncContextStore implements ContextStore {
-  #current: ScopeMap | undefined;
-  /** An async `fn` still in flight owns the current scope. */
-  #pending = false;
-
-  run<T>(ctx: ScopeMap, fn: () => T): T {
-    if (this.#pending) {
-      throw vincleError(
-        "[vincle/core] Scope.with() was entered while another scope was still awaiting, " +
-          "and this runtime has no AsyncLocalStorage to tell the two apart. " +
-          noAlsHint("concurrent renders cannot share a synchronous scope"),
-        ERR_SCOPE_COLLISION,
-      );
-    }
-
-    const previous = this.#current;
-    this.#current = ctx;
-
-    let result: T;
-    try {
-      result = fn();
-    } catch (error) {
-      this.#current = previous;
-      throw error;
-    }
-
-    // A synchronous `fn` returns control here, closing the scope right away and
-    // allowing nesting. An async `fn` keeps the scope installed until it
-    // settles: otherwise `Scope.get` after the first `await` would see nothing.
-    if (result instanceof Promise) {
-      this.#pending = true;
-      const settle = (): void => {
-        this.#pending = false;
-        this.#current = previous;
-      };
-      // Attached alongside rather than chained, so `fn`'s result passes through
-      // untouched (no cast) and the caller stays the sole recipient of a rejection.
-      result.then(settle, settle);
-      return result;
-    }
-
-    this.#current = previous;
-    return result;
-  }
-
-  getStore(): ScopeMap | undefined {
-    return this.#current;
+/** The no-`AsyncLocalStorage` fallback (see `SyncStore`), exported for `scope.test.ts`. */
+export class SyncContextStore extends SyncStore<ScopeMap> {
+  constructor() {
+    super(
+      "[vincle/core] Scope.with() was entered while another scope was still awaiting, " +
+        "and this runtime has no AsyncLocalStorage to tell the two apart. " +
+        noAlsHint("concurrent renders cannot share a synchronous scope"),
+    );
   }
 }
 

@@ -267,6 +267,11 @@ export function jsxTemplate(
   templates: ArrayLike<string>,
   ...values: unknown[]
 ): RawString | TemplateNode {
+  return renderTemplate(templates, values);
+}
+
+/** The body both `jsxTemplate` and `jsxTemplateDeferred` share, minus the rest parameter. */
+function renderTemplate(templates: ArrayLike<string>, values: unknown[]): RawString | TemplateNode {
   if (values.length === 1 && values[0] instanceof RawString && values[0].value !== "")
     return new RawString((templates[0] ?? "") + values[0].value + (templates[1] ?? ""));
   let out = templates[0] ?? "";
@@ -326,24 +331,7 @@ export function jsxTemplateDeferred(
       return part instanceof Promise ? part.then(finish) : finish(part);
     });
   }
-  let out = templates[0] ?? "";
-  for (let i = 0; i < values.length; i++) {
-    const value = values[i];
-    if (value instanceof RawString) out = appendHole(out, value.value);
-    else if (value === null || value === undefined || typeof value === "boolean")
-      out = appendHole(out, "");
-    else if (isDeferredValue(value)) {
-      // As in `jsxTemplate`: an `ElementAttr` is tested for on the deferred branch only.
-      if (!(value instanceof ElementAttr))
-        return new TemplateNode(() => renderTemplateAsync(out, value, values, i + 1, templates));
-      const text = renderElementAttr(value, templates, values, i);
-      if (typeof text !== "string")
-        return new TemplateNode(() => resumeAfter(out, text, values, i, templates));
-      out = appendHole(out, text);
-    } else out = appendHole(out, valueToText(value));
-    out += templates[i + 1] ?? "";
-  }
-  return new RawString(out);
+  return renderTemplate(templates, values);
 }
 
 /**
