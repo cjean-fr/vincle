@@ -40,7 +40,6 @@ export function SEOHeader({ page }: SEOProps) {
           href={fullUrl(alternates.find((alternate) => alternate.locale === "en")!.href, ssg.site)}
         />
       )}
-      <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
       {/* Markdown twin of this page, for agents (RSS-style alternate). */}
       {!isErrorPage && hasMarkdownAlternate && (
         <link rel="alternate" type="text/markdown" href={markdownPath(currentPage)} />
