@@ -71,7 +71,7 @@ export function PageFooter() {
             {isHome ? (
               <span class="docs-footer-tagline">{config.description}</span>
             ) : (
-              <Author label={t("createdBy")} />
+              <Author label={t("madeBy")} />
             )}
           </p>
           {isHome ? (
@@ -86,7 +86,7 @@ export function PageFooter() {
         </div>
         {isHome && (
           <div class="docs-footer-row docs-footer-credit">
-            <Author label={t("createdBy")} />
+            <Author label={t("madeBy")} />
             {pageFacts}
           </div>
         )}
