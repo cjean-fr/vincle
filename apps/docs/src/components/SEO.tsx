@@ -14,6 +14,7 @@ export function SEOHeader({ page }: SEOProps) {
     description,
     canonical,
     image,
+    imageSize,
     locale,
     isErrorPage,
     alternates,
@@ -58,6 +59,13 @@ export function SEOHeader({ page }: SEOProps) {
       {description && <meta property="og:description" content={description} />}
       {canonical && <meta property="og:url" content={canonical} />}
       {image && <meta property="og:image" content={image} />}
+      {image && imageSize && (
+        <>
+          <meta property="og:image:width" content={String(imageSize.width)} />
+          <meta property="og:image:height" content={String(imageSize.height)} />
+        </>
+      )}
+      {image && <meta property="og:image:alt" content={title} />}
       <meta name="twitter:card" content={image ? "summary_large_image" : "summary"} />
       <meta name="twitter:title" content={title} />
       {description && <meta name="twitter:description" content={description} />}
