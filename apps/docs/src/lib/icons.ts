@@ -6,6 +6,7 @@ export const iconNames = [
   "tabler:search",
   "tabler:chevron-left",
   "tabler:chevron-right",
+  "tabler:brand-github",
 ] as const;
 
 export type IconName = (typeof iconNames)[number];
