@@ -4,6 +4,7 @@ import { Asset } from "@vincle/vite-plugin";
 import { useDocs, useTranslation } from "../lib/context.js";
 import { CspService, Script, withHash } from "../lib/csp.js";
 import { localeFor, localizedPath, unlocalizedPath } from "../lib/i18n/locale.js";
+import { GitHubLink } from "./GitHubLink.js";
 import { LanguageSwitcher } from "./LanguageSwitcher.js";
 import { Nav } from "./Nav.js";
 import { NavToggle } from "./NavToggle.js";
@@ -73,6 +74,7 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
               <div class="ml-auto flex shrink-0 items-center gap-2">
                 <LanguageSwitcher />
                 <SearchDialog />
+                <GitHubLink />
                 <ThemeToggle />
                 <NavToggle />
               </div>
