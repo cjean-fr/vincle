@@ -542,6 +542,20 @@ html.dark .docs-theme-toggle-sun {
   color: inherit;
 }
 
+/*
+ * The landing mark: where the result actually matched.
+ *
+ * A find bar's amber, painted by the browser on a registered range — the text
+ * itself is untouched. Highlight pseudo-elements take colour only, no shadow
+ * and no radius, and the browser paints each fragment box, so a match wrapping
+ * across lines is amber on every line. In forced-colours mode the system
+ * highlight colours take over by themselves.
+ */
+::highlight(docs-search-hit) {
+  background-color: var(--docs-color-find);
+  color: var(--docs-color-find-text);
+}
+
 /* Footer: identity on the left, page facts on the right; items joined by a quiet dot that never starts a line. */
 .docs-footer-row {
   display: flex;

@@ -18,6 +18,9 @@ interface Segment {
   marked: boolean;
 }
 
+/** How much of a query a fragment may carry before it stops being a link. */
+const MAX_FRAGMENT_LENGTH = 200;
+
 let index: SearchDocument[] | null = null;
 
 async function loadIndex(): Promise<SearchDocument[]> {
@@ -153,6 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  /** A click is ours only to dismiss the dialog: the anchor does the travel. */
   function follow() {
     const items = searchResults.querySelectorAll<HTMLElement>("[data-index]");
     if (selectedIndex >= 0 && selectedIndex < items.length) {
@@ -171,6 +175,14 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       open();
     }
+  });
+
+  // Nothing is intercepted: the anchor carries the query and the page reads it.
+  // A modified click opens its tab or window, so the dialog stays put.
+  searchResults.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
+      return;
+    if ((e.target as Element | null)?.closest(".docs-search-result")) close();
   });
 
   searchDialog.addEventListener("keydown", (e) => {
@@ -272,6 +284,31 @@ function scoreDocument(document: SearchDocument, terms: string[]): number {
   return score;
 }
 
+/**
+ * Carries the query to the page that matched, in the fragment.
+ *
+ * The page reads it on arrival, lights the words and erases the fragment. The
+ * standard `#:~:text=` is not usable here: the browser strips that directive
+ * from the fragment it exposes to scripts, and it would match the sidebar
+ * before the article, the sidebar listing the same titles.
+ */
+function deepLink(url: string, query: string): string {
+  // Repeating a word is not a second passage to light up, only more URL.
+  const terms = [...new Set(query.trim().split(/\s+/).filter(Boolean))];
+  // A fragment cannot carry both an element id and our parameter.
+  if (terms.length === 0 || url.includes("#")) return url;
+
+  const kept: string[] = [];
+  let budget = MAX_FRAGMENT_LENGTH;
+  for (const term of terms) {
+    const length = encodeURIComponent(term).length + (kept.length > 0 ? 1 : 0);
+    if (length > budget) break;
+    kept.push(term);
+    budget -= length;
+  }
+  return kept.length > 0 ? `${url}#${new URLSearchParams({ q: kept.join(" ") })}` : url;
+}
+
 function createResultItem(data: {
   index: number;
   url: string;
@@ -285,7 +322,7 @@ function createResultItem(data: {
   item.dataset["index"] = String(data.index);
 
   const link = document.createElement("a");
-  link.href = data.url;
+  link.href = deepLink(data.url, data.query);
   link.className = "docs-search-result";
 
   const title = document.createElement("span");
