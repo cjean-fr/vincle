@@ -11,6 +11,9 @@
   --docs-color-accent-soft: #eaf0fd;
   --docs-color-border: #dce4ef;
   --docs-color-surface: #f2f6fb;
+  /* The search landing mark: a find bar's amber, deliberately off-palette. */
+  --docs-color-find: #ffdf6b;
+  --docs-color-find-text: #241a00;
 
   --docs-code-bg: #030712;
   --docs-code-text: #edf2f8;
@@ -48,6 +51,9 @@
   --docs-color-accent-soft: #1b3357;
   --docs-color-border: #293b53;
   --docs-color-surface: #152b47;
+  /* Deepened on dark: the same amber at full strength would glare. */
+  --docs-color-find: #e8b53c;
+  --docs-color-find-text: #241a00;
 
   --docs-code-bg: #152b47;
   --docs-code-border: #293b53;
