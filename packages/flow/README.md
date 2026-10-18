@@ -50,9 +50,9 @@ insertion point. Use `serve` from `@vincle/flow/http` for HTTP responses, or
 Adapters are exported from `@vincle/flow/adapters`: Native (automatic polyfill),
 Turbo, HTMX, WebPlatform (requires browser support) and ESI (static only).
 
-[Streaming](https://vincle.cjean.fr/integration/streaming) ·
-[Static generation](https://vincle.cjean.fr/integration/static) ·
-[Adapters](https://vincle.cjean.fr/integration/adapters) ·
+[Streaming](https://vincle.cjean.fr/integration/flow/streaming) ·
+[Static generation](https://vincle.cjean.fr/integration/flow/static) ·
+[Adapters](https://vincle.cjean.fr/integration/flow/adapters) ·
 [API](https://vincle.cjean.fr/api/flow/renderToStream)
 
 MIT © Christophe Jean

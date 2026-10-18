@@ -2,16 +2,31 @@
 title: Overview
 ---
 
-# Integration
+# @vincle/flow
 
 **The shell is instant. Slow parts wait.**
 
-Traditional SSR holds the entire response until every `await` resolves: the
-slowest query sets your time-to-first-byte. Integration breaks that coupling.
+`@vincle/core` returns the page once every `await` has resolved: the slowest
+query sets your time-to-first-byte. `@vincle/flow`, a separate package built on
+the core, breaks that coupling.
 
 You mark slow subtrees with `<Defer>`. The page shell ships
 immediately. Fragments arrive later, each as soon as it resolves. No JavaScript
 framework. No hydration. Just HTML in chunks.
+
+## Install
+
+```bash tab="npm" sync="pkg-manager"
+npm install @vincle/flow
+```
+
+```bash tab="pnpm" sync="pkg-manager"
+pnpm add @vincle/flow
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/flow
+```
 
 ## How it works
 
@@ -145,22 +160,8 @@ const stream = renderToStream(() => <Page />, NativeAdapter);
   </Card>
 </div>
 
-## Install
-
-```bash tab="npm" sync="pkg-manager"
-npm install @vincle/flow
-```
-
-```bash tab="pnpm" sync="pkg-manager"
-pnpm add @vincle/flow
-```
-
-```bash tab="bun" sync="pkg-manager"
-bun add @vincle/flow
-```
-
 ## Adapters
 
 An adapter controls how placeholders and patches are encoded in the HTML shell:
 for Turbo, HTMX, the browser's native partial updates, or a CDN's ESI. See
-[Adapters](/integration/adapters) for the five built-in ones and how to choose.
+[Adapters](/integration/flow/adapters) for the five built-in ones and how to choose.

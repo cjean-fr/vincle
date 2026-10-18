@@ -1,10 +1,5 @@
 {
-  "overview": { "title": "Overview", "order": 1 },
-  "components": { "title": "Components", "order": 2 },
-  "streaming": { "title": "Streaming", "order": 3 },
-  "static": { "title": "Static generation", "order": 4 },
-  "adapters": { "title": "Adapters", "order": 5 },
-  "http-serving": { "title": "HTTP serving", "order": 6 },
-  "precompile": { "title": "Precompile transform", "order": 7 },
-  "tsrx": { "title": "TSRX", "order": 8 }
+  "flow": { "title": "Flow", "collapsed": false, "order": 1 },
+  "precompile": { "title": "Precompile transform", "order": 2 },
+  "tsrx": { "title": "TSRX", "order": 3 }
 }
