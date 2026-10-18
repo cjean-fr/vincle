@@ -65,14 +65,6 @@ title: FAQ
       },
       {
         "@type": "Question",
-        name: "Why is the XSS check not a separate linter?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Because a type-aware check belongs to a compiler, and Vincle belongs to none in particular. @kitajs/html leaves text children unescaped unless a safe attribute asks, which keeps the render fast, and checks them with a static analyzer that borrows the TypeScript language service. When TypeScript 7 stopped loading those plugins, that analyzer had to be rebuilt as a separate CLI. Vincle runs under several transforms, so the only component every setup shares is the runtime, where every value is escaped whichever compiler emitted the call.",
-        },
-      },
-      {
-        "@type": "Question",
         name: "Can I use Vincle for streaming HTML?",
         acceptedAnswer: {
           "@type": "Answer",
@@ -179,30 +171,6 @@ lands, and a URL whose scheme is off the allowlist becomes `#blocked`. What you
 write yourself, such as an `on*` handler or a `style` string, is escaped but not
 inspected. `raw()` is the one way to vouch for trusted HTML, `rawUrl()` for a URL
 scheme. See the [Security model](/guide/security).
-
-## Why is the XSS check not a separate linter?
-
-Because a type-aware check belongs to a compiler, and Vincle belongs to none in
-particular.
-
-`@kitajs/html` shows both sides of the first half. It escapes text children only
-when a `safe` attribute asks for it, which keeps the render fast, and leaves the
-check to a static analyzer that knows types and can therefore be more precise
-than an escape call. That precision is borrowed from the compiler: the analyzer
-ran inside the TypeScript language service. When TypeScript 7 stopped loading
-those plugins, the check disappeared with them, had to be rebuilt as a separate
-CLI, and the plugin was deprecated
-([kitajs/html#530](https://github.com/kitajs/html/pull/530)). Pinning the old
-compiler was the workaround until then
-([#528](https://github.com/kitajs/html/issues/528)).
-
-Vincle has no compiler to borrow from. It works under several transforms,
-TypeScript, Deno, Bun, esbuild and others, each with its own reading of a JSX
-convention that has no specification; a type-aware check would be one tool per
-toolchain, and it would still sit outside the code that produces the string. The
-component every setup shares is the runtime, so the guarantee lives there: every
-value is escaped whether or not it needs it, whichever compiler emitted the
-call, and even when the `jsx()` call was written by hand.
 
 ## Can I use Vincle for streaming HTML?
 
