@@ -125,6 +125,26 @@ html {
   navigation: auto;
 }
 
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 150ms;
+}
+
+/* Two different TOCs cross-fading read as a flicker: swap it instead. */
+.docs-toc-column {
+  view-transition-name: docs-toc;
+}
+
+::view-transition-old(docs-toc) {
+  display: none;
+}
+
+::view-transition-group(docs-toc),
+::view-transition-new(docs-toc) {
+  animation: none;
+}
+
 /* The reset above does not reach ::view-transition-* pseudo-elements */
 @media (prefers-reduced-motion: reduce) {
   @view-transition {
