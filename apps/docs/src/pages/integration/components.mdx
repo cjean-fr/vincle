@@ -13,7 +13,9 @@ title: Components
 
 Registers its `children` as deferred content and renders a placeholder in its
 place, showing `fallback` (empty when omitted) until the content is ready. Its
-id is generated, unless `target` names a `<Slot>` (below).
+id is generated, unless `target` names a `<Slot>` (below). The fragment's first
+patch replaces that fallback, so a positioned `merge` (`append`, `before`…) never
+leaves "Loading…" standing next to the content.
 
 ```tsx
 import { Defer } from "@vincle/flow";
@@ -101,11 +103,11 @@ your side. See [Streaming](/integration/streaming#async-iterables-streaming-sequ
 
 ## Props
 
-| Prop       | Applies to | Meaning                                                       |
-| ---------- | ---------- | ------------------------------------------------------------- |
-| `name`     | `Slot`     | id of the placeholder (required)                              |
-| `target`   | `Defer`    | optional placeholder id; generated automatically when omitted |
-| `fallback` | `Defer`    | placeholder content shown in the shell                        |
-| `merge`    | `Defer`    | how content applies to its target (default `"replace"`)       |
-| `timeout`  | `Defer`    | per-fragment render timeout in ms                             |
-| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's one     |
+| Prop       | Applies to | Meaning                                                             |
+| ---------- | ---------- | ------------------------------------------------------------------- |
+| `name`     | `Slot`     | id of the placeholder (required)                                    |
+| `target`   | `Defer`    | optional placeholder id; generated automatically when omitted       |
+| `fallback` | `Defer`    | placeholder content shown in the shell, replaced by the first patch |
+| `merge`    | `Defer`    | how content applies to its target (default `"replace"`)             |
+| `timeout`  | `Defer`    | per-fragment render timeout in ms                                   |
+| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's one           |

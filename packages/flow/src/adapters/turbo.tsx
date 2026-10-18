@@ -25,15 +25,45 @@ export const TurboAdapter = createAdapter({
     );
   },
 
-  Patch: ({ id, children, merge }) => (
-    <turbo-stream
-      action={ACTION[merge]}
-      method={merge === "morph" ? "morph" : undefined}
-      target={id}
-    >
-      <template>{children}</template>
-    </turbo-stream>
-  ),
+  Patch: ({ id, children, merge, first }) => {
+    // `replace` and `morph` define the frame's content instead of inserting
+    // beside it (`morph` is a *how*, not a *where*: Turbo answers it with a
+    // morphing `replace`, which swaps the frame itself), so the fallback goes
+    // with them. It is the positioned actions below that would leave it standing.
+    if (!first || merge === "replace" || merge === "morph") {
+      return (
+        <turbo-stream
+          action={ACTION[merge]}
+          method={merge === "morph" ? "morph" : undefined}
+          target={id}
+        >
+          <template>{children}</template>
+        </turbo-stream>
+      );
+    }
+    // The fallback *is* the frame's content, so replacing it is what makes the
+    // placeholder's promise real. For `append`/`prepend` that replacement is the
+    // insert itself: the frame is empty once the fallback is gone.
+    if (merge === "append" || merge === "prepend") {
+      return (
+        <turbo-stream action="update" target={id}>
+          <template>{children}</template>
+        </turbo-stream>
+      );
+    }
+    // `before`/`after` insert outside the frame, so they empty it first, then
+    // place the content around what is left.
+    return (
+      <>
+        <turbo-stream action="update" target={id}>
+          <template />
+        </turbo-stream>
+        <turbo-stream action={ACTION[merge]} target={id}>
+          <template>{children}</template>
+        </turbo-stream>
+      </>
+    );
+  },
 
   Frame: ({ id, children }) => <turbo-frame id={id}>{children}</turbo-frame>,
 });

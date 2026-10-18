@@ -49,7 +49,10 @@ describe("Defer: deferred content (placeholder always)", () => {
       ),
     );
     expect(html).toContain('<turbo-frame id="toast-list">');
-    expect(html).toContain('action="append"');
+    // The content lands in the boundary's first patch, which replaces the
+    // placeholder's fallback: that is `update` for a positioned merge, the
+    // position itself applies from the second patch on (see the stream test).
+    expect(html).toContain('action="update"');
     expect(html).toContain('target="toast-list"');
     expect(html).toContain("Notification");
   });
@@ -144,7 +147,7 @@ describe("Defer: deferred content (placeholder always)", () => {
         () => (
           <html>
             <body>
-              <Defer target="list" merge="append">
+              <Defer target="list" merge="before">
                 <AsyncContent />
               </Defer>
             </body>
@@ -153,7 +156,12 @@ describe("Defer: deferred content (placeholder always)", () => {
         TurboAdapter,
       ),
     );
-    expect(html).toContain('action="append"');
+    // `before` inserts outside the placeholder, so its first patch empties the
+    // placeholder (`update`) and then applies the stored merge: both are on the
+    // wire, in that order.
+    expect(html).toContain('action="update"');
+    expect(html).toContain('action="before"');
+    expect(html.indexOf('action="update"')).toBeLessThan(html.indexOf('action="before"'));
     expect(html).toContain('target="list"');
   });
 

@@ -16,15 +16,17 @@ const ctxWith = (size: number): ShellContext => ({ fragments: { size } });
 
 describe("NativeAdapter", () => {
   it("patches are declarative templates: never per-fragment scripts (CSP)", async () => {
+    // `first` changes nothing here: the polyfill empties the fallback's range by
+    // itself, so a patch is the same template whenever it lands.
     const repl = await renderToString(
-      NativeAdapter.Patch({ id: "x", children: "c", merge: "replace" }),
+      NativeAdapter.Patch({ id: "x", children: "c", merge: "replace", first: true }),
     );
     expect(repl).toContain('<template data-for="x">');
     expect(repl).not.toContain("data-merge");
     expect(repl).not.toContain("<script");
 
     const app = await renderToString(
-      NativeAdapter.Patch({ id: "x", children: "c", merge: "append" }),
+      NativeAdapter.Patch({ id: "x", children: "c", merge: "append", first: true }),
     );
     expect(app).toContain('<template data-for="x" data-merge="append">');
     expect(app).not.toContain("<script");

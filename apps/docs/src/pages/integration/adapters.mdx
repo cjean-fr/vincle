@@ -162,6 +162,14 @@ const MyAdapter = createAdapter({
 An adapter does not implement the streaming wire: `renderToStream` owns it, and
 `capabilities.streaming: true` only declares the adapter can stream.
 
+`Patch` receives `first`, `true` on the boundary's first patch of the response,
+while the placeholder's `fallback` is still in place. An adapter whose boundary
+is an element should replace the placeholder's content on that patch
+(`innerHTML`, `update`) instead of inserting next to it: a positioned merge would
+otherwise leave the fallback standing there for the rest of the page's life. The
+built-in HTMX and Turbo adapters do exactly that; the Native polyfill empties the
+placeholder's range before inserting.
+
 `transformShell` can inject a client runtime or modify the shell HTML. It
 receives a `ShellContext`, not the full flow context: just
 `ctx.fragments.size`, so you can inject scripts only when fragments are

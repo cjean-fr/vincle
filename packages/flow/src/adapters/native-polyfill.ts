@@ -30,6 +30,10 @@ function apply(t,s){
     if(merge&&merge!=="replace"){
       var el=document.getElementById(name),position=ADJ[merge];
       if(!el||!position)return;
+      // The fallback sits in the named range, not in the target: a positioned
+      // insert would leave it standing next to the content. Empty the range
+      // first (it is the placeholder), then insert.
+      fill(name,document.createDocumentFragment());
       if(position==="beforeend")el.append(frag);
       else if(position==="afterbegin")el.prepend(frag);
       else if(position==="beforebegin")el.before(frag);
