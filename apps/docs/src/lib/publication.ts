@@ -103,12 +103,21 @@ function htmlToText(html: string, options?: { mainOnly?: boolean }): string {
   return body.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Social cards are native sharp work, not page rendering: run sequentially they
+ * became the build's second bottleneck. A bounded pool lets sharp overlap with
+ * itself while keeping peak memory low; beyond a handful, the thread pool is
+ * saturated.
+ */
+const SOCIAL_CARD_CONCURRENCY = 8;
+
 /** Search, LLM and social artifacts consume the same final HTML, read once per page. */
 export const documentationArtifacts: SsgPlugin = {
   name: "documentation-artifacts",
   async publish(context) {
     const search = new Map<string, { url: string; title: string; text: string }[]>();
     const pages: { url: string; title: string; text: string }[] = [];
+    const cardTasks: (() => Promise<void>)[] = [];
     for (const page of context.outputs) {
       if (page.meta.search === false) continue;
       const html = await page.read();
@@ -124,12 +133,21 @@ export const documentationArtifacts: SsgPlugin = {
           section: tabFor(docs.tabs, page.url)?.label ?? null,
           summary: description ?? summarize(firstParagraph(html) ?? main, title),
         };
-        await context.emit({ path: socialCardPath(page.url), content: () => socialCardPng(card) });
+        cardTasks.push(() =>
+          context.emit({ path: socialCardPath(page.url), content: () => socialCardPng(card) }),
+        );
       }
       search.set(locale, documents);
       if (localeFor(page.url) === "en")
         pages.push({ url: page.url, title, text: htmlToText(html) });
     }
+    // Cards only write distinct files, so their emission order does not matter.
+    let nextCard = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(SOCIAL_CARD_CONCURRENCY, cardTasks.length) }, async () => {
+        while (nextCard < cardTasks.length) await cardTasks[nextCard++]!();
+      }),
+    );
     for (const [locale, documents] of search)
       await context.emit({
         path: locale === "en" ? "search-index.json" : `${locale}/search-index.json`,
