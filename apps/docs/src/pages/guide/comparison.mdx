@@ -29,6 +29,9 @@ Choose something else when:
   without `safe` does less, and on Node it stays ahead of Vincle's precompile
   path for it. On Bun the two are level, and Vincle is escaping. With their
   TypeScript plugin wired into CI, either way is a defensible position.
+- **Your templates are data, not code.** Markup loaded at runtime, stored in a
+  database or edited by non-developers needs a template engine: JSX is compiled
+  with your code.
 - **You are already inside a framework's rendering pipeline.** `hono/jsx` inside
   a Hono app costs you nothing to keep.
 

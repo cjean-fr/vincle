@@ -25,6 +25,14 @@ title: FAQ
       },
       {
         "@type": "Question",
+        name: "Why JSX rather than a template engine?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "A template engine reads a separate language from strings or files; JSX is TypeScript, compiled with your code. The data a view receives is typed, an include is a component whose props are checked, and every value is escaped without choosing between two tags. The cost is a compile step: templates loaded at runtime or edited by non-developers stay a job for a template engine.",
+        },
+      },
+      {
+        "@type": "Question",
         name: "Can I use Vincle with React components?",
         acceptedAnswer: {
           "@type": "Answer",
@@ -123,6 +131,18 @@ contract. Vincle is built exclusively for server-side HTML generation:
 | Virtual DOM    | None                   | Full                                    |
 | Client runtime | None                   | Hydration                               |
 | Security       | Escape + URL allowlist | Escape + `javascript:` URLs neutralized |
+
+## Why JSX rather than a template engine?
+
+A template engine reads a separate language from strings or files; JSX is
+TypeScript, compiled with your code. The data a view receives is typed, an
+include is a component whose props are checked, and every value is escaped
+without choosing between two tags.
+
+The cost is a compile step: templates loaded at runtime or edited by
+non-developers stay a job for a template engine. See
+[Coming from HTML templates](/guide/coming-from-templates) for the same page in
+Pug, EJS, Mustache, Twig and Vue.
 
 ## Can I use Vincle with React components?
 
