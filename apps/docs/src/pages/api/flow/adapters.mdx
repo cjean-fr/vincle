@@ -22,21 +22,22 @@ All exported from `@vincle/flow/adapters`.
 | Adapter              | Target                                             | Merge support                           | Size                       |
 | -------------------- | -------------------------------------------------- | --------------------------------------- | -------------------------- |
 | `NativeAdapter`      | Inline polyfill via `<template data-for>`          | replace, append, prepend, before, after | ~1.5 kB polyfill (gzipped) |
-| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | the five above + morph (Turbo >= 8)     | N/A                        |
-| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | the five above + morph (htmx >= 4)      | N/A                        |
-| `WebPlatformAdapter` | WICG declarative partial updates                   | replace only                            | N/A                        |
+| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | the six above + morph (Turbo >= 8)      | N/A                        |
+| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | the six above + morph (htmx >= 4)       | N/A                        |
+| `WebPlatformAdapter` | Declarative partial updates (WICG proposal)        | replace only                            | N/A                        |
 | `EsiAdapter`         | CDN edge composition via `esi:include`             | replace                                 | N/A                        |
 
 ## Merge types
 
-| `merge`     | Effect                                    |
-| ----------- | ----------------------------------------- |
-| `"replace"` | Target element is replaced (default)      |
-| `"append"`  | Content inserted as last child of target  |
-| `"prepend"` | Content inserted as first child of target |
-| `"before"`  | Content inserted as previous sibling      |
-| `"after"`   | Content inserted as next sibling          |
-| `"morph"`   | Target is diffed against content in place |
+| `merge`     | Effect                                     |
+| ----------- | ------------------------------------------ |
+| `"replace"` | Target element is replaced (default)       |
+| `"update"`  | Target's content is replaced, element kept |
+| `"append"`  | Content inserted as last child of target   |
+| `"prepend"` | Content inserted as first child of target  |
+| `"before"`  | Content inserted as previous sibling       |
+| `"after"`   | Content inserted as next sibling           |
+| `"morph"`   | Target is diffed against content in place  |
 
 `"morph"` keeps focus, scroll position and form state. A merge the adapter does
 not support is rejected at registration.

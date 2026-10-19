@@ -111,7 +111,7 @@ describe("merge capabilities: the pure spec and the polyfill diverge", () => {
 
   it("the polyfill adds the other four, and NativeAdapter declares them", () => {
     expect([...NativeAdapter.capabilities.merges].toSorted()).toEqual([
-      ...(["after", "append", "before", "prepend", "replace"] as const),
+      ...(["after", "append", "before", "prepend", "replace", "update"] as const),
     ]);
   });
 
@@ -140,5 +140,13 @@ describe("merge capabilities: the pure spec and the polyfill diverge", () => {
         storeFor(adapter).register("x", { content: "c", merge: "replace" }),
       ).not.toThrow();
     }
+  });
+
+  it("accepts update: the polyfill replaces the target's children", () => {
+    // `update` is not an `insertAdjacentHTML` position, but the polyfill can
+    // still express it (`replaceChildren`), so it is declared and admitted.
+    expect(() =>
+      storeFor(NativeAdapter).register("x", { content: "c", merge: "update" }),
+    ).not.toThrow();
   });
 });

@@ -4,7 +4,7 @@ import { Scope } from "@vincle/core";
 import { raw, renderToString } from "@vincle/core";
 import { describe, expect, it } from "bun:test";
 
-import { NativeAdapter, TurboAdapter } from "../adapters/index.js";
+import { HtmxAdapter, NativeAdapter, TurboAdapter } from "../adapters/index.js";
 import { initFlow } from "../context.js";
 import { Defer, Slot, renderToStatic } from "../index.js";
 import { renderToStream } from "../render.js";
@@ -55,6 +55,39 @@ describe("Defer: deferred content (placeholder always)", () => {
     expect(html).toContain('action="update"');
     expect(html).toContain('target="toast-list"');
     expect(html).toContain("Notification");
+  });
+
+  it("admits merge=update: registration accepts it and the adapter keeps the element", async () => {
+    // `update` is a merge type of its own, so the registry must admit it (it is
+    // in `ALL_MERGES`) and the wire must be the content-only swap, not `replace`
+    // — the latter would swap the placeholder element instead of its content.
+    for (const { adapter, marker, absent } of [
+      {
+        adapter: TurboAdapter,
+        marker: '<turbo-stream action="update"',
+        absent: 'action="replace"',
+      },
+      { adapter: HtmxAdapter, marker: 'hx-swap-oob="innerHTML"', absent: "outerHTML" },
+      { adapter: NativeAdapter, marker: 'data-merge="update"', absent: 'data-merge="replace"' },
+    ] as const) {
+      const html = await collect(
+        renderToStream(
+          () => (
+            <html>
+              <body>
+                <Defer target="panel" merge="update">
+                  <p>Content</p>
+                </Defer>
+              </body>
+            </html>
+          ),
+          adapter,
+        ),
+      );
+      expect(html).toContain(marker);
+      expect(html).not.toContain(absent);
+      expect(html).toContain("Content");
+    }
   });
 
   it("renders a placeholder for async component content, then patches it in once it resolves", async () => {

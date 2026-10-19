@@ -41,14 +41,15 @@ emitted.
 
 `merge` controls how the content applies to the target element:
 
-| `merge`     | Effect                                    |
-| ----------- | ----------------------------------------- |
-| `"replace"` | Target element is replaced (default)      |
-| `"append"`  | Content inserted as last child of target  |
-| `"prepend"` | Content inserted as first child of target |
-| `"before"`  | Content inserted as previous sibling      |
-| `"after"`   | Content inserted as next sibling          |
-| `"morph"`   | Target is diffed against content in place |
+| `merge`     | Effect                                     |
+| ----------- | ------------------------------------------ |
+| `"replace"` | Target element is replaced (default)       |
+| `"update"`  | Target's content is replaced, element kept |
+| `"append"`  | Content inserted as last child of target   |
+| `"prepend"` | Content inserted as first child of target  |
+| `"before"`  | Content inserted as previous sibling       |
+| `"after"`   | Content inserted as next sibling           |
+| `"morph"`   | Target is diffed against content in place  |
 
 `"morph"` keeps focus, scroll position and form state. Not every adapter
 supports every merge type: an unsupported one is rejected at registration with a

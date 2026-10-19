@@ -56,10 +56,11 @@ export const WebPlatformAdapter = createAdapter({
 
 /**
  * What the polyfill can express: `insertAdjacentHTML`'s four positions, plus
- * `replace`. `morph` is out: diffing two DOM trees is orders of magnitude past
- * this budget, so the adapter refuses it rather than degrading it to a replace.
+ * `replace` and `update` (the target's children replaced, the element kept).
+ * `morph` is out: diffing two DOM trees is orders of magnitude past this budget,
+ * so the adapter refuses it rather than degrading it to a replace.
  */
-const POLYFILL_MERGES = ["replace", "append", "prepend", "before", "after"] as const;
+const POLYFILL_MERGES = ["replace", "update", "append", "prepend", "before", "after"] as const;
 
 /**
  * Decorate a WICG-format adapter with the inline polyfill. Its templates use

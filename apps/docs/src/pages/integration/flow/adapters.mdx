@@ -14,7 +14,7 @@ Vincle ships five built-in adapters. Import from `@vincle/flow/adapters`:
 import {
   TurboAdapter, // Turbo Streams: <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
   HtmxAdapter, // HTMX: hx-get / hx-swap-oob, morph on htmx >= 4
-  NativeAdapter, // <template data-for> + inline polyfill, all 5 positions
+  NativeAdapter, // <template data-for> + inline polyfill, all 6 positions
   WebPlatformAdapter, // WICG declarative partial updates, native support required
   EsiAdapter, // CDN edge composition via esi:include
 } from "@vincle/flow/adapters";
@@ -24,9 +24,9 @@ import {
 
 | Adapter                | Client runtime                            | Streaming | Merge types     | Best for                                  |
 | ---------------------- | ----------------------------------------- | --------- | --------------- | ----------------------------------------- |
-| **NativeAdapter**      | ~1.5 kB polyfill, gzipped (auto-injected) | Yes       | all 5 positions | General purpose, no extra JS              |
-| **TurboAdapter**       | Hotwire Turbo                             | Yes       | all 6           | Rails / Hotwire stack                     |
-| **HtmxAdapter**        | HTMX                                      | Yes       | all 6           | Django / Laravel / any backend            |
+| **NativeAdapter**      | ~1.5 kB polyfill, gzipped (auto-injected) | Yes       | all 6 positions | General purpose, no extra JS              |
+| **TurboAdapter**       | Hotwire Turbo                             | Yes       | all 7           | Rails / Hotwire stack                     |
+| **HtmxAdapter**        | HTMX                                      | Yes       | all 7           | Django / Laravel / any backend            |
 | **WebPlatformAdapter** | None (native browser support required)    | Yes       | replace only    | Browsers with declarative partial updates |
 | **EsiAdapter**         | None (CDN-level)                          | No        | replace only    | Varnish / CDN edge composition            |
 
@@ -37,16 +37,19 @@ does not support.
 
 Recommended for most applications. It uses the
 [WICG Declarative Partial Updates](https://github.com/WICG/declarative-partial-updates)
-format, with a polyfill **injected automatically** when fragments or active
+format (the WICG, Web Incubator Community Group, is where browser features are
+proposed before they become standards), with a polyfill **injected automatically** when fragments or active
 `<template src>` / `<template for>` elements are present. Inert templates and
 pages without deferred content do not require it.
 
-Use Native for both SSG and streaming while native browser support is incomplete.
+Use Native for both static site generation (SSG: every page rendered once, at
+build time, and written to disk) and streaming while native browser support is
+incomplete.
 Native protects templates with `data-for`, so browsers that implement patching
 but not `src` cannot consume them before the polyfill. It handles both comment
 and processing-instruction markers.
 
-SSG loads the emitted fragment files. Streaming consumes complete inline patch
+A static site loads the emitted fragment files. Streaming consumes complete inline patch
 templates and also handles external includes arriving in the page. External
 responses are buffered; failed requests preserve fallback content.
 
@@ -111,7 +114,9 @@ Encodes placeholders as `<turbo-frame>` elements and patches as
 ### HtmxAdapter
 
 Encodes placeholders (with `hx-get` when the fragment has a URL, in static mode)
-and patches as `hx-swap-oob` elements, for [HTMX](https://htmx.org/). For request negotiation, see
+and patches as `hx-swap-oob` elements, for [HTMX](https://htmx.org/). An
+out-of-band (OOB) swap replaces the element with the same `id` wherever it sits
+in the page, not only the target of the request. For request negotiation, see
 [`negotiateHtmx`](/integration/flow/http-serving).
 
 ```tsx
@@ -127,7 +132,8 @@ and patches as `hx-swap-oob` elements, for [HTMX](https://htmx.org/). For reques
 
 ### EsiAdapter
 
-Encodes placeholders as `<esi:include>` elements; an ESI-capable CDN or reverse
+Encodes placeholders as `<esi:include>` elements. ESI (Edge Side Includes) is a
+markup resolved before the page reaches the browser: an ESI-capable CDN or reverse
 proxy (Varnish, Akamai, Fastly) fetches and inserts the content. Static only
 (`streaming: false`), `replace` only: the origin emits one HTML template and the
 edge fills in the dynamic parts.
@@ -140,7 +146,7 @@ Build your own with `createAdapter` from `@vincle/flow/adapters`:
 | ---------------- | --------------------------------------------------------------- |
 | `Placeholder`    | Renders the shell placeholder for a deferred fragment           |
 | `Patch`          | Wraps a resolved fragment for injection into the DOM            |
-| `Frame`          | Wraps a static fragment file for SSG output                     |
+| `Frame`          | Wraps a static fragment file for static site output             |
 | `capabilities`   | Declares supported merge types and streaming support            |
 | `transformShell` | (Optional) Post-processes the shell before it enters the stream |
 
@@ -168,7 +174,10 @@ is an element should replace the placeholder's content on that patch
 (`innerHTML`, `update`) instead of inserting next to it: a positioned merge would
 otherwise leave the fallback standing there for the rest of the page's life. The
 built-in HTMX and Turbo adapters do exactly that; the Native polyfill empties the
-placeholder's range before inserting.
+placeholder's range before inserting. `update` is the exception: it replaces the
+target element's children and keeps the element, so the polyfill uses
+`replaceChildren` on it (and on the placeholder's range when the target has no
+element of its own).
 
 `transformShell` can inject a client runtime or modify the shell HTML. It
 receives a `ShellContext`, not the full flow context: just

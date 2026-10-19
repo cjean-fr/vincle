@@ -38,7 +38,7 @@ signal aborts when the request is cancelled or the `timeout` expires.
 | `target`   | `string`                                                                                                                                                 | Generated id | Optional placeholder id; match a `Slot` name to fill it |
 | `fallback` | `JSX.Element`                                                                                                                                            | N/A          | Content rendered in the placeholder                     |
 | `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | N/A          | Content: plain JSX, a factory, or an async iterable     |
-| `merge`    | `"replace" \| "append" \| "prepend" \| "before" \| "after" \| "morph"`                                                                                   | `"replace"`  | How content applies to the target                       |
+| `merge`    | `"replace" \| "update" \| "append" \| "prepend" \| "before" \| "after" \| "morph"`                                                                       | `"replace"`  | How content applies to the target                       |
 | `timeout`  | `number`                                                                                                                                                 | N/A          | Per-fragment render timeout in ms                       |
 | `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void`                                                                                           | N/A          | Per-fragment error handler                              |
 

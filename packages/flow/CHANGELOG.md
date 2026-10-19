@@ -1,5 +1,11 @@
 # @vincle/flow
 
+## Unreleased
+
+### Added
+
+- Add the `update` merge type: it replaces the target's content and keeps the element itself. Turbo maps it to its `update` stream action, HTMX to the `innerHTML` swap, and the Native polyfill replaces the target's children with `replaceChildren` (falling back to the placeholder's range when the target has no element). `NativeAdapter` now declares it, so `merge="update"` is accepted there too.
+
 ## 0.11.0 — 2026-10-11
 
 ### Added
