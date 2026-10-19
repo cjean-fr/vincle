@@ -20,7 +20,15 @@ export interface ShellContext {
 
 export type Adapter = {
   Placeholder(props: { id: string; src: string | null; children: Child }): JSX.Element;
-  Patch(props: { id: string; children: Child; merge: MergeType }): JSX.Element;
+  /**
+   * One resolved patch for `id`. `first` marks the boundary's first patch of
+   * the response: it is the one that still finds the placeholder's `fallback`,
+   * and a positioned insert (`append`, `before`…) would leave it standing next
+   * to the content. An adapter whose boundary is an element is the one that can
+   * act on it, by replacing the placeholder's content on that first patch
+   * instead of inserting beside it.
+   */
+  Patch(props: { id: string; children: Child; merge: MergeType; first: boolean }): JSX.Element;
   Frame(props: { id: string; children: Child }): JSX.Element;
   capabilities: AdapterCapabilities;
   /**

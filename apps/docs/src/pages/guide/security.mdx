@@ -227,6 +227,10 @@ distinguish a call the compiler emitted from a hand-written
 be unverifiable, which is why vincle validates tag/attribute names and escapes
 every value regardless of origin.
 
+The alternative, delegating that enforcement to an external linter, moves the
+guarantee out of the library; see
+[Why is the XSS check not a separate linter?](/guide/faq#why-is-the-xss-check-not-a-separate-linter).
+
 ## The `raw()` Escape Hatch
 
 `raw()` is the **only** way to inject unescaped HTML:

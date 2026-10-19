@@ -17,7 +17,9 @@ describe("EsiAdapter", () => {
       await renderToString(EsiAdapter.Placeholder({ id: "x", src: "/f?a=1&b=2", children: "" })),
     ).toContain("&amp;");
     expect(
-      await renderToString(EsiAdapter.Patch({ id: "x", children: "c", merge: "replace" })),
+      await renderToString(
+        EsiAdapter.Patch({ id: "x", children: "c", merge: "replace", first: true }),
+      ),
     ).toContain("esi:inline");
   });
 
@@ -26,7 +28,7 @@ describe("EsiAdapter", () => {
   // attribute in the repo relying on it: `src` two lines up never did.
   it("escapes id into the esi:inline name attribute", async () => {
     const html = await renderToString(
-      EsiAdapter.Patch({ id: 'x" onload="boom', children: "c", merge: "replace" }),
+      EsiAdapter.Patch({ id: 'x" onload="boom', children: "c", merge: "replace", first: true }),
     );
     expect(html).toContain("&quot;");
     expect(html).not.toContain('name="x" onload=');

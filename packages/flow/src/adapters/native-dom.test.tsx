@@ -369,6 +369,30 @@ describe("Native template src: browser behavior", () => {
     }
   });
 
+  it("a position patch lands without leaving the placeholder's fallback beside it", async () => {
+    for (const [merge, expected] of [
+      ["append", "OldNew"],
+      ["prepend", "NewOld"],
+      ["before", "NewOld"],
+      ["after", "OldNew"],
+    ] as const) {
+      // The fallback sits in the named range, the target element next to it:
+      // that is the shape a positioned merge is written in.
+      const page = browser(
+        `<?start name="nav"><p>Loading</p><?end><section id="nav">Old</section>` +
+          `<template data-for="nav" data-merge="${merge}"><b>New</b></template>`,
+      );
+      try {
+        page.start();
+        await tick();
+        expect(page.document.body.textContent).toBe(expected);
+        expect(page.document.querySelector("p")).toBeNull();
+      } finally {
+        await page.close();
+      }
+    }
+  });
+
   it("rejects non-HTTP fragment URLs", async () => {
     for (const src of [
       "javascript:alert(1)",

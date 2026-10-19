@@ -402,6 +402,38 @@ describe("renderToStream", () => {
       "</body></html>\n",
     ]);
   });
+
+  it("a stream's first patch replaces the placeholder, the rest insert", async () => {
+    // `merge="append"` on a live stream: the placeholder's fallback goes with
+    // the first patch (`update` replaces the frame's content), and every later
+    // one accumulates, which `append` is for.
+    async function* rows() {
+      yield (<li>one</li>) as VNode;
+      yield (<li>two</li>) as VNode;
+    }
+    const chunks: string[] = [];
+    for await (const c of renderToStream(
+      () => (
+        <html>
+          <body>
+            <Defer target="feed" merge="append">
+              {rows()}
+            </Defer>
+          </body>
+        </html>
+      ),
+      TurboAdapter,
+    )) {
+      chunks.push(c);
+    }
+
+    expect(chunks).toEqual([
+      '<html><body><turbo-frame id="feed"></turbo-frame>',
+      '\n<turbo-stream action="update" target="feed"><template><li>one</li></template></turbo-stream>\n',
+      '<turbo-stream action="append" target="feed"><template><li>two</li></template></turbo-stream>\n',
+      "</body></html>\n",
+    ]);
+  });
 });
 
 describe("edge cases: render pipeline", () => {

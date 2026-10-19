@@ -53,7 +53,9 @@ speed. Given the string `<img src=x onerror="alert(1)">` as a text child:
 attribute or its `escape` helper. This is deliberate on their part, and they
 ship [`@kitajs/ts-html-plugin`](https://github.com/kitajs/ts-html-plugin), an
 editor plugin and CLI, to catch unescaped interpolations before they reach
-production.
+production. That check is itself a dependency: when TypeScript 7 removed the
+language-service plugin API, it had to be rebuilt as a separate CLI; see
+[Why is the XSS check not a separate linter?](/guide/faq#why-is-the-xss-check-not-a-separate-linter).
 
 Vincle takes the other side of that trade: escaping cannot be turned off from the
 component API. The one way to emit unescaped markup is named after what it does:

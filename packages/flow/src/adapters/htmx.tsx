@@ -24,11 +24,39 @@ export const HtmxAdapter = createAdapter({
     );
   },
 
-  Patch: ({ id, children, merge }) => (
-    <div id={id} hx-swap-oob={SWAP[merge]}>
-      {children}
-    </div>
-  ),
+  Patch: ({ id, children, merge, first }) => {
+    // `replace` and `morph` define the placeholder's content instead of
+    // inserting beside it (`morph` is a *how*, not a *where*: what becomes of
+    // the fallback is the client's reconciliation), so the fallback goes with
+    // them. It is the positioned swaps below that would leave it standing.
+    if (!first || merge === "replace" || merge === "morph") {
+      return (
+        <div id={id} hx-swap-oob={SWAP[merge]}>
+          {children}
+        </div>
+      );
+    }
+    // The fallback *is* the placeholder's content, so replacing it is what makes
+    // the placeholder's promise real. For `append`/`prepend` that replacement is
+    // the insert itself: the boundary is empty once the fallback is gone.
+    if (merge === "append" || merge === "prepend") {
+      return (
+        <div id={id} hx-swap-oob="innerHTML">
+          {children}
+        </div>
+      );
+    }
+    // `before`/`after` insert outside the placeholder, so they empty it first,
+    // then place the content around what is left.
+    return (
+      <>
+        <div id={id} hx-swap-oob="innerHTML" />
+        <div id={id} hx-swap-oob={SWAP[merge]}>
+          {children}
+        </div>
+      </>
+    );
+  },
 
   Frame: ({ id, children }) => <div id={id}>{children}</div>,
 });

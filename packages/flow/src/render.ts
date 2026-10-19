@@ -49,6 +49,12 @@ function splitClosingTags(shell: string): { body: string; closingTag: string } {
  */
 function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent, string> {
   let inShell = false;
+  // The boundaries this response has already patched. The first patch of one is
+  // where the placeholder's fallback is still in place, and the adapter is the
+  // one that knows what clearing it takes (a swap style, a stream action, a
+  // range): the wire is also where "first" is knowable, the client applying
+  // patches in the order they were written.
+  const patched = new Set<string>();
 
   return new TransformStream<FlowEvent, string>({
     async transform(ev, c) {
@@ -65,11 +71,14 @@ function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent,
         prefix = "\n";
       }
       if (ev.type === "fragment") {
+        const first = !patched.has(ev.id);
+        patched.add(ev.id);
         const wire = await renderToString(
           adapter.Patch({
             id: ev.id,
             children: raw(ev.html),
             merge: ev.merge,
+            first,
           }),
         );
         c.enqueue(prefix + wire + "\n");
