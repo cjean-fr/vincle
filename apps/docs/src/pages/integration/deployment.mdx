@@ -1,0 +1,175 @@
+---
+title: Deploying a static site
+---
+
+# Deploying a static site
+
+`ssg build` writes a plain directory: `dist/` by default. Any static host or CDN
+can serve it; there is no server runtime to deploy. This page covers what the
+host has to know about that directory.
+
+## What the output looks like
+
+| Source                      | Output                                               |
+| --------------------------- | ---------------------------------------------------- |
+| `src/pages/index.tsx`       | `dist/index.html`                                    |
+| `src/pages/about.tsx`       | `dist/about/index.html`                              |
+| `src/pages/guide/intro.mdx` | `dist/guide/intro/index.html`, `dist/guide/intro.md` |
+| `src/pages/feed.xml.ts`     | `dist/feed.xml`                                      |
+| `src/pages/404.html.tsx`    | `dist/404.html`                                      |
+| `public/robots.txt`         | `dist/robots.txt`                                    |
+
+HTML pages use directory indexes, so `/about` is served by `about/index.html`.
+Most hosts resolve this on their own; the server configurations below make it
+explicit. A route whose name already carries its extension keeps it: this is
+how `404.html.tsx` becomes a flat `404.html`.
+
+Publish only the content of `dist/`. Every page is rendered and checked before
+`dist/` is touched, and a failed build leaves the previous site in place.
+Replacing the files is not atomic, though: let the deployment step copy `dist/`
+to the host rather than pointing a web server at it while a build runs.
+
+## A custom 404 page
+
+Generate the error page as a regular route, outside the sitemap. The host
+returns the 404 status; the page only supplies the markup:
+
+```tsx
+// src/pages/404.html.tsx
+export const meta = { title: "Page not found", sitemap: false };
+
+export default function NotFound() {
+  return <h1>Page not found</h1>;
+}
+```
+
+Mirror it in development so `ssg dev` behaves like the host:
+
+```ts
+// ssg.config.ts
+import { defineConfig } from "@vincle/ssg";
+
+export default defineConfig({
+  site: "https://example.com",
+  dev: { notFound: "/404.html", statuses: { "/404.html": 404 } },
+});
+```
+
+## Content types
+
+Hosts derive the `Content-Type` from the file extension. HTML, CSS, JavaScript,
+JSON and images are known everywhere. Markdown alternates (`.md`) are not: nginx
+and Caddy send them as a download unless configured. After a first deployment,
+check the type of one `.md` URL:
+
+```sh
+curl -sI https://example.com/index.md | grep -i content-type
+```
+
+`dev.mimeTypes` only affects the development server; production types belong
+to the host configuration.
+
+## Server configuration
+
+### Caddy
+
+```caddyfile
+example.com {
+    root * /var/www/site
+    encode zstd gzip
+
+    @markdown path *.md
+    header @markdown Content-Type "text/markdown; charset=utf-8"
+
+    file_server
+
+    handle_errors {
+        rewrite * /404.html
+        file_server
+    }
+}
+```
+
+### nginx
+
+```nginx
+server {
+    server_name example.com;
+    root /var/www/site;
+
+    types {
+        text/markdown md;
+    }
+    include mime.types;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    error_page 404 /404.html;
+}
+```
+
+### Apache
+
+```apache
+# .htaccess at the document root, e.g. public/.htaccess
+DirectoryIndex index.html
+ErrorDocument 404 /404.html
+AddType "text/markdown; charset=utf-8" .md
+```
+
+### Cloudflare Pages
+
+Cloudflare Pages serves `index.html` for directories and `404.html` for missing
+paths without configuration. Deploy the directory with
+`npx wrangler pages deploy dist`, or point a Git integration's output directory
+at `dist`. Place `_headers` and `_redirects` files in `public/`: they are copied
+to the output root and honoured.
+
+### GitHub Pages
+
+GitHub Pages resolves directory indexes and `404.html` too. Deploy with a
+workflow: the uploaded artifact is served as is, without a Jekyll build.
+
+```yaml
+# .github/workflows/deploy.yml, in a job with pages: write and id-token: write
+- run: npm run build
+- uses: actions/upload-pages-artifact@v5
+  with:
+    path: dist
+- uses: actions/deploy-pages@v5
+```
+
+## Serving under a base path
+
+To publish the site under `/docs`, keep `site` for the origin and set `base`:
+
+```ts
+// ssg.config.ts
+import { defineConfig } from "@vincle/ssg";
+
+export default defineConfig({
+  site: "https://example.com",
+  base: "/docs/",
+});
+```
+
+The sitemap and Vite asset URLs then carry the prefix, in `ssg dev` as in
+`ssg build`, while the files stay at the root of `dist/`. Do not repeat the
+prefix in the Vite configuration: `base` sets it. Publish `dist/` under
+`/docs`, and adapt the server configuration: for nginx, a `location /docs/`
+with an `alias` to the directory; the error page becomes `/docs/404.html`.
+
+## Caching
+
+The output does not carry HTTP headers: set them on the host. Vite's hashed
+files never change and can be cached for a long time as immutable. HTML and
+Markdown should be revalidated, so a new deployment shows up immediately. With
+Cloudflare Pages:
+
+```text
+# public/_headers
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+```

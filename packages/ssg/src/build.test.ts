@@ -218,6 +218,24 @@ test("configuration and metadata validation", () =>
     expect(await Bun.file(path.join(root, "dist/sitemap.xml")).exists()).toBe(false);
   }));
 
+test("site is the origin and base the path prefix of sitemap URLs", () =>
+  fixture(async (root, put) => {
+    await put("index.tsx", "export default () => <p>Home</p>");
+    await put("guide/intro.tsx", "export default () => <p>Intro</p>");
+    await build({ root, site: "https://example.com", base: "docs", assets: false });
+    const sitemap = await file(root, "sitemap.xml");
+    expect(sitemap).toContain("<loc>https://example.com/docs/</loc>");
+    expect(sitemap).toContain("<loc>https://example.com/docs/guide/intro/</loc>");
+    expect(await file(root, "guide/intro/index.html")).toBe("<p>Intro</p>");
+    await expect(
+      build({ root, site: "https://example.com/docs/", base: "/docs/", assets: false }),
+    ).rejects.toThrow("origin when base is set");
+    for (const base of ["/docs/../x", "https://cdn.example/", "//cdn.example/", "/a?b"])
+      await expect(build({ root, base, assets: false })).rejects.toMatchObject({
+        reason: "INVALID_CONFIG",
+      });
+  }));
+
 test("nearest layouts, page overrides and opt-out share metadata and leave alternate outputs alone", () =>
   fixture(async (root, put) => {
     await put(

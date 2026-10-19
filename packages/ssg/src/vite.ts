@@ -14,6 +14,7 @@ import {
 
 import type { AssetIntegration, JsxRuntime } from "./types.js";
 
+import { withBase } from "./base.js";
 import { clientEntries } from "./conventions.js";
 import { failure, diagnose } from "./errors.js";
 import { flattenPlugins, loadViteConfig } from "./vite-config.js";
@@ -51,10 +52,16 @@ async function productionPlugins(
 
 async function prepareVite(
   config: InlineConfig,
-  { root, src, out, runtime }: { root: string; src: string; out: string; runtime: JsxRuntime },
+  {
+    root,
+    src,
+    out,
+    runtime,
+    base,
+  }: { root: string; src: string; out: string; runtime: JsxRuntime; base?: string },
 ) {
   const mode = config.mode ?? "production";
-  const user = await loadViteConfig(config, root, { command: "build", mode });
+  const user = withBase(await loadViteConfig(config, root, { command: "build", mode }), base);
   const shared: InlineConfig = mergeConfig(user, {
     configFile: false,
     mode,

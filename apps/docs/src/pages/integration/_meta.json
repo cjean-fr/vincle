@@ -1,5 +1,19 @@
 {
-  "flow": { "title": "Flow", "collapsed": false, "order": 1 },
-  "precompile": { "title": "Precompile transform", "order": 2 },
-  "tsrx": { "title": "TSRX", "order": 3 }
+  "flow": {
+    "title": "Flow",
+    "collapsed": false,
+    "order": 1
+  },
+  "precompile": {
+    "title": "Precompile transform",
+    "order": 2
+  },
+  "tsrx": {
+    "title": "TSRX",
+    "order": 3
+  },
+  "deployment": {
+    "title": "Deploying a static site",
+    "order": 4
+  }
 }

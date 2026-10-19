@@ -137,6 +137,8 @@ export interface AssetIntegration {
     src: string;
     out: string;
     runtime: JsxRuntime;
+    /** Public path prefix from SsgOptions.base, e.g. "/docs/"; undefined leaves the bundler's own base. */
+    base?: string;
   }): Awaitable<AssetBuild>;
 }
 
@@ -165,8 +167,10 @@ export interface SsgOptions {
   handlers?: Readonly<Record<string, PageHandler | false>>;
   runtime?: JsxRuntime;
   plugins?: readonly SsgPlugin[];
-  /** Absolute public site URL. Enables sitemap.xml unless sitemap is false. */
+  /** Public site origin, e.g. https://example.com. Enables sitemap.xml unless sitemap is false. */
   site?: string;
+  /** Path prefix the site is served under, e.g. "/docs/" (default "/"). Applies to sitemap and asset URLs. */
+  base?: string;
   sitemap?: boolean;
   /** Auto-detect Vite configuration/client entry by default; false disables it. */
   assets?: AssetIntegration | false;

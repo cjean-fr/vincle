@@ -58,6 +58,26 @@ test("Vite publishes hashed JS/CSS with pages, installs the manifest, and retain
   }
 });
 
+test("the SSG base prefixes conventional Vite assets and rejects a different Vite base", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-vite-base-"));
+  try {
+    await mkdir(path.join(root, "src/_client"), { recursive: true });
+    await writeFile(path.join(root, "src/_client/main.ts"), 'console.log("base");');
+    await writeFile(
+      path.join(root, "src/index.tsx"),
+      'import {Asset} from "@vincle/vite-plugin"; export default () => <Asset entry="src/_client/main.ts" />',
+    );
+    await build({ root, site: "https://example.com", base: "/docs/" });
+    const html = await readFile(path.join(root, "dist/index.html"), "utf8");
+    expect(html).toMatch(/src="\/docs\/assets\/main-[^"]+\.js"/);
+    await expect(
+      build({ root, base: "/docs/", assets: viteAssets({ configFile: false, base: "/other/" }) }),
+    ).rejects.toThrow("Vite base conflicts with the SSG base");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("private script and stylesheet entries enable Vite automatically without configuration", async () => {
   const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-vite-convention-"));
   try {
