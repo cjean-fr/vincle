@@ -1,5 +1,9 @@
 # @vincle/precompile
 
+## Unreleased
+
+- Decode HTML entities in static attribute values, as the JSX compilers do: `title="Tom &amp; Jerry"` now renders `Tom &amp; Jerry`, identical to the runtime path, instead of `Tom &amp;amp; Jerry`.
+
 ## 0.9.0 — 2026-10-05
 
 - Initial npm publication of the JSX precompile transform.
