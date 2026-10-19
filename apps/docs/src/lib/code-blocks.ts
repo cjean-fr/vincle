@@ -1,5 +1,6 @@
-import { createHighlighterCoreSync, createCssVariablesTheme } from "@shikijs/core";
-import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
+import { createHighlighterCore, createCssVariablesTheme } from "@shikijs/core";
+import { createOnigurumaEngine } from "@shikijs/engine-oniguruma";
+import getWasm from "@shikijs/engine-oniguruma/wasm-inlined";
 import bash from "@shikijs/langs/bash";
 import html from "@shikijs/langs/html";
 import javascript from "@shikijs/langs/javascript";
@@ -17,10 +18,13 @@ import type { Locale } from "./i18n/locale.js";
 import { translatorFor } from "./i18n/interface.js";
 
 // One instance per build/module graph, with only the grammars and themes used by docs.
-const highlighter = createHighlighterCoreSync({
+// Oniguruma is the reference TextMate engine. The JS regex port compiles the
+// TSX grammar to RegExp lazily, which dominates highlighting; this one runs the
+// patterns in WASM.
+const highlighter = await createHighlighterCore({
   langs: [bash, javascript, jsx, json, php, twig, typescript, tsx, html, yaml],
   themes: [createCssVariablesTheme()],
-  engine: createJavaScriptRegexEngine(),
+  engine: await createOnigurumaEngine(getWasm),
 });
 const languages = new Set(highlighter.getLoadedLanguages());
 const aliases: Record<string, string> = { xml: "html", shell: "bash" };
