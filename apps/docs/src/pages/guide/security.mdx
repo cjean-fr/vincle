@@ -74,7 +74,12 @@ is the only mode.
     <tr>
       <td>URL attributes</td>
       <td>
-        Schemes off the allowlist replaced with <code>#blocked</code>
+        Any scheme outside the allowlist replaced with <code>#blocked</code>
+        <br />
+        <small>
+          Allowed: relative URLs, <code>http:</code>, <code>https:</code>, <code>mailto:</code>,{" "}
+          <code>tel:</code>, <code>sms:</code>, image <code>data:</code>
+        </small>
       </td>
       <td>
         <code>isSafeScheme</code>
@@ -517,21 +522,21 @@ every `raw()` call and verify the value originates from a trusted source
 
 Each invariant is enforced by property-based (fuzz) or unit tests:
 
-|  #   | Guarantee                                                        | Enforced by                                                     |
-| :--: | ---------------------------------------------------------------- | --------------------------------------------------------------- |
-| I‑01 | No raw `<` or `>` from untrusted input                           | `escape.test.ts`                                                |
-| I‑02 | No scheme off the allowlist passes through, obfuscated or not    | `escape.test.ts`: differential vs `new URL()`                   |
-| I‑03 | Precompile ≡ VNode path, value kind by value kind                | `precompile-equivalence.test.ts` (1000 values)                  |
-| I‑04 | Static path ≡ tree walk: byte-identical                          | `path-equivalence.test.ts` (1000 trees)                         |
-| I‑05 | Concurrent renders isolated: no cross-request leakage            | `scope.test.ts`, `provider.test.tsx`, `execution-order.test.ts` |
-| I‑06 | The document never depends on component latency                  | `execution-order.test.ts`                                       |
-| I‑07 | No implicit `RawString` creation                                 | `raw-audit.test.ts`: every site inventoried                     |
-| I‑08 | Invalid tag names fail fast, at construction (throw `TypeError`) | `serialize-static.test.ts`, `types.test.ts`                     |
-| I‑09 | Every production regex is declared, safe, and matches the source | `redos-audit.test.ts`                                           |
-| I‑10 | An inherited property is never an attribute or a declaration     | `attrs.test.ts`                                                 |
-| I‑11 | A `RawString` attribute value cannot end its attribute           | `attrs.test.ts`                                                 |
-| I‑12 | Children on a void element are refused, never reparented         | `serialize.test.ts`, `path-equivalence.test.ts`                 |
-| I‑13 | An SVG animation cannot deliver a URL                            | `attrs.test.ts`, `no-javascript-urls.test.ts`                   |
+|  #   | Guarantee                                                        | Enforced by                                                    |
+| :--: | ---------------------------------------------------------------- | -------------------------------------------------------------- |
+| I‑01 | No raw `<` or `>` from untrusted input                           | `escape.test.ts`                                               |
+| I‑02 | No scheme off the allowlist passes through, obfuscated or not    | `escape.test.ts`: differential vs `new URL()`                  |
+| I‑03 | Precompile ≡ VNode path, value kind by value kind                | `precompile-equivalence.test.ts` (1000 values)                 |
+| I‑04 | Static path ≡ tree walk: byte-identical                          | `path-equivalence.test.ts` (1000 trees)                        |
+| I‑05 | Concurrent renders isolated: no cross-request leakage            | `scope.test.ts`, `provider.test.ts`, `execution-order.test.ts` |
+| I‑06 | The document never depends on component latency                  | `execution-order.test.ts`                                      |
+| I‑07 | No implicit `RawString` creation                                 | `raw-audit.test.ts`: every site inventoried                    |
+| I‑08 | Invalid tag names fail fast, at construction (throw `TypeError`) | `serialize-static.test.ts`, `types.test.ts`                    |
+| I‑09 | Every production regex is declared, safe, and matches the source | `redos-audit.test.ts`                                          |
+| I‑10 | An inherited property is never an attribute or a declaration     | `attrs.test.ts`                                                |
+| I‑11 | A `RawString` attribute value cannot end its attribute           | `attrs.test.ts`                                                |
+| I‑12 | Children on a void element are refused, never reparented         | `serialize.test.ts`, `path-equivalence.test.ts`                |
+| I‑13 | An SVG animation cannot deliver a URL                            | `attrs.test.ts`, `no-javascript-urls.test.ts`                  |
 
 ## ASVS Compliance
 
