@@ -2,14 +2,17 @@ import { createHighlighterCore, createCssVariablesTheme } from "@shikijs/core";
 import { createOnigurumaEngine } from "@shikijs/engine-oniguruma";
 import getWasm from "@shikijs/engine-oniguruma/wasm-inlined";
 import bash from "@shikijs/langs/bash";
+import handlebars from "@shikijs/langs/handlebars";
 import html from "@shikijs/langs/html";
 import javascript from "@shikijs/langs/javascript";
 import json from "@shikijs/langs/json";
 import jsx from "@shikijs/langs/jsx";
 import php from "@shikijs/langs/php";
+import pug from "@shikijs/langs/pug";
 import tsx from "@shikijs/langs/tsx";
 import twig from "@shikijs/langs/twig";
 import typescript from "@shikijs/langs/typescript";
+import vueHtml from "@shikijs/langs/vue-html";
 import yaml from "@shikijs/langs/yaml";
 import { defineHastPlugin } from "satteri";
 
@@ -22,12 +25,31 @@ import { translatorFor } from "./i18n/interface.js";
 // TSX grammar to RegExp lazily, which dominates highlighting; this one runs the
 // patterns in WASM.
 const highlighter = await createHighlighterCore({
-  langs: [bash, javascript, jsx, json, php, twig, typescript, tsx, html, yaml],
+  langs: [
+    bash,
+    handlebars,
+    javascript,
+    jsx,
+    json,
+    php,
+    pug,
+    twig,
+    typescript,
+    tsx,
+    html,
+    vueHtml,
+    yaml,
+  ],
   themes: [createCssVariablesTheme()],
   engine: await createOnigurumaEngine(getWasm),
 });
 const languages = new Set(highlighter.getLoadedLanguages());
-const aliases: Record<string, string> = { xml: "html", shell: "bash" };
+const aliases: Record<string, string> = {
+  xml: "html",
+  shell: "bash",
+  ejs: "html",
+  mustache: "handlebars",
+};
 
 /** Highlight at build time so the first paint already contains token colors. */
 export function codeBlocks(locale: Locale) {

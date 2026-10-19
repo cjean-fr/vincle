@@ -1,0 +1,190 @@
+---
+title: Coming from HTML templates
+---
+
+# Coming from HTML templates
+
+If you write Pug, EJS, Twig, Handlebars or Vue templates, you already think in
+HTML with holes in it. JSX is the same idea, minus the template language: the
+markup is not a string handed to an engine, it is an expression in your
+TypeScript code, checked by the compiler like any other value.
+
+## One rule: HTML, with `{…}` for TypeScript
+
+Inside a tag, write HTML. Inside `{…}`, write a TypeScript expression: a
+variable, a function call, a condition, a loop. Every template construct
+follows from that rule. The same page, in the engine you know:
+
+```pug tab="Pug" sync="template-engine"
+main
+  if user
+    p Hello, #{user.name}
+  else
+    a(href="/login") Log in
+  ul
+    each post in posts
+      li: a(href=post.url)= post.title
+  include footer.pug
+  div!= intro
+```
+
+```ejs tab="EJS" sync="template-engine"
+<main>
+  <% if (user) { %>
+    <p>Hello, <%= user.name %></p>
+  <% } else { %>
+    <a href="/login">Log in</a>
+  <% } %>
+  <ul>
+    <% posts.forEach((post) => { %>
+      <li><a href="<%= post.url %>"><%= post.title %></a></li>
+    <% }) %>
+  </ul>
+  <%- include("footer") %>
+  <div><%- intro %></div>
+</main>
+```
+
+```mustache tab="Mustache" sync="template-engine"
+<main>
+  {{#user}}<p>Hello, {{name}}</p>{{/user}}
+  {{^user}}<a href="/login">Log in</a>{{/user}}
+  <ul>
+    {{#posts}}
+      <li><a href="{{url}}">{{title}}</a></li>
+    {{/posts}}
+  </ul>
+  {{> footer}}
+  <div>{{{intro}}}</div>
+</main>
+```
+
+```twig tab="Twig" sync="template-engine"
+<main>
+  {% if user %}
+    <p>Hello, {{ user.name }}</p>
+  {% else %}
+    <a href="/login">Log in</a>
+  {% endif %}
+  <ul>
+    {% for post in posts %}
+      <li><a href="{{ post.url }}">{{ post.title }}</a></li>
+    {% endfor %}
+  </ul>
+  {% include "footer.twig" %}
+  <div>{{ intro|raw }}</div>
+</main>
+```
+
+```vue-html tab="Vue" sync="template-engine"
+<main>
+  <p v-if="user">Hello, {{ user.name }}</p>
+  <a v-else href="/login">Log in</a>
+  <ul>
+    <li v-for="post in posts"><a :href="post.url">{{ post.title }}</a></li>
+  </ul>
+  <Footer />
+  <div v-html="intro"></div>
+</main>
+```
+
+In JSX, the template is a [component](/guide/jsx/components): its data
+arrives as props, the include is another component, a filter is a function
+call (`{name.toUpperCase()}`), and trusted markup goes through `raw()`:
+
+```tsx
+import { raw } from "@vincle/core";
+import { Footer } from "./footer";
+
+export function Page({ user, posts, intro }: PageProps) {
+  return (
+    <main>
+      {user ? <p>Hello, {user.name}</p> : <a href="/login">Log in</a>}
+      <ul>
+        {posts.map((post) => (
+          <li>
+            <a href={post.url}>{post.title}</a>
+          </li>
+        ))}
+      </ul>
+      <Footer />
+      <div>{raw(intro)}</div>
+    </main>
+  );
+}
+```
+
+`PageProps` is the type of the data the template receives.
+
+## What changes
+
+### Conditions and loops are expressions
+
+`{…}` takes an expression, so an `if` statement does not fit there: use a
+ternary or `&&` inside the markup, or compute the value before the `return`.
+`false`, `null`, `undefined` and `true` render nothing; `0` renders `0`, so
+write `{count > 0 && <Badge />}`, not `{count && <Badge />}`.
+
+### Includes and layouts are components
+
+A component is a function whose name starts with a capital letter. Its
+parameters are typed props: a missing or misspelled prop is a compile error,
+not an empty string at render time. A layout takes the page through
+`children`:
+
+```tsx
+import type { Renderable } from "@vincle/core";
+
+function Layout({ title, children }: { title: string; children: Renderable }) {
+  return (
+    <html lang="en">
+      <head>
+        <title>{title}</title>
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+const page = (
+  <Layout title="Blog">
+    <h1>Posts</h1>
+  </Layout>
+);
+```
+
+### Escaping has one form
+
+Every `{value}` is escaped for where it lands, in text or in an attribute.
+There is no pair of tags to choose between: trusted markup goes through
+`raw()`, a function call you can search for. See the
+[security model](/guide/security).
+
+### Attributes keep their HTML names
+
+`class`, `for`, `data-*`, `aria-*`, `hx-get`, `x-on:click` are written as in
+HTML. Two habits from XML apply instead: every tag is closed (`<br />`,
+`<input />`), and an expression returns a single root, so several siblings go
+in a [fragment](/guide/jsx/fragments) (`<>…</>`).
+
+### The doctype is yours
+
+`renderToString` returns the markup you wrote: prepend `<!DOCTYPE html>` to a
+full page yourself.
+
+## Setup
+
+JSX is compiled with your code: write `.tsx` files and add two lines to
+`tsconfig.json` ([TypeScript setup](/guide/getting-started/typescript-setup)).
+The same compiler gives your editor completion on every element's attributes.
+
+## What you give up
+
+A template compiled with your code cannot be loaded at runtime: markup stored
+in a database or edited by non-developers stays a job for a template engine.
+
+## Next steps
+
+- [First render](/guide/getting-started/first-render): your first component
+- [Elements & attributes](/guide/jsx/elements-attributes): booleans, `style`, void elements
+- [Security model](/guide/security): what escaping covers
