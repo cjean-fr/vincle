@@ -46,7 +46,10 @@
 }
 
 /* === Smooth scroll & color transition === */
-html {
+/* Only once something in the page has focus, as a clicked TOC link does: on a
+   document that is still loading, smooth scrolling stops Chromium from
+   reaching the URL fragment. */
+html:focus-within {
   scroll-behavior: smooth;
 }
 

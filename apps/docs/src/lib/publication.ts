@@ -1,5 +1,6 @@
 import { fullUrl, type SsgPlugin } from "@vincle/ssg";
 
+import type { SearchDocument } from "../_client/search-rank.js";
 import type { ResolvedDocsConfig } from "./types.js";
 
 import docs from "../../docs.config.js";
@@ -60,6 +61,7 @@ const BLOCKS_TO_DROP: RegExp[] = [
   /<script\b[^>]*>[\s\S]*?<\/script>/gi,
   /<style\b[^>]*>[\s\S]*?<\/style>/gi,
   /<nav\b[^>]*>[\s\S]*?<\/nav>/gi,
+  /<footer\b[^>]*>[\s\S]*?<\/footer>/gi,
 ];
 
 const NAMED_ENTITIES: ReadonlyArray<readonly [RegExp, string]> = [
@@ -82,6 +84,18 @@ function firstParagraph(html: string): string | undefined {
 /** The `<main>` content of a page, or `undefined` when the page has none. */
 function mainContent(html: string): string | undefined {
   return html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1];
+}
+
+/** The `<h2>`/`<h3>` of `<main>` that carry an id, for search to land on. */
+export function headingsOf(html: string): { id: string; text: string }[] {
+  const headings: { id: string; text: string }[] = [];
+  const heading = /<h([23])\b[^>]*\bid="([^"]+)"[^>]*>([\s\S]*?)<\/h\1>/gi;
+  for (const [, , id, inner] of (mainContent(html) ?? "").matchAll(heading)) {
+    // The `#` permalink is chrome, not part of the heading.
+    const text = htmlToText(inner!.replace(/<a\b[^>]*docs-heading-anchor[\s\S]*?<\/a>/gi, ""));
+    if (text) headings.push({ id: id!, text });
+  }
+  return headings;
 }
 
 /**
@@ -115,7 +129,7 @@ const SOCIAL_CARD_CONCURRENCY = 8;
 export const documentationArtifacts: SsgPlugin = {
   name: "documentation-artifacts",
   async publish(context) {
-    const search = new Map<string, { url: string; title: string; text: string }[]>();
+    const search = new Map<string, SearchDocument[]>();
     const pages: { url: string; title: string; text: string }[] = [];
     const cardTasks: (() => Promise<void>)[] = [];
     for (const page of context.outputs) {
@@ -125,7 +139,7 @@ export const documentationArtifacts: SsgPlugin = {
       const locale = page.meta.locale ?? "en";
       const documents = search.get(locale) ?? [];
       const main = htmlToText(html, { mainOnly: true });
-      documents.push({ url: page.url, title, text: main });
+      documents.push({ url: page.url, title, headings: headingsOf(html), text: main });
       if (hasSocialCard(page.url)) {
         const description = (page.meta as { description?: string }).description;
         const card = {

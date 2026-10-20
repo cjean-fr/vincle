@@ -1,16 +1,6 @@
 import { translatorFor } from "../lib/i18n/interface.js";
 import { browserLocale, localizedPath } from "../lib/i18n/locale.js";
-
-export interface SearchDocument {
-  url: string;
-  title: string;
-  text: string;
-}
-
-interface SearchHit {
-  document: SearchDocument;
-  score: number;
-}
+import { search, type SearchDocument } from "./search-rank.js";
 
 /** A run of result text: plain, or the part the query matched. */
 interface Segment {
@@ -122,8 +112,8 @@ document.addEventListener("DOMContentLoaded", () => {
       ranked.slice(0, 10).map((hit, i) =>
         createResultItem({
           index: i,
-          url: hit.document.url,
-          title: hit.document.title,
+          url: hit.heading ? `${hit.document.url}#${hit.heading.id}` : hit.document.url,
+          title: hit.heading ? `${hit.document.title} › ${hit.heading.text}` : hit.document.title,
           excerpt: snippet(hit.document.text, q),
           query: q,
         }),
@@ -249,40 +239,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-
-function search(docs: SearchDocument[], query: string): SearchHit[] {
-  const terms = query.trim().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return [];
-
-  return docs
-    .map((document) => ({ document, score: scoreDocument(document, terms) }))
-    .filter((hit) => hit.score > 0)
-    .toSorted((a, b) => b.score - a.score || a.document.title.localeCompare(b.document.title));
-}
-
-function scoreDocument(document: SearchDocument, terms: string[]): number {
-  const fields = [
-    { value: document.title, weight: 8 },
-    { value: document.url.replace(/[/-]+/g, " "), weight: 5 },
-    { value: document.text, weight: 1 },
-  ];
-  let score = 0;
-
-  for (const term of terms) {
-    let matchedTerm = false;
-
-    for (const field of fields) {
-      if (field.value.toLowerCase().includes(term.toLowerCase())) {
-        score += field.weight;
-        matchedTerm = true;
-      }
-    }
-
-    if (!matchedTerm) return 0;
-  }
-
-  return score;
-}
 
 /**
  * Carries the query to the page that matched, in the fragment.
