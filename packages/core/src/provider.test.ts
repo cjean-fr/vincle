@@ -1,4 +1,3 @@
-/** @jsxImportSource @vincle/core */
 import { describe, expect, test } from "bun:test";
 
 import {
@@ -14,7 +13,7 @@ import { Scope } from "./scope.js";
 import { RawString } from "./types.js";
 
 const Locale = createContext("fr");
-const Reader = () => <b>{useContext(Locale)}</b>;
+const Reader = () => jsx("b", { children: useContext(Locale) });
 
 describe("tree context", () => {
   test("synchronous fallback nests, allows one in-flight render, and refuses a second", async () => {
@@ -59,20 +58,24 @@ describe("tree context", () => {
       ),
     ).toBe("again");
   });
+
   test("default, nearest Provider and later siblings", async () => {
     expect(useContext(Locale)).toBe("fr");
     const html = await renderToString(
-      <main>
-        <Reader />
-        <Locale.Provider value="en">
-          <Reader />
-          <Locale.Provider value="de">
-            <Reader />
-          </Locale.Provider>
-          <Reader />
-        </Locale.Provider>
-        <Reader />
-      </main>,
+      jsx("main", {
+        children: [
+          jsx(Reader, {}),
+          jsx(Locale.Provider, {
+            value: "en",
+            children: [
+              jsx(Reader, {}),
+              jsx(Locale.Provider, { value: "de", children: jsx(Reader, {}) }),
+              jsx(Reader, {}),
+            ],
+          }),
+          jsx(Reader, {}),
+        ],
+      }),
     );
     expect(html).toBe("<main><b>fr</b><b>en</b><b>de</b><b>en</b><b>fr</b></main>");
   });
@@ -83,31 +86,27 @@ describe("tree context", () => {
       "<b>en</b>",
     );
     expect(
-      await renderToString(
-        <Locale.Provider value="en">
-          <Reader />
-        </Locale.Provider>,
-      ),
+      await renderToString(jsx(Locale.Provider, { value: "en", children: jsx(Reader, {}) })),
     ).toBe("<b>en</b>");
   });
 
   test("Consumer reads the nearest Provider, or the default outside one", async () => {
-    const read = (value: unknown) => <b>{"c=" + value}</b>;
-    expect(await renderToString(<Locale.Consumer>{read}</Locale.Consumer>)).toBe("<b>c=fr</b>");
+    const read = (value: unknown) => jsx("b", { children: "c=" + value });
+    expect(await renderToString(jsx(Locale.Consumer, { children: read }))).toBe("<b>c=fr</b>");
     expect(
       await renderToString(
-        <Locale.Provider value="en">
-          <Locale.Consumer>{read}</Locale.Consumer>
-        </Locale.Provider>,
+        jsx(Locale.Provider, { value: "en", children: jsx(Locale.Consumer, { children: read }) }),
       ),
     ).toBe("<b>c=en</b>");
     expect(
       await renderToString(
-        <Locale.Provider value="en">
-          <Locale.Provider value="de">
-            <Locale.Consumer>{read}</Locale.Consumer>
-          </Locale.Provider>
-        </Locale.Provider>,
+        jsx(Locale.Provider, {
+          value: "en",
+          children: jsx(Locale.Provider, {
+            value: "de",
+            children: jsx(Locale.Consumer, { children: read }),
+          }),
+        }),
       ),
     ).toBe("<b>c=de</b>");
   });
@@ -115,15 +114,12 @@ describe("tree context", () => {
   test("Consumer renders whatever its function returns", async () => {
     expect(
       await renderToString(
-        <Locale.Provider value="en">
-          <Locale.Consumer>
-            {() => (
-              <main>
-                <Reader />
-              </main>
-            )}
-          </Locale.Consumer>
-        </Locale.Provider>,
+        jsx(Locale.Provider, {
+          value: "en",
+          children: jsx(Locale.Consumer, {
+            children: () => jsx("main", { children: jsx(Reader, {}) }),
+          }),
+        }),
       ),
     ).toBe("<main><b>en</b></main>");
   });
@@ -142,20 +138,16 @@ describe("tree context", () => {
   test("the public surface matches React 19: no defaultValue property", async () => {
     expect(Object.keys(Locale)).toEqual(["Provider", "Consumer"]);
     expect("defaultValue" in Locale).toBe(false);
-    expect(await renderToString(<Reader />)).toBe("<b>fr</b>");
+    expect(await renderToString(jsx(Reader, {}))).toBe("<b>fr</b>");
   });
 
   test("async readers and concurrent roots stay isolated", async () => {
     const AsyncReader = async () => {
       await new Promise((resolve) => setTimeout(resolve, 1));
-      return <Reader />;
+      return jsx(Reader, {});
     };
     const render = (value: string) =>
-      renderToString(
-        <Locale.Provider value={value}>
-          <AsyncReader />
-        </Locale.Provider>,
-      );
+      renderToString(jsx(Locale.Provider, { value, children: jsx(AsyncReader, {}) }));
     expect(await Promise.all([render("a"), render("b")])).toEqual(["<b>a</b>", "<b>b</b>"]);
     expect(useContext(Locale)).toBe("fr");
   });
@@ -171,15 +163,11 @@ describe("tree context", () => {
     await Scope.with(async () => {
       Scope.set(Key, "execution");
       await expect(
-        renderToString(
-          <Locale.Provider value="en">
-            <Fail />
-          </Locale.Provider>,
-        ),
+        renderToString(jsx(Locale.Provider, { value: "en", children: jsx(Fail, {}) })),
       ).rejects.toThrow("failed");
       expect(Scope.get(Key)).toBe("execution");
       expect(useContext(Locale)).toBe("fr");
-      expect(await renderToString(<Reader />)).toBe("<b>fr</b>");
+      expect(await renderToString(jsx(Reader, {}))).toBe("<b>fr</b>");
     });
   });
 
@@ -188,13 +176,9 @@ describe("tree context", () => {
       throw new Error("sync failure");
     };
     await expect(
-      renderToString(
-        <Locale.Provider value="en">
-          <Fail />
-        </Locale.Provider>,
-      ),
+      renderToString(jsx(Locale.Provider, { value: "en", children: jsx(Fail, {}) })),
     ).rejects.toThrow("sync failure");
-    expect(await renderToString(<Reader />)).toBe("<b>fr</b>");
+    expect(await renderToString(jsx(Reader, {}))).toBe("<b>fr</b>");
   });
 
   test("precompiled component holes render under the Provider", async () => {
@@ -204,15 +188,16 @@ describe("tree context", () => {
     );
     expect(jsxTemplate`<section><i>static</i></section>`).toBeInstanceOf(RawString);
     const nested = jsxTemplateDeferred`<span>${jsx(Reader, {})}</span>`;
-    const outer = jsxTemplateDeferred`<div>${/* transformed JSX expression */ jsxEscapeDeferred(nested)}</div>`;
+    const outer = jsxTemplateDeferred`<div>${/* what <div>{nested}</div> compiles to */ jsxEscapeDeferred(nested)}</div>`;
     expect(await renderToString(jsx(Locale.Provider, { value: "de", children: outer }))).toBe(
       "<div><span><b>de</b></span></div>",
     );
     expect(
       await renderToString(
-        <Locale.Provider value="it">
-          <div>{nested}</div>
-        </Locale.Provider>,
+        jsx(Locale.Provider, {
+          value: "it",
+          children: jsx("div", { children: nested }),
+        }),
       ),
     ).toBe("<div><span><b>it</b></span></div>");
     const ScriptValue = () => useContext(Locale);
@@ -246,17 +231,15 @@ describe("tree context", () => {
   test("a Provider inside rawtext keeps its value and escapes the closing tag", async () => {
     const ScriptValue = () => `${useContext(Locale)}</script>`;
     const html = await renderToString(
-      <script>
-        <Locale.Provider value="en">
-          <ScriptValue />
-        </Locale.Provider>
-      </script>,
+      jsx("script", {
+        children: jsx(Locale.Provider, { value: "en", children: jsx(ScriptValue, {}) }),
+      }),
     );
     expect(html).toBe("<script>en\\u003c/script></script>");
   });
 
   test("coercible objects wait for their Provider in compiled templates", async () => {
-    const Before = () => <b>x</b>;
+    const Before = () => jsx("b", { children: "x" });
     const value = { toString: () => useContext(Locale) };
     for (const child of [value, [value]]) {
       const ordinary = jsx(Locale.Provider, {

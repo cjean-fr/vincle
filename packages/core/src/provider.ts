@@ -13,7 +13,7 @@ interface Store {
   getStore(): Frame | undefined;
 }
 
-/** The no-`AsyncLocalStorage` fallback (see `SyncStore`), exported for `provider.test.tsx`. */
+/** The no-`AsyncLocalStorage` fallback (see `SyncStore`), exported for `provider.test.ts`. */
 export class SyncTreeStore extends SyncStore<Frame> {
   constructor() {
     super(
