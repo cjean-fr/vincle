@@ -17,6 +17,14 @@ title: FAQ
       },
       {
         "@type": "Question",
+        name: "What do SSR and SSG mean?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Two moments to render HTML on the server. SSR (server-side rendering) renders a page when a request arrives, so it can depend on that request: the user, a query, fresh data. SSG (static site generation) renders every page once, at build time, and writes HTML files that any static host or CDN serves without running code. Vincle does both: renderToString returns the same string, sent as a response or written to a file.",
+        },
+      },
+      {
+        "@type": "Question",
         name: "How is Vincle different from React?",
         acceptedAnswer: {
           "@type": "Answer",
@@ -76,7 +84,7 @@ title: FAQ
         name: "Can I use Vincle for streaming HTML?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes, with the @vincle/flow package. It adds deferred fragments, streaming, and DOM patching: the shell is sent immediately while heavy fragments render concurrently. Adapters are available for Turbo Streams, HTMX, the WICG Native API, and ESI-based CDN composition.",
+          text: "Yes, with the @vincle/flow package. It adds deferred fragments, streaming, and DOM patching: the shell is sent immediately while heavy fragments render concurrently. Adapters are available for Turbo Streams, HTMX, the browser's declarative partial updates (a WICG proposal), and CDN composition with ESI (Edge Side Includes).",
         },
       },
       {
@@ -118,6 +126,18 @@ templates, SSR responses, HTML fragments from an API, PDF sources.
 Vincle is **not** for client-side rendering or hydration. For interactive
 components in the browser, pair it with HTMX, Turbo, Alpine.js, or a dedicated
 frontend framework.
+
+## What do SSR and SSG mean?
+
+Two moments to render HTML on the server:
+
+- **SSR** (server-side rendering) renders a page when a request arrives, so it
+  can depend on that request: the user, a query, fresh data.
+- **SSG** (static site generation) renders every page once, at build time, and
+  writes HTML files that any static host or CDN serves without running code.
+
+Vincle does both: `renderToString` returns the same string, sent as a response
+or written to a file. See [Deploying a static site](/integration/deployment).
 
 ## How is Vincle different from React?
 
@@ -199,11 +219,13 @@ fragments and streaming. The shell is sent immediately while slow
 components render concurrently. Five adapters let you choose your
 client mechanism:
 
-- **NativeAdapter**: WICG spec with a small polyfill
+- **NativeAdapter**: the declarative partial updates proposal from the WICG
+  (Web Incubator Community Group), with a small polyfill
 - **TurboAdapter**: Hotwire Turbo Streams
-- **HtmxAdapter**: HTMX OOB swaps
+- **HtmxAdapter**: HTMX out-of-band (OOB) swaps
 - **WebPlatformAdapter**: native browser support, no JS
-- **EsiAdapter**: CDN-level ESI composition, static generation only
+- **EsiAdapter**: composition at the CDN with ESI (Edge Side Includes), static
+  generation only
 
 ## Can I catch rendering errors without crashing the whole page?
 

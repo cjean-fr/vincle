@@ -147,8 +147,9 @@ escape, so there 0.73× is a fair number. On any input carrying `&` or `<`, Vinc
 is doing work kitajs is not.
 
 **It uses a different architecture.** `@kitajs/html` returns a string
-immediately; Vincle builds a tree, then walks it. Comparing them measures the
-tree, not the renderer.
+immediately; Vincle builds a tree, then walks it. That tree is a cost Vincle
+chose, and every page rendered without precompilation pays it: on that path,
+kitajs is faster.
 
 Vincle has a path with no tree: the [precompile transform](/integration/precompile)
 emits templates the way kitajs emits concatenations. Measured on the same
