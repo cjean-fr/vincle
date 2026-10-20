@@ -15,7 +15,7 @@ const guides = [
   },
   {
     title: "Streaming HTML with Flow",
-    href: "https://vincle.cjean.fr/integration/streaming",
+    href: "https://vincle.cjean.fr/integration/flow/streaming",
   },
 ];
 

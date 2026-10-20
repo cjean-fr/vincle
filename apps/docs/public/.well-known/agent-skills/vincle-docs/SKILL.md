@@ -19,7 +19,7 @@ this site is public and fully machine-readable.
 ## Page map
 
 - `/guide/`: concepts: getting started, JSX, components, views, security
-- `/integration/`: adapters, streaming, HTTP serving, precompile, the Vite plugin
+- `/integration/`: `@vincle/flow` under `/integration/flow/` (deferred fragments, streaming, static generation, adapters, HTTP serving), the precompile transform, TSRX
 - `/api/`: reference: `@vincle/core` and `@vincle/flow`
 
 ## Notes

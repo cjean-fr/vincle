@@ -1,1 +1,13 @@
+/integration/overview /integration/flow/overview 301
+/integration/overview.md /integration/flow/overview.md 301
+/integration/components /integration/flow/components 301
+/integration/components.md /integration/flow/components.md 301
+/integration/streaming /integration/flow/streaming 301
+/integration/streaming.md /integration/flow/streaming.md 301
+/integration/static /integration/flow/static 301
+/integration/static.md /integration/flow/static.md 301
+/integration/adapters /integration/flow/adapters 301
+/integration/adapters.md /integration/flow/adapters.md 301
+/integration/http-serving /integration/flow/http-serving 301
+/integration/http-serving.md /integration/flow/http-serving.md 301
 /* /404.html 404

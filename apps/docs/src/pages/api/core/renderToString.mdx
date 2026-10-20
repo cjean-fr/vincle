@@ -69,7 +69,7 @@ Components run one at a time, in document order, never in parallel, including
 in arrays, iterables and precompiled templates. So two siblings touching `Scope`
 never race, and when one throws or rejects, the ones after it are not invoked.
 A promise you created before rendering is already running; for concurrent
-regions, use [`Defer` and `Slot`](/integration/components) from `@vincle/flow`.
+regions, use [`Defer` and `Slot`](/integration/flow/components) from `@vincle/flow`.
 
 ## Concurrent renders
 

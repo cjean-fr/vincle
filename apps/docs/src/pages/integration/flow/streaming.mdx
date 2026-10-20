@@ -18,7 +18,7 @@ Streaming is the right choice when:
 - The client has no JS runtime (or you want to minimise it)
 
 If your content is known at build time and you want zero server infrastructure,
-use [Static generation](/integration/static) instead.
+use [Static generation](/integration/flow/static) instead.
 
 ## renderToStream
 
@@ -64,11 +64,11 @@ const stream = renderToStream(() => <Page />, NativeAdapter);
 
 The shell is rendered fully, then sent as a single chunk. Each fragment follows
 as soon as it resolves. `renderToStream` returns the stream only: headers are
-yours to set, or use [`serve()`](/integration/http-serving), which sets them.
+yours to set, or use [`serve()`](/integration/flow/http-serving), which sets them.
 
 To send the stream over HTTP, with `serve()` or a Node.js server (Express,
 Fastify, Hono, anything built on `node:http`), see
-[HTTP serving](/integration/http-serving).
+[HTTP serving](/integration/flow/http-serving).
 
 ## Async iterables: streaming sequences
 

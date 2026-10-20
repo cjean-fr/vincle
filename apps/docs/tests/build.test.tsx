@@ -38,7 +38,7 @@ describe("SSG build", () => {
       expect(page.text).not.toMatch(/^\s*(?:<!doctype html|<html(?:\s|>))/i);
     }
     expect(await readFile(path.join(DIST_DIR, "llms-full.txt"), "utf8")).toContain(data[0].title);
-    const adapters = data.find((d: { url: string }) => d.url === "/integration/adapters");
+    const adapters = data.find((d: { url: string }) => d.url === "/integration/flow/adapters");
     expect(adapters?.text).toContain("Browsers with declarative partial updates");
   });
 
@@ -85,7 +85,7 @@ describe("SSG build", () => {
     for (const page of [
       "guide/getting-started/installation.mdx",
       "api/core/renderToString.mdx",
-      "integration/adapters.mdx",
+      "integration/flow/adapters.mdx",
     ]) {
       const twin = await readFile(path.join(DIST_DIR, `${page.replace(/\.mdx$/, ".md")}`), "utf-8");
       const source = await readFile(path.join(PROJECT_DIR, "src/pages", page), "utf-8");

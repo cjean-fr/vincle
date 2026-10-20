@@ -70,7 +70,7 @@ waits for the whole tree.
 Add `@vincle/flow` when a page should appear before all its data is ready.
 Wrap a slow component in `Defer`, provide a fallback, and use the streaming
 renderer to send the surrounding page before its deferred fragments. An
-[adapter](/integration/adapters) decides how fragments update the page: natively,
+[adapter](/integration/flow/adapters) decides how fragments update the page: natively,
 or through HTMX or Turbo.
 
 ```tsx
@@ -94,6 +94,18 @@ const stream = renderToStream(
 ```
 
 [Follow a view from a route to streaming HTML](/guide/views).
+
+## Add packages as you need them
+
+Start with the core; each other package builds on it alone, so add one when
+its need shows up.
+
+| Package                 | What it adds                                                       | Documented in                                                                 |
+| ----------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `@vincle/core`          | Components rendered to an HTML string                              | [Guide](/guide/introduction)                                                  |
+| `@vincle/flow`          | `<Defer>`: parts of a page that arrive later, streamed or as files | [Integration › Flow](/integration/flow/overview)                              |
+| `@vincle/precompile`    | A build transform that turns JSX into template literals            | [Integration › Precompile](/integration/precompile)                           |
+| `@vincle/eslint-plugin` | Lint rules for what escaping cannot judge, such as `on*` handlers  | [README](https://github.com/cjean-fr/vincle/tree/main/packages/eslint-plugin) |
 
 ## What the core gives you
 
