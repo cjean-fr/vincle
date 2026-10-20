@@ -260,7 +260,7 @@ function emitAttribute(attr: JSXAttribute, out: TemplateBuilder, ctx: TransformC
   // decides the output, so the transform never duplicates the drop-list.
   if ((rawName === "key" || rawName === "ref") && (init === null || init.type === "Literal")) {
     ctx.used.add("jsxAttr");
-    const valueText = init === null ? "true" : JSON.stringify(init.value);
+    const valueText = init === null ? "true" : JSON.stringify(decodeJsxEntities(init.value));
     out.static(" ");
     out.hole(`jsxAttr(${JSON.stringify(rawName)}, ${valueText})`);
     return;
@@ -274,7 +274,7 @@ function emitAttribute(attr: JSXAttribute, out: TemplateBuilder, ctx: TransformC
 
   // Static string literal: class="x", title="hi".
   if (init.type === "Literal") {
-    emitStaticAttr(rawName, init.value, out, ctx);
+    emitStaticAttr(rawName, decodeJsxEntities(init.value), out, ctx);
     return;
   }
 

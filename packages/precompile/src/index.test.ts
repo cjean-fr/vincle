@@ -1200,7 +1200,7 @@ describe("precompileTransform", () => {
       // change output. The runtime file lets Bun compile the JSX with the
       // automatic runtime (its own entity decoding); the precompiled file uses
       // our decode + escapeContent. Both must land on the same bytes.
-      const body = `<div>Tom &amp; Jerry &lt;b&gt; &copy; &mdash; &#169; &#x27; fish & chips &notreal;</div>`;
+      const body = `<div title="Tom &amp; Jerry &copy; &#169; &notreal;">Tom &amp; Jerry &lt;b&gt; &copy; &mdash; &#169; &#x27; fish & chips &notreal;</div>`;
       const rand = () => Math.random().toString(36).slice(2);
 
       const runtimePath = join(TMP, `rt-${rand()}.tsx`);
