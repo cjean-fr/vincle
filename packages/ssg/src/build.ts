@@ -8,13 +8,19 @@ import type {
   SsgOptions,
   SsgOutput,
   RenderedOutput,
-  JsxRuntime,
-  AssetBuild,
   SsgMeta,
+  AssetBuild,
 } from "./types.js";
 
+import {
+  type AssetSession,
+  assetRuntime,
+  disposeBuilds,
+  prepareAssets,
+  resolveAssetIntegrations,
+} from "./assets.js";
 import { basePath } from "./base.js";
-import { sourceDirectory, clientEntries } from "./conventions.js";
+import { sourceDirectory } from "./conventions.js";
 import { failure, diagnose, contextualError } from "./errors.js";
 import { resolveHandlers, vincleRuntime } from "./formats.js";
 import { discoverPages } from "./handlers.js";
@@ -23,12 +29,6 @@ import { generateSite, generateSiteCached, type PublicationCache } from "./outpu
 import { fullUrl } from "./routes.js";
 import { sitemapOutputs } from "./sitemap.js";
 import { createTimings, type BuildTimings } from "./timings.js";
-
-/** Cached page runtimes must not retain the surrounding build's page arrays. */
-function assetRuntime(runtime: JsxRuntime, assets?: AssetBuild): JsxRuntime {
-  const render = assets?.render?.bind(assets);
-  return render ? { ...runtime, render: (create) => render(runtime, create) } : runtime;
-}
 
 function publicUrl(output: SsgOutput): string {
   const url = output.url ?? `/${output.path.replace(/(^|\/)index\.html$/, "$1")}`;
@@ -58,22 +58,6 @@ async function exists(file: string): Promise<boolean> {
   }
 }
 
-async function conventionalAssets(root: string, src: string) {
-  for (const name of [
-    "vite.config.ts",
-    "vite.config.mts",
-    "vite.config.js",
-    "vite.config.mjs",
-    "vite.config.cts",
-    "vite.config.cjs",
-  ]) {
-    if (await exists(path.join(root, name))) return (await import("./vite.js")).viteAssets();
-  }
-  if ((await clientEntries(root, src)).length)
-    return (await import("./vite.js")).viteAssets({ configFile: false });
-  return undefined;
-}
-
 /** One-line build report: generated HTML pages and elapsed time. */
 export function buildSummary(files: readonly string[], milliseconds: number): string {
   const pages = files.filter((file) => file.endsWith(".html")).length;
@@ -96,12 +80,18 @@ export function buildCached(
   options: SsgOptions,
   cache: PageCacheSession,
   publication: PublicationCache,
+  session?: AssetSession,
 ) {
-  return runBuild(options, cache, publication);
+  return runBuild(options, cache, publication, session);
 }
 
-function runBuild(options: SsgOptions, cache?: PageCacheSession, publication?: PublicationCache) {
-  return diagnose(() => buildInternal(options, cache, publication), "SSG build failed", {
+function runBuild(
+  options: SsgOptions,
+  cache?: PageCacheSession,
+  publication?: PublicationCache,
+  session?: AssetSession,
+) {
+  return diagnose(() => buildInternal(options, cache, publication, session), "SSG build failed", {
     reason: "BUILD_FAILED",
     hint: "Check the configuration and original cause. Correct the failing input or filesystem operation before retrying.",
     context: {
@@ -181,6 +171,7 @@ async function buildInternal(
   options: SsgOptions,
   cache?: PageCacheSession,
   publication?: PublicationCache,
+  session?: AssetSession,
 ): Promise<{ files: string[]; timings?: BuildTimings }> {
   const timings = options.timings ? createTimings() : undefined;
   const configurationStarted = timings === undefined ? 0 : performance.now();
@@ -222,40 +213,28 @@ async function buildInternal(
   await mkdir(path.dirname(out), { recursive: true });
   const work = await mkdtemp(path.join(path.dirname(out), ".vincle-build-"));
   if (timings) timings.phase("work directory", performance.now() - workStarted);
-  let disposeAssets: (() => void | Promise<void>) | undefined;
+  let preparedBuilds: readonly AssetBuild[] = [];
   let result: { files: string[] };
   let cleanupStarted = 0;
   try {
     try {
       const assetsStarted = timings === undefined ? 0 : performance.now();
-      const integration =
-        options.assets === false
-          ? undefined
-          : (options.assets ?? (await conventionalAssets(root, src)));
       const runtime = options.runtime ?? vincleRuntime;
-      const assets = integration
-        ? await diagnose(
-            async () =>
-              integration.prepare({
-                root,
-                src,
-                out: path.join(work, "assets"),
-                runtime,
-                base: basePath(options.base),
-              }),
-            "Could not prepare assets",
-            {
-              reason: "ASSETS_FAILED",
-              hint: "Check the asset integration configuration and the original cause. Fix the failing entry/import or filesystem operation before rebuilding.",
-              context: { root, src, out, phase: "assets" },
-            },
-          )
-        : undefined;
-      disposeAssets = assets?.dispose;
+      const integrations = await resolveAssetIntegrations(options.assets, root, src);
+      const preparedAssets = await prepareAssets({
+        integrations,
+        root,
+        src,
+        runtime,
+        base: basePath(options.base),
+        work: path.join(work, "assets"),
+        ...(session ? { session } : {}),
+      });
+      preparedBuilds = preparedAssets.builds.filter((_, index) => !preparedAssets.owned[index]);
       if (timings) timings.phase("assets prepare", performance.now() - assetsStarted);
       const publicDirectory = path.join(root, "public");
       const publicCopy = (await exists(publicDirectory)) ? [{ from: publicDirectory }] : [];
-      const renderRuntime = assetRuntime(runtime, assets);
+      const renderRuntime = assetRuntime(runtime, preparedAssets.builds);
       const urls = new Map<string, SsgMeta>();
       const htmlOutputs: { path: string; url: string; meta: SsgMeta }[] = [];
       const discoveryStarted = timings === undefined ? 0 : performance.now();
@@ -271,7 +250,7 @@ async function buildInternal(
               )
             : discovery.handlers,
         });
-      const discovery = { src, handlers, runtime: renderRuntime, modules: assets?.modules };
+      const discovery = { src, handlers, runtime: renderRuntime, modules: preparedAssets.modules };
       const pages = (
         await (options.discover ? options.discover(discovery, discover) : discover(discovery))
       ).toReversed();
@@ -336,7 +315,7 @@ async function buildInternal(
         out,
         outputs: produce(),
         copy: [
-          ...(assets ? [{ from: assets.directory }] : []),
+          ...preparedAssets.builds.map((asset) => ({ from: path.resolve(root, asset.directory) })),
           ...publicCopy,
           ...(options.copy ?? []).map((entry) => ({
             from: path.resolve(root, entry.from),
@@ -370,19 +349,17 @@ async function buildInternal(
       if (timings) timings.publication(performance.now() - publicationStarted, result.files.length);
     } catch (error) {
       // Cleanup must not replace a failed build's original diagnostic.
-      try {
-        await disposeAssets?.();
-      } catch {
-        /* Preserve the build error. */
-      }
+      await disposeBuilds(preparedBuilds);
       throw error;
     }
     cleanupStarted = timings === undefined ? 0 : performance.now();
-    await diagnose(async () => disposeAssets?.(), "Asset cleanup failed after site publication", {
-      reason: "ASSETS_FAILED",
-      hint: "The site was published successfully. Fix the asset integration's dispose hook before rebuilding.",
-      context: { root, src, out, phase: "cleanup" },
-    });
+    const first = await disposeBuilds(preparedBuilds);
+    if (first !== undefined)
+      throw contextualError(first, "Asset cleanup failed after site publication", {
+        reason: "ASSETS_FAILED",
+        hint: "The site was published successfully. Fix the asset integration's dispose hook before rebuilding.",
+        context: { root, src, out, phase: "cleanup" },
+      });
   } finally {
     await rm(work, { recursive: true, force: true });
   }

@@ -258,8 +258,12 @@ For an existing asset build, `viteModules(config)` from `@vincle/ssg/vite` suppl
 that same compiler without rebuilding assets. Pass its `modules` to
 `discoverPages` and call `dispose()` when all pages have rendered.
 
-`assets: false` disables automatic Vite integration. Other bundlers can implement
-`AssetIntegration`. The CLI and `dev()` supply the corresponding development server.
+`assets: false` disables automatic Vite integration; an explicit array (`[]` included)
+declares the integrations instead. Assets accept one `AssetIntegration` or an array:
+integrations are prepared in declaration order, each in its own preparation directory,
+copied to the output root, wrapping the renderer first-declared-innermost, and disposed
+in reverse order after publication. `dev()` prepares an integration once per session and
+`watch` lists files whose modification rebuilds the site.
 
 ## Other runtimes and handlers
 
@@ -403,8 +407,11 @@ server.vite.printUrls();
 // await server.close();
 ```
 
-`dev` accepts the same source, handler, runtime and SSG plugin options as `build`.
-Asset generation integrations belong to `build`; dev uses Vite source assets.
+`dev` accepts the same source, handler, runtime, plugin and asset options as `build`.
+An integration declaring `dev()` is prepared once per session and reused across
+rebuilds; other integrations run `prepare` on every rebuild, and a `watch` file
+change rebuilds the site. `viteAssets` serves source assets in development instead
+of a client build, so the development server stays configured through `dev.vite`.
 It loads the project's Vite configuration, serves Vite's browser client and
 assets, watches sources/imports/layouts/public files, and reloads the browser
 after successful regeneration. Generated HTML passes through Vite's HTML

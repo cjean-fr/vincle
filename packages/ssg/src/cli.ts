@@ -93,9 +93,8 @@ export async function runCli(args: string[]): Promise<void> {
     if (timings !== undefined) console.log(`\n${formatTimings(timings)}`);
     return;
   }
-  const { assets: _assets, ...common } = shared;
   const serverPromise = dev({
-    ...common,
+    ...shared,
     ...development,
     root: projectRoot,
     vite: mergeConfig(development?.vite ?? {}, {
