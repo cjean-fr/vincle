@@ -1,0 +1,131 @@
+---
+title: Building a static site
+---
+
+# Building a static site
+
+A component that renders the same HTML for every visitor does not need a
+server. Render it once, at build time, and publish the files: any static host
+or CDN serves them, and there is nothing to keep running. `@vincle/ssg` does
+this for a whole directory of pages.
+
+## Start a project
+
+Follow [Installation](/guide/getting-started/installation), add the generator
+and its two commands:
+
+```bash tab="npm" sync="pkg-manager"
+npm install @vincle/ssg
+```
+
+```bash tab="pnpm" sync="pkg-manager"
+pnpm add @vincle/ssg
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/ssg
+```
+
+```json title="package.json"
+{
+  "scripts": {
+    "dev": "ssg dev",
+    "build": "ssg build"
+  }
+}
+```
+
+## Write the layout once
+
+Every page shares the document around it. Put it in `src/_layout.tsx`: the
+leading `_` keeps it from becoming a page.
+
+```tsx title="src/_layout.tsx"
+import { raw, type Renderable } from "@vincle/core";
+import type { SsgMeta } from "@vincle/ssg";
+
+export default function Layout({ children, meta }: { children: Renderable; meta: SsgMeta }) {
+  return (
+    <>
+      {raw("<!DOCTYPE html>\n")}
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <title>{meta.title ? `${meta.title} · Acme` : "Acme"}</title>
+        </head>
+        <body>
+          <nav>
+            <a href="/">Home</a> <a href="/products">Products</a>
+          </nav>
+          <main>{children}</main>
+        </body>
+      </html>
+    </>
+  );
+}
+```
+
+## Load data at build time
+
+Pages are the components you already write, and they can be async. The data
+is read during the build: the published page holds the result, not the query.
+
+```tsx title="src/pages/products.tsx"
+declare function listProducts(): Promise<{ name: string; price: number }[]>;
+
+export const meta = { title: "Products" };
+
+export default async function Products() {
+  const products = await listProducts();
+  return (
+    <ul>
+      {products.map((product) => (
+        <li>
+          {product.name}: {product.price.toFixed(2)} €
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`src/pages/products.tsx` becomes `/products`. Data that changes between two
+builds shows up at the next build: rebuild when the data changes, or keep the
+page on a server.
+
+## Write content in Markdown
+
+Pages made of prose read better as Markdown. The same layout wraps them, and
+the frontmatter plays the part of `meta`:
+
+```md title="src/pages/about.md"
+---
+title: About
+---
+
+# About Acme
+
+We have been making things since 1998.
+```
+
+Need a component in the middle of the text? Rename the file to `.mdx` and
+import it.
+
+## Preview, then publish
+
+`npm run dev` serves the site on `http://127.0.0.1:4321` and reloads the page
+on every change. `npm run build` writes `dist/`: copy that directory to any
+static host. Until the build succeeds, `dist/` keeps the previous version.
+
+## When a page cannot be static
+
+A page that depends on the visitor or on the latest data belongs on a server:
+render it per request with `renderToString`, as in
+[From a view to progressive HTML](/guide/views). Both kinds of page use the
+same components.
+
+## Where to next
+
+- [SSG overview](/integration/ssg/overview): conventions and URLs
+- [Pages & layouts](/integration/ssg/pages): formats, metadata, client assets
+- [Deployment](/integration/ssg/deployment): server configuration per host

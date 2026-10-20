@@ -1,6 +1,7 @@
 {
   "introduction": { "title": "Introduction", "order": 0 },
   "views": { "title": "From a view to progressive HTML", "order": 1.5 },
+  "static-site": { "title": "Building a static site", "order": 1.6 },
   "getting-started": {
     "title": "Getting Started",
     "collapsed": false,
