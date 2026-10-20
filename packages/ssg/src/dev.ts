@@ -16,6 +16,7 @@ import {
 
 import type { AssetIntegration, SsgOptions } from "./types.js";
 
+import { basePath, withBase } from "./base.js";
 import { buildCached, buildSummary } from "./build.js";
 import { sourceDirectory } from "./conventions.js";
 import { developmentModules } from "./dev-modules.js";
@@ -69,10 +70,10 @@ async function userConfig(
   ignored: (file: string) => boolean,
 ): Promise<{ config: InlineConfig; polling: boolean; fallback: boolean }> {
   const vite = options.vite ?? {};
-  const config = await loadViteConfig(vite, root, {
-    command: "serve",
-    mode: vite.mode ?? "development",
-  });
+  const config = withBase(
+    await loadViteConfig(vite, root, { command: "serve", mode: vite.mode ?? "development" }),
+    basePath(options.base),
+  );
   const watch = config.server?.watch;
   if (watch === null) return { config, polling: false, fallback: false };
   let polling = watch?.usePolling === true;

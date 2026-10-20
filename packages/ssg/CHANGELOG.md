@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `base`, the path prefix the site is served under, next to `site`, now the public origin. It sets the sitemap URLs and Vite's `base` in builds and in dev; a different Vite `base` is a configuration error. A path in `site` alone is still accepted.
+
 ## 0.3.0
 
 - Keep the CLI launcher in the package before compilation so clean workspace installs create the `ssg` executable.

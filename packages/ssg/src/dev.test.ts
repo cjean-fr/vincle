@@ -80,10 +80,10 @@ test("dev keeps one serve graph, invalidates imports/layouts/MDX and serves sour
   let starts = 0;
   const server = await dev({
     root,
+    base: "/docs/",
     vite: {
       configFile: false,
       logLevel: "silent",
-      base: "/docs/",
       resolve: { alias: { "@shared": path.join(src, "_shared.ts") } },
       server: { host: "127.0.0.1", port: 0, watch: null },
       plugins: [

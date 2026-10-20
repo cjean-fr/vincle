@@ -205,8 +205,10 @@ included; other outputs are excluded. Set `meta.sitemap: false` per source (or
 `sitemap: false` in frontmatter). An output's `sitemap` overrides that source
 setting, including for JSON/images when explicitly enabled. `export const sitemap
 = false` is also accepted. Use `output.url` when its public URL differs from its
-file path. Site URLs may include a deployment prefix; included paths are resolved
-under it. `build({ sitemap: false })` disables sitemap generation globally.
+file path. To serve the site under a prefix, set `site` to the origin and
+`base` to the prefix (`site: "https://example.com", base: "/docs/"`); included
+paths are resolved under it. A path in `site` alone is still accepted, but not
+together with `base`. `build({ sitemap: false })` disables sitemap generation globally.
 
 ## Vite assets
 
@@ -235,13 +237,15 @@ export default function Layout({ children }) {
 }
 ```
 
-To override Vite settings explicitly:
+`base` also sets Vite's `base`, in builds and in the development server, so
+asset URLs carry the same prefix. A different `base` in the Vite configuration
+is reported as a conflict. To override other Vite settings explicitly:
 
 ```ts
 import { build } from "@vincle/ssg";
 import { viteAssets } from "@vincle/ssg/vite";
 
-await build({ assets: viteAssets({ base: "/docs/" }) });
+await build({ base: "/docs/", assets: viteAssets({ build: { sourcemap: true } }) });
 ```
 
 The page compiler shares Vite's production configuration, aliases and build-selected

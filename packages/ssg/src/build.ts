@@ -13,6 +13,7 @@ import type {
   SsgMeta,
 } from "./types.js";
 
+import { basePath } from "./base.js";
 import { sourceDirectory, clientEntries } from "./conventions.js";
 import { failure, diagnose, contextualError } from "./errors.js";
 import { resolveHandlers, vincleRuntime } from "./formats.js";
@@ -110,6 +111,7 @@ function runBuild(options: SsgOptions, cache?: PageCacheSession, publication?: P
 
 /** Validate the public URL and locale configuration before preparing assets. */
 function siteConfiguration(options: SsgOptions): URL | undefined {
+  const base = basePath(options.base);
   let site: URL | undefined;
   if (options.site !== undefined) {
     try {
@@ -119,7 +121,7 @@ function siteConfiguration(options: SsgOptions): URL | undefined {
         "Site must be an absolute HTTP(S) URL.",
         {
           reason: "INVALID_CONFIG",
-          hint: "Set site to the full public URL, for example https://example.com/docs/.",
+          hint: 'Set site to the public origin, for example https://example.com, and base to its path prefix, for example "/docs/".',
           context: { site: options.site },
         },
         error,
@@ -131,6 +133,16 @@ function siteConfiguration(options: SsgOptions): URL | undefined {
         hint: "Set site to an http:// or https:// URL without ?query or #fragment.",
         context: { site: options.site },
       });
+    if (base !== undefined) {
+      if (site.pathname !== "/")
+        throw failure("Site must be an origin when base is set.", {
+          reason: "INVALID_CONFIG",
+          hint: 'Move the path prefix from site to base: site: "https://example.com", base: "/docs/".',
+          context: { site: options.site, base },
+        });
+      site.pathname = base;
+    }
+    // A path in site alone stays supported for existing configurations.
     site.pathname = `${site.pathname.replace(/\/$/, "")}/`;
   }
   if (
@@ -211,7 +223,14 @@ async function buildInternal(
       const runtime = options.runtime ?? vincleRuntime;
       const assets = integration
         ? await diagnose(
-            async () => integration.prepare({ root, src, out: path.join(work, "assets"), runtime }),
+            async () =>
+              integration.prepare({
+                root,
+                src,
+                out: path.join(work, "assets"),
+                runtime,
+                base: basePath(options.base),
+              }),
             "Could not prepare assets",
             {
               reason: "ASSETS_FAILED",
