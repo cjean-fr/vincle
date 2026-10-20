@@ -8,6 +8,7 @@ import type { SsgConfig, SsgConfigEnv } from "./config.js";
 import { build, buildSummary } from "./build.js";
 import { dev } from "./dev.js";
 import { diagnose, failure } from "./errors.js";
+import { formatTimings } from "./timings.js";
 
 const invalidCommand = (message: string) =>
   failure(message, {
@@ -21,6 +22,7 @@ const help = `Usage: ssg <dev|build> [options]
   --config <file>  Use a specific SSG configuration
   --root <path>    Project directory (default: current directory)
   --mode <name>    Configuration mode (default: development or production)
+  --timings        Print build phases, pages and publication timings
   --port <number> Development server port
   --host <host>   Development server address
   --help          Show this help
@@ -33,10 +35,12 @@ function cliArguments(args: string[]) {
   const { values, positionals } = parseArgs({
     args,
     allowPositionals: true,
+    allowNegative: true,
     options: {
       config: { type: "string" },
       root: { type: "string" },
       mode: { type: "string" },
+      timings: { type: "boolean" },
       port: { type: "string" },
       host: { type: "string" },
       help: { type: "boolean", short: "h" },
@@ -51,6 +55,8 @@ function cliArguments(args: string[]) {
     throw invalidCommand("Expected ssg dev or ssg build. Run ssg --help.");
   if (command === "build" && (values.port !== undefined || values.host !== undefined))
     throw invalidCommand("--port and --host apply only to ssg dev.");
+  if (command === "dev" && values.timings !== undefined)
+    throw invalidCommand("--timings applies only to ssg build.");
   const port = values.port === undefined ? undefined : Number(values.port);
   if (
     port !== undefined &&
@@ -78,8 +84,13 @@ export async function runCli(args: string[]): Promise<void> {
   process.chdir(projectRoot);
   if (command === "build") {
     const started = performance.now();
-    const { files } = await build({ ...shared, root: projectRoot });
+    const { files, timings } = await build({
+      ...shared,
+      root: projectRoot,
+      ...(values.timings === undefined ? {} : { timings: values.timings }),
+    });
     console.log(buildSummary(files, performance.now() - started));
+    if (timings !== undefined) console.log(`\n${formatTimings(timings)}`);
     return;
   }
   const { assets: _assets, ...common } = shared;
