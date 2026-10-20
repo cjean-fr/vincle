@@ -22,6 +22,18 @@ describe("HtmxAdapter", () => {
     expect(first).not.toContain("innerHTML");
   });
 
+  it("update replaces the target's content, not the element", async () => {
+    // htmx has no `update` swap, so it maps to `innerHTML`: the placeholder
+    // element survives. Unlike `before`/`after` it is the only element on the wire.
+    const first = await patch("update", true);
+    expect(first).not.toContain("outerHTML");
+    expect(first).toContain('hx-swap-oob="innerHTML"');
+    expect(first.match(/<div /g)).toHaveLength(1);
+    // `update` is its own position, so the boundary's first patch has nothing
+    // special to do: the swap is the same from the second patch on.
+    expect(await patch("update")).toBe('<div id="x" hx-swap-oob="innerHTML">c</div>');
+  });
+
   it("the boundary's first patch replaces the placeholder's fallback", async () => {
     // `append`/`prepend` get that replacement as their insert: the fallback gone,
     // the boundary is empty, so `innerHTML` *is* the position.

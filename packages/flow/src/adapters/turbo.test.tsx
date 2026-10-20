@@ -33,6 +33,20 @@ describe("TurboAdapter", () => {
     expect(first).not.toContain('action="update"');
   });
 
+  it("update is its own action: content-only, no method", async () => {
+    // Turbo has an `update` action: it replaces the target's content and keeps
+    // the element. No `method=` (that would make it a morph) and no second stream
+    // (that would be a positioned insert).
+    const first = await patch("update", true);
+    expect(first).toContain('action="update"');
+    expect(first).not.toContain("method=");
+    expect(first).toBe(
+      '<turbo-stream action="update" target="x"><template>c</template></turbo-stream>',
+    );
+    // The second patch acts the same: `update` is not a fallback to empty first.
+    expect(await patch("update")).toBe(first);
+  });
+
   it("the boundary's first patch replaces the placeholder's fallback", async () => {
     // `append`/`prepend` get that replacement as their insert: the fallback gone,
     // the frame is empty, so `update` *is* the position.

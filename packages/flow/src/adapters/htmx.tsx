@@ -6,6 +6,7 @@ import { createAdapter } from "./shared.js";
 // which htmx 4 introduced: `merge="morph"` needs htmx >= 4 on the client.
 const SWAP: Record<MergeType, string> = {
   replace: "outerHTML",
+  update: "innerHTML",
   append: "beforeend",
   prepend: "afterbegin",
   before: "beforebegin",
@@ -37,9 +38,9 @@ export const HtmxAdapter = createAdapter({
       );
     }
     // The fallback *is* the placeholder's content, so replacing it is what makes
-    // the placeholder's promise real. For `append`/`prepend` that replacement is
-    // the insert itself: the boundary is empty once the fallback is gone.
-    if (merge === "append" || merge === "prepend") {
+    // the placeholder's promise real. For `update`/`append`/`prepend` that replacement
+    // is the insert itself: the boundary is empty once the fallback is gone.
+    if (merge === "update" || merge === "append" || merge === "prepend") {
       return (
         <div id={id} hx-swap-oob="innerHTML">
           {children}

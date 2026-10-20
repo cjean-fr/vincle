@@ -4,7 +4,16 @@ import type { Adapter } from "./adapters/index.js";
 
 // Merge positions from Turbo/HTMX, plus `morph` (a *how*, not a *where*). An adapter
 // with no diffing client rejects `morph` rather than falling back to a plain replace.
-export const ALL_MERGES = ["replace", "append", "prepend", "before", "after", "morph"] as const;
+// `update` is Turbo-specific: it replaces the target's content (not the element itself).
+export const ALL_MERGES = [
+  "replace",
+  "update",
+  "append",
+  "prepend",
+  "before",
+  "after",
+  "morph",
+] as const;
 
 /** Derived from `ALL_MERGES`, the single declaration `assertAdapter` also validates: runtime and type can't drift. */
 export type MergeType = (typeof ALL_MERGES)[number];

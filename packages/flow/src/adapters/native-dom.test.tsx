@@ -393,6 +393,41 @@ describe("Native template src: browser behavior", () => {
     }
   });
 
+  it("update replaces the target's children and keeps the element", async () => {
+    const page = browser(
+      `<section id="nav"><p>Old</p><?start name="nav"><span>Loading</span><?end></section>` +
+        `<template data-for="nav" data-merge="update"><b>New</b></template>`,
+    );
+    try {
+      page.start();
+      await tick();
+      const section = page.document.querySelector("section");
+      expect(section).not.toBeNull();
+      expect(section?.textContent).toBe("New");
+      // Content-only: the fallback range is replaced too, nothing left beside it.
+      expect(page.document.querySelector("p, span")).toBeNull();
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("update on a bare placeholder range replaces that range", async () => {
+    // No element carries the target id, so `update` falls back to the range it
+    // does have: the placeholder's content is replaced, as `replace` does.
+    const page = browser(
+      `<?start name="nav"><p>Loading</p><?end>` +
+        `<template data-for="nav" data-merge="update"><b>New</b></template>`,
+    );
+    try {
+      page.start();
+      await tick();
+      expect(page.document.body.textContent).toBe("New");
+      expect(page.document.querySelector("p")).toBeNull();
+    } finally {
+      await page.close();
+    }
+  });
+
   it("rejects non-HTTP fragment URLs", async () => {
     for (const src of [
       "javascript:alert(1)",

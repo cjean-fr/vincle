@@ -27,8 +27,14 @@ function apply(t,s){
   if(s.wait||(!ready&&!complete.has(t)&&!t.nextSibling))return;
   var name=(t.getAttribute("data-for")??t.getAttribute("for")),frag=s.fragment||t.content.cloneNode(true),merge=t.getAttribute("data-merge");
   if(name){
-    if(merge&&merge!=="replace"){
-      var el=document.getElementById(name),position=ADJ[merge];
+    var el=document.getElementById(name),position=ADJ[merge];
+    if(merge==="update"){
+      // "update" is content-only: replace the target's children and keep the
+      // element. A bare placeholder range has no element, so it falls back to
+      // replacing that range, as "replace" does.
+      if(el){fill(name,document.createDocumentFragment());el.replaceChildren(frag);}
+      else if(!fill(name,frag))return;
+    }else if(merge&&merge!=="replace"){
       if(!el||!position)return;
       // The fallback sits in the named range, not in the target: a positioned
       // insert would leave it standing next to the content. Empty the range

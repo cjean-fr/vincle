@@ -7,6 +7,7 @@ import { createAdapter } from "./shared.js";
 // Turbo 8 added: `merge="morph"` needs Turbo >= 8 on the client.
 const ACTION: Record<MergeType, string> = {
   replace: "replace",
+  update: "update",
   append: "append",
   prepend: "prepend",
   before: "before",
@@ -42,9 +43,9 @@ export const TurboAdapter = createAdapter({
       );
     }
     // The fallback *is* the frame's content, so replacing it is what makes the
-    // placeholder's promise real. For `append`/`prepend` that replacement is the
-    // insert itself: the frame is empty once the fallback is gone.
-    if (merge === "append" || merge === "prepend") {
+    // placeholder's promise real. For `update`/`append`/`prepend` that replacement
+    // is the insert itself: the frame is empty once the fallback is gone.
+    if (merge === "update" || merge === "append" || merge === "prepend") {
       return (
         <turbo-stream action="update" target={id}>
           <template>{children}</template>
