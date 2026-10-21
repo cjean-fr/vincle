@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { build, discoverPages, SsgError, type PageHandler, type SsgPlugin } from "../src/index.js";
+import { build, discoverPages, type PageHandler, type SsgPlugin } from "../src/index.js";
 
 async function fixture(
   run: (root: string, put: (name: string, content: string) => Promise<void>) => Promise<void>,
@@ -466,107 +466,9 @@ test("src/pages isolates routes from sibling helpers and explicit src retains pr
     expect(await file(root, "index.html")).toBe("<main>explicit source</main>");
   }));
 
-test("build records phases in build order and every page with its active time and output count", () =>
-  fixture(async (root, put) => {
-    await put("index.tsx", "export default () => <main>Home</main>");
-    await put(
-      "multi.ts",
-      "export default function* ({route}) { for (const size of [100, 200]) yield {path: `${route.slice(1)}-${size}.txt`, content: String(size)} }",
-    );
-    const result = await build({ root, assets: false, timings: true });
-    const timings = result.timings!;
-    expect(timings).toBeDefined();
-    expect(timings.phases.map((phase) => phase.name)).toEqual([
-      "configuration",
-      "source inspection",
-      "work directory",
-      "assets prepare",
-      "discovery",
-      "cleanup",
-    ]);
-    for (const phase of timings.phases) {
-      expect(Number.isFinite(phase.milliseconds)).toBe(true);
-      expect(phase.milliseconds).toBeGreaterThanOrEqual(0);
-    }
-    expect(Object.fromEntries(timings.pages.map((page) => [page.route, page.outputs]))).toEqual({
-      "/": 1,
-      "/multi": 2,
-    });
-    for (const page of timings.pages) {
-      expect(Number.isFinite(page.milliseconds)).toBe(true);
-      expect(page.milliseconds).toBeGreaterThanOrEqual(0);
-    }
-    expect(timings.publication).toBeDefined();
-    expect(timings.publication!.files).toBe(result.files.length);
-    expect(Number.isFinite(timings.publication!.milliseconds)).toBe(true);
-    expect(timings.publication!.milliseconds).toBeGreaterThanOrEqual(0);
-    expect(timings.total).toBeGreaterThanOrEqual(timings.publication!.milliseconds);
-    expect(result.files).toEqual(["index.html", "multi-100.txt", "multi-200.txt"]);
-  }));
-
-test("build records each phase name exactly once", () =>
-  fixture(async (root, put) => {
-    await put("index.tsx", "export default () => <main>Home</main>");
-    const result = await build({ root, assets: false, timings: true });
-    const names: string[] = result.timings!.phases.map((phase) => phase.name);
-    expect(new Set(names).size).toBe(names.length);
-    expect(names).toHaveLength(6);
-    expect(names.toSorted()).toEqual(
-      [
-        "configuration",
-        "source inspection",
-        "work directory",
-        "assets prepare",
-        "discovery",
-        "cleanup",
-      ].toSorted(),
-    );
-  }));
-
-test("build omits the timings field and keeps the result shape unchanged", () =>
+test("build returns the written files", () =>
   fixture(async (root, put) => {
     await put("index.tsx", "export default () => <main>Home</main>");
     const result = await build({ root, assets: false });
     expect(result).toEqual({ files: ["index.html"] });
-    expect(result.timings).toBeUndefined();
-    expect("timings" in result).toBe(false);
-  }));
-
-test("build keeps the same invalid configuration failure with and without timings", () =>
-  fixture(async (root, put) => {
-    await put("index.tsx", "export default () => <main>Home</main>");
-    const without = await build({ root, src: "src", out: "src", timings: false }).catch(
-      (error) => error,
-    );
-    const withTimings = await build({ root, src: "src", out: "src", timings: true }).catch(
-      (error) => error,
-    );
-    expect(without).toBeInstanceOf(SsgError);
-    expect(withTimings).toBeInstanceOf(SsgError);
-    expect(without.reason).toBe("INVALID_CONFIG");
-    expect(withTimings.reason).toBe("INVALID_CONFIG");
-    expect(withTimings.message).toBe(without.message);
-  }));
-
-test("build records page timings in render order rather than a sorted order", () =>
-  fixture(async (root, put) => {
-    await put("a.fixture", "");
-    await put("b.fixture", "");
-    const catalog = (
-      await discoverPages({
-        src: path.join(root, "src"),
-        handlers: {
-          ".fixture": {
-            name: "fixture",
-            load: ({ route }) => ({
-              meta: { title: route },
-              render: ({ outputPath }) => ({ path: outputPath(), content: route }),
-            }),
-          },
-        },
-      })
-    ).toReversed();
-    const result = await build({ root, assets: false, timings: true, discover: () => catalog });
-    expect(catalog.map((page) => page.source.route)).toEqual(["/b", "/a"]);
-    expect(result.timings!.pages.map((page) => page.route)).toEqual(["/b", "/a"]);
   }));

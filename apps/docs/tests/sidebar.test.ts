@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import type { Page, PageMeta, ResolvedDocsConfig, TabConfig } from "../src/lib/types.js";
+import type { Page, PageMeta, DocsConfig, TabConfig } from "../src/lib/types.js";
 
 import config from "../docs.config.js";
 import { clearMetaCache, resolveNavigation, resolveSidebar, tabFor } from "../src/lib/sidebar.js";
@@ -37,7 +37,7 @@ describe("resolveSidebar", () => {
     page("/api/core/raw", "raw"),
     page("/privacy", "Privacy"),
   ];
-  const withPages = (): ResolvedDocsConfig => ({ ...config, tabs: TABS });
+  const withPages = (): DocsConfig => ({ ...config, tabs: TABS });
 
   it("is empty for a page no tab owns", async () => {
     clearMetaCache();

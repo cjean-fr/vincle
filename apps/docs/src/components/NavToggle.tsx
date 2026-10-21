@@ -1,8 +1,7 @@
-import { useTranslation } from "../lib/context.js";
+import { t } from "../lib/messages.js";
 import { Icon } from "./Icon.js";
 
 export function NavToggle() {
-  const t = useTranslation();
   return (
     <button
       type="button"

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
-import { translatorFor } from "../src/lib/i18n/interface.js";
+import { t } from "../src/lib/messages.js";
 import { applyTheme } from "../src/lib/theme.js";
 
 function setup(stored: string | null = null, dark = false, blocked = false) {
@@ -42,7 +42,7 @@ function setup(stored: string | null = null, dark = false, blocked = false) {
               "data-theme-dark-dark": "themeDarkLight",
               "data-theme-dark-light": "themeDarkAuto",
             };
-            return translatorFor("en")(messages[key] as "themeAutoDark");
+            return t(messages[key] as "themeAutoDark");
           },
           setAttribute: (key: string, value: string) => (attributes[key] = value),
         },

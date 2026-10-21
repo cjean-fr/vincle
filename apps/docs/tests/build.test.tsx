@@ -27,8 +27,6 @@ describe("SSG build", () => {
     expect(data[0]).toHaveProperty("title");
     expect(data[0]).toHaveProperty("text");
     const sitemap = await readFile(path.join(DIST_DIR, "sitemap.xml"), "utf8");
-    expect(sitemap).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"');
-    expect(sitemap).toContain('hreflang="x-default"');
     expect(sitemap).not.toContain("/404");
     expect(new Set(data.map((page: { url: string }) => page.url)).size).toBe(data.length);
     for (const page of data) {
@@ -379,6 +377,15 @@ describe("editUrlFor", () => {
 
   it("returns null for a file outside the app", () => {
     expect(editUrlFor(base, "/etc/passwd")).toBeNull();
+  });
+});
+
+describe("search shortcut", () => {
+  it("ships hidden and empty, so no platform shortcut is claimed before the client knows", async () => {
+    const html = await readFile(path.join(DIST_DIR, "index.html"), "utf8");
+    expect(html).toMatch(/<kbd[^>]*\bhidden\b[^>]*data-search-shortcut[^>]*><\/kbd>/);
+    expect(html).toMatch(/<kbd[^>]*\bhidden\b[^>]*data-search-keyboard-hint[^>]*>\s*Esc\s*<\/kbd>/);
+    expect(html).not.toContain("⌘");
   });
 });
 

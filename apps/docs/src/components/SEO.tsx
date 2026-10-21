@@ -1,10 +1,7 @@
-import { fullUrl } from "@vincle/ssg";
-
 import type { DocsRenderContext } from "../lib/context.js";
 
-import ssg from "../../ssg.config.js";
-import { markdownPath } from "../lib/i18n/locale.js";
 import { getHeaders, getStructuredData } from "../lib/seo.js";
+import { markdownPath } from "../lib/url.js";
 
 type SEOProps = { page: DocsRenderContext };
 
@@ -16,9 +13,7 @@ export function SEOHeader({ page }: SEOProps) {
     canonical,
     image,
     imageSize,
-    locale,
     isErrorPage,
-    alternates,
     currentPage,
     hasMarkdownAlternate,
   } = getHeaders(page);
@@ -31,33 +26,13 @@ export function SEOHeader({ page }: SEOProps) {
       {description && <meta name="description" content={description} />}
       {keywords && <meta name="keywords" content={keywords} />}
       {canonical && !isErrorPage && <link rel="canonical" href={canonical} />}
-      {ssg.site &&
-        !isErrorPage &&
-        alternates.map(({ locale: language, href }) => (
-          <link rel="alternate" hrefLang={language} href={fullUrl(href, ssg.site)} />
-        ))}
-      {ssg.site && !isErrorPage && alternates.some((alternate) => alternate.locale === "en") && (
-        <link
-          rel="alternate"
-          hrefLang="x-default"
-          href={fullUrl(alternates.find((alternate) => alternate.locale === "en")!.href, ssg.site)}
-        />
-      )}
       {/* Markdown twin of this page, for agents (RSS-style alternate). */}
       {!isErrorPage && hasMarkdownAlternate && (
         <link rel="alternate" type="text/markdown" href={markdownPath(currentPage)} />
       )}
       <meta property="og:type" content="website" />
       <meta property="og:title" content={title} />
-      <meta property="og:locale" content={locale === "fr" ? "fr_FR" : "en_US"} />
-      {alternates
-        .filter((alternate) => alternate.locale !== locale)
-        .map((alternate) => (
-          <meta
-            property="og:locale:alternate"
-            content={alternate.locale === "fr" ? "fr_FR" : "en_US"}
-          />
-        ))}
+      <meta property="og:locale" content="en_US" />
       {description && <meta property="og:description" content={description} />}
       {canonical && <meta property="og:url" content={canonical} />}
       {image && <meta property="og:image" content={image} />}

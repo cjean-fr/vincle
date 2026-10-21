@@ -1,5 +1,4 @@
-import type { PageHandler, DiscoveredPage, SsgMeta } from "@vincle/ssg";
-export type { PageHandler } from "@vincle/ssg";
+import type { DiscoveredPage, SsgMeta } from "@vincle/ssg";
 
 export interface PageMeta extends SsgMeta {
   title: string;
@@ -52,14 +51,11 @@ export interface ResolvedSidebarCategory {
 
 /**
  * A top-level navigation tab, mapping a content root folder (e.g. `guide/`) to
- * a labelled tab in the header. `href` is optional, when omitted, it resolves
- * to the first page of the tab in reading order.
+ * a labelled tab in the header, linking to its first page in reading order.
  */
 export interface TabConfig {
   label: string;
   slug: string;
-  /** Optional explicit link target (first page of the tab by default). */
-  href?: string;
 }
 
 /**
@@ -83,26 +79,13 @@ export type DirMeta = Readonly<Record<string, MetaEntry>>;
 
 export interface DocsConfig {
   title: string;
-  tagline?: string;
-  description?: string;
-  pages?: string;
-  clientEntry?: string;
-  /** Explicit top-level navigation tabs. */
+  tagline: string;
+  description: string;
+  /** Absolute path of the pages directory. */
+  pages: string;
   tabs: readonly TabConfig[];
-  editUrl?: string | null;
-  image?: string;
-  handlers?: Record<string, PageHandler>;
-  /** Override the default page shell (Layout). Receives children already wrapped by the handler's prose wrapper. */
-  layout?: (props: {
-    children: import("@vincle/core").Renderable;
-  }) => import("@vincle/core").Awaitable<import("@vincle/core").Renderable>;
-}
-
-export type ResolvedDocsConfig = Required<Omit<DocsConfig, "tagline" | "editUrl" | "image">> & {
-  tagline: string | null;
   editUrl: string | null;
-  image: string | null;
-};
+}
 
 export interface Page extends DiscoveredPage {
   url: string;

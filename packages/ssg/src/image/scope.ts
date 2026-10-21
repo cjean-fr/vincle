@@ -20,8 +20,7 @@ export interface ImageScopeValue {
 }
 
 /** The one key render components read; declared once, at module level. */
-export const IMAGE_SCOPE: ScopeKey<ImageScopeValue> =
-  Scope.key<ImageScopeValue>("@vincle/ssg:image");
+const IMAGE_SCOPE: ScopeKey<ImageScopeValue> = Scope.key<ImageScopeValue>("@vincle/ssg:image");
 
 /**
  * Install the image registry for the current render scope.

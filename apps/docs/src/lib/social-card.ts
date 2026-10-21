@@ -1,8 +1,6 @@
-import { unlocalizedPath } from "./i18n/locale.js";
-
 /** Every published page gets a social card, except error pages. */
 export function hasSocialCard(url: string): boolean {
-  return unlocalizedPath(url) !== "/404";
+  return url !== "/404";
 }
 
 /** Where a page's card is published: one PNG per route, beside the HTML. */

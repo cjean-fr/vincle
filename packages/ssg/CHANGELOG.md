@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking**: remove build timings: the `timings` option, `ssg build --timings`, the `timings` field of the `build()` result and the `BuildTimings` type. The build summary line stays.
+
 ## 0.4.0
 
 - Add `base`, the path prefix the site is served under, next to `site`, now the public origin. It sets the sitemap URLs and Vite's `base` in builds and in dev; a different Vite `base` is a configuration error. A path in `site` alone is still accepted.

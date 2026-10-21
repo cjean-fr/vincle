@@ -1,16 +1,15 @@
-import { useDocs, useTranslation } from "../lib/context.js";
-import { unlocalizedPath } from "../lib/i18n/locale.js";
+import { useDocs } from "../lib/context.js";
+import { t } from "../lib/messages.js";
 
 /**
  * Top-level nav links, rendered in the header bar. Each tab links to its first
  * page in reading order (or an explicit `href` resolved at build start).
  */
 export function Tabs() {
-  const t = useTranslation();
   const { resolvedTabs, currentTab, currentPage } = useDocs();
 
   // Error pages: no tab context.
-  if (currentTab === null && unlocalizedPath(currentPage) !== "/") return null;
+  if (currentTab === null && currentPage !== "/") return null;
 
   return (
     <nav
@@ -33,10 +32,9 @@ export function Tabs() {
 
 /** The header tabs, as a segmented control at the top of the mobile drawer where the header has no room. */
 export function DrawerTabs() {
-  const t = useTranslation();
   const { resolvedTabs, currentTab, currentPage } = useDocs();
 
-  if (currentTab === null && unlocalizedPath(currentPage) !== "/") return null;
+  if (currentTab === null && currentPage !== "/") return null;
 
   return (
     <nav

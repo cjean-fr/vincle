@@ -205,8 +205,6 @@ export interface SsgOptions {
   assets?: AssetIntegration | readonly AssetIntegration[] | false;
   copy?: SiteOptions["copy"];
   preserve?: SiteOptions["preserve"];
-  /** Collect build timings (phases, pages, publication) on the returned result; off by default. */
-  timings?: boolean;
 }
 
 export type { SiteContent };
