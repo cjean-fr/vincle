@@ -3,8 +3,11 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import type { AssetSession } from "./assets.js";
 import type { AssetIntegration, PageHandler } from "./index.js";
 
+import { disposeBuilds, prepareAssets } from "./assets.js";
+import { vincleRuntime } from "./formats.js";
 import { build, SsgError } from "./index.js";
 
 async function fixture(
@@ -234,4 +237,98 @@ test("resolves a relative asset directory from the project root", () =>
     });
     expect(result.files).toEqual(["index.html", "rel.txt"]);
     expect(await readFile(path.join(root, "dist/rel.txt"), "utf8")).toBe("relative");
+  }));
+
+test("prepareAssets uses the integrations resolved for a development session", () =>
+  fixture(async (root) => {
+    let devCalls = 0;
+    let prepareCalls = 0;
+    const sessionDirectory = path.join(root, ".session");
+    const sessionBuild = { directory: path.join(sessionDirectory, "0") };
+    const resolved: AssetIntegration = {
+      async dev() {
+        devCalls++;
+        return sessionBuild;
+      },
+      prepare() {
+        throw new Error("dev must not prepare");
+      },
+    };
+    const declared: AssetIntegration = {
+      async prepare() {
+        prepareCalls++;
+        return { directory: path.join(sessionDirectory, "1") };
+      },
+    };
+    const session: AssetSession = {
+      integrations: [resolved],
+      directory: sessionDirectory,
+      prepared: new Map(),
+      watch: () => {},
+    };
+    const result = await prepareAssets({
+      assets: [declared],
+      root,
+      src: path.join(root, "src"),
+      runtime: vincleRuntime,
+      work: path.join(root, ".work"),
+      session,
+    });
+    expect(devCalls).toBe(1);
+    expect(prepareCalls).toBe(0);
+    expect(result.builds).toEqual([sessionBuild]);
+    expect(session.prepared.get(0)).toBe(sessionBuild);
+  }));
+
+test("disposes every build and returns the first failure", async () => {
+  const journal: string[] = [];
+  const buildOf = (name: string, fail = false) => ({
+    directory: "/unused",
+    dispose() {
+      journal.push(name);
+      if (fail) throw new Error("boom");
+    },
+  });
+  const error = await disposeBuilds([buildOf("a"), buildOf("b", true), buildOf("c")]);
+  expect(journal).toEqual(["c", "b", "a"]);
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toBe("boom");
+});
+
+test("releases an invalid development build before failing", () =>
+  fixture(async (root) => {
+    let disposeCalls = 0;
+    const invalid: AssetIntegration = {
+      async dev() {
+        return {
+          directory: "",
+          dispose() {
+            disposeCalls++;
+          },
+        };
+      },
+      prepare() {
+        throw new Error("dev must not prepare");
+      },
+    };
+    const session: AssetSession = {
+      integrations: [invalid],
+      directory: path.join(root, ".session"),
+      prepared: new Map(),
+      watch: () => {},
+    };
+    const error = await capture(() =>
+      prepareAssets({
+        assets: [invalid],
+        root,
+        src: path.join(root, "src"),
+        runtime: vincleRuntime,
+        work: path.join(root, ".work"),
+        session,
+      }),
+    );
+    expect(error.reason).toBe("INVALID_CONFIG");
+    expect(disposeCalls).toBe(1);
+    expect(session.prepared.size).toBe(0);
+    expect(existsSync(path.join(root, "dist"))).toBe(false);
   }));

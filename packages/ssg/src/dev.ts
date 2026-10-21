@@ -334,6 +334,7 @@ async function start(options: DevOptions): Promise<DevServer> {
                 "@vincle/core/jsx-dev-runtime",
                 "@vincle/vite-plugin",
                 "@vincle/ssg",
+                "@vincle/ssg/image",
               ],
               conditions: ["node", "development", ...bun],
               externalConditions: ["node", ...bun],

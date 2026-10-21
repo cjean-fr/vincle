@@ -40,15 +40,20 @@ export interface SiteOptions {
   beforePublish?(site: PreparedSite): void | Promise<void>;
 }
 
+/** Shared with asset integrations that derive their own output paths. */
+export function isValidRelativePath(value: string): boolean {
+  return (
+    Boolean(value) &&
+    !value.includes("\\") &&
+    !value.includes("\0") &&
+    !path.isAbsolute(value) &&
+    !/^[a-z]:/i.test(value) &&
+    !value.split("/").some((part) => !part || part === "." || part === "..")
+  );
+}
+
 function filePath(value: string): string {
-  if (
-    !value ||
-    value.includes("\\") ||
-    value.includes("\0") ||
-    path.isAbsolute(value) ||
-    /^[a-z]:/i.test(value) ||
-    value.split("/").some((part) => !part || part === "." || part === "..")
-  )
+  if (!isValidRelativePath(value))
     throw failure(`Invalid relative output path: ${JSON.stringify(value)}`, {
       reason: "INVALID_OUTPUT_PATH",
       hint: "Use a non-empty path relative to out, with forward slashes and no empty, . or .. segments.",

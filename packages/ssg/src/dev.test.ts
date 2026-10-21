@@ -1024,3 +1024,48 @@ test("dev disposes session asset builds once when the server closes", async () =
     await rm(root, { recursive: true, force: true });
   }
 }, 20_000);
+
+test("re-adds declared asset watch paths after a Vite restart", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-dev-assets-"));
+  const external = await mkdtemp(path.join(tmpdir(), "vincle-dev-assets-restart-"));
+  const watchFile = path.join(external, "asset.txt");
+  await writeFile(watchFile, "BEFORE-RESTART");
+  await mkdir(path.join(root, "src"));
+  await writeFile(path.join(root, "src/index.tsx"), "export default () => <p>page</p>");
+  const assets: AssetIntegration[] = [
+    {
+      async prepare(context) {
+        const text = await readFile(watchFile, "utf8");
+        await mkdir(context.out, { recursive: true });
+        return {
+          directory: context.out,
+          watch: [watchFile],
+          render: async (runtime, create) =>
+            `<asset>${text}</asset>${await runtime.render(create)}`,
+        };
+      },
+    },
+  ];
+  const server = await dev({ root, assets, vite: assetDevVite });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected HTTP server");
+    const url = `http://127.0.0.1:${address.port}/`;
+    expect(await (await fetch(url)).text()).toContain("BEFORE-RESTART");
+    // A restart replaces the watcher; only configureServer re-adds declared asset paths.
+    await server.vite.restart();
+    await server.rebuild();
+    await writeFile(watchFile, "AFTER-RESTART");
+    let html = "";
+    for (let i = 0; i < 100; i++) {
+      html = await (await fetch(url)).text();
+      if (html.includes("AFTER-RESTART")) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(html).toContain("AFTER-RESTART");
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+    await rm(external, { recursive: true, force: true });
+  }
+}, 20_000);

@@ -1,6 +1,6 @@
 {
   "name": "@vincle/ssg",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "File-based static generation with extensible content handlers and multiple outputs",
   "keywords": [
     "generator",
@@ -33,6 +33,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./image": {
+      "types": "./dist/image.d.ts",
+      "default": "./dist/image.js"
     },
     "./vite": {
       "types": "./dist/vite.d.ts",

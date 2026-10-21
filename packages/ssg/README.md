@@ -265,6 +265,19 @@ copied to the output root, wrapping the renderer first-declared-innermost, and d
 in reverse order after publication. `dev()` prepares an integration once per session and
 `watch` lists files whose modification rebuilds the site.
 
+## Images
+
+Declared descriptors in, generated files and `<Picture>` markup out. `@vincle/ssg/image`
+encodes the widths and formats you list, publishes them with the pages and renders them
+from the same descriptor, so markup and files cannot diverge.
+
+```ts
+assets: [viteAssets(), images({ converter, descriptors: [portrait] })];
+```
+
+`<Picture>` renders a declared descriptor; the converter (sharp, WASM, anything) stays
+your code. Full page: [Images](https://vincle.cjean.fr/integration/ssg/images).
+
 ## Other runtimes and handlers
 
 Vincle is the default JSX runtime. A runtime override supplies both its automatic
@@ -409,9 +422,11 @@ server.vite.printUrls();
 
 `dev` accepts the same source, handler, runtime, plugin and asset options as `build`.
 An integration declaring `dev()` is prepared once per session and reused across
-rebuilds; other integrations run `prepare` on every rebuild, and a `watch` file
-change rebuilds the site. `viteAssets` serves source assets in development instead
-of a client build, so the development server stays configured through `dev.vite`.
+rebuilds; other integrations run `prepare` on every rebuild. A change to a `watch`
+file rebuilds **every** page, not only the affected ones: declared asset files feed
+the render chain, so no rendered page is reused. `viteAssets` serves source assets in
+development instead of a client build, so the development server stays configured
+through `dev.vite`.
 It loads the project's Vite configuration, serves Vite's browser client and
 assets, watches sources/imports/layouts/public files, and reloads the browser
 after successful regeneration. Generated HTML passes through Vite's HTML
