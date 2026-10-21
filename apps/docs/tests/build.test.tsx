@@ -40,8 +40,23 @@ describe("SSG build", () => {
     expect(await readFile(path.join(DIST_DIR, "llms-full.txt"), "utf8")).toContain(data[0].title);
     const adapters = data.find((d: { url: string }) => d.url === "/integration/flow/adapters");
     expect(adapters?.text).toContain("Browsers with declarative partial updates");
+    const streaming = data.find((d: { url: string }) => d.url === "/integration/flow/streaming");
+    expect(streaming?.keywords).toEqual(["suspense", "out-of-order", "progressive rendering"]);
+    expect(adapters).not.toHaveProperty("keywords");
     const deployment = data.find((d: { url: string }) => d.url === "/integration/ssg/deployment");
     expect(deployment?.headings).toContainEqual({ id: "content-types", text: "Content types" });
+  });
+
+  it("emits meta keywords for a page that declares them", async () => {
+    const html = await readFile(path.join(DIST_DIR, "integration/flow/streaming.html"), "utf-8");
+    expect(html).toContain(
+      '<meta name="keywords" content="suspense, out-of-order, progressive rendering">',
+    );
+    const ssg = await readFile(path.join(DIST_DIR, "integration/ssg/overview.html"), "utf-8");
+    expect(ssg).toContain('<meta name="keywords" content="pre-rendering">');
+    expect(await readFile(path.join(DIST_DIR, "index.html"), "utf-8")).not.toContain(
+      'name="keywords"',
+    );
   });
 
   it("injects Vite assets in pages", async () => {

@@ -60,10 +60,28 @@ function normalizeMeta(raw: unknown, file: string): PageMeta {
     throw new Error(`[@vincle/docs] ${file}: title is required.`);
   }
   const published_at = normalizePublicationDate(meta.published_at, file);
+  const keywords = normalizeKeywords(meta.keywords, file);
   return {
     ...meta,
     ...(published_at === undefined ? {} : { published_at }),
+    ...(keywords === undefined ? {} : { keywords }),
   };
+}
+
+/**
+ * Search keywords as a trimmed, de-duplicated list. Frontmatter may give a YAML
+ * list or a comma-separated string; an empty result is the same as no keywords.
+ */
+export function normalizeKeywords(value: unknown, file: string): string[] | undefined {
+  if (value === undefined) return undefined;
+  const items = typeof value === "string" ? value.split(",") : value;
+  if (!Array.isArray(items) || items.some((item) => typeof item !== "string")) {
+    throw new Error(
+      `[@vincle/docs] ${file}: keywords must be a list of strings or a comma-separated string.`,
+    );
+  }
+  const keywords = [...new Set(items.map((item: string) => item.trim()).filter(Boolean))];
+  return keywords.length === 0 ? undefined : keywords;
 }
 
 const ISO_DATE =

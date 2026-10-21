@@ -12,6 +12,7 @@ export function SEOHeader({ page }: SEOProps) {
   const {
     title,
     description,
+    keywords,
     canonical,
     image,
     imageSize,
@@ -28,6 +29,7 @@ export function SEOHeader({ page }: SEOProps) {
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       <title>{title}</title>
       {description && <meta name="description" content={description} />}
+      {keywords && <meta name="keywords" content={keywords} />}
       {canonical && !isErrorPage && <link rel="canonical" href={canonical} />}
       {ssg.site &&
         !isErrorPage &&

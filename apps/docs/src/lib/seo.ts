@@ -15,6 +15,7 @@ export function getHeaders(page: DocsRenderContext) {
   return {
     title: meta.title ? `${meta.title} - ${config.title}` : config.title,
     description: meta.description ?? (locale === "en" ? config.description : t("description")),
+    keywords: meta.keywords?.length ? meta.keywords.join(", ") : null,
     image: card
       ? fullUrl(`/${socialCardPath(currentPage)}`, ssg.site!)
       : (meta.image ?? config.image),
