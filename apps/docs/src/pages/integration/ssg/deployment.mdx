@@ -4,7 +4,7 @@ title: Deployment
 
 # Deployment
 
-`ssg build` writes a plain directory: `dist/` by default. Any static host or CDN
+`ssg generate` writes a plain directory: `dist/` by default. Any static host or CDN
 can serve it; there is no server runtime to deploy. This page covers what the
 host has to know about that directory.
 
@@ -156,7 +156,7 @@ export default defineConfig({
 ```
 
 The sitemap and Vite asset URLs then carry the prefix, in `ssg dev` as in
-`ssg build`, while the files stay at the root of `dist/`. Do not repeat the
+`ssg generate`, while the files stay at the root of `dist/`. Do not repeat the
 prefix in the Vite configuration: `base` sets it. Publish `dist/` under
 `/docs`, and adapt the server configuration: for nginx, a `location /docs/`
 with an `alias` to the directory; the error page becomes `/docs/404.html`.

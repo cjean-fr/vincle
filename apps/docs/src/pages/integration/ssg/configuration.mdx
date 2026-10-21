@@ -22,7 +22,7 @@ export default defineConfig({
 
 `defineConfig` only adds types. It also accepts a function, async or not,
 receiving `{ command, mode }`: `command` is `"serve"` under `ssg dev` and
-`"build"` under `ssg build`. The configuration is read at startup; restart
+`"build"` under `ssg generate`. The configuration is read at startup; restart
 `ssg dev` after changing it.
 
 ## Options
@@ -59,7 +59,7 @@ These mirror what the host does in production: see
 ## Command line
 
 ```text
-ssg <dev|build> [options]
+ssg <dev|generate> [options]
 
   --config <file>  Use a specific configuration file
   --root <path>    Project directory (default: current directory)
@@ -70,7 +70,7 @@ ssg <dev|build> [options]
 
 The CLI looks for `ssg.config` with a `.ts`, `.mts`, `.js`, `.mjs`, `.cts` or
 `.cjs` extension. It runs on Node; pages that use Bun APIs need
-`bun run --bun ssg build`. The same functions are exported for scripts:
+`bun run --bun ssg generate`. The same functions are exported for scripts:
 
 ```ts
 import { build, dev } from "@vincle/ssg";

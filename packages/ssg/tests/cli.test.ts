@@ -41,8 +41,8 @@ async function command(args: string[], cwd: string) {
 
 test("compiled CLI builds TypeScript configuration and diagnoses bad commands/configs", async () => {
   const root = await fixture();
-  expect((await command(["--help"], root)).stdout).toContain("ssg <dev|build>");
-  const result = await command(["build"], root);
+  expect((await command(["--help"], root)).stdout).toContain("ssg <dev|generate>");
+  const result = await command(["generate"], root);
   expect(result.code).toBe(0);
   expect(result.stdout).toMatch(/^1 page generated in \d+(?: ms|\.\d\d s)$/m);
   expect(await readFile(path.join(root, "dist/index.html"), "utf8")).toContain("CLI first");
@@ -51,7 +51,7 @@ test("compiled CLI builds TypeScript configuration and diagnoses bad commands/co
   );
   expect((await command(["unknown"], root)).code).toBe(1);
   expect((await command(["dev", "--port", "abc"], root)).stderr).toContain("--port must be");
-  const missing = await command(["build", "--config", "missing.ts"], root);
+  const missing = await command(["generate", "--config", "missing.ts"], root);
   expect(missing.code).toBe(1);
   expect(missing.stderr).toContain("INVALID_CONFIG");
 });
@@ -116,7 +116,15 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
 
 test("compiled CLI prints only the build summary", async () => {
   const root = await fixture();
+  const result = await command(["generate"], root);
+  expect(result.code).toBe(0);
+  expect(result.stdout.trim()).toMatch(/^1 page generated in \d+(?: ms|\.\d\d s)$/);
+});
+
+test("compiled CLI keeps ssg build as a deprecated alias of ssg generate", async () => {
+  const root = await fixture();
   const result = await command(["build"], root);
   expect(result.code).toBe(0);
+  expect(result.stderr).toContain('"ssg build" is deprecated');
   expect(result.stdout.trim()).toMatch(/^1 page generated in \d+(?: ms|\.\d\d s)$/);
 });

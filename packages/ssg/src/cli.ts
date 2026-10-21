@@ -16,7 +16,7 @@ const invalidCommand = (message: string) =>
     context: { phase: "cli" },
   });
 
-const help = `Usage: ssg <dev|build> [options]
+const help = `Usage: ssg <dev|generate> [options]
 
   --config <file>  Use a specific SSG configuration
   --root <path>    Project directory (default: current directory)
@@ -26,6 +26,7 @@ const help = `Usage: ssg <dev|build> [options]
   --help          Show this help
 
 Automatically loads ssg.config.ts (also .mts, .js, .mjs, .cts and .cjs).
+"ssg build" is deprecated: use "ssg generate".
 `;
 
 /** Parse and validate command-line inputs before loading project configuration. */
@@ -47,10 +48,16 @@ function cliArguments(args: string[]) {
     console.log(help);
     return;
   }
-  const command = positionals[0];
-  if (positionals.length !== 1 || (command !== "dev" && command !== "build"))
-    throw invalidCommand("Expected ssg dev or ssg build. Run ssg --help.");
-  if (command === "build" && (values.port !== undefined || values.host !== undefined))
+  const requested = positionals[0];
+  if (
+    positionals.length !== 1 ||
+    (requested !== "dev" && requested !== "generate" && requested !== "build")
+  )
+    throw invalidCommand("Expected ssg dev or ssg generate. Run ssg --help.");
+  if (requested === "build")
+    console.warn('Warning: "ssg build" is deprecated and will be removed. Use "ssg generate".');
+  const command = requested === "dev" ? "dev" : "generate";
+  if (command === "generate" && (values.port !== undefined || values.host !== undefined))
     throw invalidCommand("--port and --host apply only to ssg dev.");
   const port = values.port === undefined ? undefined : Number(values.port);
   if (
@@ -77,7 +84,7 @@ export async function runCli(args: string[]): Promise<void> {
   const { dev: development, ...shared } = config;
   const projectRoot = values.root ? root : path.resolve(root, shared.root ?? ".");
   process.chdir(projectRoot);
-  if (command === "build") {
+  if (command === "generate") {
     const started = performance.now();
     const { files } = await build({ ...shared, root: projectRoot });
     console.log(buildSummary(files, performance.now() - started));
