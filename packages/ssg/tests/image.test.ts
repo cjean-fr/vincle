@@ -3,11 +3,11 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { ImageConverter, ImageDescriptor, ImageOptions } from "./image.js";
-import type { PageHandler } from "./index.js";
+import type { ImageConverter, ImageDescriptor, ImageOptions } from "../src/image.js";
+import type { PageHandler } from "../src/index.js";
 
-import { imageUrl, images } from "./image.js";
-import { build, SsgError } from "./index.js";
+import { imageUrl, images } from "../src/image.js";
+import { build, SsgError } from "../src/index.js";
 
 async function fixture(
   run: (root: string, put: (name: string, content: string) => Promise<void>) => Promise<void>,

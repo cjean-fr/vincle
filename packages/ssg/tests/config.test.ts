@@ -3,8 +3,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { loadSsgConfig } from "./cli.js";
-import { defineConfig } from "./config.js";
+import { loadSsgConfig } from "../src/cli.js";
+import { defineConfig } from "../src/config.js";
 
 const roots: string[] = [];
 async function root() {

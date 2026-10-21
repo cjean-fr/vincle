@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { build, discoverPages, SsgError, type PageHandler, type SsgPlugin } from "./index.js";
+import { build, discoverPages, SsgError, type PageHandler, type SsgPlugin } from "../src/index.js";
 
 async function fixture(
   run: (root: string, put: (name: string, content: string) => Promise<void>) => Promise<void>,

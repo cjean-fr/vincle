@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, writeFile, readFile, lstat, rm, symlink } from "node:fs
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { generateSiteCached, PublicationCache } from "./outputs.js";
+import { generateSiteCached, PublicationCache } from "../src/outputs.js";
 
 test("incremental publication preserves unchanged files, copies and derived outputs and removes obsolete paths", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "vincle-publish-"));

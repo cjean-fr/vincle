@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { generateSite } from "./index.js";
+import { generateSite } from "../src/index.js";
 
 const roots: string[] = [];
 async function fixture() {

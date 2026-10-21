@@ -3,12 +3,12 @@ import { expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { ModuleLoader } from "./types.js";
+import type { ModuleLoader } from "../src/types.js";
 
-import { discoverPages } from "./handlers.js";
-import { renderPage } from "./lifecycle.js";
-import { createMdxHandler, MdxCache } from "./mdx.js";
-import { loadModule } from "./module.js";
+import { discoverPages } from "../src/handlers.js";
+import { renderPage } from "../src/lifecycle.js";
+import { createMdxHandler, MdxCache } from "../src/mdx.js";
+import { loadModule } from "../src/module.js";
 
 async function fixture(run: (directory: string) => Promise<void>) {
   const directory = await mkdtemp(path.resolve(import.meta.dirname, "../.mdx-test-"));

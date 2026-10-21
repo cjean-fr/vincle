@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { Buffer } from "node:buffer";
 
-import { sitemapOutputs } from "./sitemap.js";
+import { sitemapOutputs } from "../src/sitemap.js";
 
 const site = new URL("https://example.com/docs/");
 const limit = 52_428_800;

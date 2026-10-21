@@ -9,7 +9,7 @@ import {
   generateSite,
   type PageHandler,
   type RenderedOutput,
-} from "./index.js";
+} from "../src/index.js";
 
 async function fixture(run: (dir: string) => Promise<void>) {
   const dir = await mkdtemp(path.join(tmpdir(), "vincle-handlers-"));
