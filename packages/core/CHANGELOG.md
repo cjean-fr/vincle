@@ -1,5 +1,11 @@
 # @vincle/core
 
+## Unreleased
+
+### Changed
+
+- Mark the `typescript` peer dependency as optional, so installing Core no longer downloads the TypeScript compiler and its platform package. The peer range still documents the supported compiler versions for TypeScript consumers, who provide their own.
+
 ## 0.9.1 — 2026-10-05
 
 ### Changed
