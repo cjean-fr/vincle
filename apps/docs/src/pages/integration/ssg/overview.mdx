@@ -1,0 +1,103 @@
+---
+title: Overview
+---
+
+# @vincle/ssg
+
+**A directory of components in, a directory of HTML out.**
+
+`@vincle/ssg` turns the files under `src/pages/` into a static site. Each file
+is a route; each route becomes a file in `dist/` that any static host serves.
+Pages are Vincle components, Markdown or MDX. No JavaScript reaches the browser
+unless you add it.
+
+## Install
+
+```bash tab="npm" sync="pkg-manager"
+npm install @vincle/core @vincle/ssg
+```
+
+```bash tab="pnpm" sync="pkg-manager"
+pnpm add @vincle/core @vincle/ssg
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/core @vincle/ssg
+```
+
+Configure JSX as in [Installation](/guide/getting-started/installation), then
+add the two commands of the `ssg` executable to `package.json`:
+
+```json
+{
+  "scripts": {
+    "dev": "ssg dev",
+    "build": "ssg build"
+  }
+}
+```
+
+## A first site
+
+A layout and a page are enough:
+
+```tsx title="src/_layout.tsx"
+import { raw, type Renderable } from "@vincle/core";
+import type { SsgMeta } from "@vincle/ssg";
+
+export default function Layout({ children, meta }: { children: Renderable; meta: SsgMeta }) {
+  return (
+    <>
+      {raw("<!DOCTYPE html>\n")}
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <title>{meta.title}</title>
+        </head>
+        <body>{children}</body>
+      </html>
+    </>
+  );
+}
+```
+
+```tsx title="src/pages/index.tsx"
+export const meta = { title: "Home" };
+
+export default function Home() {
+  return <h1>Hello</h1>;
+}
+```
+
+`npm run dev` serves the site on `http://127.0.0.1:4321` and reloads the browser
+when a source changes. `npm run build` writes it to `dist/`.
+
+## From files to URLs
+
+| Source                      | URL            | Output                                               |
+| --------------------------- | -------------- | ---------------------------------------------------- |
+| `src/pages/index.tsx`       | `/`            | `dist/index.html`                                    |
+| `src/pages/about.tsx`       | `/about`       | `dist/about/index.html`                              |
+| `src/pages/guide/index.md`  | `/guide`       | `dist/guide/index.html`, `dist/guide.md`             |
+| `src/pages/guide/setup.mdx` | `/guide/setup` | `dist/guide/setup/index.html`, `dist/guide/setup.md` |
+| `src/pages/feed.xml.ts`     | `/feed.xml`    | `dist/feed.xml`                                      |
+| `public/favicon.svg`        | `/favicon.svg` | `dist/favicon.svg`                                   |
+
+A name starting with `_` or `.` is never a route: `_layout.tsx`, `_components/`,
+`_data.json` sit next to the pages that use them. Test and declaration files
+are skipped as well. Markdown and MDX pages also publish their source as a
+`.md` file, for readers and tools that prefer it.
+
+## What the build guarantees
+
+Every page is rendered and checked before `dist/` changes. A failed build
+leaves the previous site in place and reports an `SsgError` naming the file,
+the cause and the fix. A successful build removes the files no page produces
+anymore. Setting `site` in the [configuration](/integration/ssg/configuration)
+adds a `sitemap.xml`.
+
+## Next
+
+- [Pages & layouts](/integration/ssg/pages): formats, metadata, layouts, client assets
+- [Configuration](/integration/ssg/configuration): `ssg.config.ts`, CLI options, plugins
+- [Deployment](/integration/ssg/deployment): hosts, error page, content types, caching

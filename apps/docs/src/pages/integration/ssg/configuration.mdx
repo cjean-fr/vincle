@@ -1,0 +1,126 @@
+---
+title: Configuration
+---
+
+# Configuration
+
+Without configuration, the conventions apply: routes in `src/pages/` (or `src/`
+when it has no `pages/` directory), output in `dist/`, `public/` copied as is.
+Add an `ssg.config.ts` at the project root when the site needs more:
+
+```ts title="ssg.config.ts"
+import { defineConfig } from "@vincle/ssg";
+
+export default defineConfig({
+  site: "https://example.com",
+  dev: {
+    notFound: "/404.html",
+    statuses: { "/404.html": 404 },
+  },
+});
+```
+
+`defineConfig` only adds types. It also accepts a function, async or not,
+receiving `{ command, mode }`: `command` is `"serve"` under `ssg dev` and
+`"build"` under `ssg build`. The configuration is read at startup; restart
+`ssg dev` after changing it.
+
+## Options
+
+| Option     | Default                      | Description                                                          |
+| ---------- | ---------------------------- | -------------------------------------------------------------------- |
+| `root`     | current directory            | Project directory; relative paths resolve from it                    |
+| `src`      | `src/pages`, otherwise `src` | Directory of the routes                                              |
+| `out`      | `dist`                       | Output directory                                                     |
+| `site`     | none                         | Public origin, such as `https://example.com`; enables `sitemap.xml`  |
+| `base`     | `/`                          | Path the site is served under, such as `/docs/`                      |
+| `sitemap`  | `true` when `site` is set    | `false` disables `sitemap.xml`                                       |
+| `i18n`     | none                         | `{ locales, defaultLocale }`, for language alternates in the sitemap |
+| `plugins`  | `[]`                         | Hooks into metadata, rendering and publication                       |
+| `handlers` | built-in formats             | Add a source format, or `false` to disable an extension              |
+| `runtime`  | Vincle                       | Another JSX runtime and its renderer                                 |
+| `assets`   | detected                     | `false` turns off the Vite integration                               |
+| `copy`     | `public/`                    | More directories to copy, as `{ from, to? }`                         |
+| `preserve` | none                         | Top-level files of `out` that another tool owns                      |
+
+`dev` holds the options of the development server alone:
+
+| Option      | Description                                                      |
+| ----------- | ---------------------------------------------------------------- |
+| `notFound`  | Page served for a missing URL, or a function of the path         |
+| `statuses`  | HTTP status per generated path, such as `{ "/404.html": 404 }`   |
+| `redirects` | Path-to-path redirects                                           |
+| `mimeTypes` | Content type per extension, such as `{ ".md": "text/markdown" }` |
+| `vite`      | Vite settings for the server only                                |
+
+These mirror what the host does in production: see
+[Deployment](/integration/ssg/deployment) for the same settings on the host side.
+
+## Command line
+
+```text
+ssg <dev|build> [options]
+
+  --config <file>  Use a specific configuration file
+  --root <path>    Project directory (default: current directory)
+  --mode <name>    Configuration mode (default: development or production)
+  --port <number>  Development server port (default: 4321)
+  --host <host>    Development server address (default: 127.0.0.1)
+```
+
+The CLI looks for `ssg.config` with a `.ts`, `.mts`, `.js`, `.mjs`, `.cts` or
+`.cjs` extension. It runs on Node; pages that use Bun APIs need
+`bun run --bun ssg build`. The same functions are exported for scripts:
+
+```ts
+import { build, dev } from "@vincle/ssg";
+
+await build({ site: "https://example.com" });
+
+const server = await dev();
+server.vite.printUrls();
+```
+
+## Vite
+
+A `vite.config.ts` at the project root applies to the pages and the client
+assets alike: aliases and plugins included. Set the base path with `base` in
+the SSG configuration, not in Vite's: SSG passes it to Vite, and reports a
+conflicting value.
+
+## Plugins
+
+A plugin is an object with a `name` and up to four hooks, called in this order
+for every build:
+
+| Hook        | Receives                      | Typical use                                |
+| ----------- | ----------------------------- | ------------------------------------------ |
+| `metadata`  | each page's context           | Fill `meta` before layouts render          |
+| `render`    | each output, not yet rendered | Wrap or replace how an output is produced  |
+| `transform` | each output, rendered         | Rewrite the final text or bytes            |
+| `publish`   | the whole site                | Emit derived files, such as a search index |
+
+```ts title="ssg.config.ts"
+import { defineConfig } from "@vincle/ssg";
+
+export default defineConfig({
+  plugins: [
+    {
+      name: "default-title",
+      metadata(context) {
+        context.meta.title ??= context.route;
+      },
+    },
+  ],
+});
+```
+
+A hook that throws stops the build before `dist/` changes, and the error names
+the plugin and the hook.
+
+## Errors
+
+Every failure is an `SsgError` with a stable `reason` (such as
+`SOURCE_MISSING` or `INVALID_CONFIG`), a `message` stating the problem and its
+context, and a `hint` with the fix. `JSON.stringify(error)` gives the same
+diagnostic as structured data. Test `reason`, never the message text.

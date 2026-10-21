@@ -4,16 +4,17 @@
     "collapsed": false,
     "order": 1
   },
+  "ssg": {
+    "title": "SSG",
+    "collapsed": false,
+    "order": 2
+  },
   "precompile": {
     "title": "Precompile transform",
-    "order": 2
+    "order": 3
   },
   "tsrx": {
     "title": "TSRX",
-    "order": 3
-  },
-  "deployment": {
-    "title": "Deploying a static site",
     "order": 4
   }
 }

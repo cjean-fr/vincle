@@ -1,0 +1,6 @@
+{
+  "overview": { "title": "Overview", "order": 1 },
+  "pages": { "title": "Pages & layouts", "order": 2 },
+  "configuration": { "title": "Configuration", "order": 3 },
+  "deployment": { "title": "Deployment", "order": 4 }
+}

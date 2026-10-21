@@ -1,0 +1,163 @@
+---
+title: Pages & layouts
+---
+
+# Pages & layouts
+
+A route is a file under `src/pages/`. Its extension decides how it renders;
+its path decides its URL. Everything else in the directory, helpers and
+components included, starts with `_` or lives outside `src/pages/`.
+
+```text
+src/
+  _layout.tsx        shared layout
+  _client/main.ts    browser entry, optional
+  components/        imported by pages, never routes
+  pages/
+    index.tsx        /
+    blog/
+      _layout.tsx    replaces the shared layout under /blog
+      first-post.md  /blog/first-post
+public/              copied as is to dist/
+```
+
+## Formats
+
+### Components
+
+A `.tsx` or `.jsx` page exports a default component, async or not. Its `meta`
+export describes the page: `title`, `description`, and any field of your own.
+
+```tsx title="src/pages/team.tsx"
+import { TeamList } from "../components/TeamList";
+
+declare function loadPeople(): Promise<{ name: string }[]>;
+
+export const meta = { title: "Team", description: "Who builds the product" };
+
+export default async function Team() {
+  const people = await loadPeople();
+  return <TeamList people={people} />;
+}
+```
+
+### Markdown and MDX
+
+`.md` and `.mdx` pages take their metadata from YAML frontmatter. MDX can
+import and render components; in a `.md` file, JSX and imports stay plain text.
+
+```mdx title="src/pages/blog/first-post.mdx"
+---
+title: First post
+description: Why we moved to a static site
+---
+
+import { Note } from "../../components/Note";
+
+# First post
+
+<Note>Published on our new site.</Note>
+```
+
+### Text and binary files
+
+A `.ts` or `.js` page that is not a component produces a file. Name it after
+the file it writes: `feed.xml.ts` becomes `/feed.xml`. The default export
+returns a string or bytes, directly or from a function, async or not.
+
+```ts title="src/pages/feed.xml.ts"
+import { renderFeed } from "../lib/feed";
+
+declare function loadPosts(): Promise<{ title: string; url: string }[]>;
+
+export const meta = { sitemap: false };
+
+export default async function () {
+  return renderFeed(await loadPosts());
+}
+```
+
+To write several files from one source, return `{ path, content }` objects, or
+yield them from a generator. Paths are relative to `dist/` and cannot leave it;
+two sources writing the same file fail the build. A component or MDX page can
+add files next to its HTML with an `outputs` export:
+
+```tsx
+import type { PageContext } from "@vincle/ssg";
+
+export const outputs = ({ outputPath, meta }: PageContext) => ({
+  path: outputPath(".json"),
+  content: JSON.stringify(meta),
+});
+```
+
+## Metadata
+
+`meta` (or the frontmatter) reaches the page, its layout and the plugins. A few
+fields have a meaning for the build:
+
+| Field         | Effect                                                       |
+| ------------- | ------------------------------------------------------------ |
+| `title`       | Free for the layout to use                                   |
+| `sitemap`     | `false` leaves the page out of `sitemap.xml`                 |
+| `layout`      | A layout path relative to the page, or `false` for none      |
+| `locale`      | The page language, for the multilingual sitemap              |
+| `incremental` | `false` re-renders the page on every change during `ssg dev` |
+
+Type your own fields by augmenting `SsgMeta`:
+
+```ts
+declare module "@vincle/ssg" {
+  interface SsgMeta {
+    author?: string;
+  }
+}
+```
+
+## Layouts
+
+The nearest `_layout.tsx`, in the page's directory or above it, wraps
+components, Markdown and MDX. It receives the rendered page as `children`,
+along with `meta`. A layout lower in the tree **replaces** the one above it; to
+build on it, import it:
+
+```tsx title="src/pages/blog/_layout.tsx"
+import type { Renderable } from "@vincle/core";
+import type { SsgMeta } from "@vincle/ssg";
+
+import SiteLayout from "../../_layout";
+
+export default function BlogLayout({ children, meta }: { children: Renderable; meta: SsgMeta }) {
+  return (
+    <SiteLayout meta={meta}>
+      <article>{children}</article>
+    </SiteLayout>
+  );
+}
+```
+
+Text and binary files are never wrapped. The layout owns the whole document,
+`<!DOCTYPE html>` included: write it with `raw("<!DOCTYPE html>\n")` before
+`<html>`, as in the [first site](/integration/ssg/overview#a-first-site).
+
+## Client assets
+
+The site ships no JavaScript of its own. To add some, or a stylesheet, create
+`src/_client/main.ts`, and optionally `src/_client/main.css`: SSG builds them
+with Vite and publishes the hashed files with the pages. Reference them from
+the layout with `Asset`, which resolves the right URL in development and in
+production:
+
+```tsx
+import { Asset } from "@vincle/vite-plugin";
+
+<head>
+  <Asset entry="src/_client/main.css" />
+  <Asset entry="src/_client/main.ts" />
+</head>;
+```
+
+`Asset` comes from `@vincle/vite-plugin`: install it next to `@vincle/ssg`.
+A `vite.config.ts` at the project root is picked up for both the pages and the
+assets. When `@tailwindcss/vite` is installed, SSG enables it: import
+`tailwindcss` from `main.css`.
