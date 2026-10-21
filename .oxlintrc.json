@@ -18,7 +18,16 @@
     "consistent-function-scoping": "off",
     "no-underscore-dangle": ["warn", { "allow": ["__html", "__brand"] }],
     "unicorn/require-module-specifiers": "off",
-    "eslint/no-await-in-loop": "off"
+    "eslint/no-await-in-loop": "off",
+    "eslint/no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_",
+        "argsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ]
   },
   "overrides": [
     {
