@@ -226,6 +226,13 @@ export const URL_ATTRIBUTES: ReadonlySet<string> = new Set([
   // `<object data>` / `<embed src>` navigate the same way `<iframe src>` does;
   // `data` is the only one of the two not already covered by `src`.
   "data",
+  // Single-URL attributes judged as `href` is, as defence in depth. `ping` (a
+  // list) and `srcset` (image candidates) are not judged: that would need
+  // parsing.
+  "cite",
+  "poster",
+  "background",
+  "manifest",
 ]);
 
 /**

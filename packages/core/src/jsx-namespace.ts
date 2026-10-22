@@ -3689,7 +3689,7 @@ export namespace JSX {
   }
   export interface AudioHTMLAttributes extends MediaHTMLAttributes {}
   export interface BlockquoteHTMLAttributes extends HTMLAttributes {
-    cite?: Awaitable<string | undefined | RawString>;
+    cite?: Awaitable<string | undefined | RawString | RawUrl>;
   }
   export interface ButtonHTMLAttributes extends HTMLAttributes {
     disabled?: Awaitable<boolean | undefined | RawString>;
@@ -3727,7 +3727,7 @@ export namespace JSX {
     value?: Awaitable<string | readonly string[] | number | undefined | RawString>;
   }
   export interface DelHTMLAttributes extends HTMLAttributes {
-    cite?: Awaitable<string | undefined | RawString>;
+    cite?: Awaitable<string | undefined | RawString | RawUrl>;
     dateTime?: Awaitable<string | undefined | RawString>;
     datetime?: Awaitable<string | undefined | RawString>;
   }
@@ -3767,7 +3767,7 @@ export namespace JSX {
     target?: Awaitable<string | undefined | RawString>;
   }
   export interface HtmlHTMLAttributes extends HTMLAttributes {
-    manifest?: Awaitable<string | undefined | RawString>;
+    manifest?: Awaitable<string | undefined | RawString | RawUrl>;
   }
   export interface IframeHTMLAttributes extends HTMLAttributes {
     allow?: Awaitable<string | undefined | RawString>;
@@ -3859,7 +3859,7 @@ export namespace JSX {
     width?: Awaitable<number | string | undefined | RawString>;
   }
   export interface InsHTMLAttributes extends HTMLAttributes {
-    cite?: Awaitable<string | undefined | RawString>;
+    cite?: Awaitable<string | undefined | RawString | RawUrl>;
     dateTime?: Awaitable<string | undefined | RawString>;
     datetime?: Awaitable<string | undefined | RawString>;
   }
@@ -3966,7 +3966,7 @@ export namespace JSX {
     value?: Awaitable<string | readonly string[] | number | undefined | RawString>;
   }
   export interface QuoteHTMLAttributes extends HTMLAttributes {
-    cite?: Awaitable<string | undefined | RawString>;
+    cite?: Awaitable<string | undefined | RawString | RawUrl>;
   }
   export interface SlotHTMLAttributes extends HTMLAttributes {
     name?: Awaitable<string | undefined | RawString>;
@@ -4091,7 +4091,7 @@ export namespace JSX {
     height?: Awaitable<number | string | undefined | RawString>;
     playsInline?: Awaitable<boolean | undefined | RawString>;
     playsinline?: Awaitable<boolean | undefined | RawString>;
-    poster?: Awaitable<string | undefined | RawString>;
+    poster?: Awaitable<string | undefined | RawString | RawUrl>;
     width?: Awaitable<number | string | undefined | RawString>;
     disablePictureInPicture?: Awaitable<boolean | undefined | RawString>;
     disablepictureinpicture?: Awaitable<boolean | undefined | RawString>;
