@@ -22,6 +22,7 @@ import { createPageRenderer } from "./lifecycle.js";
 import { generateSite, generateSiteCached, type PublicationCache } from "./outputs.js";
 import { fullUrl } from "./routes.js";
 import { sitemapOutputs } from "./sitemap.js";
+import { createTimings, type BuildTimings } from "./timings.js";
 
 /** Cached page runtimes must not retain the surrounding build's page arrays. */
 function assetRuntime(runtime: JsxRuntime, assets?: AssetBuild): JsxRuntime {
@@ -84,7 +85,9 @@ export function buildSummary(files: readonly string[], milliseconds: number): st
 }
 
 /** Build routes, all their outputs, assets and sitemap before publishing. */
-export async function build(options: SsgOptions = {}): Promise<{ files: string[] }> {
+export async function build(
+  options: SsgOptions = {},
+): Promise<{ files: string[]; timings?: BuildTimings }> {
   return runBuild(options);
 }
 
@@ -178,10 +181,14 @@ async function buildInternal(
   options: SsgOptions,
   cache?: PageCacheSession,
   publication?: PublicationCache,
-): Promise<{ files: string[] }> {
+): Promise<{ files: string[]; timings?: BuildTimings }> {
+  const timings = options.timings ? createTimings() : undefined;
+  const configurationStarted = timings === undefined ? 0 : performance.now();
   const { root, src, out } = buildPaths(options);
   const site = siteConfiguration(options);
   const handlers = resolveHandlers(options.handlers);
+  if (timings) timings.phase("configuration", performance.now() - configurationStarted);
+  const sourceStarted = timings === undefined ? 0 : performance.now();
   let sourceInfo;
   try {
     sourceInfo = await stat(src);
@@ -209,13 +216,18 @@ async function buildInternal(
       hint: "Set src to a directory containing route files, not to a file. The previous output was left untouched.",
       context: { root, src, out, phase: "discovery" },
     });
+  if (timings) timings.phase("source inspection", performance.now() - sourceStarted);
   // Temporary build files live beside out, like the publication stage.
+  const workStarted = timings === undefined ? 0 : performance.now();
   await mkdir(path.dirname(out), { recursive: true });
   const work = await mkdtemp(path.join(path.dirname(out), ".vincle-build-"));
+  if (timings) timings.phase("work directory", performance.now() - workStarted);
   let disposeAssets: (() => void | Promise<void>) | undefined;
+  let result: { files: string[] };
+  let cleanupStarted = 0;
   try {
-    let result: { files: string[] };
     try {
+      const assetsStarted = timings === undefined ? 0 : performance.now();
       const integration =
         options.assets === false
           ? undefined
@@ -240,11 +252,13 @@ async function buildInternal(
           )
         : undefined;
       disposeAssets = assets?.dispose;
+      if (timings) timings.phase("assets prepare", performance.now() - assetsStarted);
       const publicDirectory = path.join(root, "public");
       const publicCopy = (await exists(publicDirectory)) ? [{ from: publicDirectory }] : [];
       const renderRuntime = assetRuntime(runtime, assets);
       const urls = new Map<string, SsgMeta>();
       const htmlOutputs: { path: string; url: string; meta: SsgMeta }[] = [];
+      const discoveryStarted = timings === undefined ? 0 : performance.now();
       const discover = (discovery: DiscoverPagesOptions) =>
         discoverPages({
           ...discovery,
@@ -261,6 +275,7 @@ async function buildInternal(
       const pages = (
         await (options.discover ? options.discover(discovery, discover) : discover(discovery))
       ).toReversed();
+      if (timings) timings.phase("discovery", performance.now() - discoveryStarted);
       const renderPage = createPageRenderer();
       const contexts: PageContext[] = [];
       const pageCache = cache;
@@ -268,6 +283,9 @@ async function buildInternal(
         // Drop rendered page closures as we advance; publication only needs their contexts.
         while (pages.length) {
           const page = pages.pop()!;
+          let segment = timings === undefined ? 0 : performance.now();
+          let active = 0;
+          let renderedCount = 0;
           try {
             const hit = pageCache?.rendered(page);
             let context: PageContext | undefined;
@@ -289,9 +307,16 @@ async function buildInternal(
               if (output.sitemap && site && options.sitemap !== false)
                 urls.set(fullUrl(publicUrl(output), site), meta);
               if (pageCache && !hit) rendered.push(output);
+              if (timings) {
+                active += performance.now() - segment;
+                renderedCount += 1;
+              }
               yield output;
+              if (timings) segment = performance.now();
             }
             if (pageCache && !hit && context) pageCache.store(page.source.file, context, rendered);
+            if (timings)
+              timings.page(page.source.route, active + performance.now() - segment, renderedCount);
           } catch (error) {
             throw contextualError(error, `Failed source ${page.source.relativePath}`, {
               reason: "SOURCE_FAILED",
@@ -306,6 +331,7 @@ async function buildInternal(
         ? (preparedSite: Parameters<typeof generateSite>[0]) =>
             generateSiteCached(preparedSite, publication)
         : generateSite;
+      const publicationStarted = timings === undefined ? 0 : performance.now();
       result = await publish({
         out,
         outputs: produce(),
@@ -341,6 +367,7 @@ async function buildInternal(
             });
         },
       });
+      if (timings) timings.publication(performance.now() - publicationStarted, result.files.length);
     } catch (error) {
       // Cleanup must not replace a failed build's original diagnostic.
       try {
@@ -350,15 +377,18 @@ async function buildInternal(
       }
       throw error;
     }
+    cleanupStarted = timings === undefined ? 0 : performance.now();
     await diagnose(async () => disposeAssets?.(), "Asset cleanup failed after site publication", {
       reason: "ASSETS_FAILED",
       hint: "The site was published successfully. Fix the asset integration's dispose hook before rebuilding.",
       context: { root, src, out, phase: "cleanup" },
     });
-    return result;
   } finally {
     await rm(work, { recursive: true, force: true });
   }
+  if (timings) timings.phase("cleanup", performance.now() - cleanupStarted);
+  if (timings === undefined) return result;
+  return { files: result.files, timings: timings.snapshot() };
 }
 
 /** Validate translation groups and add their alternate links to the sitemap. */

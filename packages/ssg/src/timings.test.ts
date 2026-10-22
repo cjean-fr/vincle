@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import type { BuildPageTiming, BuildTimings } from "./timings.js";
+import type { BuildTimings } from "./timings.js";
 
 import { createTimings, formatTimings } from "./timings.js";
 
@@ -164,9 +164,15 @@ test("createTimings measures total from creation to snapshot with the injected c
 
 test("createTimings snapshot copies the recorded collections", () => {
   const timings = createTimings(() => 0);
+  timings.phase("discovery", 1);
   timings.page("/", 1, 1);
-  const snapshot = timings.snapshot();
-  (snapshot.pages as BuildPageTiming[]).push({ route: "/x", milliseconds: 1, outputs: 1 });
-  expect(snapshot.pages).toHaveLength(2);
-  expect(timings.snapshot().pages).toHaveLength(1);
+  timings.publication(2, 1);
+  const first = timings.snapshot();
+  const second = timings.snapshot();
+  expect(second.phases).toEqual(first.phases);
+  expect(second.phases).not.toBe(first.phases);
+  expect(second.pages).toEqual(first.pages);
+  expect(second.pages).not.toBe(first.pages);
+  expect(second.publication).toEqual(first.publication);
+  expect(second.publication).not.toBe(first.publication);
 });

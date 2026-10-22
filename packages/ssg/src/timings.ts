@@ -41,7 +41,11 @@ export interface BuildTimings {
   readonly total: number;
 }
 
-/** Recording surface used by buildInternal; no allocation until a call is made. */
+/**
+ * Recording surface used by buildInternal; durations are measured by the caller
+ * and only stored here. `createTimings` allocates its two arrays at creation, so
+ * each `phase`/`page` call is a single push.
+ */
 export interface TimingsCollector {
   phase(name: BuildPhase, milliseconds: number): void;
   page(route: string, milliseconds: number, outputs: number): void;
