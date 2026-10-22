@@ -145,9 +145,9 @@ export default defineConfig({src:"ssg-src",out:"cli-dist",assets:false,site:"htt
   );
   const packedSsg = manifests.find((manifest) => manifest.name === "@vincle/ssg");
   const packedCli = join(modules, "@vincle/ssg", packedSsg.bin.ssg);
-  run(["bun", packedCli, "build"], dir);
+  run(["bun", packedCli, "generate"], dir);
   if (!existsSync(join(dir, "cli-dist/index.html"))) throw new Error("Packed SSG CLI failed");
-  if (Bun.which("node")) run(["node", packedCli, "build"], dir);
+  if (Bun.which("node")) run(["node", packedCli, "generate"], dir);
   run(["bun", "--conditions=dist", "smoke.mjs"], dir);
   if (Bun.which("node")) run(["node", "smoke.mjs"], dir);
   console.log(
