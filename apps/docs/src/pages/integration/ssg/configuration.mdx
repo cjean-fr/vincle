@@ -106,8 +106,10 @@ build timings  total 412 ms
 ```
 
 `timings: true` in `ssg.config.ts` has the same effect, and
-`build({ timings: true })` returns `{ files, timings }` for a script. Nothing is
-measured when the option is off: no clock is read and no entry is collected.
+`build({ timings: true })` returns `{ files, timings }` for a script. With the
+option off — including an explicit `--no-timings` — the build collects no
+phase, page or publication entry; only the CLI's summary line times the whole
+build.
 
 Phase durations are sequential. `page rendering` adds the active time of every
 page, so it excludes the waits for publication; `publication` is wall-clock and

@@ -173,8 +173,13 @@ test("compiled CLI prints the timing report when the configuration enables it", 
 
 test("compiled CLI rejects --timings with ssg dev", async () => {
   const root = await fixture();
-  const result = await command(["dev", "--timings"], root);
-  expect(result.code).toBe(1);
-  expect(result.stderr).toContain("--timings applies only to ssg build.");
-  expect(result.stderr).toContain("INVALID_CONFIG");
+  for (const args of [
+    ["dev", "--timings"],
+    ["dev", "--no-timings"],
+  ]) {
+    const result = await command(args, root);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("--timings applies only to ssg build.");
+    expect(result.stderr).toContain("INVALID_CONFIG");
+  }
 });
