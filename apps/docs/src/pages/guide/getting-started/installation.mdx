@@ -7,35 +7,100 @@ title: Installation
 `@vincle/core` has zero runtime dependencies. Install it and configure
 TypeScript. That's all.
 
-## Package manager
+## Start a project
+
+Starting from an empty folder.
 
 ```bash tab="npm" sync="pkg-manager"
+mkdir my-site && cd my-site
+npm init -y
+# ES modules: the examples use top-level await
+npm pkg set type=module
 npm install @vincle/core
+# Node does not run .tsx files: tsx runs them, typescript checks types
+npm install -D typescript tsx @types/node
 ```
 
 ```bash tab="pnpm" sync="pkg-manager"
+mkdir my-site && cd my-site
+pnpm init
+# ES modules: the examples use top-level await
+pnpm pkg set type=module
 pnpm add @vincle/core
+# Node does not run .tsx files: tsx runs them, typescript checks types
+pnpm add -D typescript tsx @types/node
 ```
 
 ```bash tab="bun" sync="pkg-manager"
+mkdir my-site && cd my-site
+bun init -y
 bun add @vincle/core
 ```
 
 ## TypeScript configuration
 
-Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import:
+Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import.
 
-```json
+```json tab="npm" title="tsconfig.json" sync="pkg-manager"
 {
   "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "strict": true,
+    "noEmit": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core"
+    "jsxImportSource": "@vincle/core",
+    "types": ["node"]
   }
+}
+```
+
+```json tab="pnpm" title="tsconfig.json" sync="pkg-manager"
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "strict": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core",
+    "types": ["node"]
+  }
+}
+```
+
+```jsonc tab="bun" title="tsconfig.json" sync="pkg-manager"
+{
+  "compilerOptions": {
+    // bun init already writes this file: add this line and keep the rest
+    "jsxImportSource": "@vincle/core",
+    "jsx": "react-jsx",
+  },
 }
 ```
 
 Attributes are typed per element (`src` on `<img>`, `href` on `<a>`), with
 nothing extra to install: see [JSX types](/api/core/jsx-types).
+
+## Run a file
+
+Save the [hello world](/guide/getting-started/first-render#hello-world) as
+`index.tsx`, add `console.log(html)` at the end, then run it.
+
+```bash tab="npm" sync="pkg-manager"
+npx tsx index.tsx
+npx tsc # type check
+```
+
+```bash tab="pnpm" sync="pkg-manager"
+pnpm exec tsx index.tsx
+pnpm exec tsc # type check
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun index.tsx
+bun check # type check, built into Bun
+```
 
 ## Where to next
 
