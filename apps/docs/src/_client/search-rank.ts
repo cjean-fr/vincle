@@ -8,6 +8,8 @@ export interface SearchDocument {
   title: string;
   headings: SearchHeading[];
   text: string;
+  /** Where the page lives: its tab, then its sidebar categories. Absent outside any tab. */
+  trail?: string[];
   /** Terms the author attached to the page for words its text does not hold. */
   keywords?: string[];
 }

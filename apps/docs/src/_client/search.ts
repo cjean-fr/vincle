@@ -115,6 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
           url: hit.heading ? `${hit.document.url}#${hit.heading.id}` : hit.document.url,
           title: hit.heading ? `${hit.document.title} › ${hit.heading.text}` : hit.document.title,
           excerpt: snippet(hit.document.text, q),
+          trail: hit.document.trail ?? [],
           query: q,
         }),
       ),
@@ -270,6 +271,7 @@ function createResultItem(data: {
   url: string;
   title: string;
   excerpt: Segment[];
+  trail: string[];
   query: string;
 }) {
   const item = document.createElement("li");
@@ -285,31 +287,25 @@ function createResultItem(data: {
   title.className = "docs-search-result-title";
   appendSegments(title, highlightTitle(data.title, data.query));
 
-  const section = document.createElement("span");
-  section.className = "docs-search-result-section";
-  section.textContent = sectionOf(data.url);
+  const trail = document.createElement("span");
+  trail.className = "docs-search-result-trail";
+  data.trail.forEach((label, i) => {
+    if (i > 0) {
+      const separator = document.createElement("span");
+      separator.setAttribute("aria-hidden", "true");
+      separator.textContent = " › ";
+      trail.append(separator);
+    }
+    trail.append(label);
+  });
 
   const excerpt = document.createElement("span");
   excerpt.className = "docs-search-result-excerpt";
   appendSegments(excerpt, data.excerpt);
 
-  const heading = document.createElement("span");
-  heading.className = "docs-search-result-heading";
-  heading.append(title, section);
-
-  link.append(heading, excerpt);
+  link.append(...(data.trail.length > 0 ? [trail] : []), title, excerpt);
   item.append(link);
   return item;
-}
-
-/** Pages sharing a title (three "Components") stay distinguishable by where they live. */
-function sectionOf(url: string): string {
-  const lang = document.documentElement.lang;
-  return url
-    .split("/")
-    .filter((segment, i) => segment && !(i === 1 && segment === lang))
-    .slice(0, -1)
-    .join(" / ");
 }
 
 function snippet(text: string, query: string, radius = 50): Segment[] {

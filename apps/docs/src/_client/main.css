@@ -533,18 +533,13 @@ html.dark .docs-theme-toggle-sun {
 [aria-selected="true"] > .docs-search-result .docs-search-result-title {
   color: var(--docs-color-accent);
 }
-.docs-search-result-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-.docs-search-result-section {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-}
-.docs-search-result-section:empty {
-  display: none;
+.docs-search-result-trail {
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .docs-search-result-excerpt {
   font-size: 0.75rem;

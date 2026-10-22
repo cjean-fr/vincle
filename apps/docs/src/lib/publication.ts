@@ -1,11 +1,11 @@
 import { fullUrl, type SsgPlugin } from "@vincle/ssg";
 
 import type { SearchDocument } from "../_client/search-rank.js";
-import type { DocsConfig } from "./types.js";
+import type { DocsConfig, ResolvedSidebar } from "./types.js";
 
 import docs from "../../docs.config.js";
 import ssg from "../../ssg.config.js";
-import { tabFor } from "./sidebar.js";
+import { categoriesOf, tabFor } from "./sidebar.js";
 import { hasSocialCard, socialCardPath, socialCardPng, summarize } from "./social-card.js";
 
 export function llmsTxt(
@@ -117,6 +117,16 @@ function htmlToText(html: string, options?: { mainOnly?: boolean }): string {
  */
 const SOCIAL_CARD_CONCURRENCY = 8;
 
+/** The tab and sidebar categories of a page, from the navigation its layout already resolves. */
+async function trailOf(page: { url: string; meta: object }): Promise<string[]> {
+  const tab = tabFor(docs.tabs, page.url);
+  if (!tab) return [];
+  const resolve = (page.meta as { documentation?: () => Promise<{ sidebar: ResolvedSidebar }> })
+    .documentation;
+  const categories = resolve ? categoriesOf((await resolve()).sidebar, page.url) : [];
+  return [tab.label, ...categories];
+}
+
 /** Search, LLM and social artifacts consume the same final HTML, read once per page. */
 export const documentationArtifacts: SsgPlugin = {
   name: "documentation-artifacts",
@@ -130,9 +140,11 @@ export const documentationArtifacts: SsgPlugin = {
       const title = page.meta.title ?? page.url;
       const main = htmlToText(html, { mainOnly: true });
       const keywords = (page.meta as { keywords?: string[] }).keywords;
+      const trail = await trailOf(page);
       search.push({
         url: page.url,
         title,
+        ...(trail.length === 0 ? {} : { trail }),
         headings: headingsOf(html),
         text: main,
         ...(keywords === undefined ? {} : { keywords }),
