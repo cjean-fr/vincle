@@ -458,7 +458,6 @@ describe("one leaf taxonomy, three entry points", () => {
     raw(""),
     { toString: () => "custom object" },
     new Date(0),
-    () => "fn",
     Symbol("s"),
   ];
 
@@ -480,6 +479,14 @@ describe("one leaf taxonomy, three entry points", () => {
       }
     }
     expect(failures).toEqual([]);
+  });
+
+  test("a function is not a text value: valueToText and renderNode throw", () => {
+    const fn = () => "fn";
+    expect(() => valueToText(fn)).toThrow(/reached a text position/);
+    expect(() => renderNode(fn)).toThrow(/reached a text position/);
+    // `jsxEscape` defers a function to the render walk, which throws: see
+    // function-child.test.ts.
   });
 
   test("a VNode is not a text value: valueToText throws", () => {
