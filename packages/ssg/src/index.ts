@@ -14,6 +14,7 @@ export type {
   SsgProducer,
   SsgPlugin,
   JsxRuntime,
+  AssetContext,
   AssetIntegration,
   AssetBuild,
   ModuleLoader,

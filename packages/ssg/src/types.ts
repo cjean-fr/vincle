@@ -130,24 +130,48 @@ export interface SsgPlugin {
   publish?(context: PublicationContext): Awaitable<void>;
 }
 
-/** Optional asset builder, independent of any bundler. */
-export interface AssetIntegration {
-  prepare(context: {
-    root: string;
-    src: string;
-    out: string;
-    runtime: JsxRuntime;
-    /** Public path prefix from SsgOptions.base, e.g. "/docs/"; undefined leaves the bundler's own base. */
-    base?: string;
-  }): Awaitable<AssetBuild>;
+/** Context shared by every asset integration preparation. */
+export interface AssetContext {
+  /** Absolute project root. */
+  root: string;
+  /** Absolute route source directory. */
+  src: string;
+  /** Absolute integration-private preparation directory; its container is created by the core. */
+  out: string;
+  runtime: JsxRuntime;
+  /** Public path prefix from SsgOptions.base, e.g. "/docs/"; undefined leaves the bundler's own base. */
+  base?: string;
 }
 
+/**
+ * Asset builder composed alongside the pages: client bundles, generated images or any
+ * other files published next to the output. Independent of any bundler.
+ *
+ * SsgOptions.assets accepts one integration, an array of integrations (prepared, copied,
+ * wrapping and released in declaration order) or false. Without an explicit value the
+ * conventional Vite integration is detected.
+ */
+export interface AssetIntegration {
+  /** Build preparation; `directory` is copied into the site's output root. */
+  prepare(context: AssetContext): Awaitable<AssetBuild>;
+  /**
+   * Development pendant. Present: the development server prepares this integration once
+   * per session and reuses the build across rebuilds. Absent: `prepare` runs on every rebuild.
+   */
+  dev?(context: AssetContext): Awaitable<AssetBuild>;
+}
+
+/** One prepared asset integration. */
 export interface AssetBuild {
-  /** Prepared asset files, copied into the site's output root. */
+  /** Prepared asset directory, copied into the site's output root; relative paths resolve from root. */
   directory: string;
+  /** Source module loader; at most one integration per build may provide one. */
   modules?: ModuleLoader;
+  /** Files whose modification triggers a development rebuild; resolved from root, ignored by builds. */
+  watch?: readonly string[];
+  /** Release resources once per build, in reverse declaration order, best-effort after publication. */
   dispose?(): Awaitable<void>;
-  /** Wraps the configured JSX renderer, e.g. to install a manifest in scope. */
+  /** Wraps the configured JSX renderer. Later integrations wrap earlier ones. */
   render?(runtime: JsxRuntime, create: () => unknown): Awaitable<string>;
 }
 
@@ -172,8 +196,13 @@ export interface SsgOptions {
   /** Path prefix the site is served under, e.g. "/docs/" (default "/"). Applies to sitemap and asset URLs. */
   base?: string;
   sitemap?: boolean;
-  /** Auto-detect Vite configuration/client entry by default; false disables it. */
-  assets?: AssetIntegration | false;
+  /**
+   * Asset integrations, prepared, copied, wrapping the renderer and released in declaration
+   * order. One integration is accepted for compatibility; an explicit array (`[]` included)
+   * disables conventional detection; false disables all integrations. When omitted, the
+   * conventional Vite integration is detected from vite.config or client entries.
+   */
+  assets?: AssetIntegration | readonly AssetIntegration[] | false;
   copy?: SiteOptions["copy"];
   preserve?: SiteOptions["preserve"];
   /** Collect build timings (phases, pages, publication) on the returned result; off by default. */

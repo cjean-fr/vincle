@@ -1,9 +1,7 @@
 import type { ServerResponse } from "node:http";
 
-import { Scope } from "@vincle/core";
-import { setVite } from "@vincle/vite-plugin";
 import fs from "node:fs";
-import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -14,8 +12,9 @@ import {
   type ViteDevServer,
 } from "vite";
 
-import type { AssetIntegration, SsgOptions } from "./types.js";
+import type { SsgOptions } from "./types.js";
 
+import { type AssetSession, disposeBuilds, resolveAssetIntegrations } from "./assets.js";
 import { basePath, withBase } from "./base.js";
 import { buildCached, buildSummary } from "./build.js";
 import { sourceDirectory } from "./conventions.js";
@@ -26,7 +25,7 @@ import { PublicationCache } from "./outputs.js";
 import { PageCache } from "./page-cache.js";
 import { loadViteConfig } from "./vite-config.js";
 
-export interface DevOptions extends Omit<SsgOptions, "assets"> {
+export interface DevOptions extends SsgOptions {
   /** Vite development server options, including host, port and base. */
   vite?: InlineConfig;
   /** Add or override content types for generated/copied files. */
@@ -113,6 +112,8 @@ async function start(options: DevOptions): Promise<DevServer> {
   const root = path.resolve(options.root ?? process.cwd());
   const importSource = options.runtime?.importSource ?? "@vincle/core";
   const src = sourceDirectory(root, options.src);
+  // Resolved once so conventional detection yields stable identities for the session cache.
+  const integrations = await resolveAssetIntegrations(options.assets, root, src);
   const published = path.resolve(root, options.out ?? "dist");
   const mimeTypes = resolveMimeTypes(options.mimeTypes);
   const work = await mkdtemp(path.join(tmpdir(), "vincle-dev-"));
@@ -121,22 +122,16 @@ async function start(options: DevOptions): Promise<DevServer> {
   const compiler = developmentModules(importSource, src);
   const cache = new PageCache(compiler.dependencies);
   const publication = new PublicationCache();
-  const assets: AssetIntegration = {
-    async prepare(context) {
-      // Vite serves client assets in development; nothing is prebuilt.
-      await mkdir(context.out, { recursive: true });
-      return {
-        directory: context.out,
-        modules: compiler.modules,
-        render: (runtime, create) =>
-          Scope.with(() =>
-            runtime.render(() => {
-              // Vite applies the development base during transformIndexHtml.
-              setVite(null, { base: "/" });
-              return create();
-            }),
-          ),
-      };
+  const watchedAssets = new Set<string>();
+  const assetSession: AssetSession = {
+    integrations,
+    directory: path.join(work, "assets"),
+    modules: compiler.modules,
+    prepared: new Map(),
+    watch(files) {
+      const added = files.filter((file) => !watchedAssets.has(file));
+      for (const file of added) watchedAssets.add(file);
+      if (added.length) server?.watcher.add(added);
     },
   };
   const ignored = (file: string) =>
@@ -157,6 +152,8 @@ async function start(options: DevOptions): Promise<DevServer> {
 
   const regenerate = async () => {
     const started = performance.now();
+    // A declared asset file feeds the render chain, so every page must re-render.
+    if ([...changes].some((file) => watchedAssets.has(file))) force = true;
     cache.invalidate(changes);
     changes.clear();
     cache.invalidate(await compiler.refresh());
@@ -165,7 +162,7 @@ async function start(options: DevOptions): Promise<DevServer> {
       force = false;
     }
     const session = cache.begin(options);
-    const result = await buildCached({ ...options, root, out, assets }, session, publication);
+    const result = await buildCached({ ...options, root, out }, session, publication, assetSession);
     await compiler.setWatched(session.commit());
     // Edits that land during publication schedule another pass.
     const late = await compiler.refresh();
@@ -277,6 +274,10 @@ async function start(options: DevOptions): Promise<DevServer> {
       detachWatcher();
       await pending?.catch(() => {});
       await recovering;
+      const failed = await disposeBuilds([...assetSession.prepared.values()]);
+      if (failed)
+        server?.config.logger.warn(`[vincle/ssg] Asset cleanup failed: ${String(failed)}`);
+      assetSession.prepared.clear();
       await closeVite?.();
       cache.clear();
       publication.clear();
@@ -357,6 +358,8 @@ async function start(options: DevOptions): Promise<DevServer> {
               vite.watcher.add(src);
               for (const resource of options.copy ?? [])
                 vite.watcher.add(path.resolve(root, resource.from));
+              // A restart replaces the watcher, so declared asset files are re-added.
+              if (watchedAssets.size) vite.watcher.add([...watchedAssets]);
               // Vite's SIGTERM/stdin handlers must await SSG cleanup before exiting.
               closeVite = vite.close.bind(vite);
               vite.close = close;

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { isRunnableDevEnvironment } from "vite";
 
-import type { PageContext } from "./types.js";
+import type { AssetIntegration, PageContext } from "./types.js";
 
 import { dev } from "./dev.js";
 
@@ -892,6 +892,133 @@ test("custom discovery retains incremental pages, catalog keys and dependencies 
     expect(JSON.parse(await get("catalog.json"))).toEqual(["B", "C"]);
     await server.rebuild();
     expect(rendered).toEqual([]);
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);
+
+const assetDevVite = {
+  configFile: false as const,
+  logLevel: "silent" as const,
+  server: { host: "127.0.0.1", port: 0, watch: { usePolling: true, interval: 50 } },
+};
+
+test("dev prepares integrations declaring dev once per session and others on every rebuild", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-dev-assets-"));
+  await mkdir(path.join(root, "src"));
+  await writeFile(path.join(root, "src/index.tsx"), "export default () => <p>page</p>");
+  let devCalls = 0;
+  let prepareCalls = 0;
+  const assets: AssetIntegration[] = [
+    {
+      async dev(context) {
+        devCalls++;
+        await mkdir(context.out, { recursive: true });
+        return {
+          directory: context.out,
+          render: async (runtime, create) => `<session>${await runtime.render(create)}</session>`,
+        };
+      },
+      prepare() {
+        throw new Error("dev must not prepare");
+      },
+    },
+    {
+      async prepare(context) {
+        prepareCalls++;
+        await mkdir(context.out, { recursive: true });
+        return { directory: context.out };
+      },
+    },
+  ];
+  const server = await dev({ root, assets, vite: assetDevVite });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected HTTP server");
+    const url = `http://127.0.0.1:${address.port}/`;
+    expect(await (await fetch(url)).text()).toContain("<session>");
+    expect(devCalls).toBe(1);
+    expect(prepareCalls).toBe(1);
+    await server.rebuild({ force: true });
+    expect(devCalls).toBe(1);
+    expect(prepareCalls).toBe(2);
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);
+
+test("dev rebuilds when a declared asset watch file changes", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-dev-assets-"));
+  const external = await mkdtemp(path.join(tmpdir(), "vincle-dev-assets-watch-"));
+  const watchFile = path.join(external, "asset.txt");
+  await writeFile(watchFile, "FIRST-ASSET");
+  await mkdir(path.join(root, "src"));
+  await writeFile(path.join(root, "src/index.tsx"), "export default () => <p>page</p>");
+  const assets: AssetIntegration[] = [
+    {
+      async prepare(context) {
+        const text = await readFile(watchFile, "utf8");
+        await mkdir(context.out, { recursive: true });
+        return {
+          directory: context.out,
+          watch: [watchFile],
+          render: async (runtime, create) =>
+            `<asset>${text}</asset>${await runtime.render(create)}`,
+        };
+      },
+    },
+  ];
+  const server = await dev({ root, assets, vite: assetDevVite });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected HTTP server");
+    const url = `http://127.0.0.1:${address.port}/`;
+    expect(await (await fetch(url)).text()).toContain("FIRST-ASSET");
+    await writeFile(watchFile, "SECOND-ASSET");
+    let html = "";
+    for (let i = 0; i < 100; i++) {
+      html = await (await fetch(url)).text();
+      if (html.includes("SECOND-ASSET")) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(html).toContain("SECOND-ASSET");
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+    await rm(external, { recursive: true, force: true });
+  }
+}, 20_000);
+
+test("dev disposes session asset builds once when the server closes", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-dev-assets-"));
+  await mkdir(path.join(root, "src"));
+  await writeFile(path.join(root, "src/index.tsx"), "export default () => <p>page</p>");
+  let disposeCalls = 0;
+  const assets: AssetIntegration[] = [
+    {
+      async dev(context) {
+        await mkdir(context.out, { recursive: true });
+        return {
+          directory: context.out,
+          dispose() {
+            disposeCalls++;
+          },
+        };
+      },
+      prepare() {
+        throw new Error("dev must not prepare");
+      },
+    },
+  ];
+  const server = await dev({ root, assets, vite: assetDevVite });
+  try {
+    await server.rebuild();
+    await server.rebuild();
+    expect(disposeCalls).toBe(0);
+    await server.close();
+    expect(disposeCalls).toBe(1);
   } finally {
     await server.close();
     await rm(root, { recursive: true, force: true });

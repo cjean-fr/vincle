@@ -19,7 +19,12 @@ import { clientEntries } from "./conventions.js";
 import { failure, diagnose } from "./errors.js";
 import { flattenPlugins, loadViteConfig } from "./vite-config.js";
 
-/** Assets and server pages share production configuration, aliases and plugins. */
+/**
+ * Assets and server pages share production configuration, aliases and plugins.
+ *
+ * `config` applies to builds; the development server is configured through `dev.vite`,
+ * so `dev()` prepares no client build and lets Vite serve source assets.
+ */
 export function viteAssets(config: InlineConfig = {}): AssetIntegration {
   return {
     prepare(context) {
@@ -28,6 +33,31 @@ export function viteAssets(config: InlineConfig = {}): AssetIntegration {
         hint: "Check vite.config, entry files/imports and filesystem permissions. Inspect the original Vite error in cause.",
         context: { root: context.root, src: context.src, phase: "assets" },
       });
+    },
+    dev(context) {
+      return diagnose(
+        async () => {
+          // Vite serves client assets in development; nothing is prebuilt.
+          await mkdir(context.out, { recursive: true });
+          return {
+            directory: context.out,
+            render: (runtime, create) =>
+              Scope.with(() =>
+                runtime.render(() => {
+                  // Vite applies the development base during transformHtml.
+                  setVite(null, { base: "/" });
+                  return create();
+                }),
+              ),
+          };
+        },
+        "Could not prepare Vite development assets",
+        {
+          reason: "ASSETS_FAILED",
+          hint: "Check filesystem permissions on the preparation directory. The development server is configured through dev.vite.",
+          context: { root: context.root, src: context.src, phase: "assets" },
+        },
+      );
     },
   };
 }
