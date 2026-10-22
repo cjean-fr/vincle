@@ -42,6 +42,7 @@ receiving `{ command, mode }`: `command` is `"serve"` under `ssg dev` and
 | `assets`   | detected                     | `false` turns off the Vite integration                               |
 | `copy`     | `public/`                    | More directories to copy, as `{ from, to? }`                         |
 | `preserve` | none                         | Top-level files of `out` that another tool owns                      |
+| `timings`  | `false`                      | Collect build timings; `ssg build --timings` prints the report       |
 
 `dev` holds the options of the development server alone:
 
@@ -64,6 +65,7 @@ ssg <dev|build> [options]
   --config <file>  Use a specific configuration file
   --root <path>    Project directory (default: current directory)
   --mode <name>    Configuration mode (default: development or production)
+  --timings        Print build phases, pages and publication timings
   --port <number>  Development server port (default: 4321)
   --host <host>    Development server address (default: 127.0.0.1)
 ```
@@ -80,6 +82,39 @@ await build({ site: "https://example.com" });
 const server = await dev();
 server.vite.printUrls();
 ```
+
+## Build timings
+
+`ssg build --timings` adds a report of what the build spent its time on, after
+the summary line:
+
+```text
+build timings  total 412 ms
+  phases (sequential)
+    configuration            3 ms   0.7%
+    source inspection        1 ms   0.2%
+    work directory           2 ms   0.5%
+    assets prepare         118 ms  28.6%
+    discovery               24 ms   5.8%
+    cleanup                  2 ms   0.5%
+  page rendering (active)  195 ms  47.3%  · 3 pages
+  publication (wall)       258 ms  62.6%  · 12 files, includes rendering
+  slowest pages (median 62 ms · p95 78 ms)
+    /guide/article          78 ms  3 outputs
+    /                       62 ms  1 output
+    /hello                  55 ms  1 output
+```
+
+`timings: true` in `ssg.config.ts` has the same effect, and
+`build({ timings: true })` returns `{ files, timings }` for a script. Nothing is
+measured when the option is off: no clock is read and no entry is collected.
+
+Phase durations are sequential. `page rendering` adds the active time of every
+page, so it excludes the waits for publication; `publication` is wall-clock and
+includes rendering, which is why the percentages can sum past 100%. The three
+slowest pages come with their output count, plus the median and p95 over all
+pages. `ssg dev --timings` is rejected: the development server does not report
+timings.
 
 ## Vite
 

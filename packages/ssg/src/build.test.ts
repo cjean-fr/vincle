@@ -547,3 +547,26 @@ test("build keeps the same invalid configuration failure with and without timing
     expect(withTimings.reason).toBe("INVALID_CONFIG");
     expect(withTimings.message).toBe(without.message);
   }));
+
+test("build records page timings in render order rather than a sorted order", () =>
+  fixture(async (root, put) => {
+    await put("a.fixture", "");
+    await put("b.fixture", "");
+    const catalog = (
+      await discoverPages({
+        src: path.join(root, "src"),
+        handlers: {
+          ".fixture": {
+            name: "fixture",
+            load: ({ route }) => ({
+              meta: { title: route },
+              render: ({ outputPath }) => ({ path: outputPath(), content: route }),
+            }),
+          },
+        },
+      })
+    ).toReversed();
+    const result = await build({ root, assets: false, timings: true, discover: () => catalog });
+    expect(catalog.map((page) => page.source.route)).toEqual(["/b", "/a"]);
+    expect(result.timings!.pages.map((page) => page.route)).toEqual(["/b", "/a"]);
+  }));
