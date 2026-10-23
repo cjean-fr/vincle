@@ -1,0 +1,235 @@
+---
+title: Images
+---
+
+# Images
+
+A descriptor declares one master, one public directory and the variants to
+generate. The generator and `<Picture>` derive their paths from the **same**
+descriptor, so a `<source>` cannot point at a file nobody produced: the 404
+class of bug is gone. The module ships no codec and no bundler dependency; the
+project supplies a converter.
+
+## Declare an image
+
+```ts title="src/lib/images.ts"
+import type { ImageDescriptor } from "@vincle/ssg/image";
+
+export const portrait: ImageDescriptor = {
+  id: "portrait",
+  source: "assets/portrait.jpg",
+  directory: "portraits",
+  name: "photo",
+  widths: [80, 160, 256, 352, 512, 768],
+  formats: ["avif", "webp", "jpg"],
+};
+```
+
+| Field       | Meaning                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| `id`        | The key `<Picture>` resolves the image by; unique within one `images()` call.                                        |
+| `source`    | The master, resolved from the project root; `decode()` receives its absolute path.                                   |
+| `directory` | Public directory of the variants, relative to the site root, forward slashes, nesting allowed (`img/portraits`).     |
+| `name`      | File name prefix, **one segment only** (no `/`).                                                                     |
+| `widths`    | Strictly positive, unique integers; one file per width and per format.                                               |
+| `formats`   | A subset of `converter.formats`; the order is the `<source>` order, and **the last format is the `<img>` fallback**. |
+| `mime?`     | MIME override per declared format, such as `{ tiff: "image/tiff" }`; consulted before the module's own table.        |
+
+Every variant URL is deterministic: `/{directory}/{name}-{width}.{format}`, for
+example `/portraits/photo-256.avif`. No base, no hash, no query. Written by
+hand, `imageUrl` returns the same string:
+
+```ts
+import { imageUrl } from "@vincle/ssg/image";
+
+import { portrait } from "./lib/images.js";
+
+imageUrl(portrait, 256, "avif"); // "/portraits/photo-256.avif"
+```
+
+## The converter
+
+```ts
+export interface ImageSource {
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Image codec provided by the project, for example a `sharp` or WASM wrapper. It is
+ * not sandboxed: it runs in the build process with the project's privileges.
+ */
+export interface ImageConverter {
+  /** Encodable extensions, for example ["avif", "webp", "jpg"]. */
+  readonly formats: readonly string[];
+  /** Decode a master; called once per state of the source file and cached by the module. */
+  decode(source: string): Promise<ImageSource>;
+  /** Encode one variant; called once per variant and per state of the source file. */
+  encode(
+    image: ImageSource,
+    variant: { readonly width: number; readonly format: string },
+  ): Promise<Uint8Array>;
+}
+```
+
+- `formats` is the allowed set: a descriptor format outside it fails at
+  `images()`.
+- `decode` is called **once per state of the master** (`mtime` plus size), and
+  `encode` **once per variant and per state**.
+- The object `decode` returns is handed back to `encode` as it is, so a
+  converter may enrich it.
+- The converter runs in the build process, **without a sandbox**, with the
+  project's privileges: it is project code, like `plugins`, and `encode` must
+  return a `Uint8Array`.
+
+```ts title="src/lib/sharp-converter.ts"
+import sharp from "sharp";
+
+import type { ImageConverter, ImageSource } from "@vincle/ssg/image";
+
+/** Decoded master: the pixel size sharp reports, plus the path encode() reads again. */
+interface SharpSource extends ImageSource {
+  input: string;
+}
+
+export const sharpConverter: ImageConverter = {
+  formats: ["avif", "webp", "jpg"],
+
+  async decode(source) {
+    const { width, height } = await sharp(source).metadata();
+    if (width === undefined || height === undefined)
+      throw new Error(`sharp found no pixel size in ${source}`);
+    return { width, height, input: source } satisfies SharpSource;
+  },
+
+  async encode(image, variant) {
+    // decode() built this object; the module hands the same object back.
+    const { input } = image as SharpSource;
+    const pipeline = sharp(input).resize({ width: variant.width, withoutEnlargement: true });
+    const encoded =
+      variant.format === "avif"
+        ? pipeline.avif({ quality: 50 })
+        : variant.format === "webp"
+          ? pipeline.webp({ quality: 80 })
+          : pipeline.jpeg({ quality: 80 });
+    // Buffer is a Uint8Array: no copy.
+    return encoded.toBuffer();
+  },
+};
+```
+
+sharp does not read JPEG XL: its libvips ships without libjxl. For a `.jxl`
+master, decode with WebAssembly — `@jsquash/jxl`, for example — and hand the
+pixels to sharp: the contract does not know which library answers.
+
+## Configuration
+
+```ts title="ssg.config.ts"
+import { defineConfig } from "@vincle/ssg";
+import { images } from "@vincle/ssg/image";
+import { viteAssets } from "@vincle/ssg/vite";
+
+import { portrait } from "./src/lib/images.js";
+import { sharpConverter } from "./src/lib/sharp-converter.js";
+
+export default defineConfig({
+  assets: [viteAssets(), images({ converter: sharpConverter, descriptors: [portrait] })],
+});
+```
+
+`images()` returns an ordinary asset integration, with no image dependency and
+no bundler. Declaring `assets` **turns off conventional Vite detection**, hence
+`viteAssets()` in the list. The configuration is validated **synchronously at
+the `images()` call**, before any build: an `INVALID_CONFIG` error names the
+descriptor at fault.
+
+## Render with `<Picture>`
+
+```tsx
+import { Picture } from "@vincle/ssg/image";
+
+import { portrait } from "./lib/images.js";
+
+<Picture
+  image={portrait}
+  alt="Portrait of Christophe Jean"
+  sizes="(min-width: 1024px) 256px, 80px"
+  fallbackWidth={256}
+  width={1024}
+  height={1024}
+  class="portrait"
+  loading="eager"
+/>;
+```
+
+{/* prettier-ignore */}
+```html
+<picture>
+  <source srcset="/portraits/photo-80.avif 80w, /portraits/photo-160.avif 160w, /portraits/photo-256.avif 256w, /portraits/photo-352.avif 352w, /portraits/photo-512.avif 512w, /portraits/photo-768.avif 768w" sizes="(min-width: 1024px) 256px, 80px" type="image/avif">
+  <source srcset="/portraits/photo-80.webp 80w, /portraits/photo-160.webp 160w, /portraits/photo-256.webp 256w, /portraits/photo-352.webp 352w, /portraits/photo-512.webp 512w, /portraits/photo-768.webp 768w" sizes="(min-width: 1024px) 256px, 80px" type="image/webp">
+  <img src="/portraits/photo-256.jpg" srcset="/portraits/photo-80.jpg 80w, /portraits/photo-160.jpg 160w, /portraits/photo-256.jpg 256w, /portraits/photo-352.jpg 352w, /portraits/photo-512.jpg 512w, /portraits/photo-768.jpg 768w" sizes="(min-width: 1024px) 256px, 80px" alt="Portrait of Christophe Jean" width="1024" height="1024" class="portrait" loading="eager">
+</picture>
+```
+
+| Prop            | Effect                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `image`         | The descriptor; only `id` is read, and the markup comes from the descriptor **declared** in `images()`, so a copy with other `widths` or `formats` changes nothing. |
+| `alt`           | Required, escaped; pass `""` for a decorative image.                                                                                                                |
+| `sizes`         | Emitted on every `<source>` and on `<img>`, **omitted otherwise**: there is no implicit `100vw`.                                                                    |
+| `fallbackWidth` | Width of the `<img>` `src`; defaults to the largest declared width, and must be a declared width.                                                                   |
+| `class`         | Class of the **`<img>`**.                                                                                                                                           |
+| `pictureClass`  | Class of the **`<picture>`**.                                                                                                                                       |
+| `width`         | Attribute of the `<img>`; no default.                                                                                                                               |
+| `height`        | Attribute of the `<img>`; no default.                                                                                                                               |
+| `loading`       | `"eager"` or `"lazy"`; no default.                                                                                                                                  |
+| `decoding`      | `"async"`, `"sync"` or `"auto"`.                                                                                                                                    |
+| `fetchPriority` | Emitted as the lowercase `fetchpriority`.                                                                                                                           |
+
+A descriptor with a single format produces **no** `<source>` at all, only the
+`<img>` inside `<picture>`, and the `<img>` never carries `type`. `base` is
+prefixed **once**, here: `imageUrl` never carries it (`base: "/docs/"` renders
+`/docs/portraits/photo-256.jpg`). `<Picture>` is a Vincle component, so an
+alternate runtime does not render it. Outside a build, `setImages([portrait])`
+in the render scope installs the registry, and `setImages(null)` installs an
+empty one (`Declared images: (none)` for any id).
+
+## Errors
+
+| Error                         | When                                | What it carries                                                                                                                                                                                                                                                                              |
+| ----------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INVALID_CONFIG`              | the `images()` call, before a build | An `SsgError` with `context.phase: "images"`, `index` (1-based), `image`, `field` (`converter`, `converter.formats`, `descriptors`, `id`, `source`, `directory`, `name`, `widths`, `formats`, `mime`, `directory/name`, `files`), and `value` when the faulty value is a string or a number. |
+| `ASSETS_FAILED`               | preparation, asset phase            | An `SsgError` with `context.phase: "assets"`, `root`, `image`, and `source` or `variant` (`"80.webp"`); the core wraps it as `Could not prepare asset integration #<n>`, `<n>` being the position in `assets`.                                                                               |
+| `ERR_VINCLE_IMAGE_UNDECLARED` | rendering                           | No registry, an `image` without a usable id, or an undeclared id; the message lists the declared ids, or `(none)`.                                                                                                                                                                           |
+| `ERR_VINCLE_IMAGE_INVALID`    | rendering                           | A `fallbackWidth` outside the declared widths.                                                                                                                                                                                                                                               |
+
+The last two codes sit on the error `<Picture>` raises. The build wraps that
+error in an `SsgError` with `reason: "SOURCE_FAILED"` (`Failed source
+src/pages/index.tsx: …`), and the code survives in `cause.code` and in
+`JSON.stringify(error)`. Classify by `reason` at the top level and by `code` in
+`cause`, never by the message text.
+
+## Development
+
+`images()` declares no `dev()`: `prepare` runs on **every** rebuild, decoding is
+memoized per state of the master (`mtime` plus size) and encoding per
+`(width, format)`, so a rebuild with an unchanged master encodes nothing. The
+declared masters feed `watch`: editing a `source` triggers a rebuild, and like
+any declared asset file it rebuilds **every** page, not only the ones showing
+the image. Publication compares digests, so identical bytes are not republished.
+The memo lives as long as the configuration instance: changing the master
+releases the previous decoding, while removing a width keeps its bytes until the
+master changes.
+
+## Limits
+
+- No hash in the URLs: stable URLs are the point, and `_headers` is built on
+  them, so an edited master keeps its URL.
+- No art direction (no `<source media>`) and no density descriptors (`x`): one
+  `srcset` per format, in `w`.
+- Every variant of a descriptor shares its `directory` and its `name` prefix;
+  two descriptors may share a directory with different names, and the
+  declaration refuses collisions.
+- No single-format `<Image>` component.
+- The converter is not sandboxed.
+- Every declared width is generated, even past the master's own width: enlarging
+  is the converter's decision (the sharp example passes `withoutEnlargement`).

@@ -13,6 +13,7 @@ import {
   Picture,
   setImages,
 } from "./image.js";
+import { isMissingRegistry } from "./image/errors.js";
 import { build } from "./index.js";
 
 const portrait: ImageDescriptor = {
@@ -231,4 +232,46 @@ test("renders without optional attributes when they are absent", async () => {
   expect(html).not.toContain("decoding");
   expect(html).not.toContain("loading");
   expect(html).toContain('src="/portraits/photo-768.jpg"');
+});
+
+test("recognises only the core scope codes as a missing registry", () => {
+  const coded = (value: string): Error => {
+    const error = new Error("core") as Error & { code: string };
+    error.code = value;
+    return error;
+  };
+  expect(isMissingRegistry(coded("ERR_VINCLE_NO_SCOPE"))).toBe(true);
+  expect(isMissingRegistry(coded("ERR_VINCLE_CONTEXT_UNSET"))).toBe(true);
+  expect(isMissingRegistry(coded("ERR_VINCLE_NO_STORE"))).toBe(false);
+  expect(isMissingRegistry(new Error("no code"))).toBe(false);
+  expect(isMissingRegistry(undefined)).toBe(false);
+  expect(isMissingRegistry("ERR_VINCLE_NO_SCOPE")).toBe(false);
+});
+
+test("setImages outside a scope rethrows the core scope error", async () => {
+  const error = await capture(() => setImages([portrait]));
+  expect(code(error)).toBe("ERR_VINCLE_NO_SCOPE");
+  expect(error.message).toContain("Scope.set: no active context scope");
+});
+
+test("rejects rendering outside any scope as an undeclared image", async () => {
+  const error = await capture(() => renderToString(Picture({ image: portrait, alt: "Portrait" })));
+  expect(code(error)).toBe(ERR_VINCLE_IMAGE_UNDECLARED);
+  expect(error.message).toContain("without an image registry");
+  expect(error.message).toContain("setImages");
+  expect(error.message).not.toContain("[vincle/core]");
+});
+
+test("rejects a descriptor without an id before reading the registry", async () => {
+  const partial = await capture(() =>
+    renderToString(Picture({ image: { width: 1 } as unknown as ImageDescriptor, alt: "Portrait" })),
+  );
+  expect(code(partial)).toBe(ERR_VINCLE_IMAGE_UNDECLARED);
+  expect(partial.message).toContain("requires an image descriptor with an id");
+
+  const absent = await capture(() =>
+    renderToString(Picture({ image: undefined as unknown as ImageDescriptor, alt: "Portrait" })),
+  );
+  expect(code(absent)).toBe(ERR_VINCLE_IMAGE_UNDECLARED);
+  expect(absent.message).toContain("requires an image descriptor with an id");
 });

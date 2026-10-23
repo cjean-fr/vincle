@@ -22,6 +22,30 @@ export const ERR_VINCLE_IMAGE_INVALID = "ERR_VINCLE_IMAGE_INVALID";
 /** Every code this module attaches. Widening it is the one allowed change. */
 export type ErrorCode = typeof ERR_VINCLE_IMAGE_UNDECLARED | typeof ERR_VINCLE_IMAGE_INVALID;
 
+/**
+ * Core scope codes that mean "no registry" for render components.
+ *
+ * `@vincle/core` raises them but does not re-export the constants, so they are repeated
+ * here as strings: an existing code is never renamed, and a test pins both.
+ */
+const ERR_NO_SCOPE = "ERR_VINCLE_NO_SCOPE";
+const ERR_CONTEXT_UNSET = "ERR_VINCLE_CONTEXT_UNSET";
+
+/**
+ * True when `Scope.get` failed because no registry could be read at all.
+ *
+ * `Scope.get` raises exactly these two codes: `ERR_NO_SCOPE` outside any scope, and
+ * `ERR_CONTEXT_UNSET` when the scope exists but never installed the key. `ERR_NO_STORE`
+ * cannot reach a reader: `scopeContext` folds an uninitialized store into
+ * `ERR_NO_SCOPE` (packages/core/src/scope.ts:114-124). Anything else is a fault in this
+ * package or in the core, and `<Picture>` rethrows it untouched.
+ */
+export function isMissingRegistry(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const { code } = error as Error & { code?: unknown };
+  return code === ERR_NO_SCOPE || code === ERR_CONTEXT_UNSET;
+}
+
 const PREFIX = "[vincle/ssg/image] ";
 
 /**

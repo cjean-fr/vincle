@@ -265,6 +265,19 @@ copied to the output root, wrapping the renderer first-declared-innermost, and d
 in reverse order after publication. `dev()` prepares an integration once per session and
 `watch` lists files whose modification rebuilds the site.
 
+## Images
+
+Declared descriptors in, generated files and `<Picture>` markup out. `@vincle/ssg/image`
+encodes the widths and formats you list, publishes them with the pages and renders them
+from the same descriptor, so markup and files cannot diverge.
+
+```ts
+assets: [viteAssets(), images({ converter, descriptors: [portrait] })];
+```
+
+`<Picture>` renders a declared descriptor; the converter (sharp, WASM, anything) stays
+your code. Full page: [Images](https://vincle.cjean.fr/integration/ssg/images).
+
 ## Other runtimes and handlers
 
 Vincle is the default JSX runtime. A runtime override supplies both its automatic

@@ -216,7 +216,7 @@ export function validateImages(options: ImageOptions): void {
         if (typeof type !== "string" || type.trim() === "")
           configError(
             `images(): image ${image} has an invalid mime type for ${JSON.stringify(format)}.`,
-            withValue({ ...named, field: "mime", hint: mimeHint }, format),
+            withValue({ ...named, field: "mime", hint: mimeHint }, type),
           );
     }
 

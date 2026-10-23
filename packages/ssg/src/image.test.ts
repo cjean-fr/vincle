@@ -369,7 +369,7 @@ test("validates descriptors and converter formats when images() is called", () =
       field: "mime",
       image: "portrait",
       summary: 'images(): image portrait has an invalid mime type for "avif".',
-      value: "avif",
+      value: "  ",
     },
     {
       options: { converter, descriptors: [descriptor({ directory: "../portraits" })] },
@@ -526,3 +526,24 @@ test("ignores base when generating image files", () =>
     );
     expect(imageUrl(descriptors[0]!, 80, "avif")).toBe("/portraits/photo-80.avif");
   }));
+
+test("reports the faulty mime value in the error context", () => {
+  const { converter } = fakeConverter();
+  const blank = invalidOptions({
+    converter,
+    descriptors: [descriptor({ mime: { avif: "  " } })],
+  });
+  expect(blank.context["field"]).toBe("mime");
+  expect(blank.context["value"]).toBe("  ");
+  expect(blank.message).toContain('images(): image portrait has an invalid mime type for "avif".');
+
+  const numeric = invalidOptions({
+    converter,
+    descriptors: [descriptor({ mime: { avif: 3 as unknown as string } })],
+  });
+  expect(numeric.context["field"]).toBe("mime");
+  expect(numeric.context["value"]).toBe(3);
+  expect(numeric.message).toContain(
+    'images(): image portrait has an invalid mime type for "avif".',
+  );
+});

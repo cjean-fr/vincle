@@ -3,6 +3,7 @@ import type { JSX } from "@vincle/core";
 import type { ImageDescriptor } from "./types.js";
 
 import {
+  isMissingRegistry,
   missingImageIdError,
   missingRegistryError,
   undeclaredImageError,
@@ -77,13 +78,14 @@ export interface PictureProps {
  * ```
  */
 export function Picture(props: PictureProps): JSX.Element {
-  const scope = registry();
-  // Typed as required, but a JS caller or a spread may omit it: name that fault here
-  // rather than crash on `undefined.id`.
+  // Typed as required, but a JS caller or a spread may omit it: name that fault here,
+  // before reading the registry, so the message is reachable without one, and rather
+  // than crash on `undefined.id`.
   const image: ImageDescriptor | undefined = props.image;
   const id = image?.id;
   if (typeof id !== "string" || id.trim() === "") throw missingImageIdError();
 
+  const scope = registry();
   const descriptor = scope.descriptors.get(id);
   if (descriptor === undefined) throw undeclaredImageError(id, [...scope.descriptors.keys()]);
 
@@ -124,14 +126,16 @@ export function Picture(props: PictureProps): JSX.Element {
 /**
  * The registry installed for this render scope.
  *
- * `Scope.get` throws the core `ERR_NO_SCOPE` outside a scope and `ERR_CONTEXT_UNSET`
- * before installation; for `<Picture>` both mean the same thing, so both become
- * `ERR_VINCLE_IMAGE_UNDECLARED` naming the fix.
+ * `Scope.get` raises `ERR_VINCLE_NO_SCOPE` outside any scope and `ERR_VINCLE_CONTEXT_UNSET`
+ * when the scope exists but never installed a registry; for `<Picture>` both mean the
+ * same thing, so both become `ERR_VINCLE_IMAGE_UNDECLARED` naming the fix. Any other
+ * error, a fault in this package or in the core included, is rethrown as it is.
  */
 function registry(): ImageScopeValue {
   try {
     return getImageScope();
-  } catch {
-    throw missingRegistryError();
+  } catch (error) {
+    if (isMissingRegistry(error)) throw missingRegistryError();
+    throw error;
   }
 }

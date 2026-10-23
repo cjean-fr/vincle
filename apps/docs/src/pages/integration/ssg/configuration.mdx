@@ -39,7 +39,7 @@ receiving `{ command, mode }`: `command` is `"serve"` under `ssg dev` and
 | `plugins`  | `[]`                         | Hooks into metadata, rendering and publication                       |
 | `handlers` | built-in formats             | Add a source format, or `false` to disable an extension              |
 | `runtime`  | Vincle                       | Another JSX runtime and its renderer                                 |
-| `assets`   | detected                     | `false` turns off the Vite integration                               |
+| `assets`   | detected                     | Asset integrations: one, an array, or `false`; omitted detects Vite  |
 | `copy`     | `public/`                    | More directories to copy, as `{ from, to? }`                         |
 | `preserve` | none                         | Top-level files of `out` that another tool owns                      |
 | `timings`  | `false`                      | Collect build timings; `ssg build --timings` prints the report       |
@@ -118,12 +118,44 @@ slowest pages come with their output count, plus the median and p95 over all
 pages. `ssg dev --timings` is rejected: the development server does not report
 timings.
 
+## Assets
+
+`assets` accepts one `AssetIntegration`, an array, or `false`. Omitted, the
+conventional detection applies (`vite.config.*`, otherwise
+`src/_client/main.*`); `assets: []` and `assets: false` both turn that detection
+off — the difference is the intent, not the effect.
+
+Every integration is prepared in its own directory tree, in declaration order,
+and each rendered `directory` is copied to the root of `out` in that same order;
+two outputs resolving to one path fail the build before publication. A relative
+`directory` resolves from the project root. `render` wrappers chain in
+declaration order, **the first declared being the innermost** (closest to the
+page), and `dispose` runs for all of them in reverse order after publication,
+best-effort. Only one integration may provide the module loader: two raise
+`INVALID_CONFIG`. An integration declaring `dev()` is prepared once per session;
+the others run `prepare` on every rebuild, and `watch` lists the files whose
+modification rebuilds the site, so `ssg dev` honours the declared integrations,
+not only Vite.
+
+```ts title="ssg.config.ts"
+import { defineConfig } from "@vincle/ssg";
+import { images } from "@vincle/ssg/image";
+import { viteAssets } from "@vincle/ssg/vite";
+
+export default defineConfig({
+  assets: [viteAssets(), images({ converter, descriptors: [portrait] })],
+});
+```
+
+See [Images](/integration/ssg/images) for the image module.
+
 ## Vite
 
 A `vite.config.ts` at the project root applies to the pages and the client
 assets alike: aliases and plugins included. Set the base path with `base` in
 the SSG configuration, not in Vite's: SSG passes it to Vite, and reports a
-conflicting value.
+conflicting value. The Vite integration is **one** asset integration, the one
+detected by default: declaring `assets` makes it explicit.
 
 ## Plugins
 
