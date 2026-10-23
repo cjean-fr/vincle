@@ -4,78 +4,62 @@ title: Installation
 
 # Installation
 
-`@vincle/core` has zero runtime dependencies. Install it and configure
-TypeScript. That's all.
+`@vincle/core` has zero runtime dependencies. Install it, then configure
+TypeScript.
 
-## Start a project
+## Install
 
-Starting from an empty folder.
+In an existing project, one with a `package.json`.
 
 ```bash tab="npm" sync="pkg-manager"
-mkdir my-site && cd my-site
-npm init -y
-# ES modules: the examples use top-level await
-npm pkg set type=module
 npm install @vincle/core
-# Node does not run .tsx files: tsx runs them, typescript checks types
+```
+
+```bash tab="pnpm" sync="pkg-manager"
+pnpm add @vincle/core
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/core
+```
+
+## Node setup
+
+Node only. The examples use top-level await, so the project must be an ES
+module. Node does not run `.tsx` files: `tsx` runs them, `typescript` checks
+types. To type Node APIs (`node:fs`, `process`), add `"types": ["node"]` to
+the `compilerOptions` of the `tsconfig.json` below.
+
+```bash tab="npm" sync="pkg-manager"
+npm pkg set type=module
 npm install -D typescript tsx @types/node
 ```
 
 ```bash tab="pnpm" sync="pkg-manager"
-mkdir my-site && cd my-site
-pnpm init
-# ES modules: the examples use top-level await
 pnpm pkg set type=module
-pnpm add @vincle/core
-# Node does not run .tsx files: tsx runs them, typescript checks types
 pnpm add -D typescript tsx @types/node
 ```
 
 ```bash tab="bun" sync="pkg-manager"
-mkdir my-site && cd my-site
-bun init -y
-bun add @vincle/core
+# Bun runs TypeScript and ES modules natively: nothing to set up.
 ```
 
 ## TypeScript configuration
 
-Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import.
+The same `tsconfig.json` for npm, pnpm and Bun. `jsxImportSource` lets JSX files
+work without an import.
 
-```json tab="npm" title="tsconfig.json" sync="pkg-manager"
+```json title="tsconfig.json"
 {
   "compilerOptions": {
     "target": "es2022",
-    "module": "nodenext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core",
-    "types": ["node"]
+    "jsxImportSource": "@vincle/core"
   }
-}
-```
-
-```json tab="pnpm" title="tsconfig.json" sync="pkg-manager"
-{
-  "compilerOptions": {
-    "target": "es2022",
-    "module": "nodenext",
-    "strict": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core",
-    "types": ["node"]
-  }
-}
-```
-
-```jsonc tab="bun" title="tsconfig.json" sync="pkg-manager"
-{
-  "compilerOptions": {
-    // bun init already writes this file: add this line and keep the rest
-    "jsxImportSource": "@vincle/core",
-    "jsx": "react-jsx",
-  },
 }
 ```
 
