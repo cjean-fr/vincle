@@ -2,8 +2,8 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { build } from "./index.js";
-import { viteAssets } from "./vite.js";
+import { build } from "../src/index.js";
+import { viteAssets } from "../src/vite.js";
 
 test("Vite publishes hashed JS/CSS with pages, installs the manifest, and retains assets on failure", async () => {
   const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-vite-test-"));

@@ -3,12 +3,12 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { AssetSession } from "./assets.js";
-import type { AssetIntegration, PageHandler } from "./index.js";
+import type { AssetSession } from "../src/assets.js";
+import type { AssetIntegration, PageHandler } from "../src/index.js";
 
-import { disposeBuilds, prepareAssets } from "./assets.js";
-import { vincleRuntime } from "./formats.js";
-import { build, SsgError } from "./index.js";
+import { disposeBuilds, prepareAssets } from "../src/assets.js";
+import { vincleRuntime } from "../src/formats.js";
+import { build, SsgError } from "../src/index.js";
 
 async function fixture(
   run: (root: string, put: (name: string, content: string) => Promise<void>) => Promise<void>,

@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { dev } from "./dev.js";
-import { resolveMimeTypes } from "./mime.js";
+import { dev } from "../src/dev.js";
+import { resolveMimeTypes } from "../src/mime.js";
 
 test("serves Markdown, JPEG XL, uppercase extensions and custom/overridden media types", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "ssg-mime-test-"));

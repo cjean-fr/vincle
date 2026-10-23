@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { build, SsgError, type SsgPlugin, type SsgMeta } from "./index.js";
+import { build, SsgError, type SsgPlugin, type SsgMeta } from "../src/index.js";
 
 async function fixture(run: (root: string) => Promise<void>) {
   const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-phases-"));

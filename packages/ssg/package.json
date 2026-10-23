@@ -52,7 +52,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "check": "bun check",
+    "check": "bun check && bun check -p tsconfig.tests.json",
     "test": "bun test",
     "format": "oxfmt"
   },

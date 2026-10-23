@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { ImageConverter, ImageDescriptor, PictureProps } from "./image.js";
+import type { ImageConverter, ImageDescriptor, PictureProps } from "../src/image.js";
 
 import {
   ERR_VINCLE_IMAGE_INVALID,
@@ -12,9 +12,9 @@ import {
   images,
   Picture,
   setImages,
-} from "./image.js";
-import { isMissingRegistry } from "./image/errors.js";
-import { build } from "./index.js";
+} from "../src/image.js";
+import { isMissingRegistry } from "../src/image/errors.js";
+import { build } from "../src/index.js";
 
 const portrait: ImageDescriptor = {
   id: "portrait",

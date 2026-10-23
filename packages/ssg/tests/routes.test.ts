@@ -1,6 +1,6 @@
 import { expect, test, it } from "bun:test";
 
-import { outputPathForRoute, fullUrl } from "./routes.js";
+import { outputPathForRoute, fullUrl } from "../src/routes.js";
 
 test("keeps explicit output suffixes and uses directory indexes for extensionless HTML routes", () => {
   expect(outputPathForRoute("/404.html")).toBe("404.html");

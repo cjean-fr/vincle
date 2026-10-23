@@ -9,7 +9,7 @@ import {
   outputPathForRoute,
   SsgError,
   ERR_SSG_BUILD,
-} from "./index.js";
+} from "../src/index.js";
 
 async function fixture(run: (root: string) => Promise<void>) {
   const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-errors-"));

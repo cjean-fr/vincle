@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
 
-import type { BuildTimings } from "./timings.js";
+import type { BuildTimings } from "../src/timings.js";
 
-import { createTimings, formatTimings } from "./timings.js";
+import { createTimings, formatTimings } from "../src/timings.js";
 
 const EXAMPLE_REPORT = `build timings  total 412 ms
   phases (sequential)

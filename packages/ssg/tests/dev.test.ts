@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { isRunnableDevEnvironment } from "vite";
 
-import type { AssetIntegration, PageContext } from "./types.js";
+import type { AssetIntegration, PageContext } from "../src/types.js";
 
-import { dev } from "./dev.js";
+import { dev } from "../src/dev.js";
 
 test("serves generated outputs, injects Vite, rebuilds watched sources and retains the last successful output", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "vincle-dev-test-"));
