@@ -7,7 +7,7 @@
 - Add an optional `dev()` pendant, prepared once per session and reused across rebuilds, and `watch`, whose files rebuild the site; integrations without `dev()` run `prepare` on every rebuild. **Breaking**: an integration that only implemented `prepare` and relied on the development server's own Vite preparation now runs on every rebuild.
 - **Breaking**: resolve `AssetBuild.directory` from the project root, so an integration may return a relative preparation directory; a relative directory that used to resolve against the working directory now resolves against `root`.
 - Add `@vincle/ssg/image`: `images({ converter, descriptors })` validates its descriptors when called, then generates every declared width and format through a project-provided converter, memoizing decoding by source state and encoding per variant, and watching the masters. `imageUrl()` is the single source of the public variant path.
-- Add `<Picture>`, which renders a declared descriptor as one `<source>` per format plus an `<img>` fallback from the last format, prefixes the configured `base` once, and fails the build with `ERR_VINCLE_IMAGE_UNDECLARED` or `ERR_VINCLE_IMAGE_INVALID` instead of publishing a 404. `setImages()` installs the registry outside a build.
+- Add `<Picture>`, which renders a declared descriptor as one `<source>` per format except the last, plus an `<img>` fallback from the last format, prefixes the configured `base` once, and fails the build with `ERR_VINCLE_IMAGE_UNDECLARED` or `ERR_VINCLE_IMAGE_INVALID` instead of publishing a 404. `setImages()` installs the registry outside a build.
 
 ## 0.3.0
 

@@ -195,18 +195,19 @@ empty one (`Declared images: (none)` for any id).
 
 ## Errors
 
-| Error                         | When                                | What it carries                                                                                                                                                                                                                                                                              |
-| ----------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `INVALID_CONFIG`              | the `images()` call, before a build | An `SsgError` with `context.phase: "images"`, `index` (1-based), `image`, `field` (`converter`, `converter.formats`, `descriptors`, `id`, `source`, `directory`, `name`, `widths`, `formats`, `mime`, `directory/name`, `files`), and `value` when the faulty value is a string or a number. |
-| `ASSETS_FAILED`               | preparation, asset phase            | An `SsgError` with `context.phase: "assets"`, `root`, `image`, and `source` or `variant` (`"80.webp"`); the core wraps it as `Could not prepare asset integration #<n>`, `<n>` being the position in `assets`.                                                                               |
-| `ERR_VINCLE_IMAGE_UNDECLARED` | rendering                           | No registry, an `image` without a usable id, or an undeclared id; the message lists the declared ids, or `(none)`.                                                                                                                                                                           |
-| `ERR_VINCLE_IMAGE_INVALID`    | rendering                           | A `fallbackWidth` outside the declared widths.                                                                                                                                                                                                                                               |
+| Error                         | When                                | What it carries                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INVALID_CONFIG`              | the `images()` call, before a build | An `SsgError` with `context.phase: "images"`, `index` (1-based), `image`, `field` (`converter`, `converter.formats`, `descriptors`, `id`, `source`, `directory`, `name`, `widths`, `formats`, `mime`, `directory/name`, `files`, `descriptor`), and `value` when the faulty value is a string or a number.                                                                                                                                                             |
+| `ASSETS_FAILED`               | preparation, asset phase            | An `SsgError` with `context.phase: "assets"`, `root`, `image`; `source` is present when reading or decoding the master fails, and `variant` (`"80.webp"`) when encoding or writing a variant fails. A `mkdir` failure for a variant directory carries neither. The core wraps it as `Could not prepare asset integration #<n>`, `<n>` being the position in `assets`; preparation in development is wrapped as `Could not prepare development asset integration #<n>`. |
+| `ERR_VINCLE_IMAGE_UNDECLARED` | rendering                           | Three cases: no registry (`without an image registry`), an `image` without an exploitable id (`requires an image descriptor with an id`), or an undeclared id (`is not declared in images()`, which lists the declared ids, or `(none)` if the list is empty).                                                                                                                                                                                                         |
+| `ERR_VINCLE_IMAGE_INVALID`    | rendering                           | A `fallbackWidth` outside the declared widths.                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 The last two codes sit on the error `<Picture>` raises. The build wraps that
 error in an `SsgError` with `reason: "SOURCE_FAILED"` (`Failed source
-src/pages/index.tsx: …`), and the code survives in `cause.code` and in
-`JSON.stringify(error)`. Classify by `reason` at the top level and by `code` in
-`cause`, never by the message text.
+index.tsx: …`), where `relativePath` is relative to the **resolved** `src`
+(`src/pages` by convention), so `src/pages/index.tsx` appears as `index.tsx`.
+The code survives in `cause.code` and in `JSON.stringify(error)`. Classify by
+`reason` at the top level and by `code` in `cause`, never by the message text.
 
 ## Development
 
@@ -222,8 +223,8 @@ master changes.
 
 ## Limits
 
-- No hash in the URLs: stable URLs are the point, and `_headers` is built on
-  them, so an edited master keeps its URL.
+- No hash in the URLs: URLs are stable on purpose; the site's header rules can be
+  written against them, and a changed master keeps its URL.
 - No art direction (no `<source media>`) and no density descriptors (`x`): one
   `srcset` per format, in `w`.
 - Every variant of a descriptor shares its `directory` and its `name` prefix;
