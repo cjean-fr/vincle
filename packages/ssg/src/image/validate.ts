@@ -16,6 +16,8 @@ const pathsHint = "Use a relative path with forward slashes and no empty, . or .
 const widthsHint = "List positive integer widths, for example [80, 160, 256].";
 const formatsHint =
   "Use formats declared in converter.formats; the last one is the fallback <img> format.";
+const mimeHint =
+  'Override the type of a declared format, for example { tiff: "image/tiff" }; keys must be declared in formats.';
 
 interface ConfigErrorDetails {
   /** Configuration field at fault, for example "widths". */
@@ -79,8 +81,8 @@ function validateConverter(converter: ImageConverter): readonly string[] {
  * the `images()` call instead of in the middle of a build. Never mutates its options.
  *
  * Check order is part of the contract: converter, descriptors container, then per
- * descriptor id, source, directory, name, widths and formats; finally prefix and file
- * uniqueness. The first violation wins.
+ * descriptor id, source, directory, name, widths, formats and mime; finally prefix and
+ * file uniqueness. The first violation wins.
  */
 export function validateImages(options: ImageOptions): void {
   const converterFormats = validateConverter(options.converter);
@@ -194,6 +196,29 @@ export function validateImages(options: ImageOptions): void {
         field: "formats",
         hint: formatsHint,
       });
+
+    // mime: optional, only for declared formats, with non-empty string values.
+    const mime = descriptor.mime;
+    if (mime !== undefined) {
+      if (typeof mime !== "object" || mime === null || Array.isArray(mime))
+        configError(`images(): image ${image} has an invalid mime table.`, {
+          ...named,
+          field: "mime",
+          hint: mimeHint,
+        });
+      for (const format of Object.keys(mime))
+        if (!formats.includes(format))
+          configError(
+            `images(): image ${image} declares mime for undeclared format ${JSON.stringify(format)}.`,
+            withValue({ ...named, field: "mime", hint: mimeHint }, format),
+          );
+      for (const [format, type] of Object.entries(mime))
+        if (typeof type !== "string" || type.trim() === "")
+          configError(
+            `images(): image ${image} has an invalid mime type for ${JSON.stringify(format)}.`,
+            withValue({ ...named, field: "mime", hint: mimeHint }, format),
+          );
+    }
 
     declared.push({ descriptor, image, index });
   }

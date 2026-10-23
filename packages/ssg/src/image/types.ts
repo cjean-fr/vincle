@@ -29,6 +29,13 @@ export interface ImageDescriptor {
    * fallback format of the render components.
    */
   formats: readonly string[];
+  /**
+   * MIME override per format, for example `{ tiff: "image/tiff" }`, consulted before
+   * the module's own table when a render component writes a `<source type>`. Keys must
+   * be declared in {@link formats} and values non-empty strings. A format in neither
+   * the override nor the table emits no `type` rather than a guessed one.
+   */
+  mime?: Readonly<Record<string, string>>;
 }
 
 /**

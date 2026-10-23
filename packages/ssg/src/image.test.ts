@@ -346,6 +346,32 @@ test("validates descriptors and converter formats when images() is called", () =
       summary: "images(): image portrait declares duplicate formats.",
     },
     {
+      options: {
+        converter,
+        descriptors: [descriptor({ mime: "image/tiff" as unknown as Record<string, string> })],
+      },
+      field: "mime",
+      image: "portrait",
+      summary: "images(): image portrait has an invalid mime table.",
+    },
+    {
+      options: {
+        converter,
+        descriptors: [descriptor({ formats: ["avif"], mime: { tiff: "image/tiff" } })],
+      },
+      field: "mime",
+      image: "portrait",
+      summary: 'images(): image portrait declares mime for undeclared format "tiff".',
+      value: "tiff",
+    },
+    {
+      options: { converter, descriptors: [descriptor({ mime: { avif: "  " } })] },
+      field: "mime",
+      image: "portrait",
+      summary: 'images(): image portrait has an invalid mime type for "avif".',
+      value: "avif",
+    },
+    {
       options: { converter, descriptors: [descriptor({ directory: "../portraits" })] },
       field: "directory",
       image: "portrait",
