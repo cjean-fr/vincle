@@ -409,9 +409,11 @@ server.vite.printUrls();
 
 `dev` accepts the same source, handler, runtime, plugin and asset options as `build`.
 An integration declaring `dev()` is prepared once per session and reused across
-rebuilds; other integrations run `prepare` on every rebuild, and a `watch` file
-change rebuilds the site. `viteAssets` serves source assets in development instead
-of a client build, so the development server stays configured through `dev.vite`.
+rebuilds; other integrations run `prepare` on every rebuild. A change to a `watch`
+file rebuilds **every** page, not only the affected ones: declared asset files feed
+the render chain, so no rendered page is reused. `viteAssets` serves source assets in
+development instead of a client build, so the development server stays configured
+through `dev.vite`.
 It loads the project's Vite configuration, serves Vite's browser client and
 assets, watches sources/imports/layouts/public files, and reloads the browser
 after successful regeneration. Generated HTML passes through Vite's HTML

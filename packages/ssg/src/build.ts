@@ -12,13 +12,7 @@ import type {
   AssetBuild,
 } from "./types.js";
 
-import {
-  type AssetSession,
-  assetRuntime,
-  disposeBuilds,
-  prepareAssets,
-  resolveAssetIntegrations,
-} from "./assets.js";
+import { type AssetSession, assetRuntime, disposeBuilds, prepareAssets } from "./assets.js";
 import { basePath } from "./base.js";
 import { sourceDirectory } from "./conventions.js";
 import { failure, diagnose, contextualError } from "./errors.js";
@@ -220,9 +214,8 @@ async function buildInternal(
     try {
       const assetsStarted = timings === undefined ? 0 : performance.now();
       const runtime = options.runtime ?? vincleRuntime;
-      const integrations = await resolveAssetIntegrations(options.assets, root, src);
       const preparedAssets = await prepareAssets({
-        integrations,
+        assets: options.assets,
         root,
         src,
         runtime,

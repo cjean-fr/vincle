@@ -106,7 +106,8 @@ function validateBuild(build: AssetBuild, index: number): void {
  * released by the caller. A failure releases the builds already prepared here.
  */
 export async function prepareAssets(preparation: {
-  integrations: readonly AssetIntegration[];
+  /** Declared assets; ignored when a development session already resolved them. */
+  assets: SsgOptions["assets"];
   root: string;
   src: string;
   runtime: JsxRuntime;
@@ -120,7 +121,12 @@ export async function prepareAssets(preparation: {
   owned: readonly boolean[];
   modules?: ModuleLoader;
 }> {
-  const { integrations, root, src, runtime, base, work, session } = preparation;
+  const { assets, root, src, runtime, base, work, session } = preparation;
+  // A development session resolved the integrations once, at startup: rebuilding
+  // must reuse those identities, not re-run conventional detection.
+  const integrations = session
+    ? session.integrations
+    : await resolveAssetIntegrations(assets, root, src);
   const builds: AssetBuild[] = [];
   const owned: boolean[] = [];
   // The container exists before prepare; each integration owns its own subdirectory.
@@ -164,7 +170,19 @@ export async function prepareAssets(preparation: {
       );
       builds.push(build);
       owned.push(development);
-      validateBuild(build, index);
+      try {
+        validateBuild(build, index);
+      } catch (error) {
+        // A session build is never memoized, so an invalid one must be released here:
+        // the outer catch only disposes builds this call owns.
+        if (development)
+          try {
+            await build.dispose?.();
+          } catch {
+            // The original validation error is the failure worth reporting.
+          }
+        throw error;
+      }
       // A failed dev() is never memoized, so the next rebuild retries it.
       if (development) session!.prepared.set(index, build);
       if (session && build.watch?.length)

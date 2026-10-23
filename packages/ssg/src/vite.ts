@@ -210,6 +210,7 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
             "@vincle/core/jsx-dev-runtime",
             "@vincle/vite-plugin",
             "@vincle/ssg",
+            "@vincle/ssg/image",
           ],
           conditions: [...(resolve.conditions ?? fallback.conditions ?? ["node"]), ...conditions],
           externalConditions: [
@@ -224,7 +225,13 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
       external:
         ssr.external === true
           ? true
-          : [...(ssr.external ?? []), "@vincle/core", "@vincle/vite-plugin", "@vincle/ssg"],
+          : [
+              ...(ssr.external ?? []),
+              "@vincle/core",
+              "@vincle/vite-plugin",
+              "@vincle/ssg",
+              "@vincle/ssg/image",
+            ],
       resolve: {
         ...fallback,
         externalConditions: [...(fallback.externalConditions ?? ["node"]), ...conditions],
