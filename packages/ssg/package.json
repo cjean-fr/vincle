@@ -29,6 +29,7 @@
     "LICENSE"
   ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -68,5 +69,8 @@
     "@types/node": "^26.6.5",
     "tsdown": "^0.23.2",
     "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }
