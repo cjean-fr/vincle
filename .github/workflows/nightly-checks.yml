@@ -46,6 +46,29 @@ jobs:
           path: packages/core/reports/mutation-fuzz/
           if-no-files-found: ignore
 
+  # ── Audit (shipped dependencies) ─────────────────────────────────────
+  # Fails on a high or critical advisory in a dependency that ships; the
+  # development tools are left out. It reads the lockfile only.
+  audit:
+    name: Audit (production dependencies)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Audit
+        run: bun audit --prod --audit-level=high
+
   # ── Mutation (full suites) ───────────────────────────────────────────
   mutation:
     name: Mutation
