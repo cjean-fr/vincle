@@ -6,6 +6,27 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
+    "//#check:static": { "cache": false },
+    "//#check:scripts": { "cache": false },
+    "//#check:ci": { "cache": false },
+    "//#check:published-types": {
+      "dependsOn": ["@vincle/core#build", "@vincle/flow#build"],
+      "inputs": ["scripts/check-published-types.ts", "tests/published-types/**", "bun.lock"],
+      "outputs": []
+    },
+    "//#check:packed": {
+      "dependsOn": [
+        "@vincle/core#build",
+        "@vincle/flow#build",
+        "@vincle/precompile#build",
+        "@vincle/ssg#build",
+        "@vincle/vite-plugin#build",
+        "@vincle/eslint-plugin#build",
+        "create-vincle#build"
+      ],
+      "cache": false
+    },
+    "//#oxlint": { "dependsOn": ["@vincle/eslint-plugin#build"], "cache": false },
     "mutation": {
       "dependsOn": ["^build"],
       "outputs": ["reports/**"]
