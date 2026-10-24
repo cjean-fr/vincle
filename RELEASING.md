@@ -30,3 +30,12 @@ The workflow installs npm 11.20.0, packs with Bun so `workspace:` dependencies
 become npm versions, and publishes with `--provenance --access public`. A package
 name and version cannot be published twice; bump the relevant versions before a
 subsequent release.
+
+## The `0.0.0-stage` placeholder
+
+`@vincle/ssg` and `@vincle/vite-plugin` each list a `0.0.0-stage` version,
+published about a minute before their first real version. Its description is
+"Temporary package placeholder for staged publishing" and it contains no code.
+It appears in the public version list and installs as an empty package
+(`npm i @vincle/ssg@0.0.0-stage`). The `latest` tag and the `^` ranges point to
+the real versions, never to it.
