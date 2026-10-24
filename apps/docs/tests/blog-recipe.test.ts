@@ -148,3 +148,14 @@ describe("blog recipe", () => {
     }
   }, 120_000);
 });
+
+describe("vincle skill", () => {
+  it("points its blog how-to to the recipe page", async () => {
+    const skill = await readFile(
+      path.resolve(PROJECT_DIR, "../../packages/core/skills/vincle/SKILL.md"),
+      "utf8",
+    );
+    expect(skill).toContain("https://vincle.cjean.fr/integration/ssg/blog.md");
+    expect(existsSync(RECIPE)).toBe(true);
+  });
+});
