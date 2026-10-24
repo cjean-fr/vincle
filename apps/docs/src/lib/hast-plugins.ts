@@ -24,6 +24,7 @@ const PACKAGE_MANAGER_ICONS: Record<string, string> = {
   npm: "/package-managers/npm.png",
   pnpm: "/package-managers/pnpm.png",
   bun: "/package-managers/bun.png",
+  agent: "/package-managers/agent.svg",
 };
 
 /** The element variants of satteri's hast node union. */

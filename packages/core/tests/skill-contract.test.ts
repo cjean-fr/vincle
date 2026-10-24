@@ -20,10 +20,10 @@
 import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 const PACKAGE_ROOT = resolve(import.meta.dir, "..");
-const SKILL = join(PACKAGE_ROOT, "skills/core/SKILL.md");
+const SKILL = join(PACKAGE_ROOT, "skills/vincle/SKILL.md");
 const OUT = join(PACKAGE_ROOT, "tmp/skill-check");
 
 /** ```lang … ```: `before` is everything up to the fence, for the opt-out scan. */
@@ -166,4 +166,19 @@ describe("SKILL.md: every example compiles", () => {
     }
     rmSync(OUT, { recursive: true, force: true });
   }, 60_000);
+});
+
+describe("SKILL.md: frontmatter", () => {
+  // A skill installer parses the frontmatter as YAML. An unquoted `@` made it
+  // invalid, and the installer found no skill at all.
+  it("is valid YAML and follows the Agent Skills format", () => {
+    const block = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(SKILL, "utf8"));
+    expect(block, "SKILL.md has no frontmatter").not.toBeNull();
+    const meta = Bun.YAML.parse(block![1]!) as { name?: unknown; description?: unknown };
+    expect(meta.name).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    expect((meta.name as string).length).toBeLessThanOrEqual(64);
+    expect(meta.name).toBe(basename(dirname(SKILL)));
+    expect(typeof meta.description).toBe("string");
+    expect((meta.description as string).length).toBeLessThanOrEqual(1024);
+  });
 });
