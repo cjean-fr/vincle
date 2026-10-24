@@ -15,6 +15,7 @@ import twig from "@shikijs/langs/twig";
 import typescript from "@shikijs/langs/typescript";
 import vueHtml from "@shikijs/langs/vue-html";
 import yaml from "@shikijs/langs/yaml";
+import { renderMermaidSVG } from "beautiful-mermaid";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -85,6 +86,70 @@ function highlight(source: string, language: string): unknown[] {
     writeFileSync(file, JSON.stringify(children));
   } catch {}
   return children;
+}
+
+/**
+ * Draw ```mermaid fences as inline SVG at build time. The colors are the docs
+ * theme variables, so diagrams follow the light and dark themes. The renderer's
+ * web-font import is dropped: the page uses its own fonts. Stylesheets apply to
+ * the whole document, so a page keeps each distinct one once. Element ids get
+ * the diagram's number, so diagrams never share one. Create one plugin per
+ * page.
+ */
+export function mermaidBlocks() {
+  const styles = new Set<string>();
+  let count = 0;
+  return defineHastPlugin({
+    name: "docs-mermaid-blocks",
+    element: {
+      filter: ["pre"],
+      visit(node) {
+        const code = node.children[0];
+        if (code?.type !== "element" || code.tagName !== "code") return;
+        const classes = code.properties.className;
+        if (
+          !(Array.isArray(classes) ? classes : [classes]).some(
+            (name) => name === "language-mermaid",
+          )
+        )
+          return;
+        const source = code.children
+          .map((child) => (child.type === "text" ? child.value : ""))
+          .join("");
+        let svg = renderMermaidSVG(source, {
+          bg: "var(--docs-color-bg)",
+          fg: "var(--docs-color-text)",
+          line: "var(--docs-color-text-secondary)",
+          muted: "var(--docs-color-text-secondary)",
+          surface: "var(--docs-color-surface)",
+          border: "var(--docs-color-border)",
+          accent: "var(--docs-color-accent)",
+          font: "inherit",
+          padding: 16,
+          transparent: true,
+        });
+        const n = ++count;
+        svg = svg
+          .replace(/<style>[\s\S]*?<\/style>/, (style) => {
+            const css = style.replace(
+              /@import url\('https:\/\/fonts\.googleapis\.com[^)]*\);\s*/g,
+              "",
+            );
+            if (styles.has(css)) return "";
+            styles.add(css);
+            return css;
+          })
+          .replace(/ id="([^"]+)"/g, (_, id: string) => ` id="${id}-${n}"`)
+          .replace(/url\(#([^)]+)\)/g, (_, id: string) => `url(#${id}-${n})`);
+        return {
+          type: "element",
+          tagName: "figure",
+          properties: { className: ["docs-diagram"] },
+          children: [{ type: "raw", value: svg }],
+        };
+      },
+    },
+  });
 }
 
 /** Highlight at build time so the first paint already contains token colors. */

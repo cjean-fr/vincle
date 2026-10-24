@@ -137,3 +137,35 @@ it("colors JSX/TSX without changing the source copied from the code element", as
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+it("draws mermaid fences with unique ids, one copy of each stylesheet and no font import", async () => {
+  const directory = await fixtureDirectory("mdx-mermaid-test");
+  try {
+    const file = path.join(directory, "page.mdx");
+    const sequence = "```mermaid\nsequenceDiagram\n  A->>B: one\n```\n\n";
+    await writeFile(
+      file,
+      [
+        "---",
+        "title: Diagrams",
+        "---",
+        sequence,
+        sequence,
+        "```mermaid\nerDiagram\n  A ||--o{ B : has\n```\n",
+      ].join("\n"),
+    );
+    const { Component } = await freshCache().load(file, modules);
+    const html = await renderToString(Component({}));
+    expect(html.match(/<svg\b/g)).toHaveLength(3);
+    const ids = [...html.matchAll(/ id="([^"]+)"/g)].map((match) => match[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    const references = [...html.matchAll(/url\(#([^)]+)\)/g)].map((match) => match[1]);
+    expect(references.length).toBeGreaterThan(0);
+    for (const reference of references) expect(ids).toContain(reference);
+    // The two sequence diagrams share a stylesheet; the ER diagram needs its own.
+    expect(html.match(/<style>/g)).toHaveLength(2);
+    expect(html).not.toContain("googleapis");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
