@@ -433,6 +433,39 @@ html {
   display: none;
 }
 
+/* === Agent callout: the skill shortcut, set apart from the manual install === */
+.docs-agent-callout {
+  margin-block: 1.5rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--docs-color-accent) 30%, var(--docs-color-border));
+  border-radius: 0.75rem;
+  background: var(--docs-color-accent-soft);
+}
+
+@media (min-width: 640px) {
+  .docs-agent-callout {
+    padding: 1.25rem;
+  }
+}
+
+.docs-agent-callout > .docs-agent-callout-title {
+  margin: 0;
+  color: var(--docs-color-accent);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.docs-agent-callout p {
+  margin: 0.5rem 0 0;
+  color: var(--docs-color-text-body);
+  line-height: 1.7;
+}
+
+.docs-agent-callout .docs-code-block {
+  margin-block: 1rem 0;
+}
+
 /* === Table of contents === */
 .docs-toc-track {
   position: relative;
