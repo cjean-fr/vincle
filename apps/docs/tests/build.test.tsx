@@ -450,11 +450,12 @@ describe("editUrlFor", () => {
 });
 
 describe("search shortcut", () => {
-  it("ships hidden and empty, so no platform shortcut is claimed before the client knows", async () => {
+  it("ships an empty kbd and lets an inline head script flag the platform", async () => {
     const html = await readFile(path.join(DIST_DIR, "index.html"), "utf8");
-    expect(html).toMatch(/<kbd[^>]*\bhidden\b[^>]*data-search-shortcut[^>]*><\/kbd>/);
-    expect(html).toMatch(/<kbd[^>]*\bhidden\b[^>]*data-search-keyboard-hint[^>]*>\s*Esc\s*<\/kbd>/);
+    expect(html).toMatch(/<kbd[^>]*data-search-shortcut[^>]*><\/kbd>/);
     expect(html).not.toContain("⌘");
+    expect(html).not.toContain("Ctrl K");
+    expect(html).toMatch(/<script>[^<]*setAttribute\("data-docs-shortcut"[^<]*<\/script>/);
   });
 });
 

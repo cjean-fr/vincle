@@ -8,7 +8,7 @@ import { GitHubLink } from "./GitHubLink.js";
 import { Nav } from "./Nav.js";
 import { NavToggle } from "./NavToggle.js";
 import { PageFooter } from "./PageFooter.js";
-import { SearchDialog } from "./SearchDialog.js";
+import { SearchDialog, searchShortcutInitScriptSource } from "./SearchDialog.js";
 import { SEOHeader, SEOFooter } from "./SEO.js";
 import { TableOfContents } from "./TableOfContents.js";
 import { Tabs } from "./Tabs.js";
@@ -24,6 +24,7 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
   const HashedScript = withHash(Script, collector);
   const themeScript = await HashedScript({ children: themeInitScriptSource });
   const tabsScript = await HashedScript({ children: tabsInitScriptSource });
+  const searchShortcutScript = await HashedScript({ children: searchShortcutInitScriptSource });
   const csp = meta.csp ?? collector.getCSPHeader();
   const isHome = currentPage === "/";
 
@@ -46,6 +47,7 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
           <SEOHeader page={page} />
           {themeScript}
           {tabsScript}
+          {searchShortcutScript}
           <Asset entry="src/_client/main.ts" />
           <Asset entry="src/_client/main.css" />
         </head>
