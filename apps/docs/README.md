@@ -29,8 +29,8 @@ Markdown pages receive prose styling unless their metadata opts out.
 
 A page can add `keywords` to its frontmatter or `meta` (a list, or a comma-separated
 string) for search terms its text does not contain. They go into the search index,
-where a keyword match ranks above a passing mention in the text; they are not
-rendered or emitted as `<meta name="keywords">`.
+where a keyword match ranks above a passing mention in the text, and they are
+rendered as `<meta name="keywords">` (comma-separated) when the page has any.
 
 SSG detects `src/_client/main.ts` and `main.css`, enables the installed Tailwind
 plugin, and shares its Vite module graph with the pages. No `vite.config` is

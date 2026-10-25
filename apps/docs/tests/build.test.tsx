@@ -47,6 +47,16 @@ describe("SSG build", () => {
     expect(deployment?.headings).toContainEqual({ id: "content-types", text: "Content types" });
   });
 
+  it("emits meta keywords for a page that declares them", async () => {
+    const html = await readFile(path.join(DIST_DIR, "integration/flow/streaming.html"), "utf-8");
+    expect(html).toContain(
+      '<meta name="keywords" content="suspense, out-of-order, progressive rendering">',
+    );
+    expect(await readFile(path.join(DIST_DIR, "index.html"), "utf-8")).not.toContain(
+      'name="keywords"',
+    );
+  });
+
   it("injects Vite assets in pages", async () => {
     const html = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
     expect(html).toMatch(/<script.*?type="module".*?src="\/assets\/main-.*?\.js".*?>/);

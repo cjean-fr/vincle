@@ -6,7 +6,7 @@ Package changes are recorded in each package's `CHANGELOG.md`.
 
 ### Added
 
-- Docs: accept `keywords` in a page's frontmatter or `meta`, as a list or a comma-separated string. They are added to the search index for words the page text does not contain, and a keyword match ranks above a passing mention in the text.
+- Docs: accept `keywords` in a page's frontmatter or `meta`, as a list or a comma-separated string. They are added to the search index for words the page text does not contain, a keyword match ranks above a passing mention in the text, and the page head gets a `<meta name="keywords">` tag.
 
 ## 2026-10-11
 
