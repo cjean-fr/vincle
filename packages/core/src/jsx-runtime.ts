@@ -3,6 +3,7 @@ import type { Renderable } from "./types.js";
 import { ElementAttr, serializeTemplateAttr } from "./attrs.js";
 import {
   ERR_DANGEROUS_HTML,
+  ERR_DANGEROUS_HTML_CHILDREN,
   ERR_INVALID_TAG,
   ERR_VOID_CHILDREN,
   vincleTypeError,
@@ -43,10 +44,10 @@ function jsx(
   // untouched — never read here, never validated, its children not replaced.
   const isStringTag = typeof tag === "string";
   const dsihValue = isStringTag ? props["dangerouslySetInnerHTML"] : undefined;
+  // A `null` prop is no prop: React's `null != innerHTML` condition treats it
+  // as absent, so the children render untouched instead of crashing on `.__html`.
   const dsih = (
-    dsihValue !== undefined && Object.hasOwn(props, "dangerouslySetInnerHTML")
-      ? dsihValue
-      : undefined
+    dsihValue != null && Object.hasOwn(props, "dangerouslySetInnerHTML") ? dsihValue : undefined
   ) as { __html: string | null | undefined } | undefined;
 
   if (isStringTag && dsih === undefined) {
@@ -57,6 +58,18 @@ function jsx(
   // `dangerouslySetInnerHTML` is trusted HTML: `raw` keeps it unescaped.
   let children = ownChildren(props);
   if (dsih !== undefined) {
+    // React's rule, with React's exact condition (`pushInnerHTML` in
+    // react-dom): children and `__html` are two sources of content, so the
+    // conflict is refused at construction rather than dropping one silently.
+    // `null` and `undefined` children are no content; `false` is a value React
+    // counts, so `{cond && <b />}` under this prop refuses with cond false.
+    if (children != null) {
+      throw vincleTypeError(
+        `[vincle/core] <${tag}> cannot have both children and dangerouslySetInnerHTML: ` +
+          "keep one source of content: the children, or the markup in __html.",
+        ERR_DANGEROUS_HTML_CHILDREN,
+      );
+    }
     const html = dsih.__html;
     if (typeof html === "string") children = raw(html);
     else if (html === null || html === undefined) children = raw("");
