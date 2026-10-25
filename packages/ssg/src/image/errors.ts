@@ -20,7 +20,7 @@ export const ERR_VINCLE_IMAGE_UNDECLARED = "ERR_VINCLE_IMAGE_UNDECLARED";
 export const ERR_VINCLE_IMAGE_INVALID = "ERR_VINCLE_IMAGE_INVALID";
 
 /** Every code this module attaches. Widening it is the one allowed change. */
-export type ErrorCode = typeof ERR_VINCLE_IMAGE_UNDECLARED | typeof ERR_VINCLE_IMAGE_INVALID;
+type ErrorCode = typeof ERR_VINCLE_IMAGE_UNDECLARED | typeof ERR_VINCLE_IMAGE_INVALID;
 
 /**
  * Core scope codes that mean "no registry" for render components.
@@ -53,7 +53,7 @@ const PREFIX = "[vincle/ssg/image] ";
  * `@vincle/vite-plugin`'s, for the same reason: the code, not a message prefix, is what
  * a logger or a tool classifies.
  */
-export function vincleError(message: string, code: ErrorCode): Error {
+function vincleError(message: string, code: ErrorCode): Error {
   const error = new Error(message) as Error & { code: ErrorCode };
   error.code = code;
   Error.captureStackTrace?.(error, vincleError);

@@ -6,7 +6,7 @@
  */
 
 /** Sequential build phase, in the order buildInternal reaches it. */
-export type BuildPhase =
+type BuildPhase =
   | "configuration"
   | "source inspection"
   | "work directory"
@@ -15,20 +15,20 @@ export type BuildPhase =
   | "cleanup";
 
 /** Elapsed time of one completed sequential phase. */
-export interface BuildPhaseTiming {
+interface BuildPhaseTiming {
   readonly name: BuildPhase;
   readonly milliseconds: number;
 }
 
 /** Active (backpressure-excluded) render time of one page, with its output count. */
-export interface BuildPageTiming {
+interface BuildPageTiming {
   readonly route: string;
   readonly milliseconds: number;
   readonly outputs: number;
 }
 
 /** Wall-clock publication, rendering included by construction. */
-export interface BuildPublicationTiming {
+interface BuildPublicationTiming {
   readonly milliseconds: number;
   readonly files: number;
 }
