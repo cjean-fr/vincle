@@ -211,6 +211,30 @@ function flattenPages(sidebar: ResolvedSidebar): NavLink[] {
 }
 
 /**
+ * The category labels leading to a page, outermost first: the same labels the
+ * sidebar shows, so search results can say where a page lives without a second
+ * copy of the navigation. Empty for a page at the tab's top level.
+ */
+export function categoriesOf(sidebar: ResolvedSidebar, url: string): string[] {
+  const walk = (items: readonly ResolvedSidebarItem[], trail: string[]): string[] | null => {
+    for (const item of items) {
+      if (item.kind === "page") {
+        if (item.href === url) return trail;
+      } else {
+        const found = walk(item.items, [...trail, item.label]);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  for (const group of sidebar.groups) {
+    const found = walk(group.items, []);
+    if (found) return found;
+  }
+  return [];
+}
+
+/**
  * Resolve the first page URL of a tab (the tab's landing target), in reading
  * order (determined by the sidebar's `_meta.json`). Falls back to the tab root
  * URL when no page exists.

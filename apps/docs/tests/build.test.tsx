@@ -42,6 +42,11 @@ describe("SSG build", () => {
     expect(streaming?.keywords).toEqual(["suspense", "out-of-order", "progressive rendering"]);
     expect(adapters).not.toHaveProperty("keywords");
     const deployment = data.find((d: { url: string }) => d.url === "/integration/ssg/deployment");
+    expect(deployment?.trail).toEqual(["Integration", "SSG"]);
+    const intro = data.find((d: { url: string }) => d.url === "/guide/introduction");
+    expect(intro?.trail).toEqual(["Guide"]);
+    const home = data.find((d: { url: string }) => d.url === "/");
+    expect(home).not.toHaveProperty("trail");
     expect(deployment?.headings).toContainEqual({ id: "content-types", text: "Content types" });
   });
 

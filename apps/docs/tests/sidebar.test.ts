@@ -3,7 +3,13 @@ import { describe, expect, it } from "bun:test";
 import type { Page, PageMeta, DocsConfig, TabConfig } from "../src/lib/types.js";
 
 import config from "../docs.config.js";
-import { clearMetaCache, resolveNavigation, resolveSidebar, tabFor } from "../src/lib/sidebar.js";
+import {
+  categoriesOf,
+  clearMetaCache,
+  resolveNavigation,
+  resolveSidebar,
+  tabFor,
+} from "../src/lib/sidebar.js";
 
 const TABS: TabConfig[] = [
   { label: "Guide", slug: "guide" },
@@ -85,5 +91,44 @@ describe("resolveNavigation", () => {
       prev: { label: "A", href: "/guide/a" },
       next: { label: "C", href: "/guide/c" },
     });
+  });
+});
+
+describe("categoriesOf", () => {
+  const sidebar = {
+    groups: [
+      {
+        label: null,
+        items: [
+          { kind: "page" as const, label: "Intro", href: "/a/intro", current: false },
+          {
+            kind: "category" as const,
+            label: "Outer",
+            collapsed: false,
+            expanded: false,
+            items: [
+              {
+                kind: "category" as const,
+                label: "Inner",
+                collapsed: false,
+                expanded: false,
+                items: [
+                  { kind: "page" as const, label: "Deep", href: "/a/o/i/deep", current: false },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it("lists the categories leading to a page, outermost first", () => {
+    expect(categoriesOf(sidebar, "/a/o/i/deep")).toEqual(["Outer", "Inner"]);
+  });
+
+  it("is empty for a top-level or unknown page", () => {
+    expect(categoriesOf(sidebar, "/a/intro")).toEqual([]);
+    expect(categoriesOf(sidebar, "/nowhere")).toEqual([]);
   });
 });
