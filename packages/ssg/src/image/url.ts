@@ -20,10 +20,9 @@ export function variantPath(descriptor: VariantOwner, width: number, format: str
  *
  * - absolute from the site root, leading slash included, **without** `base`: render
  *   components prefix the configured base themselves;
- * - no encoding: `directory`, `name` and `format` are validated by {@link images},
- *   so no character present needs `encodeURIComponent`;
+ * - each path segment is URL-encoded; filesystem names stay unchanged;
  * - no query, fragment or hash: variants are immutable within a build;
- * - pure: no validation, no filesystem access, never throws. Its inputs are already
+ * - pure: no validation or filesystem access. Its inputs are already
  *   validated by {@link images} (and, in render components, come from the registry).
  *
  * @param descriptor Directory and name of the image; other fields are ignored.
@@ -31,5 +30,8 @@ export function variantPath(descriptor: VariantOwner, width: number, format: str
  * @param format Variant format, one of the descriptor's `formats`.
  */
 export function imageUrl(descriptor: VariantOwner, width: number, format: string): string {
-  return `/${variantPath(descriptor, width, format)}`;
+  return `/${variantPath(descriptor, width, format)
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/")}`;
 }

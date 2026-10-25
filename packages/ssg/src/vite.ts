@@ -75,7 +75,17 @@ async function productionPlugins(
       !plugin.apply(config, { command: "build", mode: config.mode ?? "production" })
     )
       continue;
-    plugins.push({ ...plugin, apply: undefined });
+    const selected = Object.create(
+      Object.getPrototypeOf(plugin),
+      Object.getOwnPropertyDescriptors(plugin),
+    ) as Plugin;
+    Object.defineProperty(selected, "apply", {
+      value: undefined,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+    plugins.push(selected);
   }
   return plugins;
 }

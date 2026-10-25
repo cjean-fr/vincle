@@ -179,7 +179,7 @@ function layoutLoader() {
         context.watch(file);
         if (await exists(file)) return load(file, context.runtime.importSource, context.modules);
       }
-      if (directory === boundary) return undefined;
+      if (directory === boundary || path.dirname(directory) === directory) return undefined;
     }
   };
 }

@@ -1,4 +1,4 @@
-import { readdir, stat } from "node:fs/promises";
+import { readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
 import type {
@@ -94,15 +94,24 @@ async function discover(options: DiscoverPagesOptions): Promise<DiscoveredPage[]
     });
   const files: string[] = [];
   const excluded = new Set(options.excludeDirectories);
-  async function walk(directory: string): Promise<void> {
+  async function walk(directory: string, ancestors = new Set<string>()): Promise<void> {
     try {
+      const target = await realpath(directory);
+      if (ancestors.has(target))
+        throw failure(`Symbolic link cycle in source directory: ${directory}`, {
+          reason: "SOURCE_READ_FAILED",
+          hint: "Remove the directory link that points to an ancestor of this route directory.",
+          context: { directory, src },
+        });
+      const parents = new Set(ancestors).add(target);
       for (const entry of await readdir(directory, { withFileTypes: true })) {
         if (/^[._]/.test(entry.name) || entry.name === "node_modules" || excluded.has(entry.name))
           continue;
         const file = path.join(directory, entry.name);
-        if (entry.isDirectory()) await walk(file);
+        const entryInfo = entry.isSymbolicLink() ? await stat(file) : entry;
+        if (entryInfo.isDirectory()) await walk(file, parents);
         else if (
-          entry.isFile() &&
+          entryInfo.isFile() &&
           !/\.(?:d|test|spec)\.[jt]sx?$/.test(entry.name) &&
           Object.hasOwn(handlers, path.extname(file)) &&
           handlers[path.extname(file)]

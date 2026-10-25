@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { isRunnableDevEnvironment, type Plugin, type ViteDevServer } from "vite";
@@ -202,7 +203,16 @@ export function developmentModules(importSource: string, sourceDirectory: string
       if (node.file) files.add(sourceOf(node.file));
       for (const dependency of node.importedModules) visit(dependency);
     };
-    const node = graph.getModuleById(file) ?? graph.getModuleById(file + suffix);
+    // Vite keys linked modules by their target unless its native option keeps links.
+    let resolved = file;
+    if (!server.config.resolve.preserveSymlinks) {
+      try {
+        resolved = realpathSync(file);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+    }
+    const node = graph.getModuleById(resolved) ?? graph.getModuleById(file + suffix);
     if (node) visit(node);
     const evaluated = environment().runner.evaluatedModules;
     const evaluatedSeen = new Set<string>();
@@ -214,7 +224,7 @@ export function developmentModules(importSource: string, sourceDirectory: string
       if (path.isAbsolute(current.file)) files.add(sourceOf(current.file));
       for (const dependency of current.imports) collect(dependency);
     };
-    collect(file);
+    collect(resolved);
     collect(file + suffix);
     return files;
   }
