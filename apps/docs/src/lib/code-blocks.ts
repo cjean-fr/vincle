@@ -1,4 +1,5 @@
 import { createHighlighterCore, createCssVariablesTheme } from "@shikijs/core";
+import shikiPackage from "@shikijs/core/package.json" with { type: "json" };
 import { createOnigurumaEngine } from "@shikijs/engine-oniguruma";
 import getWasm from "@shikijs/engine-oniguruma/wasm-inlined";
 import bash from "@shikijs/langs/bash";
@@ -14,6 +15,9 @@ import twig from "@shikijs/langs/twig";
 import typescript from "@shikijs/langs/typescript";
 import vueHtml from "@shikijs/langs/vue-html";
 import yaml from "@shikijs/langs/yaml";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { defineHastPlugin } from "satteri";
 
 import { t } from "./messages.js";
@@ -49,6 +53,40 @@ const aliases: Record<string, string> = {
   mustache: "handlebars",
 };
 
+const THEME = "css-variables";
+const cacheDirectory = path.resolve("node_modules/.cache/vincle-docs/highlight");
+
+/**
+ * Highlighting dominates the build, so each result is kept on disk, keyed by
+ * what determines it: source, language, theme and Shiki version. A miss, a
+ * corrupt entry or an unwritable directory just highlights again.
+ */
+function highlight(source: string, language: string): unknown[] {
+  const key = createHash("sha256")
+    .update(`${shikiPackage.version}\0${THEME}\0${language}\0${source}`)
+    .digest("hex");
+  const file = path.join(cacheDirectory, `${key}.json`);
+  try {
+    return JSON.parse(readFileSync(file, "utf8")) as unknown[];
+  } catch {}
+  const pre = highlighter
+    .codeToHast(source, { lang: language, theme: THEME })
+    .children.find((child) => child.type === "element" && child.tagName === "pre");
+  const tokens =
+    pre?.type === "element"
+      ? pre.children.find((child) => child.type === "element" && child.tagName === "code")
+      : undefined;
+  const children =
+    tokens?.type === "element"
+      ? tokens.children.filter((child) => child.type === "element" || child.type === "text")
+      : [];
+  try {
+    mkdirSync(cacheDirectory, { recursive: true });
+    writeFileSync(file, JSON.stringify(children));
+  } catch {}
+  return children;
+}
+
 /** Highlight at build time so the first paint already contains token colors. */
 export const codeBlocks = defineHastPlugin({
   name: "docs-code-blocks",
@@ -74,29 +112,10 @@ export const codeBlocks = defineHastPlugin({
         const source = code.children
           .map((child) => (child.type === "text" ? child.value : ""))
           .join("");
-        const highlighted = highlighter.codeToHast(source, {
-          lang: canonical,
-          theme: "css-variables",
-        });
-        const pre = highlighted.children.find(
-          (child) => child.type === "element" && child.tagName === "pre",
-        );
-        const tokens =
-          pre?.type === "element"
-            ? pre.children.find((child) => child.type === "element" && child.tagName === "code")
-            : undefined;
-        if (tokens?.type === "element")
-          renderedPre = {
-            ...node,
-            children: [
-              {
-                ...code,
-                children: tokens.children.filter(
-                  (child) => child.type === "element" || child.type === "text",
-                ),
-              },
-            ],
-          };
+        renderedPre = {
+          ...node,
+          children: [{ ...code, children: highlight(source, canonical) as typeof code.children }],
+        };
       }
       const blockClasses = ["docs-code-block"];
       const data: unknown = code.data;
