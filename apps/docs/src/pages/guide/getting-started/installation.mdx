@@ -9,6 +9,8 @@ TypeScript.
 
 ## Install
 
+In an existing project, one with a `package.json`.
+
 ```bash tab="npm" sync="pkg-manager"
 npm install @vincle/core
 ```
@@ -43,7 +45,7 @@ pnpm add -D typescript tsx @types/node
 
 ## TypeScript configuration
 
-Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import.
+Every runtime: set `jsxImportSource` in your `tsconfig.json` so JSX files need no import.
 
 ```json tab="npm" title="tsconfig.json" sync="pkg-manager"
 {
@@ -76,7 +78,7 @@ Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import.
 ```jsonc tab="bun" title="tsconfig.json" sync="pkg-manager"
 {
   "compilerOptions": {
-    // bun init already writes this file: add this line and keep the rest
+    // add these two lines to the compilerOptions of your tsconfig.json
     "jsxImportSource": "@vincle/core",
     "jsx": "react-jsx",
   },
