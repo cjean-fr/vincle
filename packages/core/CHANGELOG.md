@@ -8,6 +8,8 @@
 
 ### Changed
 
+- Publish the compiled `dist` only, and load it on Bun like on every other runtime: the `bun` export condition that pointed to the TypeScript sources is gone, and `src` is no longer in the package. The package drops from about 109 kB to about 45 kB gzipped, and from 507 kB to 219 kB installed. Runtime behaviour is unchanged; Bun rendering throughput measured within noise (±3%).
+
 - Mark the `typescript` peer dependency as optional, so installing Core no longer downloads the TypeScript compiler and its platform package. The peer range still documents the supported compiler versions for TypeScript consumers, who provide their own.
 
 ## 0.9.1 — 2026-10-05

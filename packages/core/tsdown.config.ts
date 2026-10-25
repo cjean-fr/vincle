@@ -10,10 +10,10 @@ export default defineConfig({
   },
   format: "esm",
   clean: true,
-  // Comments out, code as written. The prose in these modules is why they are
-  // worth reading and it was 8.6 kB of the 17.2 kB shipped gzip, while `files`
-  // publishes `src`, the `bun` condition resolves to it, and the `.d.mts` still
-  // carries every JSDoc to the editor, so nothing is actually lost.
+  // Comments out, code as written. The prose in these modules was 8.6 kB of the
+  // 17.2 kB shipped gzip, and the `.d.mts` still carries every JSDoc to the
+  // editor, so nothing the reader sees in the editor is lost. The sources are
+  // not published: the code in `dist` is what runs on every runtime.
   //
   // Neither half below removes dead code: rolldown already tree-shakes it (the
   // test-only `@internal` helpers are not in `dist`), and what `compress` finds

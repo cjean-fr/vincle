@@ -26,10 +26,6 @@
   },
   "files": [
     "dist",
-    "index.ts",
-    "src",
-    "!src/**/*.test.ts",
-    "!src/**/*.test.tsx",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
@@ -40,35 +36,30 @@
     ".": {
       "types": "./dist/index.d.mts",
       "dist": "./dist/index.mjs",
-      "bun": "./index.ts",
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
     "./html": {
       "types": "./dist/html.d.mts",
       "dist": "./dist/html.mjs",
-      "bun": "./src/html.ts",
       "import": "./dist/html.mjs",
       "default": "./dist/html.mjs"
     },
     "./jsx-runtime": {
       "types": "./dist/jsx-runtime.d.mts",
       "dist": "./dist/jsx-runtime.mjs",
-      "bun": "./src/jsx-runtime.ts",
       "import": "./dist/jsx-runtime.mjs",
       "default": "./dist/jsx-runtime.mjs"
     },
     "./jsx-dev-runtime": {
       "types": "./dist/jsx-dev-runtime.d.mts",
       "dist": "./dist/jsx-dev-runtime.mjs",
-      "bun": "./src/jsx-dev-runtime.ts",
       "import": "./dist/jsx-dev-runtime.mjs",
       "default": "./dist/jsx-dev-runtime.mjs"
     },
     "./jsx-precompile-runtime": {
       "types": "./dist/jsx-precompile-runtime.d.mts",
       "dist": "./dist/jsx-precompile-runtime.mjs",
-      "bun": "./src/jsx-precompile-runtime.ts",
       "import": "./dist/jsx-precompile-runtime.mjs",
       "default": "./dist/jsx-precompile-runtime.mjs"
     },

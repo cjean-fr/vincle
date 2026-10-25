@@ -4,9 +4,8 @@
  *
  * The budget is the tarball npm serves, because that is what the docs promise:
  * one package under 100 kB carrying the runtime and the whole attribute table,
- * against the 138 kB `csstype` costs on its own. The table ships twice: as
- * `src/jsx-namespace.ts` for the `bun` condition and as a `.d.mts` for every
- * other resolver, so it, not the runtime, is what moves this figure.
+ * against the 138 kB `csstype` costs on its own. The table ships once, as a
+ * `.d.mts`, so it, not the runtime, is what moves this figure.
  *
  * `npm pack` decides what is published, so the file list comes from it rather
  * than from a second reading of `files` that could disagree with it.

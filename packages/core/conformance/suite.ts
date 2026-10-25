@@ -4,8 +4,7 @@ import { Scope } from "@vincle/core";
  *
  * The unit suite runs on Bun, against the sources. This one runs on **every
  * claimed runtime**, against the **published artifact**: the `exports` map
- * reserves the `bun` condition (TS sources) for Bun, everything else lands on
- * `dist/*.mjs`. Two blind spots closed at once: the port, and the gap
+ * sends every runtime, Bun included, to `dist/*.mjs`. Two blind spots closed at once: the port, and the gap
  * between what's tested and what's published.
  *
  * What's checked here is what **depends on the runtime**, not the whole API:
