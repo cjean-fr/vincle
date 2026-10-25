@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Declare `engines.node` (`>=22.0.0`), as the other packages do, so a package manager can warn or refuse on an unsupported Node.
+- Declare `engines.node` (`>=22.12.0`), the minimum Node that Vite 8 and oxc-parser accept on the Node 22 line, so a package manager can warn or refuse on an unsupported Node.
 - Add `ssg generate`, the command that writes the site. `ssg build` still works as a deprecated alias and prints a warning; it will be removed in a later release.
 - **Breaking**: remove build timings: the `timings` option, `ssg build --timings`, the `timings` field of the `build()` result and the `BuildTimings` type. The build summary line stays.
 

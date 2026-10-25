@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Declare `engines.node` (`>=22.0.0`), as the other packages do, so a package manager can warn or refuse on an unsupported Node.
+- Declare `engines.node` (`>=22.12.0`), the minimum Node that oxc-parser accepts on the Node 22 line, so a package manager can warn or refuse on an unsupported Node.
 - Decode HTML entities in static attribute values, as the JSX compilers do: `title="Tom &amp; Jerry"` now renders `Tom &amp; Jerry`, identical to the runtime path, instead of `Tom &amp;amp; Jerry`.
 
 ## 0.9.0 — 2026-10-05
