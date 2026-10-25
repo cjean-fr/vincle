@@ -1,13 +1,24 @@
 import { expect, test, spyOn } from "bun:test";
 import fs from "node:fs";
-import { mkdtemp, mkdir, writeFile, readFile, lstat, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, lstat, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { isRunnableDevEnvironment } from "vite";
+import { createServer, isRunnableDevEnvironment } from "vite";
 
 import type { AssetIntegration, PageContext } from "../src/types.js";
 
+import { developmentModules } from "../src/dev-modules.js";
 import { dev } from "../src/dev.js";
+
+async function waitForText(url: string, text: string) {
+  let html = "";
+  for (let i = 0; i < 100; i++) {
+    html = await (await fetch(url)).text();
+    if (html.includes(text)) break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return html;
+}
 
 test("serves generated outputs, injects Vite, rebuilds watched sources and retains the last successful output", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "vincle-dev-test-"));
@@ -51,6 +62,155 @@ test("serves generated outputs, injects Vite, rebuilds watched sources and retai
     await server.rebuild();
     expect(await (await fetch(url)).text()).toContain("recovered");
     expect(await readFile(path.join(root, "dist/keep.txt"), "utf8")).toBe("published");
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);
+
+test("dev follows linked pages and refreshes target-side relative imports", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-dev-link-"));
+  await mkdir(path.join(root, "src"));
+  await mkdir(path.join(root, "external"));
+  await writeFile(
+    path.join(root, "external/page.tsx"),
+    'import {label} from "./_label"; export default () => <p>{label}</p>',
+  );
+  const target = path.join(root, "external/_label.ts");
+  await writeFile(target, 'export const label = "first-target";');
+  await writeFile(path.join(root, "src/_label.ts"), 'export const label = "first-link";');
+  await symlink("../external/page.tsx", path.join(root, "src/linked.tsx"));
+  const server = await dev({
+    root,
+    assets: false,
+    vite: {
+      configFile: false,
+      logLevel: "silent",
+      server: { host: "127.0.0.1", port: 0, watch: { usePolling: true, interval: 50 } },
+    },
+  });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected listening server");
+    const url = `http://127.0.0.1:${address.port}/linked/`;
+    const initial = await (await fetch(url)).text();
+    expect(initial).toContain("first-target");
+    expect(initial).not.toContain("first-link");
+    await writeFile(target, 'export const label = "second-target";');
+    expect(await waitForText(url, "second-target")).toContain("second-target");
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);
+
+test("linked compiled MDX uses target identity by default and invalidates its target imports", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-dev-mdx-link-"));
+  await mkdir(path.join(root, "src"));
+  await mkdir(path.join(root, "external"));
+  await writeFile(
+    path.join(root, "external/page.mdx"),
+    'import {label} from "./_label"\n\n# Compiled\n\n<p>{label}</p>',
+  );
+  const target = path.join(root, "external/_label.ts");
+  await writeFile(target, 'export const label = "first-target";');
+  await writeFile(path.join(root, "src/_label.ts"), 'export const label = "first-link";');
+  await symlink("../external/page.mdx", path.join(root, "src/linked.mdx"));
+  const server = await dev({
+    root,
+    assets: false,
+    vite: {
+      configFile: false,
+      logLevel: "silent",
+      server: { host: "127.0.0.1", port: 0, watch: { usePolling: true, interval: 50 } },
+    },
+  });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected listening server");
+    const url = `http://127.0.0.1:${address.port}/linked/`;
+    const initial = await (await fetch(url)).text();
+    expect(initial).toContain("first-target");
+    expect(initial).not.toContain("first-link");
+    await writeFile(target, 'export const label = "second-target";');
+    expect(await waitForText(url, "second-target")).toContain("second-target");
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);
+
+test("compiled MDX link retarget and removal do not retain obsolete compiled modules", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-mdx-retarget-"));
+  await mkdir(path.join(root, "src"));
+  await mkdir(path.join(root, "external"));
+  const first = path.join(root, "external/first.mdx");
+  const second = path.join(root, "external/second.mdx");
+  const link = path.join(root, "src/linked.mdx");
+  await writeFile(first, "# First target");
+  await writeFile(second, "# Second target");
+  await symlink(first, link);
+  const server = await dev({
+    root,
+    assets: false,
+    vite: {
+      configFile: false,
+      logLevel: "silent",
+      server: { host: "127.0.0.1", port: 0, watch: null },
+    },
+  });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected listening server");
+    const url = `http://127.0.0.1:${address.port}/linked/`;
+    expect(await (await fetch(url)).text()).toContain("First target");
+    await rm(link);
+    await symlink(second, link);
+    await server.rebuild();
+    expect(await (await fetch(url)).text()).toContain("Second target");
+    await rm(link);
+    await server.rebuild();
+    expect((await fetch(url)).status).toBe(404);
+    const graph = server.vite.environments.ssr!.moduleGraph;
+    expect(graph.getModuleById(first + ".vincle-compiled.js")).toBeUndefined();
+    expect(graph.getModuleById(second + ".vincle-compiled.js")).toBeUndefined();
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);
+
+test("preserveSymlinks keeps compiled MDX identity and imports on the link side", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-dev-mdx-preserve-"));
+  await mkdir(path.join(root, "src"));
+  await mkdir(path.join(root, "external"));
+  await writeFile(
+    path.join(root, "external/page.mdx"),
+    'import {label} from "./_label"\n\n# Compiled\n\n<p>{label}</p>',
+  );
+  await writeFile(path.join(root, "external/_label.ts"), 'export const label = "first-target";');
+  const linkSide = path.join(root, "src/_label.ts");
+  await writeFile(linkSide, 'export const label = "first-link";');
+  await symlink("../external/page.mdx", path.join(root, "src/linked.mdx"));
+  const server = await dev({
+    root,
+    assets: false,
+    vite: {
+      configFile: false,
+      logLevel: "silent",
+      resolve: { preserveSymlinks: true },
+      server: { host: "127.0.0.1", port: 0, watch: { usePolling: true, interval: 50 } },
+    },
+  });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected listening server");
+    const url = `http://127.0.0.1:${address.port}/linked/`;
+    const initial = await (await fetch(url)).text();
+    expect(initial).toContain("first-link");
+    expect(initial).not.toContain("first-target");
+    await writeFile(linkSide, 'export const label = "second-link";');
+    expect(await waitForText(url, "second-link")).toContain("second-link");
   } finally {
     await server.close();
     await rm(root, { recursive: true, force: true });
@@ -1138,3 +1298,83 @@ test("re-adds declared asset watch paths after a Vite restart", async () => {
     await rm(external, { recursive: true, force: true });
   }
 }, 20_000);
+
+test("preserveSymlinks keeps link-side imports and their invalidation", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-dev-link-preserve-"));
+  await mkdir(path.join(root, "src"));
+  await mkdir(path.join(root, "external"));
+  await writeFile(
+    path.join(root, "external/page.tsx"),
+    'import {label} from "./_label"; export default () => <p>{label}</p>',
+  );
+  await writeFile(path.join(root, "external/_label.ts"), 'export const label = "target";');
+  const linkSide = path.join(root, "src/_label.ts");
+  await writeFile(linkSide, 'export const label = "first-link";');
+  await symlink("../external/page.tsx", path.join(root, "src/linked.tsx"));
+  const server = await dev({
+    root,
+    assets: false,
+    vite: {
+      configFile: false,
+      logLevel: "silent",
+      resolve: { preserveSymlinks: true },
+      server: { host: "127.0.0.1", port: 0, watch: { usePolling: true, interval: 50 } },
+    },
+  });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected listening server");
+    const url = `http://127.0.0.1:${address.port}/linked/`;
+    expect(await (await fetch(url)).text()).toContain("first-link");
+    await writeFile(linkSide, 'export const label = "second-link";');
+    expect(await waitForText(url, "second-link")).toContain("second-link");
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);
+
+test("deleted compiled symlink releases its virtual source and origin", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-compiled-cleanup-"));
+  await mkdir(path.join(root, "src"));
+  const target = path.join(root, "page.mdx");
+  const link = path.join(root, "src/linked.mdx");
+  await writeFile(target, "# Content");
+  await symlink(target, link);
+  const runtime = "@vincle/core/jsx-runtime";
+  const loader = developmentModules(runtime, path.join(root, "src"));
+  const server = await createServer({
+    root,
+    configFile: false,
+    logLevel: "silent",
+    plugins: [loader.plugin],
+    server: { middlewareMode: true, watch: null },
+  });
+  try {
+    await loader.modules.load(link, runtime, 'export default "compiled content"');
+    await loader.refresh();
+    const id = target + ".vincle-compiled.js";
+    const load = loader.plugin.load;
+    const resolve = loader.plugin.resolveId;
+    if (typeof load !== "function" || typeof resolve !== "function")
+      throw new Error("Expected plugin functions");
+    expect(Reflect.apply(resolve, {}, [id])).toBe(id);
+    const watched: string[] = [];
+    const context = {
+      addWatchFile(file: string) {
+        watched.push(file);
+      },
+    };
+    expect(Reflect.apply(load, context, [id])).toBe('export default "compiled content"');
+    expect(watched).toContain(link);
+    await rm(link);
+    await loader.refresh();
+    expect(Reflect.apply(resolve, {}, [id])).toBeUndefined();
+    watched.length = 0;
+    expect(Reflect.apply(load, context, [id])).toBeUndefined();
+    expect(watched).toEqual([]);
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});

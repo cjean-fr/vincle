@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { build, SsgError, type SsgPlugin, type SsgMeta } from "../src/index.js";
+import { build, SsgError, type ModuleLoader, type SsgPlugin, type SsgMeta } from "../src/index.js";
 
 async function fixture(run: (root: string) => Promise<void>) {
   const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-phases-"));
@@ -117,4 +117,62 @@ test("publish and transform failures remain actionable and preserve the previous
       }
       expect(await readFile(path.join(root, "dist/index.html"), "utf8")).toBe("<p>previous</p>");
     }
+  }));
+
+test("automatic layout lookup stays inside src for external custom sources", () =>
+  fixture(async (root) => {
+    const external = path.join(root, "external");
+    await mkdir(external);
+    await writeFile(path.join(root, "src/_layout.tsx"), "export default ({children}) => children");
+    await writeFile(
+      path.join(root, "_layout.tsx"),
+      'throw new Error("poison root layout"); export default ({children}) => children',
+    );
+    await writeFile(
+      path.join(external, "_layout.tsx"),
+      'throw new Error("poison ancestor layout"); export default ({children}) => children',
+    );
+    await writeFile(
+      path.join(external, "plain.tsx"),
+      "export default ({children}) => <section>{children}</section>",
+    );
+    await writeFile(path.join(external, "auto.tsx"), "export default () => <p>auto</p>");
+    await writeFile(
+      path.join(external, "explicit.tsx"),
+      'export const meta = { layout: "./plain.tsx" }; export default () => <p>explicit</p>',
+    );
+    const probes: string[] = [];
+    const loads: string[] = [];
+    const record = (modules: ModuleLoader): ModuleLoader => ({
+      watchFile(file) {
+        probes.push(file);
+        modules.watchFile?.(file);
+      },
+      load(file, importSource, code) {
+        loads.push(file);
+        return modules.load(file, importSource, code);
+      },
+    });
+    await build({
+      root,
+      assets: false,
+      discover: async (_options, discover) => {
+        const pages = await discover({ src: external });
+        return pages.map((page) => {
+          page.source = {
+            ...page.source,
+            src: path.join(root, "src"),
+            modules: record(page.source.modules),
+          };
+          return page;
+        });
+      },
+    });
+    expect(await readFile(path.join(root, "dist/auto/index.html"), "utf8")).toBe("<p>auto</p>");
+    expect(await readFile(path.join(root, "dist/explicit/index.html"), "utf8")).toBe(
+      "<section><p>explicit</p></section>",
+    );
+    expect(probes).toEqual([]);
+    expect(loads).toContain(path.join(external, "plain.tsx"));
+    expect(loads.some((file) => path.basename(file) === "_layout.tsx")).toBe(false);
   }));

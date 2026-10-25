@@ -75,16 +75,14 @@ async function productionPlugins(
       !plugin.apply(config, { command: "build", mode: config.mode ?? "production" })
     )
       continue;
-    const selected = Object.create(
-      Object.getPrototypeOf(plugin),
-      Object.getOwnPropertyDescriptors(plugin),
-    ) as Plugin;
-    Object.defineProperty(selected, "apply", {
-      value: undefined,
-      writable: true,
-      configurable: true,
-      enumerable: true,
-    });
+    // Class plugins keep hooks/getters on the prototype and may define own
+    // accessors: copy descriptors without invoking them and keep the prototype.
+    // Only `apply` is replaced on the clone, so the original plugin is untouched.
+    // Vite plugins expose `apply` as an own data property; private class fields
+    // stay out of this contract because no test guarantees them.
+    const descriptors = Object.getOwnPropertyDescriptors(plugin);
+    descriptors.apply = { value: undefined, writable: true, configurable: true, enumerable: true };
+    const selected = Object.create(Object.getPrototypeOf(plugin), descriptors) as Plugin;
     plugins.push(selected);
   }
   return plugins;

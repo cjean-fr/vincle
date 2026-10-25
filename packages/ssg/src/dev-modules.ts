@@ -12,11 +12,27 @@ const sourceOf = (file: string) => (file.endsWith(suffix) ? file.slice(0, -suffi
 
 export function developmentModules(importSource: string, sourceDirectory: string) {
   const compiled = new Map<string, string>();
+  /** Compiled module id -> logical source file that produced it. */
+  const origins = new Map<string, string>();
   const watched = new Set<string>();
   const originals = new Set<string>();
   const forgotten = new Set<unknown>();
   const stamps = new Map<string, string>();
   let server: ViteDevServer;
+  /**
+   * Native module resolution keys linked files by their target unless
+   * `resolve.preserveSymlinks` keeps the link. Compiled virtual modules must use
+   * the same identity so their relative imports resolve on the same side.
+   */
+  function canonicalSource(file: string) {
+    if (server.config.resolve.preserveSymlinks) return file;
+    try {
+      return realpathSync(file);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return file;
+      throw error;
+    }
+  }
   const plugin: Plugin = {
     name: "vincle-ssg-development-modules",
     enforce: "pre",
@@ -30,6 +46,8 @@ export function developmentModules(importSource: string, sourceDirectory: string
     },
     load(id) {
       if (compiled.has(id)) {
+        // Watch the link and its target: either side may change on disk.
+        this.addWatchFile(origins.get(id) ?? sourceOf(id));
         this.addWatchFile(sourceOf(id));
         return compiled.get(id);
       }
@@ -113,9 +131,10 @@ export function developmentModules(importSource: string, sourceDirectory: string
           hint: "Use the same runtime.importSource for all handlers and layouts.",
           context: { file, importSource: source, expected: importSource },
         });
-      const id = code === undefined ? file : file + suffix;
+      const id = code === undefined ? file : canonicalSource(file) + suffix;
       if (code !== undefined) {
         originals.add(file);
+        origins.set(id, file);
         if (compiled.get(id) !== code) {
           compiled.set(id, code);
           invalidate(id);
@@ -154,9 +173,14 @@ export function developmentModules(importSource: string, sourceDirectory: string
           for (const node of env.runner.evaluatedModules.getModulesByFile(file) ?? [])
             forget(node.id);
           if (originals.delete(file)) {
-            const id = file + suffix;
-            forget(id);
-            compiled.delete(id);
+            // The link may already be gone: recover the compiled identity from
+            // its recorded origin, never from a new realpath lookup.
+            for (const [id, origin] of origins) {
+              if (origin !== file) continue;
+              forget(id);
+              compiled.delete(id);
+              origins.delete(id);
+            }
           }
           if (watched.has(file)) stamps.set(file, stamp);
           else stamps.delete(file);
@@ -165,7 +189,7 @@ export function developmentModules(importSource: string, sourceDirectory: string
         if (modified) {
           for (const node of env.moduleGraph.getModulesByFile(file) ?? [])
             if (node.id) invalidate(node.id);
-          if (originals.has(file)) invalidate(file + suffix);
+          if (originals.has(file)) invalidate(canonicalSource(file) + suffix);
         }
         stamps.set(file, stamp);
       }),
@@ -204,16 +228,13 @@ export function developmentModules(importSource: string, sourceDirectory: string
       for (const dependency of node.importedModules) visit(dependency);
     };
     // Vite keys linked modules by their target unless its native option keeps links.
-    let resolved = file;
-    if (!server.config.resolve.preserveSymlinks) {
-      try {
-        resolved = realpathSync(file);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      }
+    const resolved = canonicalSource(file);
+    // Raw and compiled modules may be keyed by either the logical or real path.
+    const ids = new Set([file, resolved, file + suffix, resolved + suffix]);
+    for (const id of ids) {
+      const node = graph.getModuleById(id);
+      if (node) visit(node);
     }
-    const node = graph.getModuleById(resolved) ?? graph.getModuleById(file + suffix);
-    if (node) visit(node);
     const evaluated = environment().runner.evaluatedModules;
     const evaluatedSeen = new Set<string>();
     const collect = (id: string) => {
@@ -224,8 +245,7 @@ export function developmentModules(importSource: string, sourceDirectory: string
       if (path.isAbsolute(current.file)) files.add(sourceOf(current.file));
       for (const dependency of current.imports) collect(dependency);
     };
-    collect(resolved);
-    collect(file + suffix);
+    for (const id of ids) collect(id);
     return files;
   }
   return {
@@ -255,6 +275,7 @@ export function developmentModules(importSource: string, sourceDirectory: string
     dispose() {
       watched.clear();
       compiled.clear();
+      origins.clear();
       originals.clear();
       stamps.clear();
       forgotten.clear();

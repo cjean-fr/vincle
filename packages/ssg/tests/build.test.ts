@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { build, discoverPages, type PageHandler, type SsgPlugin } from "../src/index.js";
@@ -471,4 +471,24 @@ test("build returns the written files", () =>
     await put("index.tsx", "export default () => <main>Home</main>");
     const result = await build({ root, assets: false });
     expect(result).toEqual({ files: ["index.html"] });
+  }));
+
+test("linked sources keep link-located routes and resolve imports from their target", () =>
+  fixture(async (root, put) => {
+    const external = path.join(root, "external");
+    await mkdir(external);
+    await writeFile(
+      path.join(external, "page.tsx"),
+      'import {label} from "./_label"; export default () => <p>{label}</p>',
+    );
+    await writeFile(path.join(external, "_label.ts"), 'export const label = "target";');
+    await put("_label.ts", 'export const label = "link";');
+    await symlink("../external/page.tsx", path.join(root, "src/linked.tsx"));
+    await symlink("../external", path.join(root, "src/directory"));
+    expect(
+      (await discoverPages({ src: path.join(root, "src") })).map((page) => page.source.route),
+    ).toEqual(["/directory/page", "/linked"]);
+    await build({ root, assets: false });
+    expect(await file(root, "linked/index.html")).toBe("<p>target</p>");
+    expect(await file(root, "directory/page/index.html")).toBe("<p>target</p>");
   }));

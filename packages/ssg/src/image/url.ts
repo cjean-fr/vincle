@@ -14,9 +14,9 @@ export function variantPath(descriptor: VariantOwner, width: number, format: str
  * Public URL of one variant: "/directory/name-width.format", for example
  * "/portraits/photo-256.avif".
  *
- * The single source of truth for variant paths: the generator derives the file path
- * from it and render components build `src`/`srcset` entries from it, so markup and
- * files cannot diverge.
+ * The URL-encoded form of {@link variantPath}: the generator writes the raw path
+ * (and `validate()` checks that raw form), while render components build
+ * `src`/`srcset` entries from this encoded form.
  *
  * - absolute from the site root, leading slash included, **without** `base`: render
  *   components prefix the configured base themselves;

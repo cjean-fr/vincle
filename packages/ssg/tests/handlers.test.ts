@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -79,6 +79,18 @@ test("bounded discovery drains in-flight handler loads after failure", () =>
     expect(maximum).toBe(2);
     expect(active).toBe(0);
     expect(started).toEqual(["a.txt", "b.txt"]);
+  }));
+
+test("discovery rejects directory cycles and broken links but skips private entries", () =>
+  fixture(async (src) => {
+    await symlink(".", path.join(src, "loop"));
+    await expect(discoverPages({ src })).rejects.toThrow("Symbolic link cycle");
+    await rm(path.join(src, "loop"));
+    await symlink("missing.tsx", path.join(src, "broken.tsx"));
+    await expect(discoverPages({ src })).rejects.toThrow("Could not read source directory");
+    await rm(path.join(src, "broken.tsx"));
+    await symlink("missing.tsx", path.join(src, "_ignored.tsx"));
+    expect(await discoverPages({ src })).toEqual([]);
   }));
 
 test("missing/empty roots and invalid discovery options", () =>
