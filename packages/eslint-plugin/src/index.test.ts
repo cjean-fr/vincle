@@ -12,10 +12,11 @@ describe("plugin index", () => {
     expect(typeof plugin).toBe("object");
   });
 
-  it("has all 7 rules", () => {
+  it("has all 8 rules", () => {
     const ruleNames = Object.keys(rules).toSorted();
     expect(ruleNames).toEqual([
       "no-context",
+      "no-dangerously-set-inner-html-children",
       "no-global-jsx-namespace",
       "no-javascript-urls",
       "no-react-hooks",
@@ -50,13 +51,14 @@ describe("plugin index", () => {
     expect(recommended).toBeDefined();
   });
 
-  it("recommended config has all 7 rules with correct severities", () => {
+  it("recommended config has all 8 rules with correct severities", () => {
     expect(recommended.rules).toEqual({
       "@vincle/no-react-imports": "error",
       "@vincle/no-react-hooks": "error",
       "@vincle/no-unsafe-event-handlers": "warn",
       "@vincle/no-javascript-urls": "error",
       "@vincle/no-context": "error",
+      "@vincle/no-dangerously-set-inner-html-children": "error",
       "@vincle/no-refs": "error",
       "@vincle/no-global-jsx-namespace": "error",
     });

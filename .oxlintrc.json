@@ -13,6 +13,7 @@
     "@vincle/no-unsafe-event-handlers": "warn",
     "@vincle/no-javascript-urls": "error",
     "@vincle/no-context": "error",
+    "@vincle/no-dangerously-set-inner-html-children": "error",
     "@vincle/no-refs": "error",
     "@vincle/no-global-jsx-namespace": "error",
     "consistent-function-scoping": "off",
