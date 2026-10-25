@@ -27,7 +27,8 @@ bun add @vincle/core
 
 Node only. The examples use top-level await, so the project must be an ES
 module. Node does not run `.tsx` files: `tsx` runs them, `typescript` checks
-types.
+types. To type Node APIs (`node:fs`, `process`), add `"types": ["node"]` to
+the `compilerOptions` below.
 
 ```bash tab="npm" sync="pkg-manager"
 npm pkg set type=module
@@ -45,45 +46,20 @@ pnpm add -D typescript tsx @types/node
 
 ## TypeScript configuration
 
-Every runtime needs `jsxImportSource` in `tsconfig.json`, so JSX files need no
-import. Node also needs the module and type options below; Bun needs only the
-two JSX lines.
+The same `tsconfig.json` for npm, pnpm and Bun. `jsxImportSource` lets JSX files
+work without an import.
 
-```json tab="npm" title="tsconfig.json" sync="pkg-manager"
+```json title="tsconfig.json"
 {
   "compilerOptions": {
     "target": "es2022",
-    "module": "nodenext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core",
-    "types": ["node"]
+    "jsxImportSource": "@vincle/core"
   }
-}
-```
-
-```json tab="pnpm" title="tsconfig.json" sync="pkg-manager"
-{
-  "compilerOptions": {
-    "target": "es2022",
-    "module": "nodenext",
-    "strict": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core",
-    "types": ["node"]
-  }
-}
-```
-
-```jsonc tab="bun" title="tsconfig.json" sync="pkg-manager"
-{
-  "compilerOptions": {
-    // add these two lines to the compilerOptions of your tsconfig.json
-    "jsxImportSource": "@vincle/core",
-    "jsx": "react-jsx",
-  },
 }
 ```
 
