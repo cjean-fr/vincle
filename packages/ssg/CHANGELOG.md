@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `ssg generate`, the command that writes the site. `ssg build` still works as a deprecated alias and prints a warning; it will be removed in a later release.
 - **Breaking**: remove build timings: the `timings` option, `ssg build --timings`, the `timings` field of the `build()` result and the `BuildTimings` type. The build summary line stays.
 
 ## 0.4.0

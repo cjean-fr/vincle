@@ -11,7 +11,7 @@ import ssg from "../ssg.config.js";
 const PROJECT_DIR = path.resolve(import.meta.dirname, "..");
 const DIST_DIR = path.join(PROJECT_DIR, "dist");
 
-// `ssg build` is the production path: the tests read what it publishes.
+// `ssg generate` is the production path: the tests read what it publishes.
 beforeAll(() => {
   const proc = Bun.spawnSync(["bun", "run", "build"], { cwd: PROJECT_DIR });
   if (!proc.success) throw new Error(proc.stderr.toString());

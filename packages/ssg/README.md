@@ -31,7 +31,7 @@ including MDX syntax. There is no browser runtime or hydration added by SSG.
 Install `@vincle/ssg`, then use its `ssg` executable:
 
 ```json
-{ "scripts": { "dev": "ssg dev", "build": "ssg build" } }
+{ "scripts": { "dev": "ssg dev", "build": "ssg generate" } }
 ```
 
 The CLI automatically loads `ssg.config.ts` (also `.mts`, `.js`, `.mjs`,
@@ -64,7 +64,7 @@ sync/async function receiving `{ command, mode }`; command is `serve` for dev
 and `build` for production, matching Vite. Shared fields use `SsgOptions`;
 `dev` is development-only. Vite asset settings still belong in `vite.config`.
 Projects whose renderers use Bun APIs run the executable with
-`bun run --bun ssg dev` / `bun run --bun ssg build`; the package CLI also works with Node.
+`bun run --bun ssg dev` / `bun run --bun ssg generate`; the package CLI also works with Node.
 
 Dev output lives in the OS temporary directory, outside Vite's watched project.
 Both `DevServer.close()` and `server.vite.close()` perform full SSG cleanup;

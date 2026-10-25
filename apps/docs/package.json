@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "ssg dev",
-    "build": "ssg build",
+    "build": "ssg generate",
     "preview": "vite preview --outDir dist",
     "bench:memory": "bun scripts/bench-memory.ts",
     "format": "oxfmt '**/*.{jsx,tsx,mdx}'",
