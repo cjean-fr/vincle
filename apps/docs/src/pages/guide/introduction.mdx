@@ -117,7 +117,7 @@ You get an HTML string. Here's what makes that worth it:
   See the [Context & Scope API](/api/core/scope).
 
 - **Security is the default, not a config.** Every value is escaped for its context.
-  URL attributes only accept safe schemes. `raw()` is the explicit opt-out — if HTML
+  Attributes that hold a URL (`href`, `src`, `action`, `poster`, `cite` and more) only accept safe schemes. `raw()` is the explicit opt-out — if HTML
   escapes you, it's one function call. See the [security model](/guide/security).
 
 - **The output works immediately.** A complete HTML string you can send as a response,

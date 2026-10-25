@@ -8,7 +8,9 @@ Vincle's security model has one job: **prevent HTML injection (XSS) at
 every possible surface**. You do not need to opt in, configure, or remember
 to escape. It happens automatically for every string, attribute, and URL.
 Where an attribute's purpose _is_ to carry HTML or JavaScript, the guarantee
-narrows to escaping — see [The rule](#the-rule).
+narrows to escaping — see [The rule](#the-rule). The scheme filter judges every
+attribute that holds a single URL; two attributes that hold several are the
+exception — see [Which attributes get the scheme filter](#which-attributes-get-the-scheme-filter).
 
 ## The rule
 
@@ -72,7 +74,15 @@ is the only mode.
       </td>
     </tr>
     <tr>
-      <td>URL attributes</td>
+      <td>
+        URL attributes
+        <br />
+        <small>
+          <code>href</code>, <code>src</code>, <code>action</code>, <code>formaction</code>,{" "}
+          <code>xlink:href</code>, <code>data</code>, <code>cite</code>, <code>poster</code>,{" "}
+          <code>background</code>, <code>manifest</code> (and four more on SVG animation elements)
+        </small>
+      </td>
       <td>
         Any scheme outside the allowlist replaced with <code>#blocked</code>
         <br />
@@ -277,6 +287,48 @@ const result = await renderToString(<p>{raw(trustedHtml)}</p>);
 <div>&lt;script&gt;alert("XSS")&lt;/script&gt;</div>
 <p><strong>Hello</strong></p>
 ```
+
+### Which attributes get the scheme filter
+
+The filter judges an attribute by its name, and judges its whole value as one URL:
+`href`, `src`, `action`, `formaction`, `xlink:href`, `data`, `cite`, `poster`,
+`background` and `manifest` (`URL_ATTRIBUTES`, exported from `@vincle/core/html`).
+It applies on every element that carries one of them, so `<a href>`,
+`<img src>`, `<form action>`, `<button formaction>`, `<object data>`,
+`<video poster>`, `<blockquote cite>` and `<script src>` are all judged. On an SVG
+animation element, `values`, `to`, `from` and `by` are judged too (see
+[below](#svg-animation-a-url-one-attribute-removed)).
+
+The reason for the shape of the list is how a `javascript:` URL runs: only when a
+browser _navigates_ to it. The HTML standard handles it in its
+[navigate algorithm](https://html.spec.whatwg.org/multipage/browsing-the-web.html),
+which is what `href`, `action` and `formaction` lead to, and what the nested
+browsing context of `<iframe src>`, `<object data>` and `<embed src>` goes
+through. Every other use of a URL is a fetch, and the
+[Fetch standard](https://fetch.spec.whatwg.org/#scheme-fetch) handles only
+`about:`, `blob:`, `data:`, `file:` and `http(s):` there, returning a network
+error for any other scheme. So `poster`, `cite`, `background` and `manifest` do
+not execute a `javascript:` URL; they are judged all the same, so that one rule
+covers every attribute whose value is a single URL.
+
+Two attributes are not judged, because their value is not one URL:
+
+| Attribute | Element             | Value                                         |
+| --------- | ------------------- | --------------------------------------------- |
+| `srcset`  | `<img>`, `<source>` | image candidates: a URL and a descriptor each |
+| `ping`    | `<a>`, `<area>`     | space-separated URLs                          |
+
+They are emitted escaped and as written, so `<img srcset="javascript:…">` renders
+`srcset="javascript:…"`. Judging them would mean parsing the value, which the
+filter does not do. In the standard, `srcset` candidates are fetched as images and
+`ping` must use `http(s)` URLs. `longdesc`, a single URL, is obsolete in the
+standard and is not judged. `<meta http-equiv="refresh">` is a navigation that the
+filter does not read; it is listed under [Security Boundaries](#security-boundaries).
+
+The allowlist is the one every URL attribute uses: relative references and
+fragments pass, as do `http:`, `https:`, `mailto:`, `tel:`, `sms:` and image
+`data:`. A `cite` that holds a `urn:` or `doi:` identifier is outside it, and
+`rawUrl()` vouches for it.
 
 ### `rawUrl()`: a trusted scheme, and nothing else
 
@@ -525,7 +577,7 @@ Each invariant is enforced by property-based (fuzz) or unit tests:
 |  #   | Guarantee                                                        | Enforced by                                                    |
 | :--: | ---------------------------------------------------------------- | -------------------------------------------------------------- |
 | I‑01 | No raw `<` or `>` from untrusted input                           | `escape.test.ts`                                               |
-| I‑02 | No scheme off the allowlist passes through, obfuscated or not    | `escape.test.ts`: differential vs `new URL()`                  |
+| I‑02 | A scheme off the allowlist never reaches a single-URL attribute  | `escape.test.ts`: differential vs `new URL()`                  |
 | I‑03 | Precompile ≡ VNode path, value kind by value kind                | `precompile-equivalence.test.ts` (1000 values)                 |
 | I‑04 | Static path ≡ tree walk: byte-identical                          | `path-equivalence.test.ts` (1000 trees)                        |
 | I‑05 | Concurrent renders isolated: no cross-request leakage            | `scope.test.ts`, `provider.test.ts`, `execution-order.test.ts` |

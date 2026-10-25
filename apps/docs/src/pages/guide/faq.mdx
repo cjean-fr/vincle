@@ -76,7 +76,7 @@ title: FAQ
         name: "How does security work in Vincle?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Security is the default, not an opt-in. Every value is escaped for the place it lands, and a URL whose scheme is off the allowlist becomes #blocked. What you write yourself, such as an on* handler or a style string, is escaped but not inspected. raw() is the one way to vouch for trusted HTML, rawUrl() for a URL scheme.",
+          text: "Security is the default, not an opt-in. Every value is escaped for the place it lands, and a URL whose scheme is off the allowlist becomes #blocked, in href, src, action, poster, cite and the other single-URL attributes. What you write yourself, such as an on* handler or a style string, is escaped but not inspected. raw() is the one way to vouch for trusted HTML, rawUrl() for a URL scheme.",
         },
       },
       {
@@ -207,7 +207,7 @@ const html = await renderToString(<Page id="42" />);
 ## How does security work in Vincle?
 
 Security is the default, not an opt-in. Every value is escaped for the place it
-lands, and a URL whose scheme is off the allowlist becomes `#blocked`. What you
+lands, and a URL whose scheme is off the allowlist becomes `#blocked`, in `href`, `src`, `action`, `poster`, `cite` and the other single-URL attributes. What you
 write yourself, such as an `on*` handler or a `style` string, is escaped but not
 inspected. `raw()` is the one way to vouch for trusted HTML, `rawUrl()` for a URL
 scheme. See the [Security model](/guide/security).
@@ -254,7 +254,7 @@ anything that has no valid HTML form or no value:
 - **Function-valued attributes**: a function has no HTML form, `on*` included
 - **Missing execution values**: `Scope.get` on a key that was never set
 
-A URL off the allowlist is not an error: it renders as `#blocked`.
+A URL off the allowlist in a URL attribute is not an error: it renders as `#blocked`.
 
 ## What is the bundle size?
 

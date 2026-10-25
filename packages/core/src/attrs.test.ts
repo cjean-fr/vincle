@@ -145,7 +145,32 @@ describe("buildAttrs URL safety", () => {
     expect(r).toContain("#blocked");
   });
 
-  test("srcset is not checked (no JS execution vector)", () => {
+  // The single-URL attributes beyond `href`: one rule, judged as `href` is.
+  for (const [prop, name] of [
+    ["cite", "cite"],
+    ["poster", "poster"],
+    ["background", "background"],
+    ["manifest", "manifest"],
+  ] as const) {
+    test(`${name} is judged as a URL`, () => {
+      expect(buildAttrs({ [prop]: "javascript:alert(1)" }, "div")).toBe(` ${name}="#blocked"`);
+      expect(buildAttrs({ [prop]: "JaVaScRiPt:alert(1)" }, "div")).toBe(` ${name}="#blocked"`);
+      expect(buildAttrs({ [prop]: "/a/b.png" }, "div")).toBe(` ${name}="/a/b.png"`);
+      expect(buildAttrs({ [prop]: "https://example.com/a" }, "div")).toBe(
+        ` ${name}="https://example.com/a"`,
+      );
+      expect(buildAttrs({ [prop]: raw("javascript:ok()") }, "div")).toBe(
+        ` ${name}="javascript:ok()"`,
+      );
+    });
+  }
+
+  test("ping is a list of URLs and is not judged", () => {
+    expect(URL_ATTRIBUTES.has("ping")).toBe(false);
+    expect(buildAttrs({ ping: "javascript:alert(1)" }, "a")).toBe(' ping="javascript:alert(1)"');
+  });
+
+  test("srcset is not checked: image candidates, not a single URL", () => {
     const r = buildAttrs({ srcSet: "javascript:alert(1) 1x" }, "div");
     expect(r).toContain('srcset="javascript:alert(1) 1x"');
   });
@@ -207,8 +232,8 @@ describe("URL_ATTRIBUTES", () => {
     expect(URL_ATTRIBUTES.has("srcset")).toBe(false);
   });
 
-  test("has exactly 6 entries", () => {
-    expect(URL_ATTRIBUTES.size).toBe(6);
+  test("has exactly 10 entries", () => {
+    expect(URL_ATTRIBUTES.size).toBe(10);
   });
 
   // The SMIL names are judged too, but kept out of this set: it answers
