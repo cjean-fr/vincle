@@ -2,10 +2,10 @@ import { Scope } from "@vincle/core";
 /**
  * Multi-runtime conformance: what `bun test` can't cover.
  *
- * The unit suite runs on Bun, against the sources. This one runs on **every
- * claimed runtime**, against the **published artifact**: the `exports` map
- * sends every runtime, Bun included, to `dist/*.mjs`. Two blind spots closed at once: the port, and the gap
- * between what's tested and what's published.
+ * The unit suite runs on Bun. This one runs on **every claimed runtime**,
+ * against the **published artifact**: the `exports` map sends every runtime,
+ * Bun included, to `dist/*.mjs`. That closes two blind spots at once: the port,
+ * and the gap between what's tested and what's published.
  *
  * What's checked here is what **depends on the runtime**, not the whole API:
  * `SyncContextStore` exists because `AsyncLocalStorage` can be missing, and
