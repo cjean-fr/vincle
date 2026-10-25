@@ -180,6 +180,61 @@ describe("SSG build", () => {
   });
 });
 
+describe("breadcrumb JSON-LD", () => {
+  const SITE = "https://vincle.cjean.fr";
+  async function breadcrumbs(file: string) {
+    const html = await readFile(path.join(DIST_DIR, file), "utf-8");
+    const documents = [
+      ...html.matchAll(/<script type="application\/ld\+json">([^<]*)<\/script>/g),
+    ].map((match) => JSON.parse(match[1]!));
+    return documents.filter((document) => document["@type"] === "BreadcrumbList");
+  }
+  const steps = (list: { itemListElement: { name: string; item: string }[] }) =>
+    list.itemListElement.map((step) => [step.name, step.item]);
+
+  it("lists Home, the tab's landing page and the page, with positions from 1", async () => {
+    const lists = await breadcrumbs("guide/jsx/components.html");
+    expect(lists).toHaveLength(1);
+    expect(steps(lists[0])).toEqual([
+      ["Vincle", `${SITE}/`],
+      ["Guide", `${SITE}/guide/introduction`],
+      ["Components", `${SITE}/guide/jsx/components`],
+    ]);
+    expect(lists[0].itemListElement.map((step: { position: number }) => step.position)).toEqual([
+      1, 2, 3,
+    ]);
+  });
+
+  it("skips the tab on its own landing page", async () => {
+    const [list] = await breadcrumbs("guide/introduction.html");
+    expect(steps(list)).toEqual([
+      ["Vincle", `${SITE}/`],
+      ["Introduction", `${SITE}/guide/introduction`],
+    ]);
+  });
+
+  it("only links pages that exist and matches each page's canonical URL", async () => {
+    for (const file of ["api/flow/components.html", "integration/ssg/deployment.html"]) {
+      const html = await readFile(path.join(DIST_DIR, file), "utf-8");
+      const [list] = await breadcrumbs(file);
+      const urls: string[] = list.itemListElement.map((step: { item: string }) => step.item);
+      for (const url of urls) {
+        const local = new URL(url).pathname;
+        expect(
+          existsSync(path.join(DIST_DIR, local === "/" ? "index.html" : `${local}.html`)),
+        ).toBe(true);
+      }
+      expect(html).toContain(`<link rel="canonical" href="${urls.at(-1)}">`);
+    }
+  });
+
+  it("declares none on the home page, outside a tab or on the 404", async () => {
+    for (const file of ["index.html", "privacy.html", "404.html"]) {
+      expect(await breadcrumbs(file)).toHaveLength(0);
+    }
+  });
+});
+
 /** What a page declares must exist. */
 describe("everything a page declares exists", () => {
   /**

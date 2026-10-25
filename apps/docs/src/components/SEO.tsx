@@ -1,6 +1,6 @@
 import type { DocsRenderContext } from "../lib/context.js";
 
-import { getHeaders, getStructuredData } from "../lib/seo.js";
+import { getBreadcrumbData, getHeaders, getStructuredData } from "../lib/seo.js";
 import { markdownPath } from "../lib/url.js";
 
 type SEOProps = { page: DocsRenderContext };
@@ -52,6 +52,12 @@ export function SEOHeader({ page }: SEOProps) {
 }
 
 export function SEOFooter({ page }: SEOProps) {
-  const data = getStructuredData(page);
-  return data ? <script type="application/ld+json">{JSON.stringify(data)}</script> : null;
+  const documents = [getStructuredData(page), getBreadcrumbData(page)];
+  return (
+    <>
+      {documents.map((data) =>
+        data ? <script type="application/ld+json">{JSON.stringify(data)}</script> : null,
+      )}
+    </>
+  );
 }

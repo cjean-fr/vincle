@@ -34,3 +34,33 @@ export function getStructuredData(page: DocsRenderContext) {
     inLanguage: "en",
   };
 }
+
+/**
+ * The page's place in the site: Home, its tab, then the page itself.
+ *
+ * Only destinations that exist are listed. The tab links where its tab link
+ * goes (its first page); sidebar categories have no page of their own, so they
+ * stay out. On the tab's first page the tab and the page are one, so the trail
+ * is Home and that page. Pages outside any tab (home, privacy) have no
+ * hierarchy to declare.
+ */
+export function getBreadcrumbData(page: DocsRenderContext) {
+  const { config, meta, currentPage, currentTab, resolvedTabs } = page;
+  if (!ssg.site || currentPage === "/404" || !currentTab || !meta.title) return undefined;
+  const tab = resolvedTabs.find((candidate) => candidate.slug === currentTab.slug);
+  const trail = [
+    { name: config.title, url: "/" },
+    ...(tab && tab.href !== currentPage ? [{ name: tab.label, url: tab.href }] : []),
+    { name: meta.title, url: currentPage },
+  ];
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: trail.map((step, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: step.name,
+      item: fullUrl(step.url, ssg.site!),
+    })),
+  };
+}
