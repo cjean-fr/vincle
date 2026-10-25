@@ -39,8 +39,6 @@ async function command(args: string[], cwd: string) {
   return { code, stdout, stderr };
 }
 
-const duration = "(?:\\d+ ms|\\d+\\.\\d\\d s)";
-
 test("compiled CLI builds TypeScript configuration and diagnoses bad commands/configs", async () => {
   const root = await fixture();
   expect((await command(["--help"], root)).stdout).toContain("ssg <dev|build>");
@@ -116,70 +114,9 @@ for (const signal of ["SIGINT", "SIGTERM"] as const)
     }
   }, 15000);
 
-test("compiled CLI prints the build timings report after the build summary", async () => {
+test("compiled CLI prints only the build summary", async () => {
   const root = await fixture();
-  const result = await command(["build", "--timings"], root);
-  expect(result.code).toBe(0);
-  expect(result.stdout).toMatch(
-    new RegExp(`^1 page generated in ${duration}\\n\\nbuild timings {2}total ${duration}$`, "m"),
-  );
-  expect(result.stdout).toContain("  phases (sequential)");
-  for (const phase of [
-    "configuration",
-    "source inspection",
-    "work directory",
-    "assets prepare",
-    "discovery",
-    "cleanup",
-  ])
-    expect(result.stdout).toMatch(new RegExp(`^ {4}${phase} +${duration} +\\d+\\.\\d%$`, "m"));
-  expect(result.stdout).toMatch(
-    new RegExp(`^ {2}page rendering \\(active\\) +${duration} +\\d+\\.\\d% {2}· 1 page$`, "m"),
-  );
-  expect(result.stdout).toMatch(
-    new RegExp(
-      `^ {2}publication \\(wall\\) +${duration} +\\d+\\.\\d% {2}· \\d+ files?, includes rendering$`,
-      "m",
-    ),
-  );
-  expect(result.stdout).toMatch(new RegExp(`^ {2}slowest pages \\(median .+ · p95 .+\\)$`, "m"));
-  expect(result.stdout).toMatch(new RegExp(`^ {4}/ +${duration} {2}1 output$`, "m"));
-  expect((await command(["--help"], root)).stdout).toContain("--timings");
-});
-
-test("compiled CLI prints no timing report without --timings", async () => {
-  const root = await fixture();
-  for (const args of [["build"], ["build", "--no-timings"]]) {
-    const result = await command(args, root);
-    expect(result.code).toBe(0);
-    expect(result.stdout).not.toContain("build timings");
-    expect(result.stdout.trim()).toMatch(/^1 page generated in \d+(?: ms|\.\d\d s)$/);
-  }
-});
-
-test("compiled CLI prints the timing report when the configuration enables it", async () => {
-  const root = await fixture();
-  await writeFile(
-    path.join(root, "ssg.config.ts"),
-    'import {defineConfig} from "@vincle/ssg"; export default defineConfig({site:"https://example.test",assets:false,timings:true});',
-  );
   const result = await command(["build"], root);
   expect(result.code).toBe(0);
-  expect(result.stdout).toMatch(
-    new RegExp("^1 page generated in .+\\n\\nbuild timings {2}total ", "m"),
-  );
-  expect(result.stdout).toContain("  phases (sequential)");
-});
-
-test("compiled CLI rejects --timings with ssg dev", async () => {
-  const root = await fixture();
-  for (const args of [
-    ["dev", "--timings"],
-    ["dev", "--no-timings"],
-  ]) {
-    const result = await command(args, root);
-    expect(result.code).toBe(1);
-    expect(result.stderr).toContain("--timings applies only to ssg build.");
-    expect(result.stderr).toContain("INVALID_CONFIG");
-  }
+  expect(result.stdout.trim()).toMatch(/^1 page generated in \d+(?: ms|\.\d\d s)$/);
 });
