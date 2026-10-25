@@ -86,10 +86,14 @@
     "codegen:check": "bun scripts/codegen.ts --check"
   },
   "devDependencies": {
+    "@babel/core": "8.0.9",
+    "@babel/plugin-transform-react-jsx": "8.0.1",
+    "@babel/plugin-transform-react-jsx-development": "8.0.1",
     "@stryker-mutator/core": "catalog:",
     "@types/bun": "catalog:",
     "@types/react": "catalog:",
     "csstype": "catalog:",
+    "esbuild": "0.28.2",
     "oxc-parser": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:"

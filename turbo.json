@@ -73,6 +73,10 @@
       "cache": false,
       "outputs": []
     },
+    "@vincle/core#test": {
+      "dependsOn": ["^build", "build"],
+      "outputs": []
+    },
     "@vincle/ssg#test": {
       "dependsOn": ["^build", "build"],
       "outputs": []

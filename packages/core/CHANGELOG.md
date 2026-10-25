@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Export `createElement` for automatic JSX compiler fallback calls after a spread, with positional children taking priority without changing the input props.
+- Leave `dangerouslySetInnerHTML` on function components untouched. Only native HTML tags interpret and validate this prop.
+
 - Throw `ERR_VINCLE_FUNCTION_AS_TEXT` when a function is used as a child, in an element, an array, `<script>` or `<style>`, or a template hole. It was written into the HTML as its source code, which could expose server-side code. A component interpolated as `{Comp}` instead of `<Comp />` now fails the same way a VNode does.
 
 ### Changed

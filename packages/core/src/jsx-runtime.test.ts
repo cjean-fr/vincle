@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { jsx, jsxAttr, Fragment } from "./jsx-runtime.js";
+import { jsx, jsxAttr, createElement, Fragment } from "./jsx-runtime.js";
+import { createContext, useContext } from "./provider.js";
 import { renderToString } from "./render.js";
 import { VNode, RawString } from "./types.js";
 
@@ -123,6 +124,42 @@ describe("static subtree serialization", () => {
   });
 });
 
+describe("function components own dangerouslySetInnerHTML", () => {
+  // Function tags are components: `dangerouslySetInnerHTML` on them is a plain
+  // business prop the component itself interprets. jsx() must not read it,
+  // replace children with it, validate its shape, or fire a getter in it.
+
+  test("object42 reaches the component unchanged, no throw at construction", async () => {
+    const Comp = ({ dangerouslySetInnerHTML }: { dangerouslySetInnerHTML?: unknown }) =>
+      jsx("pre", {
+        children: `42:${typeof dangerouslySetInnerHTML === "object" ? "obj" : String(dangerouslySetInnerHTML)}`,
+      });
+    const node = jsx(Comp, { dangerouslySetInnerHTML: { __html: 42 } });
+    expect(await renderToString(node)).toBe("<pre>42:obj</pre>");
+  });
+
+  test("null reaches the component; written children are not replaced", async () => {
+    const Comp = ({ children }: { children?: unknown }) => jsx("div", { children });
+    const node = jsx(Comp, { dangerouslySetInnerHTML: null, children: "biz" });
+    expect(await renderToString(node)).toBe("<div>biz</div>");
+  });
+
+  test("getter on the prop is not read at JSX construction", () => {
+    let reads = 0;
+    const props: Record<string, unknown> = {};
+    Object.defineProperty(props, "dangerouslySetInnerHTML", {
+      enumerable: true,
+      get() {
+        reads++;
+        return { __html: "<b>x</b>" };
+      },
+    });
+    const Comp = () => jsx("div", {});
+    jsx(Comp, props as never);
+    expect(reads).toBe(0);
+  });
+});
+
 describe("jsxAttr", () => {
   test("string value", () => {
     const r = jsxAttr("class", "foo") as RawString;
@@ -192,5 +229,89 @@ describe("jsxAttr", () => {
   test("attribute escaping", () => {
     const r = jsxAttr("title", 'hello "world"') as RawString;
     expect(r.value).toBe('title="hello &quot;world&quot;"');
+  });
+});
+
+describe("createElement", () => {
+  test("zero positional children: original attrs passed through untouched", () => {
+    const Comp = () => jsx("div", {});
+    const attrs = { key: "k", children: "from-attrs" };
+    const node = createElement(Comp, attrs) as VNode;
+    expect(node.attrs).toBe(attrs);
+    expect(node.attrs["children"]).toBe("from-attrs");
+  });
+
+  test("one child: attrs copied, children scalar", async () => {
+    const Comp = (p: { class?: unknown; children?: unknown }) =>
+      jsx("div", { class: p.class, children: p.children });
+    const attrs = { class: "foo", children: "from-attrs" };
+    const node = createElement(Comp, attrs, "positional") as VNode;
+    expect(node.attrs).not.toBe(attrs);
+    expect(node.attrs["children"]).toBe("positional");
+    expect(attrs.children).toBe("from-attrs");
+    expect(await renderToString(node)).toBe('<div class="foo">positional</div>');
+  });
+
+  test("many children: attrs copied, children array", async () => {
+    const node = createElement("ul", { id: "list" }, "a", "b", "c");
+    expect(await renderToString(node)).toBe('<ul id="list">abc</ul>');
+  });
+
+  test("explicit positional undefined overrides original children", async () => {
+    const node = createElement("div", { children: "from-attrs" }, undefined);
+    expect(await renderToString(node)).toBe("<div></div>");
+  });
+
+  test("frozen props: no mutation, renders", async () => {
+    const frozen = Object.freeze({ class: "foo" });
+    const node = createElement("div", frozen, "hi");
+    expect(await renderToString(node)).toBe('<div class="foo">hi</div>');
+    expect(Object.hasOwn(frozen, "children")).toBe(false);
+  });
+
+  test("component key retained through the copy", async () => {
+    const Comp = ({ key, children }: { key?: unknown; children?: unknown }) =>
+      jsx("span", { children: `${String(key)}:${String(children)}` });
+    const node = createElement(Comp, { key: "k1" }, "v");
+    expect(await renderToString(node)).toBe("<span>k1:v</span>");
+  });
+});
+
+describe("component dangerous prop timing", () => {
+  test("business values reach the component by identity", async () => {
+    for (const value of [null, { __html: 42 }]) {
+      const props = { dangerouslySetInnerHTML: value };
+      const Comp = (received: typeof props) => {
+        expect(received).toBe(props);
+        expect(received.dangerouslySetInnerHTML).toBe(value);
+        return "ok";
+      };
+      expect(await renderToString(jsx(Comp, props))).toBe("ok");
+    }
+  });
+  test("an unused throwing business getter is never read", async () => {
+    const props = {
+      get dangerouslySetInnerHTML(): never {
+        throw new Error("must not read");
+      },
+    };
+    expect(await renderToString(jsx(() => "ok", props))).toBe("ok");
+  });
+  test("component reads business getter only under its Provider", async () => {
+    const Language = createContext("fr");
+    let reads = 0;
+    const props = {
+      get dangerouslySetInnerHTML() {
+        reads++;
+        return useContext(Language);
+      },
+    };
+    const Comp = (p: typeof props) => jsx("b", { children: p.dangerouslySetInnerHTML });
+    const child = jsx(Comp, props);
+    expect(reads).toBe(0);
+    expect(await renderToString(jsx(Language.Provider, { value: "en", children: child }))).toBe(
+      "<b>en</b>",
+    );
+    expect(reads).toBe(1);
   });
 });

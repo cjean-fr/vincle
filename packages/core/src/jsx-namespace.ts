@@ -4469,8 +4469,9 @@ export namespace JSX {
   /**
    * Props every element accepts without them being attributes.
    *
-   * `key` is lifted out of props by the JSX transform, so it never reaches the
-   * runtime and must not be checked against an element's attribute list.
+   * Automatic JSX calls can lift an explicit `key` into a separate argument.
+   * A spread key or a createElement fallback can keep it in component props;
+   * native HTML serialization omits it. It is not an HTML attribute.
    */
   export interface IntrinsicAttributes {
     key?: string | number | bigint | null | undefined;
