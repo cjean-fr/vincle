@@ -57,6 +57,36 @@ test("serves generated outputs, injects Vite, rebuilds watched sources and retai
   }
 }, 20_000);
 
+test("answers a malformed percent-encoded path with 400", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "vincle-dev-test-"));
+  await mkdir(path.join(root, "src"));
+  await writeFile(
+    path.join(root, "src/index.ts"),
+    'export default "<html><head></head><body>home</body></html>"',
+  );
+  const server = await dev({
+    root,
+    assets: false as const,
+    vite: {
+      configFile: false as const,
+      logLevel: "silent" as const,
+      server: { host: "127.0.0.1", port: 0 },
+    },
+  });
+  try {
+    const address = server.vite.httpServer!.address();
+    if (!address || typeof address === "string") throw new Error("Expected listening server");
+    const base = `http://127.0.0.1:${address.port}`;
+    for (const target of ["/%E0%A4%A", "/%", "/ok/%zz"]) {
+      expect((await fetch(base + target)).status).toBe(400);
+    }
+    expect((await fetch(base + "/")).status).toBe(200);
+  } finally {
+    await server.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 20_000);
+
 test("dev keeps one serve graph, invalidates imports/layouts/MDX and serves source assets", async () => {
   const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-dev-test-"));
   const src = path.join(root, "src");

@@ -4,6 +4,7 @@
 
 - Add `ssg generate`, the command that writes the site. `ssg build` still works as a deprecated alias and prints a warning; it will be removed in a later release.
 - **Breaking**: remove build timings: the `timings` option, `ssg build --timings`, the `timings` field of the `build()` result and the `BuildTimings` type. The build summary line stays.
+- Answer a malformed percent-encoded path in `ssg dev` with 400 instead of a 500 and a stack trace.
 
 ## 0.4.0
 

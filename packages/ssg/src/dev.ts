@@ -287,7 +287,14 @@ async function start(options: DevOptions): Promise<DevServer> {
 
   const pages = serving(async (vite, request, response) => {
     const url = requestUrl(request);
-    const pathname = decodeURIComponent(url.pathname);
+    let pathname: string;
+    try {
+      pathname = decodeURIComponent(url.pathname);
+    } catch {
+      response.statusCode = 400;
+      response.end();
+      return true;
+    }
     if (!pathname.startsWith(vite.config.base)) return false;
     const redirect = options.redirects?.[url.pathname];
     if (redirect) {
