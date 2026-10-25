@@ -10,9 +10,9 @@ import {
   resolveAttrName,
   serializeAttr,
 } from "./attrs.js";
-import { valueToText } from "./escape.js";
+import { coerceToText, valueToText } from "./escape.js";
 import { jsx } from "./jsx-runtime.js";
-import { renderToString } from "./render.js";
+import { renderNode, renderToString } from "./render.js";
 import { isAnimationTag } from "./tag.js";
 import { raw, rawUrl } from "./types.js";
 
@@ -815,6 +815,41 @@ describe("a RawString attribute value cannot end the attribute", () => {
     expect(buildAttrs({ title: raw("<b>a &amp; b</b>") }, "div")).toBe(' title="<b>a &amp; b</b>"');
     expect(buildAttrs({ style: raw('font-family:"Foo"') }, "div")).toBe(
       ' style="font-family:&quot;Foo&quot;"',
+    );
+  });
+});
+
+describe("Date values do not depend on the time zone", () => {
+  const instant = new Date(Date.UTC(2026, 9, 25, 22, 30));
+
+  test("the same instant renders the same text in every zone", async () => {
+    const saved = process.env.TZ;
+    try {
+      const seen = new Set<string>();
+      for (const zone of ["UTC", "Asia/Tokyo", "Europe/Paris", "America/Los_Angeles"]) {
+        process.env.TZ = zone;
+        seen.add(
+          [
+            valueToText(instant),
+            String(renderNode(instant)),
+            String(buildAttrs({ dateTime: instant }, "time")),
+            await renderToString(jsx("script", { children: instant })),
+          ].join("|"),
+        );
+      }
+      expect([...seen]).toHaveLength(1);
+    } finally {
+      if (saved === undefined) delete process.env.TZ;
+      else process.env.TZ = saved;
+    }
+  });
+
+  test("is an ISO 8601 UTC string, and an invalid date keeps `Invalid Date`", () => {
+    expect(valueToText(instant)).toBe("2026-10-25T22:30:00.000Z");
+    expect(coerceToText(new Date(0))).toBe("1970-01-01T00:00:00.000Z");
+    expect(coerceToText(new Date(Number.NaN))).toBe("Invalid Date");
+    expect(String(buildAttrs({ dateTime: instant }, "time"))).toContain(
+      'datetime="2026-10-25T22:30:00.000Z"',
     );
   });
 });

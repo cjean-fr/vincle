@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Render a `Date` as an ISO 8601 UTC string (`2026-10-25T22:30:00.000Z`) in content and in attributes. It was `String(date)`, which follows the runtime's time zone: the same instant produced different HTML on a CI runner and on a laptop. An invalid date still renders `Invalid Date`. **Output change**: a `Date` no longer renders as `Sun Oct 25 2026 ...`.
 - Throw `ERR_VINCLE_FUNCTION_AS_TEXT` when a function is used as a child, in an element, an array, `<script>` or `<style>`, or a template hole. It was written into the HTML as its source code, which could expose server-side code. A component interpolated as `{Comp}` instead of `<Comp />` now fails the same way a VNode does.
 
 ### Changed
