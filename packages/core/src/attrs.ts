@@ -226,11 +226,9 @@ export const URL_ATTRIBUTES: ReadonlySet<string> = new Set([
   // `<object data>` / `<embed src>` navigate the same way `<iframe src>` does;
   // `data` is the only one of the two not already covered by `src`.
   "data",
-  // The other attributes whose value is one URL, judged as `href` is. A
-  // `javascript:` URL runs on navigation, which these do not trigger, so this is
-  // consistency rather than a closed hole: one rule for every single-URL
-  // attribute, whatever a browser does with it. `ping` (a list) and `srcset`
-  // (image candidates) are not single URLs and are not judged.
+  // Single-URL attributes judged as `href` is, as defence in depth. `ping` (a
+  // list) and `srcset` (image candidates) are not judged: that would need
+  // parsing.
   "cite",
   "poster",
   "background",
