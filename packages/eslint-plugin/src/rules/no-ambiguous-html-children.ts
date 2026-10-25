@@ -3,7 +3,7 @@ import type { RuleModule } from "../types.js";
 /**
  * A convention rule, not a bug detector. On an HTML tag, children and
  * `dangerouslySetInnerHTML` are two sources of content, and the runtime
- * refuses the conflict at construction (`ERR_VINCLE_DANGEROUS_HTML_CHILDREN`).
+ * refuses the conflict at construction (`ERR_VINCLE_AMBIGUOUS_HTML_CHILDREN`).
  * On a component both are ordinary props the runtime passes through untouched:
  * which one the component uses is its own contract, and nothing at the call
  * site shows it. The rule makes that ambiguity an error, so the contract is
@@ -47,7 +47,7 @@ function hasContent(children: any[]): boolean {
   });
 }
 
-export const noDangerouslySetInnerHtmlChildren: RuleModule = {
+export const noAmbiguousHtmlChildren: RuleModule = {
   meta: {
     type: "problem",
     docs: {

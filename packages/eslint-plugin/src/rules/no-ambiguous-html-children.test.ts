@@ -1,7 +1,7 @@
 import * as parser from "@typescript-eslint/parser";
 import { RuleTester } from "@typescript-eslint/rule-tester";
 
-import { noDangerouslySetInnerHtmlChildren } from "./no-dangerously-set-inner-html-children";
+import { noAmbiguousHtmlChildren } from "./no-ambiguous-html-children";
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -14,7 +14,7 @@ const ruleTester = new RuleTester({
   },
 });
 
-ruleTester.run("no-dangerously-set-inner-html-children", noDangerouslySetInnerHtmlChildren, {
+ruleTester.run("no-ambiguous-html-children", noAmbiguousHtmlChildren, {
   valid: [
     // One source of content: either one alone is an ordinary component call.
     "<Comp dangerouslySetInnerHTML={{ __html: '<b>x</b>' }} />",
