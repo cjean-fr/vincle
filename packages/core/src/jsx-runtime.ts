@@ -3,7 +3,7 @@ import type { Renderable } from "./types.js";
 import { ElementAttr, serializeTemplateAttr } from "./attrs.js";
 import {
   ERR_DANGEROUS_HTML,
-  ERR_DANGEROUS_HTML_CHILDREN,
+  ERR_AMBIGUOUS_HTML_CHILDREN,
   ERR_INVALID_TAG,
   ERR_VOID_CHILDREN,
   vincleTypeError,
@@ -67,7 +67,7 @@ function jsx(
       throw vincleTypeError(
         `[vincle/core] <${tag}> cannot have both children and dangerouslySetInnerHTML: ` +
           "keep one source of content: the children, or the markup in __html.",
-        ERR_DANGEROUS_HTML_CHILDREN,
+        ERR_AMBIGUOUS_HTML_CHILDREN,
       );
     }
     const html = dsih.__html;
