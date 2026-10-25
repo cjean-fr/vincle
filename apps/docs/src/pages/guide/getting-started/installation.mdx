@@ -31,12 +31,14 @@ pnpm add -D typescript tsx @types/node
 mkdir my-site && cd my-site
 bun init -y
 bun add @vincle/core
+bun add -d typescript
 ```
 
 `"type": "module"` makes your files ES modules, which the examples need for
 top-level `await`. Node does not run `.tsx` files on its own, so the Node
 commands add `tsx` to run them and `typescript` to check types. Bun runs
-TypeScript and JSX directly and needs neither.
+TypeScript and JSX directly, so it needs no runner. It does not check types:
+`typescript` is there for that.
 
 ## TypeScript configuration
 
@@ -88,6 +90,7 @@ pnpm exec tsc # type check
 
 ```bash tab="bun" sync="pkg-manager"
 bun index.tsx
+bunx tsc # type check
 ```
 
 ## Where to next
