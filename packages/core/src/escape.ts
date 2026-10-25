@@ -1,4 +1,4 @@
-import { ERR_VNODE_AS_TEXT, vincleError } from "./errors.js";
+import { ERR_FUNCTION_AS_TEXT, ERR_VNODE_AS_TEXT, vincleError } from "./errors.js";
 import { RawString, RawUrl, VNode } from "./types.js";
 
 const RE_ESCAPE_HTML = /[&<>]/;
@@ -374,6 +374,16 @@ export function renderLeaf(v: unknown, rawtextTag: string | undefined): string {
     return rawtextTag === undefined
       ? escapeContent(v.value)
       : escapeRawTagContent(v.value, rawtextTag);
+  }
+  // A function is never text: `String` would put its source in the page, a leak
+  // that is also a silent one. It sits here, past every common shape, so no hot
+  // path pays for it, and every route to a leaf (static, walk, rawtext, template
+  // holes) is covered because they all end in this function.
+  if (typeof v === "function") {
+    throw vincleError(
+      "[vincle/core] A function reached a text position: call it ({fn()}), or use a component as JSX (<Comp />), not interpolated as {Comp}.",
+      ERR_FUNCTION_AS_TEXT,
+    );
   }
   // Inside rawtext the coercion is `String` under the tag's own escape: an entity
   // is never decoded there, so HTML-escaping would put `&lt;` in the JavaScript.
