@@ -35,8 +35,6 @@ pnpm add -D typescript tsx @types/node
 mkdir my-site && cd my-site
 bun init -y
 bun add @vincle/core
-# Bun runs .tsx files itself but does not check types: typescript does
-bun add -d typescript
 ```
 
 ## TypeScript configuration
@@ -101,7 +99,7 @@ pnpm exec tsc # type check
 
 ```bash tab="bun" sync="pkg-manager"
 bun index.tsx
-bunx tsc # type check
+bun check # type check, built into Bun
 ```
 
 ## Where to next
