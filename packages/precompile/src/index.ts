@@ -11,7 +11,7 @@ import type {
   TransformResult,
 } from "./types.js";
 
-import { RUNTIME_SOURCE } from "./core/index.js";
+import { runtimeSource } from "./config.js";
 import { collectNode } from "./emit.js";
 import { normalizeRuntimeHelpers } from "./runtime-helpers.js";
 import { injectRuntimeImport } from "./runtime-import.js";
@@ -25,7 +25,7 @@ export default function precompileTransform(
   renderAttr?: RenderAttr,
   renderEscape?: RenderEscape,
 ): TransformResult | null {
-  const rtSource = config?.runtimeSource ?? RUNTIME_SOURCE;
+  const rtSource = runtimeSource(config);
   const lang = id.endsWith(".tsx") ? "tsx" : "jsx";
 
   const result = parseSync(id, code, {
