@@ -1,7 +1,7 @@
 import { fullUrl, type SsgPlugin } from "@vincle/ssg";
 
 import type { SearchDocument } from "../_client/search-rank.js";
-import type { ResolvedDocsConfig } from "./types.js";
+import type { DocsConfig } from "./types.js";
 
 import docs from "../../docs.config.js";
 import ssg from "../../ssg.config.js";
@@ -10,10 +10,10 @@ import { hasSocialCard, socialCardPath, socialCardPng, summarize } from "./socia
 
 export function llmsTxt(
   pages: readonly { url: string; title: string }[],
-  config: ResolvedDocsConfig,
+  config: DocsConfig,
 ): string {
   const lines: string[] = [
-    `# ${config.title}: ${config.tagline ?? "Documentation"}`,
+    `# ${config.title}: ${config.tagline}`,
     "",
     `> ${config.description}`,
     "",
@@ -31,7 +31,7 @@ export async function llmsFullTxt(
   pages:
     | Iterable<{ url: string; title: string; text: string }>
     | AsyncIterable<{ url: string; title: string; text: string }>,
-  config: ResolvedDocsConfig,
+  config: DocsConfig,
 ): Promise<string> {
   let content = [`# ${config.title}: Full documentation`, "", `> ${config.description}`, ""].join(
     "\n",

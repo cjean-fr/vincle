@@ -1,5 +1,6 @@
 import type { PageContext } from "@vincle/ssg";
 
+import { Layout } from "../components/Layout.js";
 import { setDocs, type DocsRenderContext } from "../lib/context.js";
 import { t } from "../lib/messages.js";
 
@@ -21,7 +22,7 @@ export default async function NotFound(context: PageContext) {
     prev: null,
     next: null,
   });
-  return config.layout({
+  return Layout({
     children: (
       <main class="docs-main mx-auto max-w-2xl py-16 text-center">
         <h1 class="text-6xl font-bold text-gray-300 dark:text-gray-700">404</h1>

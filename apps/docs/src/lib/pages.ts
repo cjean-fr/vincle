@@ -5,12 +5,13 @@ import {
   type DiscoveredPage,
 } from "@vincle/ssg";
 
-import type { ResolvedDocsConfig, Page, PageMeta } from "./types.js";
+import type { DocsConfig, Page, PageMeta } from "./types.js";
 
+import { MdxHandler } from "./mdx.js";
 import { markdownPath } from "./url.js";
 
 export async function discoverPages(
-  config: ResolvedDocsConfig,
+  config: DocsConfig,
   now = new Date(),
   modules?: ModuleLoader,
   discover: (options: DiscoverPagesOptions) => Promise<DiscoveredPage[]> = discoverSitePages,
@@ -18,7 +19,7 @@ export async function discoverPages(
   const pages = await discover({
     src: config.pages,
     modules,
-    handlers: config.handlers,
+    handlers: { ".mdx": MdxHandler },
   });
   const published = pages.map(createPage).filter((page) => isPublished(page.meta, now));
   published.sort((a, b) => a.url.localeCompare(b.url));

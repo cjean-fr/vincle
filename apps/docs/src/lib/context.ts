@@ -2,10 +2,10 @@ import { Scope, type ScopeKey } from "@vincle/core";
 
 import type { NavLink } from "./sidebar.js";
 import type { TocEntry } from "./toc.js";
-import type { ResolvedDocsConfig, PageMeta, ResolvedSidebar, TabConfig } from "./types.js";
+import type { DocsConfig, PageMeta, ResolvedSidebar, TabConfig } from "./types.js";
 
 export interface DocsRenderContext {
-  config: ResolvedDocsConfig;
+  config: DocsConfig;
   currentPage: string;
   /** Whether this source has a generated Markdown alternate. */
   hasMarkdownAlternate?: boolean;

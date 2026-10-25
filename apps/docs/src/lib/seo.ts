@@ -7,14 +7,12 @@ import { hasSocialCard, socialCardPath } from "./social-card.js";
 
 export function getHeaders(page: DocsRenderContext) {
   const { config, meta, currentPage, hasMarkdownAlternate = false } = page;
-  const card = !meta.image && !config.image && ssg.site !== undefined && hasSocialCard(currentPage);
+  const card = !meta.image && ssg.site !== undefined && hasSocialCard(currentPage);
   return {
     title: meta.title ? `${meta.title} - ${config.title}` : config.title,
     description: meta.description ?? config.description,
     keywords: meta.keywords?.length ? meta.keywords.join(", ") : null,
-    image: card
-      ? fullUrl(`/${socialCardPath(currentPage)}`, ssg.site!)
-      : (meta.image ?? config.image),
+    image: card ? fullUrl(`/${socialCardPath(currentPage)}`, ssg.site!) : meta.image,
     /** The generated card's size, which crawlers otherwise download the image to learn. */
     imageSize: card ? { width: 1200, height: 630 } : null,
     canonical: ssg.site ? fullUrl(currentPage, ssg.site) : null,

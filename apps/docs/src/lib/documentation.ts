@@ -42,7 +42,7 @@ async function documentationContexts(pages: Page[]): Promise<Navigation> {
           ? t(tab.slug)
           : tab.label,
       slug: tab.slug,
-      href: tab.href ?? (await firstPageOfTab(configuration, pages, tab)),
+      href: await firstPageOfTab(configuration, pages, tab),
     })),
   );
   const root = path.resolve(configuration.pages);

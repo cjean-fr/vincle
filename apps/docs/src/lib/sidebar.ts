@@ -6,7 +6,7 @@ import type {
   ResolvedSidebar,
   ResolvedSidebarItem,
   TabConfig,
-  ResolvedDocsConfig,
+  DocsConfig,
 } from "./types.js";
 import type { Page } from "./types.js";
 
@@ -62,7 +62,7 @@ export function clearMetaCache(): void {
  * directory's `_meta.json` (falling back to page titles, then slug order).
  */
 export async function resolveSidebar(
-  config: ResolvedDocsConfig,
+  config: DocsConfig,
   pages: readonly Page[],
   currentUrl: string,
 ): Promise<ResolvedSidebar> {
@@ -216,7 +216,7 @@ function flattenPages(sidebar: ResolvedSidebar): NavLink[] {
  * URL when no page exists.
  */
 export async function firstPageOfTab(
-  config: ResolvedDocsConfig,
+  config: DocsConfig,
   pages: readonly Page[],
   tab: TabConfig,
 ): Promise<string> {

@@ -46,7 +46,7 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
           <SEOHeader page={page} />
           {themeScript}
           {tabsScript}
-          <Asset entry={config.clientEntry} />
+          <Asset entry="src/_client/main.ts" />
           <Asset entry="src/_client/main.css" />
         </head>
         <body class="docs-body bg-[var(--docs-color-bg)] text-[var(--docs-color-text)] antialiased">
