@@ -45,7 +45,9 @@ pnpm add -D typescript tsx @types/node
 
 ## TypeScript configuration
 
-Every runtime: set `jsxImportSource` in your `tsconfig.json` so JSX files need no import.
+Every runtime needs `jsxImportSource` in `tsconfig.json`, so JSX files need no
+import. Node also needs the module and type options below; Bun needs only the
+two JSX lines.
 
 ```json tab="npm" title="tsconfig.json" sync="pkg-manager"
 {
