@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -39,6 +39,17 @@ describe("parseArgs", () => {
 });
 
 describe("runCli", () => {
+  it("prints the version of the package manifest", async () => {
+    const manifest = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    ) as { version: string };
+    const output: string[] = [];
+
+    await runCli(["--version"], { stdout: (message) => output.push(message) });
+
+    expect(output).toEqual([`${manifest.version}\n`]);
+  });
+
   it("uses the detected runtime when --yes is present", async () => {
     const cwd = await temporaryDirectory();
     const output: string[] = [];
