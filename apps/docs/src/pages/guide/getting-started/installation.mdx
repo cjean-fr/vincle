@@ -9,21 +9,25 @@ TypeScript. That's all.
 
 ## Start a project
 
-Starting from an empty folder, with Node 22 or later or Bun.
+Starting from an empty folder.
 
 ```bash tab="npm" sync="pkg-manager"
 mkdir my-site && cd my-site
 npm init -y
+# ES modules: the examples use top-level await
 npm pkg set type=module
 npm install @vincle/core
+# Node does not run .tsx files: tsx runs them, typescript checks types
 npm install -D typescript tsx @types/node
 ```
 
 ```bash tab="pnpm" sync="pkg-manager"
 mkdir my-site && cd my-site
 pnpm init
+# ES modules: the examples use top-level await
 pnpm pkg set type=module
 pnpm add @vincle/core
+# Node does not run .tsx files: tsx runs them, typescript checks types
 pnpm add -D typescript tsx @types/node
 ```
 
@@ -31,20 +35,15 @@ pnpm add -D typescript tsx @types/node
 mkdir my-site && cd my-site
 bun init -y
 bun add @vincle/core
+# Bun runs .tsx files itself but does not check types: typescript does
 bun add -d typescript
 ```
-
-`"type": "module"` makes your files ES modules, which the examples need for
-top-level `await`. Node does not run `.tsx` files on its own, so the Node
-commands add `tsx` to run them and `typescript` to check types. Bun runs
-TypeScript and JSX directly, so it needs no runner. It does not check types:
-`typescript` is there for that.
 
 ## TypeScript configuration
 
 Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import.
 
-```json tab="Node" title="tsconfig.json"
+```json tab="npm" title="tsconfig.json" sync="pkg-manager"
 {
   "compilerOptions": {
     "target": "es2022",
@@ -58,17 +57,29 @@ Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import.
 }
 ```
 
-```json tab="Bun" title="tsconfig.json"
+```json tab="pnpm" title="tsconfig.json" sync="pkg-manager"
 {
   "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "strict": true,
+    "noEmit": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@vincle/core"
+    "jsxImportSource": "@vincle/core",
+    "types": ["node"]
   }
 }
 ```
 
-With Bun, `bun init` already writes a `tsconfig.json`: add the
-`jsxImportSource` line to it and keep the rest.
+```jsonc tab="bun" title="tsconfig.json" sync="pkg-manager"
+{
+  "compilerOptions": {
+    // bun init already writes this file: add this line and keep the rest
+    "jsxImportSource": "@vincle/core",
+    "jsx": "react-jsx",
+  },
+}
+```
 
 Attributes are typed per element (`src` on `<img>`, `href` on `<a>`), with
 nothing extra to install: see [JSX types](/api/core/jsx-types).
