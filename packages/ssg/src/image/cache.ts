@@ -1,7 +1,7 @@
 import type { ImageSource } from "./types.js";
 
 /** One decoded master and every variant encoded from its current filesystem state. */
-export interface ImageCacheEntry {
+interface ImageCacheEntry {
   /** Source state the entry was decoded from: `${mtimeMs}:${size}`. */
   key: string;
   /** Decoded master, as returned by the converter. */

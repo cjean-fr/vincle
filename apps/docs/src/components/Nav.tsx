@@ -1,12 +1,12 @@
 import type { ResolvedSidebarItem } from "../lib/types.js";
 
-import { useDocs, useTranslation } from "../lib/context.js";
+import { useDocs } from "../lib/context.js";
+import { t } from "../lib/messages.js";
 import { Icon } from "./Icon.js";
 import { DrawerTabs } from "./Tabs.js";
 
 /** `drawerOnly`: no desktop sidebar (home), but phones still get search and sections. */
 export function Nav({ drawerOnly = false }: { drawerOnly?: boolean } = {}) {
-  const t = useTranslation();
   const { sidebar } = useDocs();
 
   return (

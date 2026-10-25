@@ -1,6 +1,6 @@
-import { translatorFor } from "../lib/i18n/interface.js";
-import { browserLocale, localizedPath } from "../lib/i18n/locale.js";
+import { t } from "../lib/messages.js";
 import { search, type SearchDocument } from "./search-rank.js";
+import { showSearchShortcut } from "./search-shortcut.js";
 
 /** A run of result text: plain, or the part the query matched. */
 interface Segment {
@@ -15,14 +15,14 @@ let index: SearchDocument[] | null = null;
 
 async function loadIndex(): Promise<SearchDocument[]> {
   if (index) return index;
-  const res = await fetch(localizedPath("/search-index.json", browserLocale()));
+  const res = await fetch("/search-index.json");
   if (!res.ok) throw new Error(`Failed to load search index: ${res.status}`);
   index = (await res.json()) as SearchDocument[];
   return index;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const t = translatorFor(browserLocale());
+  showSearchShortcut();
   const dialog = document.getElementById("search-dialog") as HTMLDialogElement | null;
   const input = document.getElementById("search-input") as HTMLInputElement | null;
   const status = document.getElementById("search-status") as HTMLElement | null;

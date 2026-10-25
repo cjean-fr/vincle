@@ -3,22 +3,18 @@ import { renderToString, type JSX } from "@vincle/core";
 import { setVite } from "@vincle/vite-plugin";
 import { describe, expect, it } from "bun:test";
 
-import type { PageMeta, ResolvedDocsConfig } from "../src/lib/types.js";
+import type { PageMeta, DocsConfig } from "../src/lib/types.js";
 
 import { Layout } from "../src/components/Layout.js";
 import { setDocs, type DocsRenderContext } from "../src/lib/context.js";
 
-const config: ResolvedDocsConfig = {
+const config: DocsConfig = {
   title: "Vincle",
   tagline: "Documentation",
   description: "The small, safe way to render JSX into HTML strings.",
   pages: "src/pages",
-  clientEntry: "src/_client/main.ts",
   tabs: [{ label: "Guide", slug: "guide" }],
   editUrl: null,
-  image: null,
-  handlers: {},
-  layout: Layout,
 };
 
 function docsContext(meta: PageMeta): DocsRenderContext {
@@ -73,18 +69,12 @@ it("uses the SSG site for canonical metadata independently of the Vite asset bas
     setVite(null, { base: "/bundles/" });
     setDocs({
       ...docsContext({ title: "Guide" }),
-      currentPage: "/fr/guide",
-      alternates: [
-        { locale: "en", href: "/guide" },
-        { locale: "fr", href: "/fr/guide" },
-      ],
+      currentPage: "/guide",
     });
     return renderToString(Layout({ children: <main>body</main> }));
   });
-  expect(html).toContain('rel="canonical" href="https://vincle.cjean.fr/fr/guide"');
-  expect(html).toContain('property="og:url" content="https://vincle.cjean.fr/fr/guide"');
-  expect(html).toContain('hreflang="en" href="https://vincle.cjean.fr/guide"');
-  expect(html).toContain('hreflang="x-default" href="https://vincle.cjean.fr/guide"');
+  expect(html).toContain('rel="canonical" href="https://vincle.cjean.fr/guide"');
+  expect(html).toContain('property="og:url" content="https://vincle.cjean.fr/guide"');
   expect(html).toContain('src="/bundles/src/_client/main.ts"');
 });
 

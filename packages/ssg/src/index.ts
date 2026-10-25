@@ -46,5 +46,3 @@ export {
 } from "./config.js";
 
 export { defaultMimeTypes, type MimeTypes } from "./mime.js";
-
-export type { BuildTimings } from "./timings.js";

@@ -2,14 +2,10 @@ import { Scope, type ScopeKey } from "@vincle/core";
 
 import type { NavLink } from "./sidebar.js";
 import type { TocEntry } from "./toc.js";
-import type { ResolvedDocsConfig, PageMeta, ResolvedSidebar, TabConfig } from "./types.js";
-
-import { translatorFor } from "./i18n/interface.js";
-import { localeFor, type Locale } from "./i18n/locale.js";
+import type { DocsConfig, PageMeta, ResolvedSidebar, TabConfig } from "./types.js";
 
 export interface DocsRenderContext {
-  config: ResolvedDocsConfig;
-  alternates?: ReadonlyArray<{ locale: Locale; href: string }>;
+  config: DocsConfig;
   currentPage: string;
   /** Whether this source has a generated Markdown alternate. */
   hasMarkdownAlternate?: boolean;
@@ -36,8 +32,4 @@ export function setDocs(value: DocsRenderContext): void {
 
 export function useDocs(): DocsRenderContext {
   return Scope.get(DocsContext);
-}
-
-export function useTranslation() {
-  return translatorFor(localeFor(useDocs().currentPage));
 }

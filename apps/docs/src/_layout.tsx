@@ -1,6 +1,7 @@
 import type { Renderable } from "@vincle/core";
 import type { PageContext } from "@vincle/ssg";
 
+import { Layout } from "./components/Layout.js";
 import { setDocs, type DocsRenderContext } from "./lib/context.js";
 import { useToc } from "./lib/toc.js";
 
@@ -13,7 +14,7 @@ export default async function DocumentationLayout({
   if (!resolveContext) throw new Error("Documentation layout requires its discovery context.");
   const documentation = await resolveContext();
   setDocs({ ...documentation, toc: useToc() });
-  return documentation.config.layout({
+  return Layout({
     children: meta["prose"] ? <div class="docs-prose">{children}</div> : children,
   });
 }
