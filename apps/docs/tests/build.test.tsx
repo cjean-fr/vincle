@@ -13,7 +13,7 @@ const DIST_DIR = path.join(PROJECT_DIR, "dist");
 
 // `ssg generate` is the production path: the tests read what it publishes.
 beforeAll(() => {
-  const proc = Bun.spawnSync(["bun", "run", "build"], { cwd: PROJECT_DIR });
+  const proc = Bun.spawnSync(["bun", "run", "generate"], { cwd: PROJECT_DIR });
   if (!proc.success) throw new Error(proc.stderr.toString());
 }, 120_000);
 

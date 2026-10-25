@@ -1,7 +1,7 @@
 # Documentation preview
 
 ```sh
-bun run --cwd apps/docs build
+bun run --cwd apps/docs generate
 bun run --cwd apps/docs preview
 ```
 

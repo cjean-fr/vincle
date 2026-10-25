@@ -18,6 +18,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "generate": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
     "bench": {
       "dependsOn": ["^build"],
       "cache": false,
