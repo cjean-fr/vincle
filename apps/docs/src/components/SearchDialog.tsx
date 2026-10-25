@@ -11,9 +11,12 @@ export function SearchDialog() {
       >
         <Icon name="tabler:search" size={16} class="docs-search-icon size-4 shrink-0" />
         <span class="docs-search-trigger-label hidden md:inline">{t("search")}</span>
-        <kbd class="docs-search-kbd hidden items-center gap-0.5 rounded border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--docs-color-text-secondary)] sm:inline-flex">
-          <span class="text-base leading-none">⌘</span>K
-        </kbd>
+        {/* Filled in by the client once the platform is known: no shortcut is claimed before. */}
+        <kbd
+          hidden
+          data-search-shortcut
+          class="docs-search-kbd items-center gap-0.5 rounded border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--docs-color-text-secondary)] [&:not([hidden])]:inline-flex"
+        ></kbd>
       </button>
 
       <dialog

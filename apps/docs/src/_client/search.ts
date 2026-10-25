@@ -1,5 +1,6 @@
 import { t } from "../lib/messages.js";
 import { search, type SearchDocument } from "./search-rank.js";
+import { showSearchShortcut } from "./search-shortcut.js";
 
 /** A run of result text: plain, or the part the query matched. */
 interface Segment {
@@ -21,6 +22,7 @@ async function loadIndex(): Promise<SearchDocument[]> {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  showSearchShortcut();
   const dialog = document.getElementById("search-dialog") as HTMLDialogElement | null;
   const input = document.getElementById("search-input") as HTMLInputElement | null;
   const status = document.getElementById("search-status") as HTMLElement | null;

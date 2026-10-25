@@ -380,6 +380,14 @@ describe("editUrlFor", () => {
   });
 });
 
+describe("search shortcut", () => {
+  it("ships hidden and empty, so no platform shortcut is claimed before the client knows", async () => {
+    const html = await readFile(path.join(DIST_DIR, "index.html"), "utf8");
+    expect(html).toMatch(/<kbd[^>]*\bhidden\b[^>]*data-search-shortcut[^>]*><\/kbd>/);
+    expect(html).not.toContain("⌘");
+  });
+});
+
 describe("English documentation", () => {
   it("publishes English pages without French routes or links", async () => {
     expect(existsSync(path.join(DIST_DIR, "fr"))).toBe(false);
