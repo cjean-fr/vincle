@@ -1,9 +1,7 @@
 import type { PageContext } from "@vincle/ssg";
 
 import { setDocs, type DocsRenderContext } from "../lib/context.js";
-import { translatorFor } from "../lib/i18n/interface.js";
-
-const t = translatorFor("en");
+import { t } from "../lib/messages.js";
 
 export const meta = { title: t("notFoundTitle"), layout: false, sitemap: false, search: false };
 

@@ -1,9 +1,8 @@
-import { useTranslation } from "../lib/context.js";
+import { t } from "../lib/messages.js";
 import { applyTheme } from "../lib/theme.js";
 import { Icon } from "./Icon.js";
 
 export function ThemeToggle() {
-  const t = useTranslation();
   return (
     <button
       type="button"

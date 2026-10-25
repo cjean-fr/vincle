@@ -4,18 +4,17 @@ import { pathToFileURL } from "node:url";
 import { defineHastPlugin, type MdxCompileOptions } from "satteri";
 
 import { codeBlocks } from "./code-blocks.js";
-import { fenceTabsFor, wrapTables } from "./hast-plugins.js";
-import { translatorFor } from "./i18n/interface.js";
-import { type Locale } from "./i18n/locale.js";
+import { fenceTabs, wrapTables } from "./hast-plugins.js";
+import { t } from "./messages.js";
 import { setToc, type TocEntry } from "./toc.js";
 
 /**
  * Gives each heading its id, a permalink on h2–h4, and records h2–h3 in
  * `toc`: the table of contents comes from the source, never from HTML.
  */
-function headingPlugin(ids: readonly string[], locale: Locale, toc: TocEntry[]) {
+function headingPlugin(ids: readonly string[], toc: TocEntry[]) {
   let index = 0;
-  const label = translatorFor(locale)("sectionLink");
+  const label = t("sectionLink");
   return defineHastPlugin({
     name: "heading-ids",
     element: {
@@ -65,22 +64,16 @@ const compileOptions: MdxCompileOptions = {
 
 export const docsMdxOptions: MdxOptions<{ toc: TocEntry[] }> = {
   compile: compileOptions,
-  prepare({ file, meta }) {
+  prepare({ meta }) {
     const ids = Array.isArray(meta["headingIds"])
       ? meta["headingIds"].filter((id): id is string => typeof id === "string")
       : [];
-    const locale: Locale = file.includes("/pages/fr/") ? "fr" : "en";
     const toc: TocEntry[] = [];
     return {
       data: { toc },
       createPlugins() {
         toc.length = 0;
-        return [
-          fenceTabsFor(locale),
-          codeBlocks(locale),
-          headingPlugin(ids, locale, toc),
-          wrapTables,
-        ];
+        return [fenceTabs, codeBlocks, headingPlugin(ids, toc), wrapTables];
       },
     };
   },

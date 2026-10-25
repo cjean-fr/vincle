@@ -1,6 +1,7 @@
 import { type JSX } from "@vincle/core";
 
-import { useDocs, useTranslation } from "../lib/context.js";
+import { useDocs } from "../lib/context.js";
+import { t } from "../lib/messages.js";
 import { groupToc, type TocEntry } from "../lib/toc.js";
 
 function TocLink({ entry }: { entry: TocEntry }): JSX.Element {
@@ -19,7 +20,6 @@ function TocLink({ entry }: { entry: TocEntry }): JSX.Element {
 export function TableOfContents(): JSX.Element | null {
   const groups = groupToc(useDocs().toc ?? []);
   if (groups.length === 0) return null;
-  const t = useTranslation();
   return (
     <aside class="docs-toc sticky top-8 text-sm" aria-label={t("contents")}>
       <p class="docs-toc-title m-0 mb-2 text-xs font-semibold tracking-wider text-[var(--docs-color-text-secondary)] uppercase">

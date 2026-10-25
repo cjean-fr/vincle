@@ -73,18 +73,12 @@ it("uses the SSG site for canonical metadata independently of the Vite asset bas
     setVite(null, { base: "/bundles/" });
     setDocs({
       ...docsContext({ title: "Guide" }),
-      currentPage: "/fr/guide",
-      alternates: [
-        { locale: "en", href: "/guide" },
-        { locale: "fr", href: "/fr/guide" },
-      ],
+      currentPage: "/guide",
     });
     return renderToString(Layout({ children: <main>body</main> }));
   });
-  expect(html).toContain('rel="canonical" href="https://vincle.cjean.fr/fr/guide"');
-  expect(html).toContain('property="og:url" content="https://vincle.cjean.fr/fr/guide"');
-  expect(html).toContain('hreflang="en" href="https://vincle.cjean.fr/guide"');
-  expect(html).toContain('hreflang="x-default" href="https://vincle.cjean.fr/guide"');
+  expect(html).toContain('rel="canonical" href="https://vincle.cjean.fr/guide"');
+  expect(html).toContain('property="og:url" content="https://vincle.cjean.fr/guide"');
   expect(html).toContain('src="/bundles/src/_client/main.ts"');
 });
 

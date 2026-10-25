@@ -7,14 +7,7 @@ import type { DocsRenderContext } from "./context.js";
 import type { Page } from "./types.js";
 
 import config from "../../docs.config.js";
-import { translatorFor } from "./i18n/interface.js";
-import {
-  localeFor,
-  localizedPath,
-  translationAlternates,
-  type Locale,
-  unlocalizedPath,
-} from "./i18n/locale.js";
+import { t } from "./messages.js";
 import { editUrlFor, lastModified } from "./page-history.js";
 import { discoverPages } from "./pages.js";
 import {
@@ -25,8 +18,6 @@ import {
   firstPageOfTab,
   tabFor,
 } from "./sidebar.js";
-
-const documentationLocales = ["en"] as readonly Locale[];
 
 interface Navigation {
   key: string;
@@ -40,30 +31,20 @@ async function documentationContexts(pages: Page[]): Promise<Navigation> {
   const siteLastUpdated = pages.some((page) => page.url === "/")
     ? await lastModified(configuration.pages)
     : null;
-  const tabsByLocale: Record<Locale, { label: string; slug: string; href: string }[]> = {
-    en: [],
-    fr: [],
-  };
   const published = pages.filter((page) => !page.meta.draft);
   if (new Set(published.map((page) => page.url)).size !== published.length) {
     throw new Error("[@vincle/docs] duplicate page URLs detected.");
   }
-  for (const locale of documentationLocales) {
-    const t = translatorFor(locale);
-    tabsByLocale[locale] = await Promise.all(
-      configuration.tabs.map(async (tab) => ({
-        label:
-          tab.slug === "guide" || tab.slug === "integration" || tab.slug === "api"
-            ? t(tab.slug)
-            : tab.label,
-        slug: tab.slug,
-        href: tab.href
-          ? localizedPath(tab.href, locale)
-          : await firstPageOfTab(configuration, pages, tab, locale),
-      })),
-    );
-  }
-  const available = new Set(published.map((page) => page.url));
+  const resolvedTabs = await Promise.all(
+    configuration.tabs.map(async (tab) => ({
+      label:
+        tab.slug === "guide" || tab.slug === "integration" || tab.slug === "api"
+          ? t(tab.slug)
+          : tab.label,
+      slug: tab.slug,
+      href: tab.href ?? (await firstPageOfTab(configuration, pages, tab)),
+    })),
+  );
   const root = path.resolve(configuration.pages);
   const directories = new Set<string>([root]);
   for (const page of pages) {
@@ -90,7 +71,6 @@ async function documentationContexts(pages: Page[]): Promise<Navigation> {
   return (navigationSnapshot = {
     key,
     forPage: async (page: Page) => {
-      const locale = localeFor(page.url);
       const sidebar = await resolveSidebar(configuration, pages, page.url);
       const { prev, next } = resolveNavigation(sidebar, page.url);
       return {
@@ -100,8 +80,7 @@ async function documentationContexts(pages: Page[]): Promise<Navigation> {
         meta: page.meta,
         sidebar,
         currentTab: tabFor(configuration.tabs, page.url),
-        resolvedTabs: tabsByLocale[locale],
-        alternates: translationAlternates(page.url, available),
+        resolvedTabs,
         lastUpdated: page.url === "/" ? siteLastUpdated : null,
         editUrl: editUrlFor(configuration.editUrl, page.file),
         prev,
@@ -126,8 +105,7 @@ export async function discoverDocumentation(
       source: { ...page.source, runtime: options.runtime ?? page.source.runtime },
       meta: {
         ...page.meta,
-        locale: localeFor(page.url),
-        translationKey: unlocalizedPath(page.url),
+        locale: "en",
         documentation: () => navigation.forPage(page),
         prose: page.meta.prose ?? (extension === ".mdx" || extension === ".md"),
         renderKey: navigation.key,

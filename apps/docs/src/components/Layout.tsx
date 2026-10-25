@@ -1,11 +1,10 @@
 import { raw, type JSX, type Renderable } from "@vincle/core";
 import { Asset } from "@vincle/vite-plugin";
 
-import { useDocs, useTranslation } from "../lib/context.js";
+import { useDocs } from "../lib/context.js";
 import { CspService, Script, withHash } from "../lib/csp.js";
-import { localeFor, localizedPath, unlocalizedPath } from "../lib/i18n/locale.js";
+import { t } from "../lib/messages.js";
 import { GitHubLink } from "./GitHubLink.js";
-import { LanguageSwitcher } from "./LanguageSwitcher.js";
 import { Nav } from "./Nav.js";
 import { NavToggle } from "./NavToggle.js";
 import { PageFooter } from "./PageFooter.js";
@@ -21,20 +20,17 @@ const tabsInitScriptSource = `try{var p=localStorage.getItem("docs-tabs-sync:pkg
 export async function Layout({ children }: { children: Renderable }): Promise<JSX.Element> {
   const page = useDocs();
   const { config, meta, currentPage } = page;
-  const locale = localeFor(currentPage);
-  const t = useTranslation();
-  const route = unlocalizedPath(currentPage);
   const collector = new CspService();
   const HashedScript = withHash(Script, collector);
   const themeScript = await HashedScript({ children: themeInitScriptSource });
   const tabsScript = await HashedScript({ children: tabsInitScriptSource });
   const csp = meta.csp ?? collector.getCSPHeader();
-  const isHome = route === "/";
+  const isHome = currentPage === "/";
 
   return (
     <>
       {raw("<!DOCTYPE html>\n")}
-      <html lang={locale}>
+      <html lang="en">
         <head>
           <meta charSet="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -62,7 +58,7 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
           <header class="docs-header fixed inset-x-0 top-0 z-40 bg-[var(--docs-color-bg)]/80 [box-shadow:inset_0_-1px_0_var(--docs-color-border)] backdrop-blur-xl">
             <div class="mx-auto flex h-16 max-w-7xl items-center gap-1 px-4 md:px-6">
               <a
-                href={localizedPath("/", locale)}
+                href="/"
                 class="docs-brand shrink-0 text-base font-bold tracking-tight text-[var(--docs-color-text)]"
               >
                 <span class="docs-brand-mark" aria-hidden="true">
@@ -72,7 +68,6 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
               </a>
               <Tabs />
               <div class="ml-auto flex shrink-0 items-center gap-2">
-                <LanguageSwitcher />
                 <SearchDialog />
                 <GitHubLink />
                 <ThemeToggle />

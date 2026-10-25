@@ -10,8 +10,6 @@ import type {
 } from "./types.js";
 import type { Page } from "./types.js";
 
-import { localeFor, localizedPath, unlocalizedPath } from "./i18n/locale.js";
-
 export interface NavLink {
   label: string;
   href: string;
@@ -72,15 +70,11 @@ export async function resolveSidebar(
   // A page outside any tab (`/privacy`) has no navigation: falling back to the
   // guide's sidebar would show it with no active tab to explain why.
   if (!tab) return { groups: [] };
-  const locale = localeFor(currentUrl);
-  const pagesDir = path.resolve(config.pages, locale === "fr" ? "fr" : ".");
+  const pagesDir = path.resolve(config.pages);
   const tabRoot = path.join(pagesDir, tab.slug);
 
   const tabPages = pages.filter(
-    (p) =>
-      localeFor(p.url) === locale &&
-      (unlocalizedPath(p.url) === "/" + tab.slug ||
-        unlocalizedPath(p.url).startsWith("/" + tab.slug + "/")),
+    (p) => p.url === "/" + tab.slug || p.url.startsWith("/" + tab.slug + "/"),
   );
 
   const root: TreeNode = {
@@ -99,13 +93,13 @@ export async function resolveSidebar(
 
 /** The tab a URL belongs to: the one rule, for every caller. */
 export function tabFor(tabs: readonly TabConfig[], url: string): TabConfig | null {
-  const top = unlocalizedPath(url).split("/").find(Boolean) ?? "";
+  const top = url.split("/").find(Boolean) ?? "";
   return tabs.find((t) => t.slug === top) ?? null;
 }
 
 function insert(root: TreeNode, page: Page): void {
   // url like /guide/getting-started/installation → segments after the tab.
-  const withoutTab = unlocalizedPath(page.url).replace(/^\/[^/]+\/?/, "");
+  const withoutTab = page.url.replace(/^\/[^/]+\/?/, "");
   const segments = withoutTab.split("/").filter(Boolean);
   let node = root;
   for (const seg of segments) {
@@ -225,9 +219,8 @@ export async function firstPageOfTab(
   config: ResolvedDocsConfig,
   pages: readonly Page[],
   tab: TabConfig,
-  locale: import("./i18n/locale.js").Locale = "en",
 ): Promise<string> {
-  const tabUrl = localizedPath("/" + tab.slug, locale);
+  const tabUrl = "/" + tab.slug;
   const sidebar = await resolveSidebar(config, pages, tabUrl);
   const flat = flattenPages(sidebar);
   return flat[0]?.href ?? tabUrl;

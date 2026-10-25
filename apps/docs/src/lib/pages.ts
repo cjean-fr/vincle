@@ -7,7 +7,7 @@ import {
 
 import type { ResolvedDocsConfig, Page, PageMeta } from "./types.js";
 
-import { markdownPath } from "./i18n/locale.js";
+import { markdownPath } from "./url.js";
 
 export async function discoverPages(
   config: ResolvedDocsConfig,

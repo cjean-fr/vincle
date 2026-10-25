@@ -5,23 +5,19 @@ import type { ResolvedDocsConfig } from "./types.js";
 
 import docs from "../../docs.config.js";
 import ssg from "../../ssg.config.js";
-import { localeFor, type Locale } from "./i18n/locale.js";
 import { tabFor } from "./sidebar.js";
 import { hasSocialCard, socialCardPath, socialCardPng, summarize } from "./social-card.js";
 
 export function llmsTxt(
   pages: readonly { url: string; title: string }[],
   config: ResolvedDocsConfig,
-  locale: Locale = "en",
 ): string {
   const lines: string[] = [
     `# ${config.title}: ${config.tagline ?? "Documentation"}`,
     "",
     `> ${config.description}`,
     "",
-    locale === "fr"
-      ? "Chaque page est également disponible en Markdown à son URL suivie de `.md` (accueil : `/fr/index.md`)."
-      : "Every page is also available as Markdown at its URL plus `.md` (home page: `/index.md`).",
+    "Every page is also available as Markdown at its URL plus `.md` (home page: `/index.md`).",
     "",
     "## Pages",
     "",
@@ -36,14 +32,10 @@ export async function llmsFullTxt(
     | Iterable<{ url: string; title: string; text: string }>
     | AsyncIterable<{ url: string; title: string; text: string }>,
   config: ResolvedDocsConfig,
-  locale: Locale = "en",
 ): Promise<string> {
-  let content = [
-    `# ${config.title}: ${locale === "fr" ? "Documentation complète" : "Full documentation"}`,
-    "",
-    `> ${config.description}`,
-    "",
-  ].join("\n");
+  let content = [`# ${config.title}: Full documentation`, "", `> ${config.description}`, ""].join(
+    "\n",
+  );
   for await (const page of pages)
     content += [
       "",
@@ -129,18 +121,16 @@ const SOCIAL_CARD_CONCURRENCY = 8;
 export const documentationArtifacts: SsgPlugin = {
   name: "documentation-artifacts",
   async publish(context) {
-    const search = new Map<string, SearchDocument[]>();
+    const search: SearchDocument[] = [];
     const pages: { url: string; title: string; text: string }[] = [];
     const cardTasks: (() => Promise<void>)[] = [];
     for (const page of context.outputs) {
       if (page.meta.search === false) continue;
       const html = await page.read();
       const title = page.meta.title ?? page.url;
-      const locale = page.meta.locale ?? "en";
-      const documents = search.get(locale) ?? [];
       const main = htmlToText(html, { mainOnly: true });
       const keywords = (page.meta as { keywords?: string[] }).keywords;
-      documents.push({
+      search.push({
         url: page.url,
         title,
         headings: headingsOf(html),
@@ -158,9 +148,7 @@ export const documentationArtifacts: SsgPlugin = {
           context.emit({ path: socialCardPath(page.url), content: () => socialCardPng(card) }),
         );
       }
-      search.set(locale, documents);
-      if (localeFor(page.url) === "en")
-        pages.push({ url: page.url, title, text: htmlToText(html) });
+      pages.push({ url: page.url, title, text: htmlToText(html) });
     }
     // Cards only write distinct files, so their emission order does not matter.
     let nextCard = 0;
@@ -169,11 +157,7 @@ export const documentationArtifacts: SsgPlugin = {
         while (nextCard < cardTasks.length) await cardTasks[nextCard++]!();
       }),
     );
-    for (const [locale, documents] of search)
-      await context.emit({
-        path: locale === "en" ? "search-index.json" : `${locale}/search-index.json`,
-        content: JSON.stringify(documents),
-      });
+    await context.emit({ path: "search-index.json", content: JSON.stringify(search) });
     await context.emit({ path: "llms.txt", content: llmsTxt(pages, docs) });
     await context.emit({ path: "llms-full.txt", content: () => llmsFullTxt(pages, docs) });
   },

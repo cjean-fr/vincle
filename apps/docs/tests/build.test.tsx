@@ -27,8 +27,6 @@ describe("SSG build", () => {
     expect(data[0]).toHaveProperty("title");
     expect(data[0]).toHaveProperty("text");
     const sitemap = await readFile(path.join(DIST_DIR, "sitemap.xml"), "utf8");
-    expect(sitemap).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"');
-    expect(sitemap).toContain('hreflang="x-default"');
     expect(sitemap).not.toContain("/404");
     expect(new Set(data.map((page: { url: string }) => page.url)).size).toBe(data.length);
     for (const page of data) {

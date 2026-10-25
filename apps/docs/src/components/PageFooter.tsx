@@ -1,18 +1,16 @@
-import { useDocs, useTranslation } from "../lib/context.js";
-import { localeFor, unlocalizedPath, type Locale } from "../lib/i18n/locale.js";
+import { useDocs } from "../lib/context.js";
+import { t } from "../lib/messages.js";
 import { Icon } from "./Icon.js";
 
 export function PageFooter() {
-  const t = useTranslation();
   const { config, editUrl, lastUpdated, prev, next, currentPage } = useDocs();
-  const locale = localeFor(currentPage);
   const hasNav = prev !== null || next !== null;
-  const isHome = unlocalizedPath(currentPage) === "/";
+  const isHome = currentPage === "/";
   const pageFacts = (editUrl || lastUpdated) && (
     <p class="docs-footer-list">
       {lastUpdated && (
         <time class="docs-page-footer-updated" dateTime={lastUpdated}>
-          {t("lastUpdated", { date: formatDate(lastUpdated, locale) })}
+          {t("lastUpdated", { date: formatDate(lastUpdated) })}
         </time>
       )}
       {editUrl && (
@@ -106,9 +104,9 @@ function Author({ label }: { label: string }) {
   );
 }
 
-function formatDate(iso: string, locale: Locale): string {
+function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString(locale, {
+    return new Date(iso).toLocaleDateString("en", {
       year: "numeric",
       month: "short",
       day: "numeric",

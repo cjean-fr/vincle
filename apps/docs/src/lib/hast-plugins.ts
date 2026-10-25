@@ -1,8 +1,6 @@
 import { defineHastPlugin, type HastContent } from "satteri";
 
-import type { Locale } from "./i18n/locale.js";
-
-import { translatorFor } from "./i18n/interface.js";
+import { t } from "./messages.js";
 
 export const wrapTables = defineHastPlugin({
   name: "wrap-tables",
@@ -70,145 +68,143 @@ const tabGroupCounters = new WeakMap<object, number>();
  * `tabs/client.ts`. All panels remain visible until the client enhances
  * the group, so every command is readable without JavaScript.
  */
-export function fenceTabsFor(locale: Locale = "en") {
-  return defineHastPlugin({
-    name: "fence-tabs",
-    element: {
-      filter: ["pre"],
-      visit(node, ctx) {
-        if (tabLabel(node) === undefined) return;
+export const fenceTabs = defineHastPlugin({
+  name: "fence-tabs",
+  element: {
+    filter: ["pre"],
+    visit(node, ctx) {
+      if (tabLabel(node) === undefined) return;
 
-        const parent = ctx.parent(node);
-        const index = parent ? ctx.indexOf(node) : undefined;
-        if (!parent || index === undefined) return;
+      const parent = ctx.parent(node);
+      const index = parent ? ctx.indexOf(node) : undefined;
+      if (!parent || index === undefined) return;
 
-        const children = parent.children;
+      const children = parent.children;
 
-        // Only the first fence of a run groups it; a tabbed sibling before it
-        // means an earlier visit already wrapped this group.
-        let prev = index - 1;
-        while (prev >= 0 && isBlankText(children[prev])) prev--;
-        if (prev >= 0 && isTabFence(children[prev])) return;
+      // Only the first fence of a run groups it; a tabbed sibling before it
+      // means an earlier visit already wrapped this group.
+      let prev = index - 1;
+      while (prev >= 0 && isBlankText(children[prev])) prev--;
+      if (prev >= 0 && isTabFence(children[prev])) return;
 
-        const run: HastElement[] = [node];
-        let next = index + 1;
-        while (next < children.length) {
-          const sibling = children[next];
-          if (sibling === undefined) break;
-          if (isBlankText(sibling)) {
-            next++;
-            continue;
-          }
-          if (!isTabFence(sibling)) break;
-          run.push(sibling as HastElement);
+      const run: HastElement[] = [node];
+      let next = index + 1;
+      while (next < children.length) {
+        const sibling = children[next];
+        if (sibling === undefined) break;
+        if (isBlankText(sibling)) {
           next++;
+          continue;
         }
-        if (run.length < 2) return; // A lone tab is just a code block.
+        if (!isTabFence(sibling)) break;
+        run.push(sibling as HastElement);
+        next++;
+      }
+      if (run.length < 2) return; // A lone tab is just a code block.
 
-        const parentKey = parent as object;
-        const groupNumber = (tabGroupCounters.get(parentKey) ?? 0) + 1;
-        tabGroupCounters.set(parentKey, groupNumber);
-        const groupId = `docs-tabs-${groupNumber}`;
+      const parentKey = parent as object;
+      const groupNumber = (tabGroupCounters.get(parentKey) ?? 0) + 1;
+      tabGroupCounters.set(parentKey, groupNumber);
+      const groupId = `docs-tabs-${groupNumber}`;
 
-        let sync: string | undefined;
-        for (const pre of run) {
-          sync = SYNC_META.exec(metaOf(pre) ?? "")?.[1];
-          if (sync !== undefined) break;
-        }
+      let sync: string | undefined;
+      for (const pre of run) {
+        sync = SYNC_META.exec(metaOf(pre) ?? "")?.[1];
+        if (sync !== undefined) break;
+      }
 
-        const container: HastContent = {
-          type: "element",
-          tagName: "div",
-          properties: {
-            className: ["docs-tabs", "my-4"],
-            ...(sync !== undefined ? { "data-docs-tabs-sync": sync } : {}),
-          },
-          children: [
-            {
-              type: "element",
-              tagName: "div",
-              properties: {
-                className: [
-                  "docs-tabs-header",
-                  "flex",
-                  "border-b",
-                  "border-gray-200",
-                  "dark:border-gray-800",
-                ],
-                role: "tablist",
-                "aria-label": translatorFor(locale)("codeAlternatives"),
-              },
-              children: run.map((pre, i) => {
-                const label = tabLabel(pre)!;
-                const icon = sync === "pkg-manager" ? PACKAGE_MANAGER_ICONS[label] : undefined;
-                const active = i === 0;
-                const tabId = `${groupId}-tab-${i}`;
-                const panelId = `${groupId}-panel-${i}`;
-                return {
-                  type: "element" as const,
-                  tagName: "button",
-                  properties: {
-                    type: "button",
-                    id: tabId,
-                    role: "tab",
-                    tabIndex: active ? 0 : -1,
-                    "aria-controls": panelId,
-                    "data-docs-tab-target": String(i),
-                    "data-docs-tab-label": label,
-                    "aria-selected": active ? "true" : "false",
-                    className: [
-                      "px-4",
-                      "py-2",
-                      "text-sm",
-                      "font-medium",
-                      "border-b-2",
-                      ...(active
-                        ? ["border-blue-500", "text-blue-600", "dark:text-blue-400"]
-                        : ["border-transparent", "text-gray-600", "dark:text-gray-400"]),
-                    ],
-                  },
-                  children: [
-                    ...(icon
-                      ? [
-                          {
-                            type: "element" as const,
-                            tagName: "img",
-                            properties: {
-                              src: icon,
-                              alt: "",
-                              "aria-hidden": "true",
-                              width: 16,
-                              height: 16,
-                              className: ["docs-package-manager-icon"],
-                            },
-                            children: [],
-                          },
-                        ]
-                      : []),
-                    { type: "text", value: label },
-                  ],
-                };
-              }),
+      const container: HastContent = {
+        type: "element",
+        tagName: "div",
+        properties: {
+          className: ["docs-tabs", "my-4"],
+          ...(sync !== undefined ? { "data-docs-tabs-sync": sync } : {}),
+        },
+        children: [
+          {
+            type: "element",
+            tagName: "div",
+            properties: {
+              className: [
+                "docs-tabs-header",
+                "flex",
+                "border-b",
+                "border-gray-200",
+                "dark:border-gray-800",
+              ],
+              role: "tablist",
+              "aria-label": t("codeAlternatives"),
             },
-            ...run.map((pre, i) => ({
-              type: "element" as const,
-              tagName: "div",
-              properties: {
-                id: `${groupId}-panel-${i}`,
-                role: "tabpanel",
-                "aria-labelledby": `${groupId}-tab-${i}`,
-                "data-docs-tab-panel": "",
-                "data-docs-tab-label": tabLabel(pre)!,
-                className: ["docs-tab-panel", ...(i === 0 ? ["active"] : [])],
-              },
-              children: [JSON.parse(JSON.stringify(pre)) as HastElement],
-            })),
-          ],
-        };
+            children: run.map((pre, i) => {
+              const label = tabLabel(pre)!;
+              const icon = sync === "pkg-manager" ? PACKAGE_MANAGER_ICONS[label] : undefined;
+              const active = i === 0;
+              const tabId = `${groupId}-tab-${i}`;
+              const panelId = `${groupId}-panel-${i}`;
+              return {
+                type: "element" as const,
+                tagName: "button",
+                properties: {
+                  type: "button",
+                  id: tabId,
+                  role: "tab",
+                  tabIndex: active ? 0 : -1,
+                  "aria-controls": panelId,
+                  "data-docs-tab-target": String(i),
+                  "data-docs-tab-label": label,
+                  "aria-selected": active ? "true" : "false",
+                  className: [
+                    "px-4",
+                    "py-2",
+                    "text-sm",
+                    "font-medium",
+                    "border-b-2",
+                    ...(active
+                      ? ["border-blue-500", "text-blue-600", "dark:text-blue-400"]
+                      : ["border-transparent", "text-gray-600", "dark:text-gray-400"]),
+                  ],
+                },
+                children: [
+                  ...(icon
+                    ? [
+                        {
+                          type: "element" as const,
+                          tagName: "img",
+                          properties: {
+                            src: icon,
+                            alt: "",
+                            "aria-hidden": "true",
+                            width: 16,
+                            height: 16,
+                            className: ["docs-package-manager-icon"],
+                          },
+                          children: [],
+                        },
+                      ]
+                    : []),
+                  { type: "text", value: label },
+                ],
+              };
+            }),
+          },
+          ...run.map((pre, i) => ({
+            type: "element" as const,
+            tagName: "div",
+            properties: {
+              id: `${groupId}-panel-${i}`,
+              role: "tabpanel",
+              "aria-labelledby": `${groupId}-tab-${i}`,
+              "data-docs-tab-panel": "",
+              "data-docs-tab-label": tabLabel(pre)!,
+              className: ["docs-tab-panel", ...(i === 0 ? ["active"] : [])],
+            },
+            children: [JSON.parse(JSON.stringify(pre)) as HastElement],
+          })),
+        ],
+      };
 
-        for (const pre of run.slice(1).toReversed()) ctx.removeNode(pre);
-        ctx.replaceNode(node, container);
-      },
+      for (const pre of run.slice(1).toReversed()) ctx.removeNode(pre);
+      ctx.replaceNode(node, container);
     },
-  });
-}
+  },
+});

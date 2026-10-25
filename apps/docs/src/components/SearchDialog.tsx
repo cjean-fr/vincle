@@ -1,7 +1,6 @@
-import { useTranslation } from "../lib/context.js";
+import { t } from "../lib/messages.js";
 import { Icon } from "./Icon.js";
 export function SearchDialog() {
-  const t = useTranslation();
   return (
     <search>
       <button
