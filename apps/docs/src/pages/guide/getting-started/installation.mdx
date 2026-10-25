@@ -7,25 +7,56 @@ title: Installation
 `@vincle/core` has zero runtime dependencies. Install it and configure
 TypeScript. That's all.
 
-## Package manager
+## Start a project
+
+Starting from an empty folder, with Node 22 or later or Bun.
 
 ```bash tab="npm" sync="pkg-manager"
+mkdir my-site && cd my-site
+npm init -y
+npm pkg set type=module
 npm install @vincle/core
+npm install -D typescript tsx @types/node
 ```
 
 ```bash tab="pnpm" sync="pkg-manager"
+mkdir my-site && cd my-site
+pnpm init
+pnpm pkg set type=module
 pnpm add @vincle/core
+pnpm add -D typescript tsx @types/node
 ```
 
 ```bash tab="bun" sync="pkg-manager"
+mkdir my-site && cd my-site
+bun init -y
 bun add @vincle/core
 ```
 
+`"type": "module"` makes your files ES modules, which the examples need for
+top-level `await`. Node does not run `.tsx` files on its own, so the Node
+commands add `tsx` to run them and `typescript` to check types. Bun runs
+TypeScript and JSX directly and needs neither.
+
 ## TypeScript configuration
 
-Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import:
+Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import.
 
-```json
+```json tab="Node" title="tsconfig.json"
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "strict": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@vincle/core",
+    "types": ["node"]
+  }
+}
+```
+
+```json tab="Bun" title="tsconfig.json"
 {
   "compilerOptions": {
     "jsx": "react-jsx",
@@ -34,8 +65,30 @@ Set `jsxImportSource` in your `tsconfig.json` so JSX files need no import:
 }
 ```
 
+With Bun, `bun init` already writes a `tsconfig.json`: add the
+`jsxImportSource` line to it and keep the rest.
+
 Attributes are typed per element (`src` on `<img>`, `href` on `<a>`), with
 nothing extra to install: see [JSX types](/api/core/jsx-types).
+
+## Run a file
+
+Save the [hello world](/guide/getting-started/first-render#hello-world) as
+`index.tsx`, add `console.log(html)` at the end, then run it.
+
+```bash tab="npm" sync="pkg-manager"
+npx tsx index.tsx
+npx tsc # type check
+```
+
+```bash tab="pnpm" sync="pkg-manager"
+pnpm exec tsx index.tsx
+pnpm exec tsc # type check
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun index.tsx
+```
 
 ## Where to next
 
