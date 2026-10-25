@@ -1,5 +1,6 @@
 ---
 title: Flow overview
+description: "How @vincle/flow sends the page shell immediately and delivers deferred fragments later, with streaming or static generation and five adapters."
 ---
 
 # @vincle/flow
@@ -165,3 +166,5 @@ const stream = renderToStream(() => <Page />, NativeAdapter);
 An adapter controls how placeholders and patches are encoded in the HTML shell:
 for Turbo, HTMX, the browser's native partial updates, or a CDN's ESI (Edge Side Includes). See
 [Adapters](/integration/flow/adapters) for the five built-in ones and how to choose.
+
+For a quick answer, see [Can I use Vincle for streaming HTML?](/guide/faq#can-i-use-vincle-for-streaming-html).
