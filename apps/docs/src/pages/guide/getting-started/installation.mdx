@@ -28,7 +28,7 @@ bun add @vincle/core
 Node only. The examples use top-level await, so the project must be an ES
 module. Node does not run `.tsx` files: `tsx` runs them, `typescript` checks
 types. To type Node APIs (`node:fs`, `process`), add `"types": ["node"]` to
-the `compilerOptions` below.
+the `compilerOptions` of the `tsconfig.json` below.
 
 ```bash tab="npm" sync="pkg-manager"
 npm pkg set type=module
