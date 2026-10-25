@@ -126,6 +126,14 @@ it("delegates metadata to the SEO header and JSON-LD to the footer", async () =>
   expect(html.indexOf('type="application/ld+json"')).toBeGreaterThan(html.indexOf("</main>"));
 });
 
+it("renders keywords as one escaped meta tag, and none without keywords", async () => {
+  const head = (html: string) => html.slice(html.indexOf("<head>"), html.indexOf("</head>"));
+  const tagged = head(await renderPage({ title: "T", keywords: ["suspense", 'a "b"', "c&d"] }));
+  expect(tagged).toContain('<meta name="keywords" content="suspense, a &quot;b&quot;, c&amp;d">');
+  expect(head(await renderPage({ title: "T" }))).not.toContain('name="keywords"');
+  expect(head(await renderPage({ title: "T", keywords: [] }))).not.toContain('name="keywords"');
+});
+
 it("loads blocking CSS in the head even when Vite serves JavaScript modules in dev", async () => {
   const html = await renderPage();
   const stylesheet = '<link rel="stylesheet" href="/src/_client/main.css">';

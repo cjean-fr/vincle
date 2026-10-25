@@ -40,3 +40,30 @@ describe("search", () => {
     expect(search(docs, "caching path")[0]?.heading).toBeUndefined();
   });
 });
+
+describe("search keywords", () => {
+  it("finds a page by a keyword its text does not hold", () => {
+    const docs = [
+      { ...doc("/a", "Streaming", "async components"), keywords: ["suspense", "Out of order"] },
+      doc("/b", "Other", "nothing relevant"),
+    ];
+    expect(search(docs, "suspense").map((hit) => hit.document.url)).toEqual(["/a"]);
+    expect(search(docs, "OUT of").map((hit) => hit.document.url)).toEqual(["/a"]);
+    expect(search(docs, "missing")).toEqual([]);
+  });
+
+  it("ranks a keyword above a passing mention in the text", () => {
+    const docs = [
+      doc("/mention", "Mention", "a passing note about suspense"),
+      { ...doc("/tagged", "Tagged", "unrelated"), keywords: ["suspense"] },
+    ];
+    expect(search(docs, "suspense").map((hit) => hit.document.url)).toEqual([
+      "/tagged",
+      "/mention",
+    ]);
+  });
+
+  it("leaves documents without keywords unchanged", () => {
+    expect(search([doc("/a", "A", "text")], "text")).toHaveLength(1);
+  });
+});
