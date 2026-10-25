@@ -44,7 +44,11 @@ export function SearchDialog() {
             aria-controls="search-results"
             aria-describedby="search-status"
           />
-          <kbd class="docs-search-kbd hidden items-center rounded border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--docs-color-text-secondary)] sm:inline-flex">
+          <kbd
+            hidden
+            data-search-keyboard-hint
+            class="docs-search-kbd items-center rounded border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--docs-color-text-secondary)] [&:not([hidden])]:inline-flex"
+          >
             Esc
           </kbd>
         </div>

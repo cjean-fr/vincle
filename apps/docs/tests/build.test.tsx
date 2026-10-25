@@ -384,6 +384,7 @@ describe("search shortcut", () => {
   it("ships hidden and empty, so no platform shortcut is claimed before the client knows", async () => {
     const html = await readFile(path.join(DIST_DIR, "index.html"), "utf8");
     expect(html).toMatch(/<kbd[^>]*\bhidden\b[^>]*data-search-shortcut[^>]*><\/kbd>/);
+    expect(html).toMatch(/<kbd[^>]*\bhidden\b[^>]*data-search-keyboard-hint[^>]*>\s*Esc\s*<\/kbd>/);
     expect(html).not.toContain("⌘");
   });
 });

@@ -7,16 +7,19 @@ export function shortcutLabel(platform: string, hasKeyboard: boolean): string | 
   return /mac|iphone|ipad|ipod/i.test(platform) ? "⌘K" : "Ctrl K";
 }
 
-/** Reveal the shortcut hint for this browser; the markup ships it hidden and empty. */
+/** Reveal the keyboard hints for this browser; the markup ships them hidden. */
 export function showSearchShortcut(): void {
+  const hasKeyboard = matchMedia("(hover: hover) and (pointer: fine)").matches;
   const label = shortcutLabel(
     (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
       navigator.platform,
-    matchMedia("(hover: hover) and (pointer: fine)").matches,
+    hasKeyboard,
   );
   if (label === null) return;
-  for (const hint of document.querySelectorAll<HTMLElement>("[data-search-shortcut]")) {
+  for (const hint of document.querySelectorAll<HTMLElement>("[data-search-shortcut]"))
     hint.textContent = label;
+  for (const hint of document.querySelectorAll<HTMLElement>(
+    "[data-search-shortcut], [data-search-keyboard-hint]",
+  ))
     hint.hidden = false;
-  }
 }
