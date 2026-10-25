@@ -4,37 +4,41 @@ title: Installation
 
 # Installation
 
-`@vincle/core` has zero runtime dependencies. Install it and configure
-TypeScript. That's all.
+`@vincle/core` has zero runtime dependencies. Install it, then configure
+TypeScript.
 
-## Start a project
-
-Starting from an empty folder.
+## Install
 
 ```bash tab="npm" sync="pkg-manager"
-mkdir my-site && cd my-site
-npm init -y
-# ES modules: the examples use top-level await
-npm pkg set type=module
 npm install @vincle/core
-# Node does not run .tsx files: tsx runs them, typescript checks types
+```
+
+```bash tab="pnpm" sync="pkg-manager"
+pnpm add @vincle/core
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/core
+```
+
+## Node setup
+
+Node only. The examples use top-level await, so the project must be an ES
+module. Node does not run `.tsx` files: `tsx` runs them, `typescript` checks
+types.
+
+```bash tab="npm" sync="pkg-manager"
+npm pkg set type=module
 npm install -D typescript tsx @types/node
 ```
 
 ```bash tab="pnpm" sync="pkg-manager"
-mkdir my-site && cd my-site
-pnpm init
-# ES modules: the examples use top-level await
 pnpm pkg set type=module
-pnpm add @vincle/core
-# Node does not run .tsx files: tsx runs them, typescript checks types
 pnpm add -D typescript tsx @types/node
 ```
 
 ```bash tab="bun" sync="pkg-manager"
-mkdir my-site && cd my-site
-bun init -y
-bun add @vincle/core
+# Bun runs TypeScript and ES modules natively: nothing to set up.
 ```
 
 ## TypeScript configuration
