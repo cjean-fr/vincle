@@ -6,6 +6,11 @@ export interface PageMeta extends SsgMeta {
   description?: string;
   image?: string;
   slug?: string;
+  /**
+   * Extra search terms for words the page does not contain itself. Written as a
+   * list or a comma-separated string; exposed to search as a trimmed list.
+   */
+  keywords?: string[];
   draft?: boolean;
   /** Include the page only on builds at or after this date (date-only: UTC). */
   published_at?: string;

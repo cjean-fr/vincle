@@ -139,7 +139,14 @@ export const documentationArtifacts: SsgPlugin = {
       const locale = page.meta.locale ?? "en";
       const documents = search.get(locale) ?? [];
       const main = htmlToText(html, { mainOnly: true });
-      documents.push({ url: page.url, title, headings: headingsOf(html), text: main });
+      const keywords = (page.meta as { keywords?: string[] }).keywords;
+      documents.push({
+        url: page.url,
+        title,
+        headings: headingsOf(html),
+        text: main,
+        ...(keywords === undefined ? {} : { keywords }),
+      });
       if (hasSocialCard(page.url)) {
         const description = (page.meta as { description?: string }).description;
         const card = {

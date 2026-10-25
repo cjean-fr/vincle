@@ -40,6 +40,9 @@ describe("SSG build", () => {
     expect(await readFile(path.join(DIST_DIR, "llms-full.txt"), "utf8")).toContain(data[0].title);
     const adapters = data.find((d: { url: string }) => d.url === "/integration/flow/adapters");
     expect(adapters?.text).toContain("Browsers with declarative partial updates");
+    const streaming = data.find((d: { url: string }) => d.url === "/integration/flow/streaming");
+    expect(streaming?.keywords).toEqual(["suspense", "out-of-order", "progressive rendering"]);
+    expect(adapters).not.toHaveProperty("keywords");
     const deployment = data.find((d: { url: string }) => d.url === "/integration/ssg/deployment");
     expect(deployment?.headings).toContainEqual({ id: "content-types", text: "Content types" });
   });

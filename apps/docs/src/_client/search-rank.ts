@@ -8,6 +8,8 @@ export interface SearchDocument {
   title: string;
   headings: SearchHeading[];
   text: string;
+  /** Terms the author attached to the page for words its text does not hold. */
+  keywords?: string[];
 }
 
 export interface SearchHit {
@@ -49,6 +51,7 @@ function scoreDocument(document: SearchDocument, terms: string[]): number {
   const fields = [
     { value: document.title.toLowerCase(), weight: 8 },
     { value: document.url.replace(/[/-]+/g, " ").toLowerCase(), weight: 5 },
+    { value: (document.keywords ?? []).join(" ").toLowerCase(), weight: 6 },
     { value: document.text.toLowerCase(), weight: 1 },
   ];
   let score = 0;
