@@ -30,7 +30,7 @@ export interface DevOptions extends SsgOptions {
   vite?: InlineConfig;
   /** Add or override content types for generated/copied files. */
   mimeTypes?: MimeTypes;
-  /** Generated error page used for unknown paths; response status remains 404. */
+  /** Generated error page used for unknown paths, or a function of the decoded path; response status remains 404. */
   notFound?: string | ((pathname: string) => string);
   /** Explicit development redirects; keys and destinations are URL paths. */
   redirects?: Readonly<Record<string, string>>;
@@ -107,6 +107,15 @@ function generatedFile(pathname: string, files: ReadonlySet<string>) {
 
 const requestUrl = (request: Connect.IncomingMessage) =>
   new URL(request.originalUrl ?? request.url ?? "/", "http://localhost");
+
+/** The path as generated files are named: percent-decoded once, `undefined` when malformed. */
+function decodedPathname(url: URL): string | undefined {
+  try {
+    return decodeURIComponent(url.pathname);
+  } catch {
+    return undefined;
+  }
+}
 
 async function start(options: DevOptions): Promise<DevServer> {
   const root = path.resolve(options.root ?? process.cwd());
@@ -287,10 +296,8 @@ async function start(options: DevOptions): Promise<DevServer> {
 
   const pages = serving(async (vite, request, response) => {
     const url = requestUrl(request);
-    let pathname: string;
-    try {
-      pathname = decodeURIComponent(url.pathname);
-    } catch {
+    const pathname = decodedPathname(url);
+    if (pathname === undefined) {
       response.statusCode = 400;
       response.end();
       return true;
@@ -309,8 +316,9 @@ async function start(options: DevOptions): Promise<DevServer> {
     return true;
   });
   const notFound = serving(async (vite, request, response) => {
-    const pathname = requestUrl(request).pathname;
-    if (!options.notFound || !pathname.startsWith(vite.config.base)) return false;
+    const pathname = decodedPathname(requestUrl(request));
+    if (pathname === undefined || !options.notFound || !pathname.startsWith(vite.config.base))
+      return false;
     const page =
       typeof options.notFound === "function" ? options.notFound(pathname) : options.notFound;
     const file = page.replace(/^\//, "");
