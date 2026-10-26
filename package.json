@@ -34,7 +34,8 @@
   "type": "module",
   "scripts": {
     "build": "turbo build",
-    "check": "bun run check:static && bun check -p scripts/tsconfig.json && bun run check:ci && turbo check && bun run check:published && bun run check:packed",
+    "check": "bun run check:fast && bun run check:packed",
+    "check:fast": "bun run check:static && bun check -p scripts/tsconfig.json && bun run check:ci && turbo check && bun run check:published",
     "dev": "turbo run dev",
     "format": "turbo run format",
     "lint": "turbo run build --filter=@vincle/eslint-plugin && oxlint .",
