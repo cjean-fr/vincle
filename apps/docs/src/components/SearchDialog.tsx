@@ -1,5 +1,8 @@
 import { t } from "../lib/messages.js";
 import { Icon } from "./Icon.js";
+/** Flag a keyboard device before paint; CSS reveals the shortcut hints. */
+export const searchShortcutInitScriptSource = `try{if(matchMedia("(hover: hover) and (pointer: fine)").matches){document.documentElement.setAttribute("data-docs-shortcut",/mac|iphone|ipad|ipod/i.test(navigator.userAgentData?.platform??navigator.platform)?"mac":"other")}}catch{}`;
+
 export function SearchDialog() {
   return (
     <search>
