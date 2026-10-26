@@ -299,6 +299,6 @@ html:not(.dark) .docs-terminal pre code::before {
 /* Four tabs (npm, pnpm, bun, Agent) fit a 320px block only with tighter padding. */
 @media (max-width: 767px) {
   .docs-tabs-header > [role="tab"] {
-    padding-inline: 0.75rem;
+    padding-inline: 0.625rem;
   }
 }
