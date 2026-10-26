@@ -19,3 +19,12 @@ that enforces them. Transform and import-injection tests live in
 `src/index.test.ts`, Vite runtime-detection and lifecycle tests in
 `src/vite.test.ts`, and Bun adapter tests in `src/bun.test.ts`; Core's
 `tests/precompile-equivalence.test.ts` checks equivalence with dynamic rendering.
+
+Non-template elements are lowered by `transformCall` to the Deno precompile
+`jsx(tag, props, key)` contract, including child grouping. Vincle's host prop
+names stay authored so its runtime retains URL, rawtext and innerHTML policy;
+compatibility mode uses Deno's host-name normalization. Golden fixtures in
+`src/fixtures/deno-2.9.8` were executed with Deno 2.9.8 / deno_ast 0.53.3.
+`src/deno-call-parity.test.ts` runs the transformed output against an independent
+spy with no `createElement` export. The fixtures are behavioral call oracles,
+not a claim of complete Deno compiler or generated-source equivalence.

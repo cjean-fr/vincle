@@ -3,6 +3,14 @@
 Compile native JSX elements to template literals at build time, reducing
 allocations during rendering. Supports Vincle, Preact and Hono runtimes.
 
+Components and host elements that cannot be templated (for example, an element
+with a spread) become direct `jsx(tag, props, key)` calls. They do not rely on a
+later JSX compiler's `createElement` fallback. A valued attribute named `key`
+is passed as the third argument; `key` already present in a spread remains in
+props. Both runtime dialects keep this call shape, with no key-removal
+optimization. Native Deno 2.9.8 oracle fixtures cover props, children and key
+evaluation for these calls, not source-format equality or every template edge.
+
 ## Install
 
 ```sh

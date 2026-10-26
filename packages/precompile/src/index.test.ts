@@ -127,7 +127,7 @@ describe("precompileTransform", () => {
 
   it("passes component children through to jsxTemplate unwrapped (Deno contract)", () => {
     const out = transform(`const a = <div><Foo x={1} /></div>;`);
-    expect(out).toContain("${<Foo x={1} />}");
+    expect(out).toContain('${jsx(Foo, { "x": (1) })}');
     expect(out).not.toContain("jsxEscape(<Foo x={1} />)");
   });
 
@@ -270,7 +270,9 @@ describe("precompileTransform", () => {
         `const a = <div><animate attributeName="href" values="javascript:alert(1)" /></div>;`,
       );
       expect(out).toContain("jsxTemplateDeferred");
-      expect(out).toContain('<animate attributeName="href" values="javascript:alert(1)" />');
+      expect(out).toContain(
+        'jsx("animate", { "attributeName": ("href"), "values": ("javascript:alert(1)") })',
+      );
       // Not inlined with the URL live: the bytes are the runtime's to produce.
       expect(out).not.toContain('values="#blocked"');
     });
@@ -315,7 +317,7 @@ describe("precompileTransform", () => {
       const out = transformVincle(
         `const a = <div><animate attributeName="opacity" values="0;1;0" dur="2s" /></div>;`,
       );
-      expect(out).toContain('values="0;1;0"');
+      expect(out).toContain('"values": ("0;1;0")');
       expect(out).toContain("jsxTemplateDeferred");
     });
 
@@ -352,12 +354,12 @@ describe("precompileTransform", () => {
     expect(out.match(new RegExp(RT, "g"))?.length).toBe(1);
   });
 
-  it("leaves elements with spread attributes untransformed", () => {
+  it("lowers elements with spread attributes to direct jsx calls", () => {
     expect(
       precompileTransform(`const a = <div {...props} id="x" />;`, "/src/app.tsx", {
         runtimeSource: RT,
-      }),
-    ).toBeNull();
+      })?.code,
+    ).toContain('jsx("div", { ...(props), "id": ("x") })');
   });
 
   it("merges missing helpers into an existing runtime import, preserving aliases", () => {
@@ -859,17 +861,11 @@ describe("precompileTransform", () => {
       // For the vincle dialect the element is declined: alone in a file there
       // is nothing left to rewrite, and nested it stays JSX for the runtime to
       // answer for.
-      expect(
-        precompileTransform(
-          "const a = <style>{css}</style>;",
-          "/src/app.tsx",
-          { runtimeSource: RT },
-          jsxAttr,
-          staticEscape,
-        ),
-      ).toBeNull();
+      expect(transformVincle("const a = <style>{css}</style>;")).toContain(
+        'jsx("style", { children: (css) })',
+      );
       const nested = transformVincle("const a = <div><style>{css}</style></div>;");
-      expect(nested).toContain("<style>{css}</style>");
+      expect(nested).toContain('jsx("style", { children: (css) })');
       expect(nested).not.toContain("jsxEscape(css)");
     });
 
@@ -1166,7 +1162,7 @@ describe("precompileTransform", () => {
       const result = precompileTransform(code, "/src/app.tsx", {
         runtimeSource: RT,
       });
-      expect(result!.code).toContain("<Comp>{jsxTemplate`<div>x</div>`}</Comp>");
+      expect(result!.code).toContain("jsx(Comp, { children: (jsxTemplate`<div>x</div>`) })");
       writeFileSync(outputPath, result!.code);
       const mod = (await import(outputPath)) as { x: unknown };
       expect(await renderToString(mod.x)).toBe("<div>x</div>");
@@ -1174,14 +1170,14 @@ describe("precompileTransform", () => {
 
     it("wraps precompiled fragments and dangerouslySetInnerHTML fallback children too", () => {
       const out1 = transform(`const x = <Comp><>hi</></Comp>;`);
-      expect(out1).toContain("<Comp>{jsxTemplate`hi`}</Comp>");
+      expect(out1).toContain('jsx(Comp, { children: ("hi") })');
       const out2 = transform(
         `const y = <div dangerouslySetInnerHTML={{ __html: h }}><span>fb</span></div>;`,
       );
-      expect(out2).toContain("{jsxTemplate`<span>fb</span>`}");
+      expect(out2).toContain("children: (jsxTemplate`<span>fb</span>`)");
       // Attribute expressions of a preserved element stay expression position.
       const out3 = transform(`const z = <Comp icon={<b>i</b>}>t</Comp>;`);
-      expect(out3).toContain("icon={jsxTemplate`<b>i</b>`}");
+      expect(out3).toContain('"icon": (jsxTemplate`<b>i</b>`)');
       expect(out3).not.toContain("icon={{");
     });
 
@@ -1228,7 +1224,7 @@ describe("precompileTransform", () => {
         staticEscape,
       );
       expect(result!.code).toContain("jsxTemplateDeferred`<section><i>static</i>");
-      expect(result!.code).toContain("[0, 1].map(() => <Reader />)");
+      expect(result!.code).toContain("[0, 1].map(() => jsx(Reader, null))");
       expect(result!.code).not.toContain("jsxEscapeDeferred([0, 1].map");
       writeFileSync(outputPath, result!.code);
       const mod = (await import(outputPath)) as {
@@ -1373,8 +1369,8 @@ describe("precompileTransform", () => {
       );
 
       expect(out!.code).not.toContain("jsxEscape(css)");
-      expect(out!.code).toContain("<style>{css}</style>");
-      expect(importedHelpers(out!.code)).toEqual(["jsxTemplateDeferred"]);
+      expect(out!.code).toContain('jsx("style", { children: (css) })');
+      expect(importedHelpers(out!.code)).toEqual(["jsx", "jsxTemplateDeferred"]);
     });
   });
 
@@ -1435,7 +1431,7 @@ describe("precompileTransform", () => {
    * rawtext holes: every unit test passed the runtime source explicitly, and the
    * plugin's virtual module, which must re-export the full set, was not tested.
    */
-  const CONTRACT = new Set(["jsxAttr", "jsxEscape", "jsxTemplate"]);
+  const CONTRACT = new Set(["jsx", "jsxAttr", "jsxEscape", "jsxTemplate"]);
 
   describe("a runtime that answers outside the contract", () => {
     // The transform accepts whatever shape a runtime's helper returns: a plain

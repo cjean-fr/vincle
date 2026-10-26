@@ -1,0 +1,53 @@
+{
+  "cases": [
+    { "tag": "Card", "props": { "children": ["&amp;&lt;&gt;1", null] }, "key": "<absent>" },
+    {
+      "tag": "Card",
+      "props": { "children": { "template": [" a b<span>x</span> "], "values": [] } },
+      "key": "<absent>"
+    },
+    { "tag": "Card", "props": { "children": ["v", "v", "1"] }, "key": "<absent>" },
+    {
+      "tag": "Card",
+      "props": {
+        "children": [
+          { "tag": "Card", "props": null, "key": "<absent>" },
+          { "tag": "Card", "props": null, "key": "<absent>" }
+        ]
+      },
+      "key": "<absent>"
+    },
+    {
+      "tag": "Card",
+      "props": { "children": { "template": [" <span></span> "], "values": [] } },
+      "key": "<absent>"
+    },
+    {
+      "tag": "Card",
+      "props": { "children": { "template": ["<span></span>"], "values": [] } },
+      "key": "<absent>"
+    },
+    { "tag": "Card", "props": { "children": "" }, "key": "<absent>" },
+    { "tag": "Card", "props": { "children": [] }, "key": "<absent>" },
+    { "tag": "Card", "props": { "children": [] }, "key": "<absent>" },
+    { "tag": "Card", "props": { "a": "a", "b": "b", "children": "child" }, "key": "key" },
+    { "tag": "Card", "props": null, "key": "last" },
+    {
+      "tag": "div",
+      "props": {
+        "key": "business",
+        "children": "spread",
+        "class": "x",
+        "dangerouslySetInnerHTML": { "__html": "x" }
+      },
+      "key": "<absent>"
+    },
+    { "tag": "Card", "props": { "a": "&", "b": "first second ", "href": "z" }, "key": "<absent>" },
+    {
+      "tag": "Card",
+      "props": { "icon": { "template": ["<span></span>"], "values": [] } },
+      "key": { "tag": "Card", "props": null, "key": "<absent>" }
+    }
+  ],
+  "log": ["a", "b", "child", "key", "last"]
+}

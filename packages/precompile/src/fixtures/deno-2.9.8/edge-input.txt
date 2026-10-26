@@ -1,0 +1,18 @@
+function Card(){}; const UI={Card}; const p={key:'business',children:'spread'}; const v='v'; const log=[]; const hit=(x)=>(log.push(x),x);
+const cases=[
+<Card>{"&<>"}{1}{false}{true}{null}</Card>,
+<Card> a {"b"}<span>x</span> </Card>,
+<Card>{v}<>{v}{1}</></Card>,
+<Card><><Card/><Card/></></Card>,
+<Card> <span/> </Card>,
+<Card><span/></Card>,
+<Card> </Card>,
+<Card>{false}{true}</Card>,
+<Card><></><></></Card>,
+<Card key={hit('key')} a={hit('a')} {...{b:hit('b')}}>{hit('child')}</Card>,
+<Card key={hit('discarded')} key={hit('last')}/>,
+<div {...p} className="x" dangerouslySetInnerHTML={{__html:'x'}}/>,
+<Card a="&amp;" b=" first&#10;  second &#10;" xlink:href="z"/>,
+<Card icon={<span/>} key={<Card/>}/>,
+];
+console.log(JSON.stringify({cases,log}));

@@ -261,6 +261,7 @@ describe("the vite adapter", () => {
         // @ts-expect-error: internal hook
         expect(plugin.load(RID)).toContain('export * from "@vincle/core/jsx-runtime"');
         const reExported = new Set([
+          "jsx",
           "jsxTemplate",
           "jsxTemplateDeferred",
           "jsxAttr",
