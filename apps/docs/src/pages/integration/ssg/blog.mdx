@@ -17,7 +17,7 @@ to the `title`.
 ```mdx title="src/pages/blog/first-post.mdx"
 ---
 title: First post
-date: 2026-03-02
+date: "2026-03-02"
 tags: [intro, jsx]
 ---
 
@@ -27,7 +27,7 @@ Hello.
 ```md title="src/pages/blog/second-post.md"
 ---
 title: Second post
-date: 2026-04-10
+date: "2026-04-10"
 tags: [jsx]
 ---
 
@@ -60,14 +60,14 @@ export default function Layout({ children, meta }: { children: Renderable; meta:
 
 `discoverPages` from `@vincle/ssg` loads pages with the same handlers as the
 build and returns each one with its `meta` and its route. One helper turns the
-dated pages under `/blog` into a list, newest first.
+pages under `/blog` into a list, newest first.
 
 ```ts title="src/pages/blog/_posts.ts"
 import { discoverPages } from "@vincle/ssg";
 
 declare module "@vincle/ssg" {
   interface SsgMeta {
-    date?: Date;
+    date?: string;
     tags?: string[];
   }
 }
@@ -79,39 +79,53 @@ export interface Post {
   tags: string[];
 }
 
-/** The dated pages under /blog, newest first. */
+/** A tag is a path segment, so it is encoded. */
+export const tagUrl = (tag: string) => `/blog/tags/${encodeURIComponent(tag)}/`;
+
+/** The pages under /blog, newest first. A page without a valid date fails the build. */
 export async function posts(): Promise<Post[]> {
   const pages = await discoverPages({ src: "src/pages" });
   return pages
-    .filter((page) => page.source.route.startsWith("/blog/") && page.meta.date)
-    .map((page) => ({
-      url: page.source.route,
-      title: String(page.meta.title),
-      date: page.meta.date!.toISOString().slice(0, 10),
-      tags: page.meta.tags ?? [],
-    }))
+    .filter((page) => page.source.route.startsWith("/blog/"))
+    .map((page) => {
+      const { date } = page.meta;
+      if (typeof date !== "string" || new Date(date).toJSON()?.slice(0, 10) !== date)
+        throw new Error(
+          `${page.source.relativePath}: date must be a quoted date such as "2026-03-02"`,
+        );
+      return {
+        url: page.source.route,
+        title: String(page.meta.title),
+        date,
+        tags: page.meta.tags ?? [],
+      };
+    })
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 ```
 
 - Routes are relative to the `src` option. With `src: "src/pages"`, a post is
-  `/blog/first-post`, so the filter keeps routes that start with `/blog/`.
-- YAML reads `date: 2026-03-02` as a `Date`. Augmenting `SsgMeta`, as in
-  [Pages & layouts](/integration/ssg/pages#metadata), types it.
+  `/blog/first-post`, so the filter keeps routes that start with `/blog/`. The
+  index is `/blog`: it is not a post.
+- Dates are quoted. Unquoted, YAML reads `2026-02-30` as 2 March without an
+  error. Augmenting `SsgMeta`, as in
+  [Pages & layouts](/integration/ssg/pages#metadata), types the field. A post
+  whose date is missing, unquoted or not a real day stops the build and names
+  the file.
 - Each call discovers the pages again: the index, its tag pages and the feed each make one.
 
 ## Index and tag pages
 
 The index is a page. Its `outputs` export writes extra files next to it: one
-page per tag, at `/blog/tags/<tag>/`. A tag is a path segment, so keep tags
-URL-safe.
+page per tag, at `/blog/tags/<tag>/`. A tag is a path segment, so it is
+encoded with `encodeURIComponent`, in the links and in the file path.
 
 ```tsx title="src/pages/blog/index.tsx"
 import { renderToString } from "@vincle/core";
 import type { SsgOutput } from "@vincle/ssg";
 
 import Layout from "../_layout";
-import { posts, type Post } from "./_posts";
+import { posts, tagUrl, type Post } from "./_posts";
 
 export const meta = { title: "Blog" };
 
@@ -120,7 +134,10 @@ function PostList({ items }: { items: Post[] }) {
     <ul>
       {items.map((post) => (
         <li>
-          <a href={post.url}>{post.title}</a> <time>{post.date}</time>
+          <a href={post.url}>{post.title}</a> <time>{post.date}</time>{" "}
+          {post.tags.map((tag) => (
+            <a href={tagUrl(tag)}>#{tag}</a>
+          ))}
         </li>
       ))}
     </ul>
@@ -140,7 +157,10 @@ export async function* outputs(): AsyncGenerator<SsgOutput> {
         <PostList items={all.filter((post) => post.tags.includes(tag))} />
       </Layout>
     );
-    yield { path: `blog/tags/${tag}/index.html`, content: await renderToString(page) };
+    yield {
+      path: `blog/tags/${encodeURIComponent(tag)}/index.html`,
+      content: await renderToString(page),
+    };
   }
 }
 ```
