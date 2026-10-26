@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Depend on `@vincle/core` and `@vincle/vite-plugin` with caret ranges (`^0.9.1` and `^0.9.0` in the packed manifest) instead of exact versions, so a project that updates Core receives one copy shared with SSG, and a Core fix reaches SSG users without a new SSG release.
+- Declare `engines.node` (`>=22.12.0`), the minimum Node that Vite 8 and oxc-parser accept on the Node 22 line, so a package manager can warn or refuse on an unsupported Node.
 - Add `ssg generate`, the command that writes the site. `ssg build` still works as a deprecated alias and prints a warning; it will be removed in a later release.
 - **Breaking**: remove build timings: the `timings` option, `ssg build --timings`, the `timings` field of the `build()` result and the `BuildTimings` type. The build summary line stays.
 
