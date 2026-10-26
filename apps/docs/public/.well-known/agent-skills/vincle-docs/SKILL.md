@@ -30,5 +30,4 @@ this site is public and fully machine-readable.
   each option as a `{ label, content }` entry.
 - The rendered HTML of each page carries
   `<link rel="alternate" type="text/markdown" href="<page>.md">`.
-- Training crawlers are blocked (`Content-Signal: ai-train=no`); search and
-  agent access are welcome.
+- Search and agent access are welcome.
