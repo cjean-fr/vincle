@@ -148,3 +148,13 @@ describe("blog recipe", () => {
     }
   }, 120_000);
 });
+
+describe("blog skill", () => {
+  it("is named after its directory and points to the recipe page", async () => {
+    const dir = path.resolve(PROJECT_DIR, "../../packages/core/skills/vincle-blog");
+    const skill = await readFile(path.join(dir, "SKILL.md"), "utf8");
+    expect(skill).toMatch(/^name: vincle-blog$/m);
+    expect(skill).toContain("https://vincle.cjean.fr/integration/ssg/blog.md");
+    expect(existsSync(RECIPE)).toBe(true);
+  });
+});
