@@ -1,5 +1,5 @@
 ---
-name: @vincle/core
+name: "@vincle/core"
 description: Use this skill when the user wants to render JSX to HTML strings, create static sites (SSG), build email templates, generate HTML strings on the server without using React runtime or client-side hydration, generate PDF content, or needs secure HTML rendering with escaped content. Trigger on JSX-to-string tasks, email template generation, server-side rendering without React, or static site generation.
 license: MIT
 compatibility: Node.js, Bun, Deno, Vite, esbuild, TypeScript
@@ -11,9 +11,20 @@ Async-first JSX-to-HTML renderer with built-in XSS protection and concurrent-saf
 
 ## Install
 
-```bash
-npm install @vincle/core
-```
+A new project starts from the current docs, which are published as Markdown
+(index: https://vincle.cjean.fr/llms.txt). Follow
+https://vincle.cjean.fr/guide/getting-started/installation.md for the
+runtime and package manager in use; if this skill and the docs differ, the
+docs win. Facts that decide the setup:
+
+- Bun: `bun add @vincle/core`; the generated `tsconfig.json` needs
+  `jsxImportSource`; run with `bun index.tsx`, type-check with `bun check`.
+- Node.js 22 or later: `@vincle/core`, plus `typescript`, `tsx` and
+  `@types/node` as dev dependencies; `"type": "module"` in `package.json`;
+  `"types": ["node"]` in `tsconfig.json`; run with `tsx index.tsx`,
+  type-check with `tsc`.
+- Finish a setup by running the hello world and the type check, and report
+  what was created and what could not be verified.
 
 Element attributes are typed per element out of the box (the table ships in
 `@vincle/core`, generated from `@types/react` + `csstype`), so `<dvi clas="x">`
