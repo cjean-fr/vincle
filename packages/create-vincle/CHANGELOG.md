@@ -1,5 +1,11 @@
 # create-vincle
 
+## Unreleased
+
+### Fixed
+
+- Print the package version with `--version`: it printed 0.9.0 while the package is 0.10.0. A test now compares it with `package.json`.
+
 ## 0.10.0 — 2026-10-11
 
 ### Added
