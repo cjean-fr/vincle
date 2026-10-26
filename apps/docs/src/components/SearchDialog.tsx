@@ -11,11 +11,10 @@ export function SearchDialog() {
       >
         <Icon name="tabler:search" size={16} class="docs-search-icon size-4 shrink-0" />
         <span class="docs-search-trigger-label hidden md:inline">{t("search")}</span>
-        {/* Filled in by the client once the platform is known: no shortcut is claimed before. */}
+        {/* The head script flags the platform before paint; CSS renders the label. */}
         <kbd
-          hidden
           data-search-shortcut
-          class="docs-search-kbd items-center gap-0.5 rounded border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--docs-color-text-secondary)] [&:not([hidden])]:inline-flex"
+          class="docs-search-kbd items-center gap-0.5 rounded border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--docs-color-text-secondary)]"
         ></kbd>
       </button>
 
@@ -45,9 +44,8 @@ export function SearchDialog() {
             aria-describedby="search-status"
           />
           <kbd
-            hidden
             data-search-keyboard-hint
-            class="docs-search-kbd items-center rounded border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--docs-color-text-secondary)] [&:not([hidden])]:inline-flex"
+            class="docs-search-kbd items-center rounded border border-[var(--docs-color-border)] bg-[var(--docs-color-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--docs-color-text-secondary)]"
           >
             Esc
           </kbd>

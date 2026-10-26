@@ -636,6 +636,20 @@ html.dark .docs-theme-toggle-sun {
   text-decoration-color: var(--docs-color-accent);
 }
 
+/* The head script flags a keyboard device before paint: hints stay hidden until it does. */
+.docs-search-kbd {
+  display: none;
+}
+html[data-docs-shortcut] .docs-search-kbd {
+  display: inline-flex;
+}
+html[data-docs-shortcut="mac"] [data-search-shortcut]::before {
+  content: "⌘K";
+}
+html[data-docs-shortcut="other"] [data-search-shortcut]::before {
+  content: "Ctrl K";
+}
+
 /* Give the search trigger a small tactile response before the dialog opens. */
 .docs-search-trigger {
   transition:

@@ -17,6 +17,9 @@ import { ThemeToggle, themeInitScriptSource } from "./ThemeToggle.js";
 /** Restore package manager before content paints; CSS selects the initial panel. */
 const tabsInitScriptSource = `try{var p=localStorage.getItem("docs-tabs-sync:pkg-manager");if(p==="npm"||p==="pnpm"||p==="bun")document.documentElement.setAttribute("data-docs-package-manager",p)}catch{}`;
 
+/** Flag a keyboard device before paint; CSS reveals the shortcut hints. */
+const searchShortcutInitScriptSource = `try{if(matchMedia("(hover: hover) and (pointer: fine)").matches){document.documentElement.setAttribute("data-docs-shortcut",/mac|iphone|ipad|ipod/i.test(navigator.userAgentData?.platform??navigator.platform)?"mac":"other")}}catch{}`;
+
 export async function Layout({ children }: { children: Renderable }): Promise<JSX.Element> {
   const page = useDocs();
   const { config, meta, currentPage } = page;
@@ -24,6 +27,7 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
   const HashedScript = withHash(Script, collector);
   const themeScript = await HashedScript({ children: themeInitScriptSource });
   const tabsScript = await HashedScript({ children: tabsInitScriptSource });
+  const searchShortcutScript = await HashedScript({ children: searchShortcutInitScriptSource });
   const csp = meta.csp ?? collector.getCSPHeader();
   const isHome = currentPage === "/";
 
@@ -46,6 +50,7 @@ export async function Layout({ children }: { children: Renderable }): Promise<JS
           <SEOHeader page={page} />
           {themeScript}
           {tabsScript}
+          {searchShortcutScript}
           <Asset entry="src/_client/main.ts" />
           <Asset entry="src/_client/main.css" />
         </head>
