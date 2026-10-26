@@ -9,6 +9,79 @@ Send the HTML shell immediately and stream deferred fragments inline in the
 same HTTP response. One connection, progressive delivery: no client-side fetch
 logic required.
 
+## How a streamed response arrives
+
+Without `<Defer>`, the response is sent once every `await` in the tree has
+resolved: the slowest query sets when the first byte leaves. With `<Defer>`, the
+server sends the shell first and each deferred part after it, as soon as that
+part is ready.
+
+<figure class="not-prose my-8">
+  <div
+    role="img"
+    aria-label="Two timelines. Without Defer, the server waits for the slowest query, then sends the whole page at once. With Defer, the shell is sent first, then the comments fragment, then the recommendations fragment, each when its query finishes."
+    class="overflow-hidden rounded-xl border border-gray-200 text-xs dark:border-gray-800"
+  >
+    <div class="space-y-3 p-4 sm:p-5">
+      <p class="font-semibold text-gray-700 dark:text-gray-300">
+        Without <code>&lt;Defer&gt;</code>
+      </p>
+      <div class="flex h-7 w-full overflow-hidden rounded-md">
+        <div class="flex w-[80%] items-center border border-gray-300 bg-gray-100 px-2 dark:border-gray-700 dark:bg-gray-800">
+          <p class="m-0 text-gray-500 dark:text-gray-400">blank page, waiting</p>
+        </div>
+        <div class="flex w-[20%] items-center justify-center bg-blue-600 px-1 font-semibold">
+          <p class="m-0 text-white">page</p>
+        </div>
+      </div>
+    </div>
+    <div class="space-y-3 border-t border-gray-200 p-4 sm:p-5 dark:border-gray-800">
+      <p class="font-semibold text-gray-700 dark:text-gray-300">
+        With <code>&lt;Defer&gt;</code>
+      </p>
+      <div class="flex h-7 w-full overflow-hidden rounded-md">
+        <div class="flex w-[20%] items-center justify-center bg-blue-600 px-1 font-semibold">
+          <p class="m-0 text-white">shell</p>
+        </div>
+      </div>
+      <div class="flex h-7 w-full overflow-hidden rounded-md">
+        <div class="w-[20%]"></div>
+        <div class="flex w-[40%] items-center border border-dashed border-amber-300 bg-amber-50 px-2 dark:border-amber-800 dark:bg-amber-950/40">
+          <p class="m-0 text-amber-700 dark:text-amber-400">comments</p>
+        </div>
+        <div class="flex w-[15%] items-center justify-center bg-emerald-600 px-1 font-semibold">
+          <p class="m-0 text-white">patch</p>
+        </div>
+      </div>
+      <div class="flex h-7 w-full overflow-hidden rounded-md">
+        <div class="w-[20%]"></div>
+        <div class="flex w-[60%] items-center border border-dashed border-amber-300 bg-amber-50 px-2 dark:border-amber-800 dark:bg-amber-950/40">
+          <p class="m-0 text-amber-700 dark:text-amber-400">recommendations</p>
+        </div>
+        <div class="flex w-[15%] items-center justify-center bg-emerald-600 px-1 font-semibold">
+          <p class="m-0 text-white">patch</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-between border-t border-gray-200 bg-gray-50 px-4 py-2 text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 sm:px-5">
+      <span>time</span>
+      <span>&rarr;</span>
+    </div>
+  </div>
+  <figcaption class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+    One response, in time order. Gray: nothing to show yet. Dashed: the fallback is on screen while
+    the part loads. The shell leaves first; each patch follows when its own work is done.
+  </figcaption>
+</figure>
+
+What decides the order:
+
+- Everything outside a `<Defer>` belongs to the shell. An `await` there delays
+  the shell, so keep slow work inside a `<Defer>`.
+- Each `<Defer>` runs on its own, and patches are sent in the order they finish,
+  not the order they appear in the page.
+- A `<Defer>` nested in another one is sent after its parent.
+
 ## When to stream
 
 Streaming is the right choice when:
