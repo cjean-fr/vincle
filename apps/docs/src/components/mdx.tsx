@@ -16,7 +16,16 @@ function Card({ title, children }: { title: string; children?: Renderable }) {
   );
 }
 
-const base = { RawHtml, Card };
+function AgentCallout({ title, children }: { title: string; children?: Renderable }) {
+  return (
+    <aside class="docs-agent-callout">
+      <p class="docs-agent-callout-title">{title}</p>
+      {children}
+    </aside>
+  );
+}
+
+const base = { RawHtml, Card, AgentCallout };
 
 export function useMDXComponents(
   components?: Readonly<Record<string, unknown>>,
