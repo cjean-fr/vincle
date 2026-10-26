@@ -7,6 +7,42 @@ title: Installation
 `@vincle/core` has zero runtime dependencies. Install it, then configure
 TypeScript.
 
+Prefer to let a coding agent do it? Copy a prompt that sends it to these docs.
+
+<div class="docs-code-block docs-prompt">
+  <button type="button" hidden data-docs-copy data-docs-copied="Copied" aria-label="Copy setup prompt for Bun">
+    <span class="docs-prompt-label">Copy setup prompt for Bun</span>
+    <span class="docs-prompt-done">Copied</span>
+  </button>
+  <details>
+    <summary>Preview</summary>
+
+```text
+Set up a new Vincle project (server-side JSX rendered to HTML strings, @vincle/core) on Bun, in a new directory. Ask me for the directory name if I did not give one.
+Follow the current Vincle docs, which are available as Markdown. Start from https://vincle.cjean.fr/llms.txt, then read the Getting Started pages: https://vincle.cjean.fr/guide/getting-started/installation.md and https://vincle.cjean.fr/guide/getting-started/first-render.md. If this prompt and the docs differ, the docs win.
+Finish by running the hello world and the type check that the docs describe. Fix what fails, then tell me what you created, how to run it, and anything you could not verify.
+```
+
+  </details>
+</div>
+
+<div class="docs-code-block docs-prompt">
+  <button type="button" hidden data-docs-copy data-docs-copied="Copied" aria-label="Copy setup prompt for Node.js">
+    <span class="docs-prompt-label">Copy setup prompt for Node.js</span>
+    <span class="docs-prompt-done">Copied</span>
+  </button>
+  <details>
+    <summary>Preview</summary>
+
+```text
+Set up a new Vincle project (server-side JSX rendered to HTML strings, @vincle/core) on Node.js 22 or later, in a new directory. Use my package manager (npm or pnpm; ask me if it is unclear) and ask me for the directory name if I did not give one.
+Follow the current Vincle docs, which are available as Markdown. Start from https://vincle.cjean.fr/llms.txt, then read the Getting Started pages: https://vincle.cjean.fr/guide/getting-started/installation.md and https://vincle.cjean.fr/guide/getting-started/first-render.md. If this prompt and the docs differ, the docs win.
+Finish by running the hello world and the type check that the docs describe. Fix what fails, then tell me what you created, how to run it, and anything you could not verify.
+```
+
+  </details>
+</div>
+
 ## Install
 
 In an existing project, one with a `package.json`.

@@ -50,6 +50,25 @@ describe("SSG build", () => {
     expect(deployment?.headings).toContainEqual({ id: "content-types", text: "Content types" });
   });
 
+  it("the agent setup prompts point at published pages and ask for a check and a report", async () => {
+    const html = await readFile(
+      path.join(DIST_DIR, "guide/getting-started/installation.html"),
+      "utf-8",
+    );
+    const blocks = html.split('<div class="docs-code-block docs-prompt">').slice(1);
+    expect(blocks).toHaveLength(2);
+    for (const block of blocks) {
+      expect(block).toContain("data-docs-copy");
+      const prompt = /<code[^>]*>([\s\S]*?)<\/code>/.exec(block)![1]!.replace(/<[^>]+>/g, "");
+      const urls = [...prompt.matchAll(/https:\/\/vincle\.cjean\.fr\/([^\s)<]+)/g)];
+      expect(urls.length).toBeGreaterThan(0);
+      for (const [, file] of urls)
+        expect(existsSync(path.join(DIST_DIR, file!.replace(/[.,]$/, "")))).toBe(true);
+      expect(prompt).toContain("type check");
+      expect(prompt).toContain("anything you could not verify");
+    }
+  });
+
   it("emits meta keywords for a page that declares them", async () => {
     const html = await readFile(path.join(DIST_DIR, "integration/flow/streaming.html"), "utf-8");
     expect(html).toContain(
