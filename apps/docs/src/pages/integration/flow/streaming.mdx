@@ -17,61 +17,32 @@ query runs in a `<Defer>` given as a function, the shell is sent first, each
 query starts once the shell is rendered, and each part is sent as soon as its own
 query resolves.
 
-<figure class="not-prose my-8">
-  <div
-    role="img"
-    aria-label="Two timelines of the same page. When the page awaits both queries itself, the server sends nothing until the slowest query resolves, then sends the whole page. When each query is in a Defer, the shell is sent first, each query starts after it, and the comments and recommendations patches follow as each query resolves."
-    class="overflow-hidden rounded-xl border border-gray-200 text-xs dark:border-gray-800"
-  >
-    <div class="space-y-3 p-4 sm:p-5">
-      <p class="font-semibold text-gray-700 dark:text-gray-300">Both queries awaited in the page</p>
-      <div class="flex h-7 w-full overflow-hidden rounded-md">
-        <div class="flex w-[80%] items-center border border-gray-300 bg-gray-100 px-2 dark:border-gray-700 dark:bg-gray-800">
-          <p class="m-0 text-gray-500 dark:text-gray-400">nothing sent yet</p>
-        </div>
-        <div class="flex w-[20%] items-center justify-center bg-blue-600 px-1 font-semibold">
-          <p class="m-0 text-white">page</p>
-        </div>
-      </div>
-    </div>
-    <div class="space-y-3 border-t border-gray-200 p-4 sm:p-5 dark:border-gray-800">
-      <p class="font-semibold text-gray-700 dark:text-gray-300">
-        Each query in a <code>&lt;Defer&gt;</code>
-      </p>
-      <div class="flex h-7 w-full overflow-hidden rounded-md">
-        <div class="flex w-[20%] items-center justify-center bg-blue-600 px-1 font-semibold">
-          <p class="m-0 text-white">shell</p>
-        </div>
-      </div>
-      <div class="flex h-7 w-full overflow-hidden rounded-md">
-        <div class="w-[20%]"></div>
-        <div class="flex w-[40%] items-center border border-dashed border-amber-300 bg-amber-50 px-2 dark:border-amber-800 dark:bg-amber-950/40">
-          <p class="m-0 text-amber-700 dark:text-amber-400">comments</p>
-        </div>
-        <div class="flex w-[15%] items-center justify-center bg-emerald-600 px-1 font-semibold">
-          <p class="m-0 text-white">patch</p>
-        </div>
-      </div>
-      <div class="flex h-7 w-full overflow-hidden rounded-md">
-        <div class="w-[20%]"></div>
-        <div class="flex w-[60%] items-center border border-dashed border-amber-300 bg-amber-50 px-2 dark:border-amber-800 dark:bg-amber-950/40">
-          <p class="m-0 text-amber-700 dark:text-amber-400">recommendations</p>
-        </div>
-        <div class="flex w-[15%] items-center justify-center bg-emerald-600 px-1 font-semibold">
-          <p class="m-0 text-white">patch</p>
-        </div>
-      </div>
-    </div>
-    <div class="flex justify-between border-t border-gray-200 bg-gray-50 px-4 py-2 text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 sm:px-5">
-      <span>time</span>
-      <span>&rarr;</span>
-    </div>
-  </div>
-  <figcaption class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-    Same page, same queries, in time order. Gray: nothing sent yet. Dashed: fallback shown while
-    waiting. By default the queries run in parallel; each patch is sent when its own query resolves.
-  </figcaption>
-</figure>
+**Both queries awaited in the page**
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant S as Server
+  B->>S: GET /page
+  Note over S: waits for comments and recommendations
+  S-->>B: complete page
+```
+
+**Each query in a `<Defer>`**
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant S as Server
+  B->>S: GET /page
+  Note over S: renders the shell, starts both queries
+  S-->>B: shell, with fallbacks
+  S-->>B: comments patch
+  S-->>B: recommendations patch
+```
+
+In both cases the page runs the same two queries. Here comments finishes before
+recommendations, so its patch is sent first.
 
 What decides the order:
 
