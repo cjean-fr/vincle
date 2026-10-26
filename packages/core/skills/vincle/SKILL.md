@@ -232,6 +232,27 @@ const Page = async () => {
 };
 ```
 
+## How to
+
+Each task below has a page in the docs, published as Markdown. Read the page
+and follow it: the docs win over this skill. Index of all pages:
+https://vincle.cjean.fr/llms.txt
+
+- **Create a static site** (pages, layouts, MDX, build):
+  https://vincle.cjean.fr/integration/ssg/overview.md and
+  https://vincle.cjean.fr/integration/ssg/pages.md
+- **Create a blog** (posts, index, tag pages, RSS feed):
+  https://vincle.cjean.fr/integration/ssg/blog.md. Facts that decide the
+  result: routes are relative to the `src` option of `discoverPages`; dates
+  are quoted YAML strings (`date: "2026-03-02"`); tags are slugs; `feed.xml`
+  is left out of the sitemap with `sitemap: false`.
+- **Configure the build**: https://vincle.cjean.fr/integration/ssg/configuration.md
+- **Add images**: https://vincle.cjean.fr/integration/ssg/images.md
+- **Deploy**: https://vincle.cjean.fr/integration/ssg/deployment.md
+
+Finish each task with the real build (`ssg generate`) and the type check, and
+report what was created and what could not be verified.
+
 ## SSG Pattern
 
 ```typescript
