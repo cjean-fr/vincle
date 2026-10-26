@@ -79,8 +79,10 @@ export interface Post {
   tags: string[];
 }
 
-/** A tag is a path segment, so it is encoded. */
-export const tagUrl = (tag: string) => `/blog/tags/${encodeURIComponent(tag)}/`;
+/** A tag is a path segment: lowercase words joined by hyphens. */
+const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export const tagUrl = (tag: string) => `/blog/tags/${tag}/`;
 
 /** The pages under /blog, newest first. A page without a valid date fails the build. */
 export async function posts(): Promise<Post[]> {
@@ -93,12 +95,11 @@ export async function posts(): Promise<Post[]> {
         throw new Error(
           `${page.source.relativePath}: date must be a quoted date such as "2026-03-02"`,
         );
-      return {
-        url: page.source.route,
-        title: String(page.meta.title),
-        date,
-        tags: page.meta.tags ?? [],
-      };
+      const tags = page.meta.tags ?? [];
+      for (const tag of tags)
+        if (typeof tag !== "string" || !SLUG.test(tag))
+          throw new Error(`${page.source.relativePath}: tag must be a slug such as "web-dev"`);
+      return { url: page.source.route, title: String(page.meta.title), date, tags };
     })
     .sort((a, b) => b.date.localeCompare(a.date));
 }
@@ -111,14 +112,14 @@ export async function posts(): Promise<Post[]> {
   error. Augmenting `SsgMeta`, as in
   [Pages & layouts](/integration/ssg/pages#metadata), types the field. A post
   whose date is missing, unquoted or not a real day stops the build and names
-  the file.
+  the file; so does a tag that is not a slug.
 - Each call discovers the pages again: the index, its tag pages and the feed each make one.
 
 ## Index and tag pages
 
 The index is a page. Its `outputs` export writes extra files next to it: one
-page per tag, at `/blog/tags/<tag>/`. A tag is a path segment, so it is
-encoded with `encodeURIComponent`, in the links and in the file path.
+page per tag, at `/blog/tags/<tag>/`. A tag is a path segment, so
+`_posts.ts` accepts only slugs and rejects anything else, such as `..`.
 
 ```tsx title="src/pages/blog/index.tsx"
 import { renderToString } from "@vincle/core";
@@ -158,7 +159,7 @@ export async function* outputs(): AsyncGenerator<SsgOutput> {
       </Layout>
     );
     yield {
-      path: `blog/tags/${encodeURIComponent(tag)}/index.html`,
+      path: `blog/tags/${tag}/index.html`,
       content: await renderToString(page),
     };
   }
@@ -167,8 +168,8 @@ export async function* outputs(): AsyncGenerator<SsgOutput> {
 
 ## Feed
 
-A `.ts` page writes the file it is named after, here `/feed.xml`. Text is
-escaped because titles can contain `&` and `<`.
+A `.ts` page writes the file it is named after, here `/feed.xml`. Titles and
+links are escaped because they can contain `&` and `<`.
 
 ```ts title="src/pages/feed.xml.ts"
 import { posts } from "./blog/_posts";
@@ -182,7 +183,7 @@ export default async function () {
   const items = (await posts()).map(
     (post) => `<item>
 <title>${escape(post.title)}</title>
-<link>https://example.com${post.url}</link>
+<link>${escape(`https://example.com${post.url}`)}</link>
 <pubDate>${new Date(post.date).toUTCString()}</pubDate>
 </item>`,
   );
@@ -190,6 +191,7 @@ export default async function () {
 <rss version="2.0"><channel>
 <title>Blog</title>
 <link>https://example.com/blog</link>
+<description>Posts from the blog</description>
 ${items.join("\n")}
 </channel></rss>`;
 }

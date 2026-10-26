@@ -46,11 +46,11 @@ describe("blog recipe", () => {
   let site: Awaited<ReturnType<typeof build>>;
   beforeAll(async () => {
     site = await build("ok", {
-      "src/pages/blog/edge.md": [
+      "src/pages/blog/rock&roll.md": [
         "---",
         "title: Tom & Jerry <3",
         'date: "2026-05-01"',
-        "tags: ['c++ & more']",
+        "tags: [tom-and-jerry]",
         "---",
         "",
         "Edge case.",
@@ -74,7 +74,7 @@ describe("blog recipe", () => {
 
   it("lists the posts newest first and links their tags", async () => {
     const html = await read(site.root, "blog/index.html");
-    const order = ["/blog/edge", "/blog/second-post", "/blog/first-post"].map((u) =>
+    const order = ["/blog/rock&amp;roll", "/blog/second-post", "/blog/first-post"].map((u) =>
       html.indexOf(`href="${u}"`),
     );
     expect(order.every((i) => i >= 0)).toBe(true);
@@ -88,20 +88,31 @@ describe("blog recipe", () => {
     expect(html).not.toContain('href="/blog/second-post"');
   });
 
-  it("encodes a tag that is not URL-safe in the link and the file path", async () => {
-    const dir = "blog/tags/c%2B%2B%20%26%20more";
-    expect((await read(site.root, "blog/index.html")).includes(`href="/${dir}/"`)).toBe(true);
-    expect(await read(site.root, `${dir}/index.html`)).toContain("Tom &amp; Jerry &lt;3");
+  it("writes the tag page of a post with markup in its title", async () => {
+    const html = await read(site.root, "blog/tags/tom-and-jerry/index.html");
+    expect(html).toContain("Tom &amp; Jerry &lt;3");
   });
 
-  it("writes a well-formed feed with escaped titles", async () => {
+  it("writes a feed that parses back to the source titles and links", async () => {
     const feed = await read(site.root, "feed.xml");
-    expect(feed).toContain("<title>Tom &amp; Jerry &lt;3</title>");
+    // One pass, so `&amp;lt;` reads back as `&lt;`, not `<`.
+    const decode = (text: string) =>
+      text.replace(/&(amp|lt|gt);/g, (_, name: string) => ({ amp: "&", lt: "<", gt: ">" })[name]!);
+    const values = (tag: string) =>
+      [...feed.matchAll(new RegExp(`<${tag}>([^<]*)</${tag}>`, "g"))].map((m) => decode(m[1]!));
+    expect(values("title")).toEqual(["Blog", "Tom & Jerry <3", "Second post", "First post"]);
+    expect(values("link")).toEqual([
+      "https://example.com/blog",
+      "https://example.com/blog/rock&roll",
+      "https://example.com/blog/second-post",
+      "https://example.com/blog/first-post",
+    ]);
+    expect(values("description")).toEqual(["Posts from the blog"]);
+    expect(values("pubDate")[1]).toBe("Fri, 10 Apr 2026 00:00:00 GMT");
+    // Nothing raw is left between the tags.
     const text = feed.replace(/<\?xml[^>]*\?>/, "").replace(/<\/?[A-Za-z][^<>]*>/g, "");
     expect(text).not.toMatch(/[<>]/);
     expect(text).not.toMatch(/&(?!(amp|lt|gt);)/);
-    expect(feed.match(/<item>/g)).toHaveLength(3);
-    expect(feed).toContain("<pubDate>Fri, 10 Apr 2026 00:00:00 GMT</pubDate>");
   });
 
   it("lists the index, the posts and the tag pages in the sitemap, not the feed", async () => {
@@ -124,6 +135,16 @@ describe("blog recipe", () => {
       });
       expect(result.ok).toBe(false);
       expect(result.output).toContain("blog/broken.md: date must be a quoted date");
+    }
+  }, 120_000);
+
+  it("fails the build, naming the file, for a tag that is not a slug", async () => {
+    for (const [name, tag] of Object.entries({ dots: "..", dot: ".", plus: "C++", slash: "a/b" })) {
+      const result = await build(`tag-${name}`, {
+        "src/pages/blog/broken.md": `---\ntitle: Broken\ndate: "2026-05-01"\ntags: ["${tag}"]\n---\n\nText.\n`,
+      });
+      expect(result.ok).toBe(false);
+      expect(result.output).toContain("blog/broken.md: tag must be a slug");
     }
   }, 120_000);
 });
