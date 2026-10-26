@@ -207,6 +207,62 @@ describe("SSG build", () => {
   });
 });
 
+describe("published page metadata", () => {
+  const SITE = "https://vincle.cjean.fr";
+  const pageFiles = (): string[] =>
+    [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)]
+      .filter((file) => !/(?:^|\/)404\.html$/.test(file))
+      .toSorted();
+  const routeOf = (file: string): string =>
+    file === "index.html" ? "/" : `/${file.replace(/\.html$/, "")}`;
+
+  it("gives every published page a nonempty unique title and description", async () => {
+    const files = pageFiles();
+    expect(files.length).toBeGreaterThan(0);
+    const titles = new Map<string, string>();
+    const descriptions = new Map<string, string>();
+    for (const file of files) {
+      const html = await readFile(path.join(DIST_DIR, file), "utf-8");
+      const title = /<title>([^<]+)<\/title>/.exec(html)?.[1];
+      const description = /<meta name="description" content="([^"]*)">/.exec(html)?.[1];
+      expect(title, `${file} has no page title`).toMatch(/^.+ - Vincle$/);
+      expect(description, `${file} has no page-specific description`).toBeTruthy();
+      expect(description, `${file} falls back to the site description`).not.toBe(
+        config.description,
+      );
+      expect(titles.get(title!), `${file} reuses the title from ${titles.get(title!)}`).toBe(
+        undefined,
+      );
+      expect(
+        descriptions.get(description!),
+        `${file} reuses the description from ${descriptions.get(description!)}`,
+      ).toBe(undefined);
+      titles.set(title!, file);
+      descriptions.set(description!, file);
+    }
+  });
+
+  it("keeps every published route and canonical URL unchanged", async () => {
+    for (const file of pageFiles()) {
+      const html = await readFile(path.join(DIST_DIR, file), "utf-8");
+      const canonical = /<link rel="canonical" href="([^"]+)">/.exec(html)?.[1];
+      expect(canonical, `${file} canonical`).toBe(`${SITE}${routeOf(file)}`);
+    }
+  });
+
+  it("links the Flow overview to the FAQ answer on streaming HTML", async () => {
+    const overview = await readFile(path.join(DIST_DIR, "integration/flow/overview.html"), "utf-8");
+    const link =
+      /<a\b[^>]*href="\/guide\/faq#can-i-use-vincle-for-streaming-html"[^>]*>([\s\S]*?)<\/a>/.exec(
+        overview,
+      );
+    const linkText = link?.[1]?.replace(/<[^>]+>/g, "").trim();
+    expect(linkText).toBe("Can I use Vincle for streaming HTML?");
+    const faq = await readFile(path.join(DIST_DIR, "guide/faq.html"), "utf-8");
+    expect(faq).toContain('id="can-i-use-vincle-for-streaming-html"');
+  });
+});
+
 describe("breadcrumb JSON-LD", () => {
   const SITE = "https://vincle.cjean.fr";
   async function breadcrumbs(file: string) {
@@ -225,7 +281,7 @@ describe("breadcrumb JSON-LD", () => {
     expect(steps(lists[0])).toEqual([
       ["Vincle", `${SITE}/`],
       ["Guide", `${SITE}/guide/introduction`],
-      ["Components", `${SITE}/guide/jsx/components`],
+      ["JSX components", `${SITE}/guide/jsx/components`],
     ]);
     expect(lists[0].itemListElement.map((step: { position: number }) => step.position)).toEqual([
       1, 2, 3,
@@ -236,7 +292,7 @@ describe("breadcrumb JSON-LD", () => {
     const [list] = await breadcrumbs("guide/introduction.html");
     expect(steps(list)).toEqual([
       ["Vincle", `${SITE}/`],
-      ["Introduction", `${SITE}/guide/introduction`],
+      ["Introduction to Vincle", `${SITE}/guide/introduction`],
     ]);
   });
 
