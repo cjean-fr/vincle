@@ -23,12 +23,12 @@ export function getHeaders(page: DocsRenderContext) {
 }
 
 export function getStructuredData(page: DocsRenderContext) {
-  const { title, description, isErrorPage } = getHeaders(page);
+  const { description, isErrorPage } = getHeaders(page);
   if (!ssg.site || isErrorPage) return undefined;
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: title,
+    name: page.config.title,
     description,
     url: fullUrl("/", ssg.site),
     inLanguage: "en",
