@@ -268,3 +268,30 @@ html:not(.dark) .docs-terminal pre code::before {
   outline: 2px solid var(--docs-code-text);
   outline-offset: 2px;
 }
+
+/* On narrow screens the copy button moves into the terminal bar, so it cannot
+   cover a command that runs to the end of its line. */
+@media (max-width: 767px) {
+  .docs-code-block.docs-terminal .docs-terminal-bar {
+    min-height: 2.75rem;
+    padding-right: 3.5rem;
+  }
+  .docs-code-block.docs-terminal [data-docs-copy] {
+    top: 0.375rem;
+  }
+  .docs-code-block.docs-terminal .docs-copy-tooltip {
+    top: 0.5rem;
+  }
+  .docs-code-block.docs-terminal pre {
+    padding-right: 1.25rem;
+  }
+}
+@media (max-width: 767px) and (pointer: coarse) {
+  .docs-code-block.docs-terminal .docs-terminal-bar {
+    min-height: 3.5rem;
+  }
+  .docs-code-block.docs-terminal .docs-copy-tooltip {
+    top: 0.85rem;
+    right: 3.9rem;
+  }
+}
