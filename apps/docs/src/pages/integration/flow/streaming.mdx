@@ -14,7 +14,7 @@ logic required.
 Take a page that needs two slow queries, comments and recommendations. If the
 page awaits them itself, nothing is sent until both have resolved. If each
 query runs in a `<Defer>` given as a function, the shell is sent first, each
-query starts once the shell is out, and each part is sent as soon as its own
+query starts once the shell is rendered, and each part is sent as soon as its own
 query resolves.
 
 <figure class="not-prose my-8">
@@ -68,9 +68,8 @@ query resolves.
     </div>
   </div>
   <figcaption class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-    Same page, same queries, in time order. Gray: nothing sent yet. Dashed: the fallback is on
-    screen and the query is running. By default the queries run in parallel; each patch is sent when
-    its own query resolves.
+    Same page, same queries, in time order. Gray: nothing sent yet. Dashed: fallback shown while
+    waiting. By default the queries run in parallel; each patch is sent when its own query resolves.
   </figcaption>
 </figure>
 
