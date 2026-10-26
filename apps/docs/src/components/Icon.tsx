@@ -22,7 +22,7 @@ export async function getIcon(
     "utf8",
   );
   return raw(
-    svg.replace(/<svg\b([^>]*)>/, (_, attrs: string) => {
+    svg.replace(/^\s*<!--[\s\S]*?-->\s*/, "").replace(/<svg\b([^>]*)>/, (_, attrs: string) => {
       const dimensions = attrs
         .replace(/\bwidth="[^"]*"/, `width="${size}"`)
         .replace(/\bheight="[^"]*"/, `height="${size}"`)

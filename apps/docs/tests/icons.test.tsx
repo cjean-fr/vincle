@@ -12,6 +12,7 @@ test("all supported Tabler icons render locally with decorative semantics", asyn
       expect(html).toContain('aria-hidden="true"');
       expect(html).toContain('width="16"');
       expect(html).toContain('height="16"');
+      expect(html).not.toContain("<!--");
     }
     expect(fetch).not.toHaveBeenCalled();
   } finally {
