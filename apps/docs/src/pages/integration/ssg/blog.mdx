@@ -1,0 +1,193 @@
+---
+title: Build a blog
+---
+
+# Build a blog
+
+A blog needs three things the build does not provide on its own: a list of the
+posts, a page per tag and a feed. Each one comes from pages that already exist,
+with `discoverPages` and the `outputs` export. This recipe builds all three in
+six small files. It was built and run as shown.
+
+## Posts
+
+A post is an ordinary page. Its `date` and `tags` live in the frontmatter, next
+to the `title`.
+
+```mdx title="src/pages/blog/first-post.mdx"
+---
+title: First post
+date: 2026-03-02
+tags: [intro, jsx]
+---
+
+Hello.
+```
+
+```md title="src/pages/blog/second-post.md"
+---
+title: Second post
+date: 2026-04-10
+tags: [jsx]
+---
+
+More.
+```
+
+Both extend the layout of the site:
+
+```tsx title="src/pages/_layout.tsx"
+import { raw, type Renderable } from "@vincle/core";
+import type { SsgMeta } from "@vincle/ssg";
+
+export default function Layout({ children, meta }: { children: Renderable; meta: SsgMeta }) {
+  return (
+    <>
+      {raw("<!DOCTYPE html>\n")}
+      <html lang="en">
+        <head>
+          <meta charset="utf-8" />
+          <title>{meta.title}</title>
+        </head>
+        <body>{children}</body>
+      </html>
+    </>
+  );
+}
+```
+
+## Listing the posts
+
+`discoverPages` from `@vincle/ssg` loads pages with the same handlers as the
+build and returns each one with its `meta` and its route. One helper turns the
+dated pages under `/blog` into a list, newest first.
+
+```ts title="src/pages/blog/_posts.ts"
+import { discoverPages } from "@vincle/ssg";
+
+declare module "@vincle/ssg" {
+  interface SsgMeta {
+    date?: Date;
+    tags?: string[];
+  }
+}
+
+export interface Post {
+  url: string;
+  title: string;
+  date: string;
+  tags: string[];
+}
+
+/** The dated pages under /blog, newest first. */
+export async function posts(): Promise<Post[]> {
+  const pages = await discoverPages({ src: "src/pages" });
+  return pages
+    .filter((page) => page.source.route.startsWith("/blog/") && page.meta.date)
+    .map((page) => ({
+      url: page.source.route,
+      title: String(page.meta.title),
+      date: page.meta.date!.toISOString().slice(0, 10),
+      tags: page.meta.tags ?? [],
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+```
+
+- Routes are relative to the `src` option. With `src: "src/pages"`, a post is
+  `/blog/first-post`, so the filter keeps routes that start with `/blog/`.
+- YAML reads `date: 2026-03-02` as a `Date`. Augmenting `SsgMeta`, as in
+  [Pages & layouts](/integration/ssg/pages#metadata), types it.
+- Each call discovers the pages again: the index, its tag pages and the feed each make one.
+
+## Index and tag pages
+
+The index is a page. Its `outputs` export writes extra files next to it: one
+page per tag, at `/blog/tags/<tag>/`. A tag is a path segment, so keep tags
+URL-safe.
+
+```tsx title="src/pages/blog/index.tsx"
+import { renderToString } from "@vincle/core";
+import type { SsgOutput } from "@vincle/ssg";
+
+import Layout from "../_layout";
+import { posts, type Post } from "./_posts";
+
+export const meta = { title: "Blog" };
+
+function PostList({ items }: { items: Post[] }) {
+  return (
+    <ul>
+      {items.map((post) => (
+        <li>
+          <a href={post.url}>{post.title}</a> <time>{post.date}</time>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default async function Blog() {
+  return <PostList items={await posts()} />;
+}
+
+/** One page per tag, written next to the index: /blog/tags/<tag>/. */
+export async function* outputs(): AsyncGenerator<SsgOutput> {
+  const all = await posts();
+  for (const tag of new Set(all.flatMap((post) => post.tags))) {
+    const page = (
+      <Layout meta={{ title: `Tag: ${tag}` }}>
+        <PostList items={all.filter((post) => post.tags.includes(tag))} />
+      </Layout>
+    );
+    yield { path: `blog/tags/${tag}/index.html`, content: await renderToString(page) };
+  }
+}
+```
+
+## Feed
+
+A `.ts` page writes the file it is named after, here `/feed.xml`. Text is
+escaped because titles can contain `&` and `<`.
+
+```ts title="src/pages/feed.xml.ts"
+import { posts } from "./blog/_posts";
+
+export const meta = { sitemap: false };
+
+const escape = (text: string) =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+export default async function () {
+  const items = (await posts()).map(
+    (post) => `<item>
+<title>${escape(post.title)}</title>
+<link>https://example.com${post.url}</link>
+<pubDate>${new Date(post.date).toUTCString()}</pubDate>
+</item>`,
+  );
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>Blog</title>
+<link>https://example.com/blog</link>
+${items.join("\n")}
+</channel></rss>`;
+}
+```
+
+## Result
+
+`ssg generate` writes, besides the Markdown copies of the posts:
+
+```text
+dist/blog/index.html
+dist/blog/first-post/index.html
+dist/blog/second-post/index.html
+dist/blog/tags/intro/index.html
+dist/blog/tags/jsx/index.html
+dist/feed.xml
+dist/sitemap.xml
+```
+
+With `site` set, `sitemap.xml` lists the index, the posts and the tag pages.
+`feed.xml` is left out by its `sitemap: false`.

@@ -3,5 +3,6 @@
   "pages": { "title": "Pages & layouts", "order": 2 },
   "configuration": { "title": "Configuration", "order": 3 },
   "images": { "title": "Images", "order": 4 },
-  "deployment": { "title": "Deployment", "order": 5 }
+  "blog": { "title": "Build a blog", "order": 5 },
+  "deployment": { "title": "Deployment", "order": 6 }
 }
