@@ -18,6 +18,22 @@ beforeAll(() => {
 }, 120_000);
 
 describe("SSG build", () => {
+  it("distinguishes the Flow and SSG overview titles in page metadata and discovery", async () => {
+    const index = JSON.parse(await readFile(path.join(DIST_DIR, "search-index.json"), "utf8"));
+    for (const [section, title] of [
+      ["flow", "Flow overview"],
+      ["ssg", "SSG overview"],
+    ]) {
+      const route = `/integration/${section}/overview`;
+      const html = await readFile(path.join(DIST_DIR, `${route}.html`), "utf8");
+      expect(html).toContain(`<title>${title} - Vincle</title>`);
+      expect(html).toContain(`property="og:title" content="${title} - Vincle"`);
+      expect(html).toContain(`name="twitter:title" content="${title} - Vincle"`);
+      expect(html).toContain(`rel="canonical" href="https://vincle.cjean.fr${route}"`);
+      expect(index.find((page: { url: string }) => page.url === route)?.title).toBe(title);
+    }
+  });
+
   it("produces search-index.json (array of entries with body text)", async () => {
     const index = await readFile(path.join(DIST_DIR, "search-index.json"), "utf-8");
     const data = JSON.parse(index);
