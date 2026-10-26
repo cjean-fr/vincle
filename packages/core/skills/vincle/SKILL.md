@@ -1,5 +1,5 @@
 ---
-name: "@vincle/core"
+name: vincle
 description: Use this skill when the user wants to render JSX to HTML strings, create static sites (SSG), build email templates, generate HTML strings on the server without using React runtime or client-side hydration, generate PDF content, or needs secure HTML rendering with escaped content. Trigger on JSX-to-string tasks, email template generation, server-side rendering without React, or static site generation.
 license: MIT
 compatibility: Node.js, Bun, Deno, Vite, esbuild, TypeScript
