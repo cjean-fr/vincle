@@ -1,20 +1,75 @@
 ---
 title: Coming from HTML templates
-description: "Translate Pug, EJS, Mustache, Twig, and Vue templates to JSX components, conditions, loops, escaping, attributes, and the cost of a compile step."
+description: "If you can write HTML, you can write a Vincle view: translate Pug, EJS, Mustache, Twig, and Vue templates to JSX components, conditions, loops, escaping, and attributes."
 ---
 
 # Coming from HTML templates
 
+If you can write HTML, you already have the landmarks of a Vincle view:
+same tags, same attribute names (`class`, `data-*`, `aria-*`), same document
+structure. What you add is JSX: markup written as a TypeScript expression,
+with `{…}` where your data goes, checked by the compiler like any other
+value. There is no separate template language to learn.
+
+## HTML, plus `{…}`
+
+A view is a function that returns markup. Familiar HTML is already valid
+JSX:
+
+```tsx title="greeting.tsx"
+export function Greeting() {
+  return <h1>Hello, world!</h1>;
+}
+```
+
+Each dynamic feature is one small step from there. A value goes in `{…}`:
+
+```tsx {2} title="greeting.tsx"
+export function Greeting({ name }: { name: string }) {
+  return <h1>Hello, {name}!</h1>;
+}
+```
+
+Called with `name="world"`, it renders `<h1>Hello, world!</h1>`. An
+attribute takes the same braces, with the names you know from HTML:
+
+```tsx {2} title="link.tsx"
+export function Link({ post }: { post: Post }) {
+  return (
+    <a class="card" href={post.url}>
+      {post.title}
+    </a>
+  );
+}
+```
+
+A condition is an expression, a loop is `map`:
+
+```tsx {4,6-8} title="posts.tsx"
+export function Posts({ user, posts }: PostsProps) {
+  return (
+    <main>
+      {user ? <p>Hello, {user.name}</p> : <a href="/login">Log in</a>}
+      <ul>
+        {posts.map((post) => (
+          <li>{post.title}</li>
+        ))}
+      </ul>
+    </main>
+  );
+}
+```
+
+That is the whole bridge: write HTML, reach for `{…}` when something comes
+from your data. The rest of this page translates the template constructs you
+use today and lists the few places where JSX differs from HTML.
+
+## The same page, in the engine you know
+
 If you write Pug, EJS, Twig, Handlebars or Vue templates, you already think in
 HTML with holes in it. JSX is the same idea, minus the template language: the
 markup is not a string handed to an engine, it is an expression in your
-TypeScript code, checked by the compiler like any other value.
-
-## One rule: HTML, with `{…}` for TypeScript
-
-Inside a tag, write HTML. Inside `{…}`, write a TypeScript expression: a
-variable, a function call, a condition, a loop. Every template construct
-follows from that rule. The same page, in the engine you know:
+TypeScript code.
 
 ```pug tab="Pug" sync="template-engine"
 main
@@ -93,7 +148,7 @@ In JSX, the template is a [component](/guide/jsx/components): its data
 arrives as props, the include is another component, a filter is a function
 call (`{name.toUpperCase()}`), and trusted markup goes through `raw()`:
 
-```tsx
+```tsx {7,9-13,15,16} title="page.tsx"
 import { raw } from "@vincle/core";
 import { Footer } from "./footer";
 
@@ -117,14 +172,23 @@ export function Page({ user, posts, intro }: PageProps) {
 
 `PageProps` is the type of the data the template receives.
 
-## What changes
+## Where JSX differs from HTML
 
-### Conditions and loops are expressions
+The syntax is a superset of HTML, not HTML itself. A few differences come up
+early.
 
-`{…}` takes an expression, so an `if` statement does not fit there: use a
-ternary or `&&` inside the markup, or compute the value before the `return`.
-`false`, `null`, `undefined` and `true` render nothing; `0` renders `0`, so
-write `{count > 0 && <Badge />}`, not `{count && <Badge />}`.
+### `{…}` takes an expression, not a statement
+
+An `if` statement does not fit inside `{…}`: use a ternary or `&&` in the
+markup, or compute the value before the `return`. `false`, `null`,
+`undefined` and `true` render nothing; `0` renders `0`, so write
+`{count > 0 && <Badge />}`, not `{count && <Badge />}`.
+
+### An expression returns a single root
+
+Several siblings go in a [fragment](/guide/jsx/fragments) (`<>…</>`), and
+every tag is closed (`<br />`, `<input />`) — the two habits JSX keeps from
+XML.
 
 ### Includes and layouts are components
 
@@ -133,7 +197,7 @@ parameters are typed props: a missing or misspelled prop is a compile error,
 not an empty string at render time. A layout takes the page through
 `children`:
 
-```tsx
+```tsx {7,9,15-17} title="layout.tsx"
 import type { Renderable } from "@vincle/core";
 
 function Layout({ title, children }: { title: string; children: Renderable }) {
@@ -160,13 +224,6 @@ Every `{value}` is escaped for where it lands, in text or in an attribute.
 There is no pair of tags to choose between: trusted markup goes through
 `raw()`, a function call you can search for. See the
 [security model](/guide/security).
-
-### Attributes keep their HTML names
-
-`class`, `for`, `data-*`, `aria-*`, `hx-get`, `x-on:click` are written as in
-HTML. Two habits from XML apply instead: every tag is closed (`<br />`,
-`<input />`), and an expression returns a single root, so several siblings go
-in a [fragment](/guide/jsx/fragments) (`<>…</>`).
 
 ### The doctype is yours
 
