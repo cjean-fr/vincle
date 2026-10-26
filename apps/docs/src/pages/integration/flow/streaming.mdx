@@ -9,6 +9,49 @@ Send the HTML shell immediately and stream deferred fragments inline in the
 same HTTP response. One connection, progressive delivery: no client-side fetch
 logic required.
 
+## How a streamed response arrives
+
+Take a page that needs two slow queries, comments and recommendations. If the
+page awaits them itself, nothing is sent until both have resolved. If each
+query runs in a `<Defer>` given as a function, the shell is sent first, each
+query starts once the shell is rendered, and each part is sent as soon as its own
+query resolves.
+
+**Both queries awaited in the page**
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant S as Server
+  B->>S: GET /page
+  Note over S: waits for comments and recommendations
+  S-->>B: complete page
+```
+
+**Each query in a `<Defer>`**
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant S as Server
+  B->>S: GET /page
+  Note over S: renders the shell, starts both queries
+  S-->>B: shell, with fallbacks
+  S-->>B: comments patch
+  S-->>B: recommendations patch
+```
+
+In both cases the page runs the same two queries. Here comments finishes before
+recommendations, so its patch is sent first.
+
+What decides the order:
+
+- Everything outside a `<Defer>` belongs to the shell. An `await` there delays
+  the shell, so keep slow work inside a `<Defer>`.
+- Each `<Defer>` runs on its own, and patches are sent in the order they finish,
+  not the order they appear in the page.
+- A `<Defer>` nested in another one is sent after its parent.
+
 ## When to stream
 
 Streaming is the right choice when:
