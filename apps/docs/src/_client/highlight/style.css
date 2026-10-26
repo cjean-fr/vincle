@@ -114,6 +114,21 @@
 }
 /* The same token markup uses the active CSS palette, without re-tokenizing code. */
 
+/* Marked lines ({1,3-5} in the fence meta) read as full rows. The plugin drops
+   the newline text nodes in these blocks, so each .line can be a block without
+   doubling the spacing. The negative margins stretch the wash to the pre's
+   padding edge. */
+.docs-code-block.has-marks pre code .line {
+  display: block;
+  margin-inline: -1.25rem;
+  padding-inline: 1.25rem;
+  /* Blank lines are empty spans: as blocks they would collapse to zero height. */
+  min-height: 1lh;
+}
+.docs-code-block pre code .line.mark {
+  background: color-mix(in srgb, var(--docs-color-accent) 9%, transparent);
+  box-shadow: inset 3px 0 0 var(--docs-color-accent);
+}
 /* Shell commands keep their original text so copying excludes the visual prompt. */
 .docs-code-block.docs-terminal {
   --docs-code-bg: #171c25;
