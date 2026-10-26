@@ -82,8 +82,8 @@ describe("SSG build", () => {
     expect(html).toContain(
       '<meta name="keywords" content="suspense, out-of-order, progressive rendering">',
     );
-    const ssg = await readFile(path.join(DIST_DIR, "integration/ssg/overview.html"), "utf-8");
-    expect(ssg).toContain('<meta name="keywords" content="pre-rendering">');
+    const overview = await readFile(path.join(DIST_DIR, "integration/ssg/overview.html"), "utf-8");
+    expect(overview).toContain('<meta name="keywords" content="pre-rendering">');
     expect(await readFile(path.join(DIST_DIR, "index.html"), "utf-8")).not.toContain(
       'name="keywords"',
     );
