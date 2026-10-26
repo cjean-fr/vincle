@@ -50,11 +50,12 @@ describe("SSG build", () => {
     expect(deployment?.headings).toContainEqual({ id: "content-types", text: "Content types" });
   });
 
-  it("Installation tells agents how to add the Vincle skill", async () => {
+  it("Installation has an Agent tab that adds the Vincle skill", async () => {
     const html = await readFile(
       path.join(DIST_DIR, "guide/getting-started/installation.html"),
       "utf-8",
     );
+    expect(html).toContain('data-docs-tab-label="Agent"');
     expect(html.replace(/<[^>]+>/g, "")).toContain("npx skills add cjean-fr/vincle");
   });
 
