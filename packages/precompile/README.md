@@ -25,10 +25,15 @@ export default defineConfig({
 });
 ```
 
-The plugin detects the runtime from `oxc.jsx.importSource` on Vite 8, then
-`esbuild.jsxImportSource` on Vite 5–7. Vite 5–8 is supported. When JSX modules
-reach a build without either setting, the build fails instead of guessing a
-runtime. `jsxImportSource` in tsconfig alone is not exposed by Vite's config
+The plugin reads the runtime from Vite's own resolved configuration:
+`oxc.jsx.importSource` on Vite 8, including an `esbuild.jsxImportSource` that
+Vite converted because `esbuild.jsx` is `"automatic"`. On Vite 5–7, where the
+resolved config has no `oxc`, it falls back to `esbuild.jsxImportSource`.
+`oxc: false`, `jsx: "preserve"`, a classic runtime and an empty source leave no
+runtime to detect, and on Vite 8 an `esbuild.jsxImportSource` the compiler
+ignores is not used either. When genuine JSX reaches a build with no detected
+runtime, the build fails instead of guessing; a `.tsx` with no JSX is left
+alone. `jsxImportSource` in tsconfig alone is not exposed by Vite's config
 resolution: set the plugin's `runtimeSource` explicitly in that case.
 
 For a Bun server that imports JSX directly:

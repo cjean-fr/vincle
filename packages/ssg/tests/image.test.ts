@@ -6,6 +6,7 @@ import path from "node:path";
 import type { ImageConverter, ImageDescriptor, ImageOptions } from "../src/image.js";
 import type { PageHandler } from "../src/index.js";
 
+import { dev } from "../src/dev.js";
 import { imageUrl, images } from "../src/image.js";
 import { build, SsgError } from "../src/index.js";
 
@@ -547,3 +548,80 @@ test("reports the faulty mime value in the error context", () => {
     'images(): image portrait has an invalid mime type for "avif".',
   );
 });
+
+test("encoded variant URLs retrieve unchanged generated filenames in dev", () =>
+  fixture(async (root, put) => {
+    await put("src/index.ts", 'export default "home"');
+    await put("assets/master.bin", "master");
+    const descriptors: ImageDescriptor[] = [
+      {
+        id: "meme",
+        source: "assets/master.bin",
+        directory: "images",
+        name: "#lesgens",
+        widths: [256],
+        formats: ["jpg"],
+      },
+      {
+        id: "unicode",
+        source: "assets/master.bin",
+        directory: "images/nested ? été",
+        name: "été ? photo",
+        widths: [256],
+        formats: ["png"],
+      },
+      {
+        id: "success",
+        source: "assets/master.bin",
+        directory: "images",
+        name: "100%completed",
+        widths: [256],
+        formats: ["png"],
+      },
+    ];
+    const assets = images({
+      descriptors,
+      converter: {
+        formats: ["jpg", "png"],
+        async decode() {
+          return { width: 512, height: 512 };
+        },
+        async encode(_image, variant) {
+          return new TextEncoder().encode(variant.format);
+        },
+      },
+    });
+    const result = await build({ root, assets });
+    const published = descriptors.map((image) => {
+      const format = image.formats[0]!;
+      const url = imageUrl(image, 256, format);
+      expect(url).toBe(
+        `/${image.directory.split("/").map(encodeURIComponent).join("/")}/${encodeURIComponent(image.name)}-256.${format}`,
+      );
+      expect(result.files).toContain(`${image.directory}/${image.name}-256.${format}`);
+      return { url, file: image.directory + `/${image.name}-256.${format}`, format };
+    });
+    for (const variant of published)
+      expect(await readFile(path.join(root, "dist", variant.file), "utf8")).toBe(variant.format);
+    const server = await dev({
+      root,
+      assets,
+      vite: {
+        configFile: false,
+        logLevel: "silent",
+        server: { host: "127.0.0.1", port: 0 },
+      },
+    });
+    try {
+      const address = server.vite.httpServer!.address();
+      if (!address || typeof address === "string") throw new Error("Expected listening server");
+      const base = `http://127.0.0.1:${address.port}`;
+      for (const variant of published) {
+        const response = await fetch(base + variant.url);
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe(variant.format);
+      }
+    } finally {
+      await server.close();
+    }
+  }));

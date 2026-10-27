@@ -24,6 +24,14 @@ function fileWith(contents: string, name: string): string {
 }
 
 describe("the bun adapter", () => {
+  it("rejects an invalid runtimeSource before loading a file", () => {
+    for (const runtimeSource of ["", null, 42]) {
+      expect(() => precompileBun({ runtimeSource: runtimeSource as never })).toThrow(
+        "runtimeSource must be a non-empty string",
+      );
+    }
+  });
+
   for (const helper of ["jsxAttr", "jsxEscape"]) {
     it(`rejects a declared Vincle dialect missing ${helper}`, async () => {
       const other = helper === "jsxAttr" ? "jsxEscape" : "jsxAttr";

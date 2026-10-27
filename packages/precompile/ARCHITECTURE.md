@@ -15,5 +15,7 @@ sourcemaps. Public entry points are `src/index.ts` (transform), `src/vite.ts`
 
 Vincle mode uses the runtime's serializers; compatibility mode preserves the
 reference transform's output. Local invariants are documented beside the code
-that enforces them. Transform tests live in `src/index.test.ts`; Core's
+that enforces them. Transform and import-injection tests live in
+`src/index.test.ts`, Vite runtime-detection and lifecycle tests in
+`src/vite.test.ts`, and Bun adapter tests in `src/bun.test.ts`; Core's
 `tests/precompile-equivalence.test.ts` checks equivalence with dynamic rendering.

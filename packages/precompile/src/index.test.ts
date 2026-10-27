@@ -5,6 +5,7 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseSync } from "oxc-parser";
+import ts from "typescript";
 
 import precompileTransform from "./index.js";
 
@@ -35,9 +36,51 @@ function transformVincle(code: string, id = "/src/app.tsx"): string {
   return result.code;
 }
 
+/**
+ * Binding errors from the real TypeScript compiler. Module resolution is
+ * irrelevant here: the failure this guards against is two local bindings with
+ * the same name (TS2300), which the compiler reports before it needs the
+ * runtime module.
+ */
+function duplicateIdentifierErrors(code: string): string[] {
+  const fileName = "/src/app.tsx";
+  const options: ts.CompilerOptions = {
+    noEmit: true,
+    jsx: ts.JsxEmit.Preserve,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    target: ts.ScriptTarget.ESNext,
+    strict: true,
+    skipLibCheck: true,
+    noResolve: true,
+  };
+  const host = ts.createCompilerHost(options);
+  const source = ts.createSourceFile(fileName, code, options.target!, true, ts.ScriptKind.TSX);
+  const getSourceFile = host.getSourceFile.bind(host);
+  host.getSourceFile = (name, version, onError, shouldCreateNewSourceFile) =>
+    name === fileName ? source : getSourceFile(name, version, onError, shouldCreateNewSourceFile);
+  host.fileExists = (name) => name === fileName || ts.sys.fileExists(name);
+  host.readFile = (name) => (name === fileName ? code : ts.sys.readFile(name));
+
+  const program = ts.createProgram([fileName], options, host);
+  return [...program.getSyntacticDiagnostics(source), ...program.getSemanticDiagnostics(source)]
+    .filter((diagnostic) => diagnostic.code === 2300)
+    .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
+}
+
 describe("precompileTransform", () => {
   it("returns null when there is no JSX", () => {
     expect(precompileTransform("const x = 1;", "/src/app.tsx")).toBeNull();
+  });
+
+  it("rejects an invalid runtimeSource even when there is no JSX", () => {
+    for (const runtimeSource of ["", null, 42]) {
+      expect(() =>
+        precompileTransform("const x = 1;", "/src/app.tsx", {
+          runtimeSource: runtimeSource as never,
+        }),
+      ).toThrow("runtimeSource must be a non-empty string");
+    }
   });
 
   it("emits jsxTemplate and the runtime import for a static element", () => {
@@ -329,6 +372,75 @@ describe("precompileTransform", () => {
       `import { jsxTemplate as tpl, jsxEscape, jsxTemplate } from "${RT}";`,
     );
     expect(result.code.match(new RegExp(RT, "g"))?.length).toBe(1);
+  });
+
+  it("promotes an inline type-only helper without a duplicate binding", () => {
+    const result = precompileTransform(
+      `import { type jsxAttr } from "${RT}";\nexport const x = <a href={href}>hi</a>;`,
+      "/src/app.tsx",
+      { runtimeSource: RT },
+    )!;
+    expect(result.code).toContain(`import { jsxAttr, jsxTemplate } from "${RT}";`);
+    expect(duplicateIdentifierErrors(result.code)).toEqual([]);
+    expect(result.code).not.toContain("type jsxAttr");
+  });
+
+  it("preserves inline type-only aliases while adding the value binding", () => {
+    const result = precompileTransform(
+      `import { type jsxAttr as Attr } from "${RT}";\nexport const x = <a href={href}>hi</a>;`,
+      "/src/app.tsx",
+      { runtimeSource: RT },
+    )!;
+    expect(result.code).toContain("type jsxAttr as Attr");
+    expect(result.code).toContain(", jsxAttr");
+    expect(duplicateIdentifierErrors(result.code)).toEqual([]);
+  });
+
+  it("promotes a declaration-level type-only helper instead of duplicating it", () => {
+    const result = precompileTransform(
+      `import type { jsxAttr } from "${RT}";\nexport const x = <a href={href}>hi</a>;`,
+      "/src/app.tsx",
+      { runtimeSource: RT },
+    )!;
+    expect(result.code).toContain(`import { jsxAttr, jsxTemplate } from "${RT}";`);
+    expect(result.code).not.toContain("import type { jsxAttr }");
+    expect(duplicateIdentifierErrors(result.code)).toEqual([]);
+  });
+
+  it("promotes inline helpers in later runtime declarations without duplicate locals", () => {
+    const result = precompileTransform(
+      `import { jsx } from "${RT}";\nimport { type jsxAttr } from "${RT}";\nexport const x = <a href={href}>hi</a>;`,
+      "/src/app.tsx",
+      { runtimeSource: RT },
+    )!;
+    expect(duplicateIdentifierErrors(result.code)).toEqual([]);
+    expect(result.code).not.toContain("type jsxAttr");
+  });
+
+  it("keeps unused declaration-level type imports and aliases", () => {
+    const result = precompileTransform(
+      `import type { jsxAttr as Attr, Foo } from "${RT}";\nexport const x = <a href={href}>hi</a>;`,
+      "/src/app.tsx",
+      { runtimeSource: RT },
+    )!;
+    expect(result.code).toContain(`import type { jsxAttr as Attr, Foo } from "${RT}";`);
+    expect(result.code).toContain(`import { jsxAttr, jsxTemplate } from "${RT}";`);
+    expect(duplicateIdentifierErrors(result.code)).toEqual([]);
+  });
+
+  it("merges a promoted declaration-level helper into an existing value import", () => {
+    const result = precompileTransform(
+      [
+        `import type { jsxAttr, Foo } from "${RT}";`,
+        `import { jsxTemplate } from "${RT}";`,
+        `export const x = <a href={href}>hi</a>;`,
+      ].join("\n"),
+      "/src/app.tsx",
+      { runtimeSource: RT },
+    )!;
+    expect(result.code).toContain(`import type { Foo } from "${RT}";`);
+    expect(result.code).toContain(`import { jsxTemplate, jsxAttr } from "${RT}";`);
+    expect(duplicateIdentifierErrors(result.code)).toEqual([]);
   });
 
   it("merges into an import block that carries a brace of its own", () => {

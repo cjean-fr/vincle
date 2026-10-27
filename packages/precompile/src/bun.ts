@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 
-import { runtimeSource as configuredRuntimeSource } from "./config.js";
+import { assertRuntimeSource } from "./config.js";
+import { RUNTIME_SOURCE } from "./core/index.js";
 import precompileTransform, { type PluginConfig } from "./index.js";
 import { declaredRuntimeHelpers } from "./runtime-helpers.js";
 
@@ -53,7 +54,8 @@ const JSX_FILE = /\.[jt]sx$/;
  * Bun the check is direct: a transformed module imports `jsxTemplate`.
  */
 export default function precompileBun(config?: PluginConfig): BunPrecompilePlugin {
-  const runtimeSource = configuredRuntimeSource(config);
+  assertRuntimeSource(config);
+  const runtimeSource = config?.runtimeSource ?? RUNTIME_SOURCE;
 
   return {
     name: "@vincle/precompile",

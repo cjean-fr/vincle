@@ -1,7 +1,12 @@
 import type { Plugin, ResolvedConfig } from "vite";
 
-import { runtimeSource } from "./config.js";
+import { parseSync } from "oxc-parser";
+
+import type { AnyNode } from "./types.js";
+
+import { assertRuntimeSource } from "./config.js";
 import { RUNTIME_SOURCE } from "./core/index.js";
+import { hasJsx } from "./emit.js";
 import precompileTransform, {
   type PluginConfig,
   type RenderAttr,
@@ -27,10 +32,58 @@ const RESOLVED_VIRTUAL_ID = "\0" + VIRTUAL_MODULE_ID;
  */
 const FRAMEWORK_RUNTIME_SUFFIX = "/jsx-runtime";
 
-export default function vitePrecompile(config?: PluginConfig): Plugin {
-  runtimeSource(config);
+/**
+ * Vite 8 is the first release with an `oxc` option. Older resolved configs have
+ * no `oxc` key at all, and the esbuild field is then the only one that reaches
+ * the compiler.
+ */
+interface LegacyResolvedConfig {
+  oxc?: undefined;
+  esbuild?: { jsxImportSource?: string } | false;
+}
 
-  let runtimeSourceForTransform: string | null = null;
+/**
+ * The JSX import source the compiler will actually use, read from Vite's own
+ * resolved configuration: a converted `esbuild.jsxImportSource` already lives
+ * in `oxc.jsx` on Vite 8, and reading the deprecated field there would pick a
+ * source the compiler ignores. `classic`, `preserve`, a disabled transform and
+ * an empty source leave no runtime to detect.
+ */
+function configuredImportSource(resolved: ResolvedConfig): string | undefined {
+  if ("oxc" in resolved) {
+    const oxc = resolved.oxc;
+    if (!oxc) return undefined;
+    const jsx = oxc.jsx;
+    if (jsx === undefined || jsx === "preserve") return undefined;
+    if (jsx.runtime === "classic") return undefined;
+    return jsx.importSource || undefined;
+  }
+  const esbuild = (resolved as LegacyResolvedConfig).esbuild;
+  if (!esbuild) return undefined;
+  return esbuild.jsxImportSource || undefined;
+}
+
+/**
+ * A component at the root stays JSX, so the transform returns null for it even
+ * though the module genuinely carries JSX. Only called in that already
+ * exceptional case, never on the fast path.
+ */
+function containsJsx(code: string, id: string): boolean {
+  const lang = id.endsWith(".tsx") ? "tsx" : "jsx";
+  const result = parseSync(id, code, {
+    lang,
+    sourceType: "unambiguous",
+    range: true,
+    preserveParens: false,
+  });
+  return hasJsx(result.program as unknown as AnyNode);
+}
+
+export default function vitePrecompile(config?: PluginConfig): Plugin {
+  assertRuntimeSource(config);
+  const explicitRuntimeSource = config?.runtimeSource;
+
+  let runtimeSourceForTransform: string = VIRTUAL_MODULE_ID;
   let renderAttr: RenderAttr | null = null;
   /**
    * The runtime's `jsxEscape`, loaded at build time: static text is then
@@ -48,13 +101,6 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
    * there; otherwise it falls back to RUNTIME_SOURCE.
    */
   let candidateFrameworkRuntime: string | null = null;
-
-  /**
-   * When the user provides an explicit runtimeSource, that path is used
-   * directly for both the transform output and the build-time
-   * import.  This is null when runtimeSource is left unset (auto-detect).
-   */
-  let explicitRuntimeSource: string | null = null;
 
   /**
    * The actual module that the virtual module re-exports from.  Set
@@ -76,6 +122,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
    * counters are what turns that silence into a warning at `buildEnd`.
    */
   let modulesSeen = 0;
+  let jsxFileModules = 0;
   let jsxModulesSeen = 0;
   let transformedCount = 0;
   let isBuild = false;
@@ -86,21 +133,14 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
     configResolved(resolvedConfig: ResolvedConfig) {
       isBuild = resolvedConfig.command === "build";
-      if (config?.runtimeSource) {
-        runtimeSourceForTransform = config.runtimeSource;
-        explicitRuntimeSource = config.runtimeSource;
+      if (explicitRuntimeSource) {
+        runtimeSourceForTransform = explicitRuntimeSource;
         return;
       }
 
       runtimeSourceForTransform = VIRTUAL_MODULE_ID;
 
-      const esbuild = resolvedConfig.esbuild;
-      const oxc = resolvedConfig.oxc;
-      const jsxImportSource =
-        (oxc && typeof oxc === "object" && oxc.jsx && typeof oxc.jsx === "object"
-          ? oxc.jsx.importSource
-          : undefined) ??
-        (esbuild && typeof esbuild === "object" ? esbuild.jsxImportSource : undefined);
+      const jsxImportSource = configuredImportSource(resolvedConfig);
       if (jsxImportSource) {
         candidateFrameworkRuntime = `${jsxImportSource}${FRAMEWORK_RUNTIME_SUFFIX}`;
       }
@@ -194,18 +234,28 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       modulesSeen++;
       if (!id.endsWith(".tsx") && !id.endsWith(".jsx")) return;
       if (id.includes("node_modules")) return;
-      jsxModulesSeen++;
+      jsxFileModules++;
       if (!code.includes("<")) return;
 
       const result = precompileTransform(
         code,
         id,
-        { runtimeSource: runtimeSourceForTransform! },
+        { runtimeSource: runtimeSourceForTransform },
         renderAttr ?? undefined,
         renderEscape ?? undefined,
       );
 
-      if (!result || result.code === code) return;
+      // The transform returns null for a `.tsx` that carries only a less-than
+      // operator or a "<" in a string, and for a component at the root, which
+      // it leaves as JSX. Counting the extension itself made the first case
+      // fail a build that had no JSX to compile; the parse distinguishes it
+      // from the second, where the runtime is genuinely missing.
+      if (!result) {
+        if (containsJsx(code, id)) jsxModulesSeen++;
+        return;
+      }
+      jsxModulesSeen++;
+      if (result.code === code) return;
       transformedCount++;
       return { code: result.code, map: result.map };
     },
@@ -233,8 +283,10 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
 
       const detail =
         jsxModulesSeen > 0
-          ? `${jsxModulesSeen} .jsx/.tsx module(s) passed through it, none carrying JSX to precompile`
-          : `no .jsx/.tsx module passed through it at all (${modulesSeen} module(s) seen)`;
+          ? `${jsxModulesSeen} .jsx/.tsx module(s) contained JSX it did not precompile`
+          : jsxFileModules > 0
+            ? `${jsxFileModules} .jsx/.tsx module(s) passed through it, none carrying JSX to precompile`
+            : `no .jsx/.tsx module passed through it at all (${modulesSeen} module(s) seen)`;
 
       this.warn(
         `[vincle/precompile] nothing was precompiled in this build: ${detail}. ` +

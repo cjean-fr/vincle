@@ -1,4 +1,8 @@
 import { describe, it, expect } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { resolveConfig } from "vite";
 
 import { type PluginConfig } from "./index.js";
 import precompile from "./vite.js";
@@ -280,6 +284,126 @@ describe("the vite adapter", () => {
       }
     });
   });
+
+  describe("runtime detection with the real Vite 8 resolved config", () => {
+    const buildFromConfig = async (config: Record<string, unknown>) => {
+      const root = await mkdtemp(path.join(tmpdir(), "vincle-precompile-vite-"));
+      await writeFile(
+        path.join(root, "tsconfig.json"),
+        JSON.stringify({ compilerOptions: { jsxImportSource: "preact" } }),
+      );
+      try {
+        const resolved = await resolveConfig(
+          { root, configFile: false, logLevel: "silent", ...config },
+          "build",
+        );
+        const plugin = precompile();
+        // @ts-expect-error: invoking a lifecycle hook directly with a test context
+        plugin.configResolved(resolved);
+        const warnings: string[] = [];
+        const ctx = {
+          error(msg: string): never {
+            throw new Error(msg);
+          },
+          warn(msg: string): void {
+            warnings.push(msg);
+          },
+        };
+        // @ts-expect-error: same
+        await plugin.buildStart.call(ctx);
+        // @ts-expect-error: same
+        plugin.transform.call(ctx, "export const x = <p>hi</p>;", "/app/a.tsx");
+        let buildError: string | undefined;
+        try {
+          // @ts-expect-error: same
+          plugin.buildEnd.call(ctx);
+        } catch (error) {
+          buildError = (error as Error).message;
+        }
+        // @ts-expect-error: same
+        const runtime = plugin.load("\0virtual:vincle-precompile-runtime") as string;
+        return { runtime, warnings, buildError };
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    };
+
+    it("reads oxc.jsx.importSource", async () => {
+      const { runtime, buildError } = await buildFromConfig({
+        oxc: { jsx: { runtime: "automatic", importSource: "preact" } },
+      });
+      expect(runtime).toContain("preact/jsx-runtime");
+      expect(buildError).toBeUndefined();
+    });
+
+    it("reads esbuild.jsxImportSource once Vite converted it to oxc", async () => {
+      const { runtime, buildError } = await buildFromConfig({
+        esbuild: { jsx: "automatic", jsxImportSource: "preact" },
+      });
+      expect(runtime).toContain("preact/jsx-runtime");
+      expect(buildError).toBeUndefined();
+    });
+
+    it("prefers oxc over esbuild", async () => {
+      const { runtime, buildError } = await buildFromConfig({
+        oxc: { jsx: { runtime: "automatic", importSource: "preact" } },
+        esbuild: { jsx: "automatic", jsxImportSource: "other" },
+      });
+      expect(runtime).toContain("preact/jsx-runtime");
+      expect(buildError).toBeUndefined();
+    });
+
+    it("does not infer from esbuild.jsxImportSource when Vite 8 ignores it", async () => {
+      const { runtime, buildError } = await buildFromConfig({
+        esbuild: { jsxImportSource: "preact" },
+      });
+      expect(runtime).toContain("@vincle/core/jsx-runtime");
+      expect(buildError).toContain("no JSX runtime source was detected");
+    });
+
+    it("does not infer from a disabled, preserved, classic or empty oxc config", async () => {
+      for (const config of [
+        { oxc: false },
+        { oxc: { jsx: "preserve" } },
+        { oxc: { jsx: { runtime: "classic", importSource: "preact" } } },
+        { oxc: { jsx: { runtime: "automatic", importSource: "" } } },
+      ]) {
+        const { runtime, buildError } = await buildFromConfig(config);
+        expect(runtime, JSON.stringify(config)).toContain("@vincle/core/jsx-runtime");
+        expect(buildError, JSON.stringify(config)).toContain("no JSX runtime source was detected");
+      }
+    });
+
+    it("does not infer a runtime from tsconfig alone", async () => {
+      const { runtime, buildError } = await buildFromConfig({});
+      expect(runtime).toContain("@vincle/core/jsx-runtime");
+      expect(buildError).toContain("no JSX runtime source was detected");
+    });
+
+    it("falls back to esbuild only on a Vite whose resolved config has no oxc", async () => {
+      const plugin = precompile();
+      // @ts-expect-error: a Vite 5-7 resolved config, before the oxc option existed
+      plugin.configResolved({ command: "build", esbuild: { jsxImportSource: "preact" } });
+      const warnings: string[] = [];
+      const ctx = {
+        error(msg: string): never {
+          throw new Error(msg);
+        },
+        warn(msg: string): void {
+          warnings.push(msg);
+        },
+      };
+      // @ts-expect-error: same
+      await plugin.buildStart.call(ctx);
+      // @ts-expect-error: same
+      expect(plugin.load("\0virtual:vincle-precompile-runtime")).toContain("preact/jsx-runtime");
+      // @ts-expect-error: same
+      plugin.transform.call(ctx, "export const x = <p>hi</p>;", "/app/a.tsx");
+      // @ts-expect-error: same
+      expect(() => plugin.buildEnd.call(ctx)).not.toThrow();
+      expect(warnings).toEqual([]);
+    });
+  });
 });
 
 /** The names inside the first `{…}` group matched by `re`, sorted. */
@@ -327,8 +451,16 @@ describe("declared but never applied", () => {
       transform: (code: string, id: string) =>
         // @ts-expect-error: same
         plugin.transform!.call({ warn: () => {} }, code, id),
-      // @ts-expect-error: same
-      end: () => (plugin.buildEnd!.call({ warn: (m: string) => warnings.push(m) }), warnings),
+      end: () => {
+        // @ts-expect-error: same
+        plugin.buildEnd!.call({
+          warn: (m: string) => warnings.push(m),
+          error: (m: string): never => {
+            throw new Error(m);
+          },
+        });
+        return warnings;
+      },
     };
   }
 
@@ -345,6 +477,26 @@ describe("declared but never applied", () => {
     b.transform("export const a = 1;", "/app/thing.tsx");
     const [warning] = b.end();
     expect(warning).toContain("1 .jsx/.tsx module(s) passed through it");
+  });
+
+  it("does not mistake less-than operators or '<' strings for JSX", () => {
+    for (const code of [
+      "export const a = b < c;",
+      'export const a = "<b>";',
+      "export const a = 1;",
+    ]) {
+      const b = build();
+      b.transform(code, "/app/thing.tsx");
+      expect(() => b.end(), code).not.toThrow();
+    }
+  });
+
+  it("fails when genuine host or component JSX has no detectable runtime", () => {
+    for (const code of ["export const a = <p>hi</p>;", "export const a = <Comp />;"]) {
+      const b = build();
+      b.transform(code, "/app/thing.tsx");
+      expect(() => b.end(), code).toThrow("no JSX runtime source was detected");
+    }
   });
 
   it("stays quiet once a module has been precompiled", () => {

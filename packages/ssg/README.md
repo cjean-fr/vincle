@@ -12,7 +12,7 @@ The project root is the current directory. Routes live in `src/pages/` when pres
 `dist/`, and `public/` is copied to the output root. No configuration is needed
 for JavaScript, TypeScript, JSX, TSX, Markdown or MDX. Private files/directories
 starting with `_` or `.` and test/declaration files are not routes; use these for
-shared components, layouts and helpers. Symbolic source entries are ignored.
+shared components, layouts and helpers. Eligible non-private symbolic source entries are followed; broken or cyclic links fail discovery.
 
 | Source                        | Route            | Default output                                           |
 | ----------------------------- | ---------------- | -------------------------------------------------------- |

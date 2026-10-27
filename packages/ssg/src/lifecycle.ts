@@ -173,6 +173,12 @@ function layoutLoader() {
       path.basename(context.src) === "pages" && path.basename(path.dirname(context.src)) === "src"
         ? path.dirname(context.src)
         : context.src;
+    // Custom discovery may return a source outside the configured src. Automatic
+    // lookup must not probe its unrelated ancestors; explicit meta.layout remains
+    // an intentional selection resolved from the source file.
+    const relative = path.relative(boundary, path.dirname(context.file));
+    if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative))
+      return undefined;
     for (let directory = path.dirname(context.file); ; directory = path.dirname(directory)) {
       for (const extension of ["tsx", "jsx", "ts", "js"]) {
         const file = path.join(directory, `_layout.${extension}`);

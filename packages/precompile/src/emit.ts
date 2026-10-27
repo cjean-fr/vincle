@@ -63,6 +63,17 @@ function wrapForJsxChild(text: string, inJsxChildren: boolean): string {
 }
 
 /**
+ * True when the tree holds a JSX element or fragment anywhere, including a
+ * component at the root that the transform deliberately leaves as JSX. Used by
+ * the Vite adapter to tell genuine JSX from a `.tsx` that only compares with
+ * `<` or carries it in a string.
+ */
+export function hasJsx(node: AnyNode): boolean {
+  if (node.type === "JSXElement" || node.type === "JSXFragment") return true;
+  return walkChildren(node, (child) => hasJsx(child));
+}
+
+/**
  * Walk the tree looking for top-level precompilable JSX. When an eligible
  * element/fragment is found it is replaced wholesale (children are inlined by
  * `transformElement`/`transformFragment`), so we do NOT descend into it: that
