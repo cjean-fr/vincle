@@ -128,6 +128,10 @@ async function discover(options: DiscoverPagesOptions): Promise<DiscoveredPage[]
   }
   await walk(src);
   files.sort();
+  if (files.length === 0)
+    console.warn(
+      `[vincle/ssg] No route files found in ${src}. Names starting with . or _ are skipped; set src if your pages live in another directory.`,
+    );
   const modules = options.modules ?? defaultModules();
   const pages: DiscoveredPage[] = [];
   let index = 0;

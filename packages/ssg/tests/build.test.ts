@@ -207,6 +207,17 @@ test("source changes reload and failure, collisions and traversal retain previou
     expect(await file(root, "index.html")).toBe("changed");
   }));
 
+test("a helper module without a default export points at the _ prefix escape", () =>
+  fixture(async (root, put) => {
+    await put("helper.ts", "export const value = 1;");
+    const error = await build({ root }).then(
+      () => Promise.reject(new Error("build should have failed")),
+      (caught: unknown) => caught,
+    );
+    expect((error as Error).message).toContain("No default export");
+    expect((error as { hint?: string }).hint).toContain("_");
+  }));
+
 test("configuration and metadata validation", () =>
   fixture(async (root, put) => {
     await expect(build({ root, out: "src/dist" })).rejects.toThrow("directories");

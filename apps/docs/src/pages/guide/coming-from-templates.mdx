@@ -198,9 +198,9 @@ not an empty string at render time. A layout takes the page through
 `children`:
 
 ```tsx {7,9,15-17} title="layout.tsx"
-import type { Renderable } from "@vincle/core";
+import type { JSX } from "@vincle/core";
 
-function Layout({ title, children }: { title: string; children: Renderable }) {
+function Layout({ title, children }: { title: string; children: JSX.Element }) {
   return (
     <html lang="en">
       <head>

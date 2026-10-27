@@ -38,10 +38,10 @@ More.
 Both extend the layout of the site:
 
 ```tsx title="src/pages/_layout.tsx"
-import { raw, type Renderable } from "@vincle/core";
+import { raw, type JSX } from "@vincle/core";
 import type { SsgMeta } from "@vincle/ssg";
 
-export default function Layout({ children, meta }: { children: Renderable; meta: SsgMeta }) {
+export default function Layout({ children, meta }: { children: JSX.Element; meta: SsgMeta }) {
   return (
     <>
       {raw("<!DOCTYPE html>\n")}

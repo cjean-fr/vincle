@@ -199,3 +199,57 @@ describe("fragment lifecycle", () => {
     expect(errors).toBe(1);
   });
 });
+
+describe("error logging", () => {
+  it("logs the kept fallback when no onError handler is set", async () => {
+    const logged: string[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => void logged.push(String(args[0]));
+    try {
+      const { done } = runFragment(
+        "unhandled",
+        {
+          content: () => {
+            throw new Error("boom");
+          },
+          merge: "replace",
+        },
+        async () => {},
+        {},
+      );
+      await bounded(done).then(
+        () => undefined,
+        () => undefined,
+      );
+    } finally {
+      console.error = original;
+    }
+    expect(logged).toHaveLength(1);
+    expect(logged[0]).toContain('Error rendering fragment "unhandled"');
+    expect(logged[0]).toContain("keeps its fallback");
+  });
+
+  it("keeps the plain log line when an onError handler is set", async () => {
+    const logged: string[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => void logged.push(String(args[0]));
+    try {
+      const { done } = runFragment(
+        "handled",
+        {
+          content: () => {
+            throw new Error("boom");
+          },
+          merge: "replace",
+        },
+        async () => {},
+        { onError: () => <p>fallback ui</p> },
+      );
+      await bounded(done);
+    } finally {
+      console.error = original;
+    }
+    expect(logged[0]).toContain('Error rendering fragment "handled"');
+    expect(logged[0]).not.toContain("keeps its fallback");
+  });
+});

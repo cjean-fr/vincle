@@ -123,12 +123,12 @@ along with `meta`. A layout lower in the tree **replaces** the one above it; to
 build on it, import it:
 
 ```tsx title="src/pages/blog/_layout.tsx"
-import type { Renderable } from "@vincle/core";
+import type { JSX } from "@vincle/core";
 import type { SsgMeta } from "@vincle/ssg";
 
 import SiteLayout from "../../_layout";
 
-export default function BlogLayout({ children, meta }: { children: Renderable; meta: SsgMeta }) {
+export default function BlogLayout({ children, meta }: { children: JSX.Element; meta: SsgMeta }) {
   return (
     <SiteLayout meta={meta}>
       <article>{children}</article>

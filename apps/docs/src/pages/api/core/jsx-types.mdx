@@ -59,16 +59,16 @@ its string form. A function or a symbol is a type error.
 
 One element built by JSX: a tag, its props, its children. It is exported as a
 type only: `jsx()` is the only way to construct one. Use `VNode` for a
-value that holds an element; for anything that merely _renders_, use the wider
-`Renderable`.
+value that holds an element; for anything that merely _renders_, use
+`JSX.Element`.
 
 ## Components
 
 A component is a plain function, possibly `async`, returning anything in
-`Renderable`. There is no `Component<P>` type to apply:
+`JSX.Element`. There is no `Component<P>` type to apply:
 
 ```tsx
-import type { Renderable } from "@vincle/core";
+import type { JSX } from "@vincle/core";
 
 const Greeting = ({ name }: { name: string }) => <h1>Hello, {name}!</h1>;
 
@@ -79,10 +79,11 @@ const AsyncGreeting = async ({ id }: { id: string }) => {
 
 const Items = () => [<li>a</li>, <li>b</li>];
 
-const Card = ({ children }: { children?: Renderable }) => <div class="card">{children}</div>;
+const Card = ({ children }: { children?: JSX.Element }) => <div class="card">{children}</div>;
 ```
 
-To accept children, declare them as `Renderable`.
+To accept children, declare them as `JSX.Element`. `Renderable` is the
+same union under its exported name.
 
 ## Attributes
 
@@ -134,7 +135,7 @@ point: TypeScript finds it through the `jsxImportSource` in your
 
 | Member                         | Purpose                                                      |
 | ------------------------------ | ------------------------------------------------------------ |
-| `JSX.Element`                  | What `jsx()` produces                                        |
+| `JSX.Element`                  | An alias of `Renderable`: what a component may return        |
 | `JSX.ElementType`              | What may appear as a tag: a string, or a component function  |
 | `JSX.IntrinsicElements`        | Attribute types per element, plus open custom elements       |
 | `JSX.IntrinsicAttributes`      | Props every element accepts without being attributes (`key`) |
@@ -143,7 +144,7 @@ point: TypeScript finds it through the `jsxImportSource` in your
 ### Custom elements
 
 Any name containing a hyphen is a custom element: it accepts any attribute, and
-its children are checked as `Renderable`.
+its children are checked as `JSX.Element`.
 
 ```tsx
 <my-widget theme="dark" data-id="7">
@@ -156,12 +157,10 @@ literal**, not a named `interface` (an interface cannot satisfy the
 custom-element index signature: error TS2411):
 
 ```tsx
-import type { Renderable } from "@vincle/core";
-
 declare module "@vincle/core/jsx-runtime" {
   namespace JSX {
     interface IntrinsicElements {
-      "turbo-frame": { src?: string; target?: string; children?: Renderable };
+      "turbo-frame": { src?: string; target?: string; children?: JSX.Element };
     }
   }
 }

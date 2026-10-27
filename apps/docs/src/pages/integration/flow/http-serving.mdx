@@ -29,6 +29,21 @@ Bun.serve({
 The response body is a stream: the shell is flushed immediately: the browser starts parsing HTML while
 fragments are still rendering.
 
+That stream pauses between fragments while data loads: your server must
+tolerate an idle streaming connection, or a slow data source resets the
+response mid-page. With `Bun.serve`, that is the
+[`idleTimeout`](https://bun.com/docs/runtime/http/server#idletimeout) option:
+
+```tsx
+Bun.serve({
+  port: 3000,
+  idleTimeout: 60,
+  async fetch(req) {
+    return serve(req, () => <Page />, NativeAdapter);
+  },
+});
+```
+
 ### Signature
 
 ```tsx

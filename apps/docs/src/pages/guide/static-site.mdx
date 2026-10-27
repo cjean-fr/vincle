@@ -42,10 +42,10 @@ Every page shares the document around it. Put it in `src/_layout.tsx`: the
 leading `_` keeps it from becoming a page.
 
 ```tsx title="src/_layout.tsx"
-import { raw, type Renderable } from "@vincle/core";
+import { raw, type JSX } from "@vincle/core";
 import type { SsgMeta } from "@vincle/ssg";
 
-export default function Layout({ children, meta }: { children: Renderable; meta: SsgMeta }) {
+export default function Layout({ children, meta }: { children: JSX.Element; meta: SsgMeta }) {
   return (
     <>
       {raw("<!DOCTYPE html>\n")}

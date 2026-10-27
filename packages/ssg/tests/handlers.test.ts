@@ -11,6 +11,18 @@ import {
   type RenderedOutput,
 } from "../src/index.js";
 
+async function captureWarnings(run: () => Promise<void>): Promise<string[]> {
+  const warnings: string[] = [];
+  const original = console.warn;
+  console.warn = (...args: unknown[]) => void warnings.push(args.map(String).join(" "));
+  try {
+    await run();
+  } finally {
+    console.warn = original;
+  }
+  return warnings;
+}
+
 async function fixture(run: (dir: string) => Promise<void>) {
   const dir = await mkdtemp(path.join(tmpdir(), "vincle-handlers-"));
   try {
@@ -90,7 +102,11 @@ test("discovery rejects directory cycles and broken links but skips private entr
     await expect(discoverPages({ src })).rejects.toThrow("Could not read source directory");
     await rm(path.join(src, "broken.tsx"));
     await symlink("missing.tsx", path.join(src, "_ignored.tsx"));
-    expect(await discoverPages({ src })).toEqual([]);
+    const warnings = await captureWarnings(async () => {
+      expect(await discoverPages({ src })).toEqual([]);
+    });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("No route files found");
   }));
 
 test("missing/empty roots and invalid discovery options", () =>
@@ -98,7 +114,11 @@ test("missing/empty roots and invalid discovery options", () =>
     await expect(discoverPages({ src: path.join(src, "missing") })).rejects.toThrow(
       "Source directory does not exist",
     );
-    expect(await discoverPages({ src })).toEqual([]);
+    const warnings = await captureWarnings(async () => {
+      expect(await discoverPages({ src })).toEqual([]);
+    });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("Names starting with . or _ are skipped");
     for (const concurrency of [0, -1, 1.5, NaN, Infinity])
       await expect(discoverPages({ src, concurrency })).rejects.toThrow("positive integer");
     await expect(discoverPages({ src, handlers: { md: false } })).rejects.toThrow("extension");

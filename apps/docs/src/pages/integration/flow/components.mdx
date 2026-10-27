@@ -113,3 +113,6 @@ your side. See [Streaming](/integration/flow/streaming#async-iterables-streaming
 | `merge`    | `Defer`    | how content applies to its target (default `"replace"`)             |
 | `timeout`  | `Defer`    | per-fragment render timeout in ms                                   |
 | `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's one           |
+
+Without `onError`, a failed fragment is logged (`console.error`) and nothing
+is patched: the placeholder keeps its fallback.

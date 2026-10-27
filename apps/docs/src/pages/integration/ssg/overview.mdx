@@ -44,10 +44,10 @@ add the two commands of the `ssg` executable to `package.json`:
 A layout and a page are enough:
 
 ```tsx title="src/_layout.tsx"
-import { raw, type Renderable } from "@vincle/core";
+import { raw, type JSX } from "@vincle/core";
 import type { SsgMeta } from "@vincle/ssg";
 
-export default function Layout({ children, meta }: { children: Renderable; meta: SsgMeta }) {
+export default function Layout({ children, meta }: { children: JSX.Element; meta: SsgMeta }) {
   return (
     <>
       {raw("<!DOCTYPE html>\n")}
