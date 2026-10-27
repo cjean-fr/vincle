@@ -1,7 +1,7 @@
 import type { Plugin, ResolvedConfig } from "vite";
 
+import { runtimeSource } from "./config.js";
 import { RUNTIME_SOURCE } from "./core/index.js";
-import { ERR_PRECOMPILE_CONFIG, vincleError } from "./errors.js";
 import precompileTransform, {
   type PluginConfig,
   type RenderAttr,
@@ -28,24 +28,7 @@ const RESOLVED_VIRTUAL_ID = "\0" + VIRTUAL_MODULE_ID;
 const FRAMEWORK_RUNTIME_SUFFIX = "/jsx-runtime";
 
 export default function vitePrecompile(config?: PluginConfig): Plugin {
-  // A misconfigured plugin is a config error: name the option and the value,
-  // and fail now, not mid-build when Vite is transforming the first file.
-  if (
-    config?.runtimeSource !== undefined &&
-    (typeof config.runtimeSource !== "string" || config.runtimeSource.length === 0)
-  ) {
-    const got =
-      typeof config.runtimeSource === "string"
-        ? JSON.stringify(config.runtimeSource)
-        : typeof config.runtimeSource === "undefined"
-          ? "undefined"
-          : typeof config.runtimeSource;
-    throw vincleError(
-      `[vincle/precompile] config: runtimeSource must be a non-empty string module ` +
-        `specifier, e.g. "@vincle/core/jsx-precompile-runtime", got ${got}.`,
-      ERR_PRECOMPILE_CONFIG,
-    );
-  }
+  runtimeSource(config);
 
   let runtimeSourceForTransform: string | null = null;
   let renderAttr: RenderAttr | null = null;
@@ -112,10 +95,12 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       runtimeSourceForTransform = VIRTUAL_MODULE_ID;
 
       const esbuild = resolvedConfig.esbuild;
+      const oxc = resolvedConfig.oxc;
       const jsxImportSource =
-        esbuild && typeof esbuild === "object"
-          ? (esbuild as { jsxImportSource?: string }).jsxImportSource
-          : undefined;
+        (oxc && typeof oxc === "object" && oxc.jsx && typeof oxc.jsx === "object"
+          ? oxc.jsx.importSource
+          : undefined) ??
+        (esbuild && typeof esbuild === "object" ? esbuild.jsxImportSource : undefined);
       if (jsxImportSource) {
         candidateFrameworkRuntime = `${jsxImportSource}${FRAMEWORK_RUNTIME_SUFFIX}`;
       }
@@ -235,7 +220,16 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
      * about the modules it did not see reads as an error at shutdown.
      */
     buildEnd() {
-      if (!isBuild || transformedCount > 0) return;
+      if (!isBuild) return;
+      if (jsxModulesSeen > 0 && !explicitRuntimeSource && !candidateFrameworkRuntime) {
+        this.error(
+          "[vincle/precompile] no JSX runtime source was detected. " +
+            "Set runtimeSource explicitly or configure oxc.jsx.importSource (Vite 8) " +
+            "or esbuild.jsxImportSource (Vite 5-7). tsconfig jsxImportSource alone " +
+            "is not exposed by Vite config resolution.",
+        );
+      }
+      if (transformedCount > 0) return;
 
       const detail =
         jsxModulesSeen > 0

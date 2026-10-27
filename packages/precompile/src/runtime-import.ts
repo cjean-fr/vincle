@@ -32,7 +32,12 @@ export function injectRuntimeImport(
     // references the canonical name, so `jsxTemplate as tpl` does not count.
     const existing = new Set(
       named
-        .filter((sp) => sp.imported.type === "Identifier" && sp.local.name === sp.imported.name)
+        .filter(
+          (sp) =>
+            sp.importKind !== "type" &&
+            sp.imported.type === "Identifier" &&
+            sp.local.name === sp.imported.name,
+        )
         .map((sp) => (sp.imported as { name: string }).name),
     );
     const missing = helpers.filter((h) => !existing.has(h));
@@ -46,8 +51,26 @@ export function injectRuntimeImport(
     // to be located.
     const first = named[0]!;
     const last = named[named.length - 1]!;
-    const specifierTexts = named.map((sp) => source.slice(sp.start, sp.end));
-    s.overwrite(first.start, last.end, [...specifierTexts, ...missing].join(", "));
+    // A canonical type-only helper must become a value import, not a second
+    // binding with the same local name (which TypeScript rejects).
+    const promoted = new Set<string>();
+    const specifierTexts = named.map((sp) => {
+      if (
+        sp.importKind === "type" &&
+        sp.imported.type === "Identifier" &&
+        sp.local.name === sp.imported.name &&
+        missing.includes(sp.local.name)
+      ) {
+        promoted.add(sp.local.name);
+        return sp.local.name;
+      }
+      return source.slice(sp.start, sp.end);
+    });
+    s.overwrite(
+      first.start,
+      last.end,
+      [...specifierTexts, ...missing.filter((helper) => !promoted.has(helper))].join(", "),
+    );
     return;
   }
 
