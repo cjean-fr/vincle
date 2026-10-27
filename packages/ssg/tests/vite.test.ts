@@ -239,3 +239,28 @@ test("installed Tailwind is automatic, scans server pages and removes obsolete u
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("build-selected Vite class plugins retain prototype hooks for page modules", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-vite-class-"));
+  class PagePlugin {
+    name = "class-page-plugin";
+    apply = "build" as const;
+    transform(code: string, id: string) {
+      if (id.endsWith("/index.tsx")) return code.replace("original-label", "class-label");
+      return undefined;
+    }
+  }
+  try {
+    await mkdir(path.join(root, "src"));
+    await writeFile(path.join(root, "src/index.tsx"), "export default () => <p>original-label</p>");
+    const plugin = new PagePlugin();
+    await build({
+      root,
+      assets: viteAssets({ configFile: false, logLevel: "silent", plugins: [plugin] }),
+    });
+    expect(await readFile(path.join(root, "dist/index.html"), "utf8")).toBe("<p>class-label</p>");
+    expect(plugin.apply).toBe("build");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

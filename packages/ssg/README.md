@@ -210,6 +210,12 @@ file path. To serve the site under a prefix, set `site` to the origin and
 paths are resolved under it. A path in `site` alone is still accepted, but not
 together with `base`. `build({ sitemap: false })` disables sitemap generation globally.
 
+Source discovery follows symbolic links to files and directories. Routes and
+layout lookup use the link's location; module imports use the bundler's native
+resolution (the target location by default). Directory cycles and broken links
+fail discovery rather than being silently omitted. Vite's native
+`resolve.preserveSymlinks` option remains available when using Vite.
+
 ## Vite assets
 
 A `vite.config.*` at the project root or `src/_client/main.{ts,js,tsx,jsx,css}`
