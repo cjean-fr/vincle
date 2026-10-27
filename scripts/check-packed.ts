@@ -84,7 +84,7 @@ try {
     imports
       .map((entry, i) => `import * as p${i} from ${JSON.stringify(entry)}; void p${i};`)
       .join("\n") +
-      '\nimport {renderToString} from "@vincle/core"; void renderToString(<p>packed</p>);\n' +
+      '\nimport {renderToString, createElement} from "@vincle/core"; void renderToString(<p>packed</p>); void createElement("p", null, "packed");\n' +
       'declare module "@vincle/ssg" { interface SsgMeta { customField?: string } }\n' +
       'import type {SsgPlugin} from "@vincle/ssg"; const plugin: SsgPlugin = {name:"types",metadata(context) { const value: string | undefined = context.meta.customField; void value; }}; void plugin;\n',
   );
@@ -122,7 +122,7 @@ try {
   );
   writeFileSync(
     join(dir, "smoke.mjs"),
-    `import {renderToString} from "@vincle/core";
+    `import {renderToString,createElement} from "@vincle/core";
 import {jsx} from "@vincle/core/jsx-runtime";
 import {build as buildSsg} from "@vincle/ssg";
 import {readFile} from "node:fs/promises";
@@ -133,6 +133,7 @@ if (!(await readFile(new URL("ssg-dist/article/index.html",root),"utf8")).includ
 if ((await readFile(new URL("ssg-dist/sitemap.xml",root),"utf8")).includes("article")) throw new Error("Packed sitemap opt-out failed");
 if (JSON.parse(await readFile(new URL("ssg-dist/data.json",root),"utf8")).packed !== true) throw new Error("Packed JSON failed");
 if (await renderToString(jsx("p", {children: "<packed>"})) !== "<p>&lt;packed&gt;</p>") throw new Error("Packed rendering failed");
+if (await renderToString(createElement("p",{children:"discarded"},"<fallback>")) !== "<p>&lt;fallback&gt;</p>") throw new Error("Packed createElement fallback failed");
 ${imports
   .filter((entry) => !entry.endsWith("/bun"))
   .map((entry) => `await import(${JSON.stringify(entry)});`)

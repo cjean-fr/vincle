@@ -3,7 +3,8 @@
  *
  * Builds a VNode tree and walks it to produce HTML, which is what lets a render
  * be deferred or streamed. The tree is not a public data structure: `VNode` is a
- * type here, not a constructor, and `jsx()` is the only way to build one.
+ * type here, not a constructor. All public element factories go through `jsx()`,
+ * including the compiler fallback adapter `createElement()`.
  *
  * @module
  */
@@ -18,10 +19,10 @@ export { renderToString } from "./src/render.js";
 // for typing a component's return or a generator's yield. The runtime's
 // `instanceof` tests are internal, and the precompile contract (Deno/Preact)
 // is the three helpers `jsxTemplate` / `jsxAttr` / `jsxEscape`, none of which
-// names a VNode. The class is not reachable as a value from here, so `jsx()`
-// being the only way in is a fact of the module, not a line of documentation.
+// names a VNode. The class is not reachable as a value from here; `jsx()`
+// remains the common factory, including calls through `createElement()`.
 
-export { Fragment, jsx, jsxs } from "./src/jsx-runtime.js";
+export { Fragment, jsx, jsxs, createElement } from "./src/jsx-runtime.js";
 export type { VNode } from "./src/jsx-runtime.js";
 
 // ── Context & Scope ───────────────────────────────────────────────────────

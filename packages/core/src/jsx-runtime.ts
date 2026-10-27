@@ -37,14 +37,19 @@ function jsx(
   // element, just as it did before the guard existed. It is the one prop worth
   // guarding: it bypasses the escaping chain, and an `Object.prototype` gadget
   // for it is plain JSON. A polluted `children` reaches the document escaped.
-  const dsihValue = props["dangerouslySetInnerHTML"];
+  //
+  // Only a string tag is the HTML sink: a function tag's
+  // `dangerouslySetInnerHTML` is a business prop the component owns, sent to it
+  // untouched — never read here, never validated, its children not replaced.
+  const isStringTag = typeof tag === "string";
+  const dsihValue = isStringTag ? props["dangerouslySetInnerHTML"] : undefined;
   const dsih = (
     dsihValue !== undefined && Object.hasOwn(props, "dangerouslySetInnerHTML")
       ? dsihValue
       : undefined
   ) as { __html: string | null | undefined } | undefined;
 
-  if (typeof tag === "string" && dsih === undefined) {
+  if (isStringTag && dsih === undefined) {
     const html = serializeStatic(tag, props);
     if (html !== null) return html;
   }
@@ -71,7 +76,7 @@ function jsx(
   // read `children` separately: a props getter is free to answer `undefined` to
   // the first read and content to the second, and this is the read the `VNode`
   // keeps. `dsih` is the one exit the static path never sees at all.
-  if (typeof tag === "string" && isVoidElement(tag) && children !== undefined) {
+  if (isStringTag && isVoidElement(tag) && children !== undefined) {
     throw vincleTypeError(voidChildrenMessage(tag), ERR_VOID_CHILDREN);
   }
 
@@ -79,6 +84,24 @@ function jsx(
 }
 
 const jsxs = jsx;
+
+/**
+ * Classic `createElement(tag, attributes, ...children)`: positional children
+ * win over `attributes.children`. No positional child passes `attributes`
+ * through untouched; one or more copies the attributes and writes `children`
+ * on the copy, so the caller's props are never mutated. An explicit
+ * `undefined` in a position still counts, it overrides, it is not "absent".
+ */
+export function createElement(
+  tag: string | ((props: any) => any),
+  attributes: Record<string, unknown> | null,
+  ...children: unknown[]
+): VNode | RawString | Promise<RawString> {
+  if (children.length === 0) return jsx(tag, attributes);
+  const props = { ...attributes };
+  props["children"] = children.length === 1 ? children[0] : children;
+  return jsx(tag, props);
+}
 
 function Fragment({ children }: { children?: Renderable }): Renderable {
   return children;
