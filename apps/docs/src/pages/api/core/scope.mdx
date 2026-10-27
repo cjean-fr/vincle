@@ -39,7 +39,8 @@ interchangeable with vincle's.
 ### Default values and sibling isolation
 
 A Provider applies to descendants through intermediate components that do not
-receive or forward its value as a prop:
+receive or forward its value as a prop. `Article` is an ordinary component
+defined for this example, not a Vincle API:
 
 ```tsx
 import type { Renderable } from "@vincle/core";
@@ -51,7 +52,7 @@ function Label() {
   return <span>{useContext(Language)}</span>;
 }
 
-function Frame({ children }: { children: Renderable }) {
+function Article({ children }: { children: Renderable }) {
   return <main>{children}</main>;
 }
 
@@ -59,9 +60,9 @@ const page = (
   <div>
     <Label />
     <Language.Provider value="en">
-      <Frame>
+      <Article>
         <Label />
-      </Frame>
+      </Article>
     </Language.Provider>
     <Label />
   </div>
@@ -80,10 +81,10 @@ Output (formatted for readability):
 </div>
 ```
 
-`Frame` does not know about `Language`. Its descendant reads `en` during
+`Article` does not know about `Language`. Its descendant reads `en` during
 rendering, under the Provider. Both siblings outside it read the default `fr`:
 the Provider does not change the context globally. Constructing the JSX does
-not call `Label` or `Frame`; their functions run during rendering.
+not call `Label` or `Article`; their functions run during rendering.
 
 ## Scope
 
