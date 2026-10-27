@@ -36,6 +36,55 @@ deferred Flow fragments, and concurrent renders never share it. The shape
 matches React, Preact and Hono, but their context objects are not
 interchangeable with vincle's.
 
+### Default values and sibling isolation
+
+A Provider applies to descendants through intermediate components that do not
+receive or forward its value as a prop:
+
+```tsx
+import type { Renderable } from "@vincle/core";
+import { createContext, useContext, renderToString } from "@vincle/core";
+
+const Language = createContext("fr");
+
+function Label() {
+  return <span>{useContext(Language)}</span>;
+}
+
+function Frame({ children }: { children: Renderable }) {
+  return <main>{children}</main>;
+}
+
+const page = (
+  <div>
+    <Label />
+    <Language.Provider value="en">
+      <Frame>
+        <Label />
+      </Frame>
+    </Language.Provider>
+    <Label />
+  </div>
+);
+
+const html = await renderToString(page);
+```
+
+Output (formatted for readability):
+
+```html
+<div>
+  <span>fr</span>
+  <main><span>en</span></main>
+  <span>fr</span>
+</div>
+```
+
+`Frame` does not know about `Language`. Its descendant reads `en` during
+rendering, under the Provider. Both siblings outside it read the default `fr`:
+the Provider does not change the context globally. Constructing the JSX does
+not call `Label` or `Frame`; their functions run during rendering.
+
 ## Scope
 
 `Scope.key<T>(name)` creates a named, typed token. `Scope.with(fn)` runs `fn` in
