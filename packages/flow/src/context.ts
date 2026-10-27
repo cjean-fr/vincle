@@ -2,7 +2,12 @@ import { Scope, renderToString, type JSX, type ScopeKey } from "@vincle/core";
 
 import type { FlowConfig } from "./types.js";
 
-import { createAssetState, createSuppressedAssetState, type AssetState } from "./assets.js";
+import {
+  createAssetState,
+  createSuppressedAssetState,
+  resolveAssets,
+  type AssetState,
+} from "./assets.js";
 import { assertFlowConfig, PREFIX } from "./config.js";
 import { ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
 import { createFragmentStore, type FragmentEntry, type FragmentStore } from "./fragment-store.js";
@@ -73,6 +78,7 @@ export interface SlotState {
 const createSlotState = (): SlotState => ({ names: new Set(), mark: undefined });
 
 const MARK_PREFIX = "<!--vincle-defer-";
+const ASSET_MARK_PREFIX = "<!--vincle-asset-";
 
 /** The comment pair around the placeholder of a `<Defer>` whose slot may come later. */
 export function pendingMarks(slots: SlotState, id: string): [string, string] {
@@ -86,8 +92,12 @@ export function pendingMarks(slots: SlotState, id: string): [string, string] {
  * Ids are unique per render, so each open mark has one close mark.
  */
 export async function renderFlow(node: Parameters<typeof renderToString>[0]): Promise<string> {
-  const html = await renderToString(node);
-  // Checked before the scope is read: a render with no flow scope has no marks.
+  let html = await renderToString(node);
+  // Checked before the scope is read, like the slot marks below: a render
+  // with no flow scope carries no asset marks either.
+  if (html.includes(ASSET_MARK_PREFIX)) {
+    html = await resolveAssets(html, Scope.get(Flow).assets);
+  }
   if (!html.includes(MARK_PREFIX)) return html;
   const { slots } = Scope.get(Flow);
   const open = `<!--${slots.mark}:`;

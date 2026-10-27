@@ -183,8 +183,10 @@ No DOM shim, no polyfill, no browser build step.
 
 Any component can be `async`: the component that needs data fetches it, with no
 top-level loader and no prop-drilling. `renderToString` awaits every async
-component, siblings in document order, one at a time, and resolves when the
-whole tree has rendered.
+component and resolves when the whole tree has rendered. Siblings start in
+document order and overlap as soon as one awaits; their output is joined in
+document order. To send a first render before slow parts finish, use
+[`Defer` and `Slot`](/integration/flow/components) from `@vincle/flow`.
 
 ```tsx
 async function Page({ id }: { id: string }) {

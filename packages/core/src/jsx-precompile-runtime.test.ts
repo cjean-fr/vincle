@@ -489,11 +489,11 @@ describe("jsxTemplate: VNode holes", () => {
     expect(await value(tpl(false))).toBe("<div></div>");
   });
 
-  // The regression the `Promise.all` form would reintroduce: sibling holes
-  // must render one after the other, in document order, so a `Scope.set` in
-  // the left sibling is visible to the right one: the sequencing rule, held
-  // on the precompiled path too.
-  test("component holes run in document order: a later hole reads an earlier write", async () => {
+  // Sibling holes follow the same rule as the tree walk: they start in
+  // document order and overlap once one suspends; the output is joined in
+  // document order. A `Scope.set` that awaits is not visible to a faster
+  // right sibling: core shares the Scope and does not arbitrate it.
+  test("component holes overlap once one suspends; output keeps document order", async () => {
     const KEY = Scope.key<string>("precompile-order");
     const later = <T>(v: T, ms: number): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(v), ms));
@@ -518,8 +518,10 @@ describe("jsxTemplate: VNode holes", () => {
         }),
       );
     }
+    // The reader outruns the awaited write every time, and the writer's text
+    // still lands in its own position.
     expect(results.size).toBe(1);
-    expect([...results][0]).toBe("<div>wwritten</div>");
+    expect([...results][0]).toBe("<div>winitial</div>");
   });
 
   test("the same tree renders identically through precompile and tree walk", async () => {
@@ -548,7 +550,10 @@ describe("jsxTemplate: VNode holes", () => {
       return renderToString(viaTreeWalk());
     });
     expect(a).toBe(b);
-    expect(a).toBe("<p>W|w</p>");
+    // The reader (1 ms) outruns the writer's awaited `Scope.set` (2 ms) on
+    // both paths: concurrency changes what the channel delivers, never the
+    // parity between them.
+    expect(a).toBe("<p>W|i</p>");
   });
 });
 

@@ -56,10 +56,9 @@ describe("context.registerFragment()", () => {
           initFlowAssets();
           const { assets } = Scope.get(Flow);
           const name = `page-${n}`;
-          assets.entries.set(name, {
-            type: "style" as const,
-            content: `.x{color:red}`,
-            attrs: {},
+          assets.occurrences.push({
+            name,
+            entry: { type: "style" as const, content: `.x{color:red}`, attrs: {} },
           });
           return assets;
         }, seed);
@@ -67,13 +66,13 @@ describe("context.registerFragment()", () => {
 
       // Each page got its own asset state
       expect(childA).not.toBe(childB);
-      expect(childA.entries.has("page-1")).toBe(true);
-      expect(childA.entries.has("page-2")).toBe(false);
-      expect(childB.entries.has("page-2")).toBe(true);
-      expect(childB.entries.has("page-1")).toBe(false);
+      expect(childA.occurrences.some((o) => o.name === "page-1")).toBe(true);
+      expect(childA.occurrences.some((o) => o.name === "page-2")).toBe(false);
+      expect(childB.occurrences.some((o) => o.name === "page-2")).toBe(true);
+      expect(childB.occurrences.some((o) => o.name === "page-1")).toBe(false);
 
       // Parent scope's assets are untouched
-      expect(parentAssets.entries.size).toBe(0);
+      expect(parentAssets.occurrences.length).toBe(0);
     });
   });
 
