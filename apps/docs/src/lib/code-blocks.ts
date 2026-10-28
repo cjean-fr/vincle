@@ -54,6 +54,80 @@ const aliases: Record<string, string> = {
   mustache: "handlebars",
 };
 
+/** Parse `{1,3-5}` line marks from a fence's meta string (shiki convention). */
+function parseLineMarks(meta: string): Set<number> {
+  const spec = /\{([\d\s,-]+)\}/.exec(meta)?.[1];
+  const marks = new Set<number>();
+  if (!spec) return marks;
+  for (const part of spec.split(",")) {
+    const bounds = part
+      .trim()
+      .split("-")
+      .map((n) => Number.parseInt(n, 10));
+    const a = bounds[0];
+    const b = bounds[1];
+    if (a === undefined || !Number.isInteger(a)) continue;
+    if (b !== undefined && Number.isInteger(b) && b >= a) {
+      for (let i = a; i <= b; i++) marks.add(i);
+    } else marks.add(a);
+  }
+  return marks;
+}
+
+interface HastNode {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: { className?: unknown; class?: unknown };
+  children?: HastNode[];
+}
+
+/**
+ * Flag marked line spans with a `mark` class so CSS can wash them. Marked
+ * blocks drop the newline text nodes between lines and render each line as a
+ * block (see .has-marks in the stylesheet), which gives the wash its full
+ * width. Cached children are never mutated: marked lines are cloned.
+ */
+function markLines(children: unknown[], marks: Set<number>): unknown[] {
+  let n = 0;
+  const out: unknown[] = [];
+  for (const child of children as HastNode[]) {
+    if (child.type === "text") {
+      if (child.value && child.value.trim() === "") continue;
+      out.push(child);
+      continue;
+    }
+    if (child.type === "element") {
+      // Shiki emits `class` on line spans; satteri's own nodes use `className`.
+      const cls = child.properties?.class ?? child.properties?.className;
+      const names = Array.isArray(cls) ? cls : [cls];
+      if (names.includes("line")) {
+        n += 1;
+        if (marks.has(n)) {
+          const key = child.properties && "class" in child.properties ? "class" : "className";
+          out.push({
+            ...child,
+            properties: { ...child.properties, [key]: [...names, "mark"] },
+          });
+        } else out.push(child);
+        continue;
+      }
+    }
+    out.push(child);
+  }
+  // The trailing newline produces a final empty line: as a block it would add a
+  // blank row at the end of the snippet.
+  const last = out[out.length - 1] as HastNode | undefined;
+  if (
+    last?.type === "element" &&
+    (!last.children ||
+      last.children.every((c) => c.type === "text" && (c.value ?? "").trim() === ""))
+  ) {
+    out.pop();
+  }
+  return out;
+}
+
 const THEME = "css-variables";
 const cacheDirectory = path.resolve("node_modules/.cache/vincle-docs/highlight");
 
@@ -172,25 +246,29 @@ export const codeBlocks = defineHastPlugin({
       );
       const language = typeof requested === "string" ? requested.slice(9) : undefined;
       const canonical = language && (aliases[language] ?? language);
-      let renderedPre = node;
-      if (canonical && languages.has(canonical)) {
-        const source = code.children
-          .map((child) => (child.type === "text" ? child.value : ""))
-          .join("");
-        renderedPre = {
-          ...node,
-          children: [{ ...code, children: highlight(source, canonical) as typeof code.children }],
-        };
-      }
-      const blockClasses = ["docs-code-block"];
       const data: unknown = code.data;
       const meta =
         data && typeof data === "object" && "meta" in data && typeof data.meta === "string"
           ? data.meta
           : "";
+      const marks = parseLineMarks(meta);
+      let renderedPre = node;
+      if (canonical && languages.has(canonical)) {
+        const source = code.children
+          .map((child) => (child.type === "text" ? child.value : ""))
+          .join("");
+        let children = highlight(source, canonical) as typeof code.children;
+        if (marks.size > 0) children = markLines(children, marks) as typeof code.children;
+        renderedPre = {
+          ...node,
+          children: [{ ...code, children }],
+        };
+      }
+      const blockClasses = ["docs-code-block"];
       const title = /\btitle\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(meta);
       const label = title?.[1] ?? title?.[2] ?? title?.[3];
       if (label) blockClasses.push("has-title");
+      if (marks.size > 0) blockClasses.push("has-marks");
       if (terminal) blockClasses.push("docs-terminal");
       return {
         type: "element",
