@@ -181,7 +181,7 @@ describe("children and dangerouslySetInnerHTML on an HTML tag", () => {
       thrown = error;
     }
     expect(thrown).toBeInstanceOf(TypeError);
-    expect(thrown).toMatchObject({ code: "ERR_VINCLE_DANGEROUS_HTML_CHILDREN" });
+    expect(thrown).toMatchObject({ code: "ERR_VINCLE_AMBIGUOUS_HTML_CHILDREN" });
   });
 
   test("false children count as content: {cond && <b />} refuses", () => {
