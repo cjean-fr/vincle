@@ -4,6 +4,8 @@ description: "Compose typed JSX views in your existing server. Add progressive H
 prose: false
 ---
 
+import StreamingReplay from "../components/StreamingReplay";
+
 <div class="docs-home">
   <section class="docs-home-hero" aria-labelledby="home-title">
     <div class="docs-hero-copy">
@@ -48,7 +50,7 @@ prose: false
         <span>From JSX to HTML</span>
         <span class="docs-example-language">TypeScript</span>
       </div>
-      ```tsx title="hello.tsx"
+      ```tsx {1,8} title="hello.tsx"
       import { renderToString } from "@vincle/core";
 
       function App({ name }: { name: string }) {
@@ -131,7 +133,7 @@ prose: false
       </a>
     </div>
     <div class="docs-hero-example">
-      ```tsx title="results-page.tsx"
+      ```tsx {25-27,32} title="results-page.tsx"
       import { Defer, renderToStream } from "@vincle/flow";
       import { NativeAdapter } from "@vincle/flow/adapters";
 
@@ -166,6 +168,7 @@ prose: false
       const stream = renderToStream(() => <Page />, NativeAdapter);
       ```
       <p class="docs-example-note">The Results component stays the same. The page opts into deferred rendering.</p>
+      <StreamingReplay />
     </div>
 
   </section>

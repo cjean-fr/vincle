@@ -271,3 +271,67 @@
     display: none;
   }
 }
+
+/* Streaming replay: the real wire output of the example above, no mockup. */
+.docs-stream-replay {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+.docs-stream-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--docs-color-text-secondary);
+}
+.docs-stream-frame {
+  border: 1px solid var(--docs-color-border);
+  border-radius: 0.5rem;
+  background: var(--docs-color-bg);
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+}
+.docs-stream-frame h1 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+.docs-stream-frame p,
+.docs-stream-frame ul {
+  margin: 0;
+}
+.docs-stream-frame ul {
+  padding-left: 1.1rem;
+}
+.docs-stream-arrow {
+  font-size: 1.1rem;
+  color: var(--docs-color-text-secondary);
+}
+.docs-stream-wire {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  color: var(--docs-color-text-secondary);
+}
+.docs-stream-wire summary {
+  cursor: pointer;
+}
+.docs-stream-wire pre {
+  margin: 0.5rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 0.4rem;
+  overflow-x: auto;
+  font-size: 0.75rem;
+}
+@media (max-width: 640px) {
+  .docs-stream-replay {
+    grid-template-columns: 1fr;
+  }
+  .docs-stream-arrow {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
+}
