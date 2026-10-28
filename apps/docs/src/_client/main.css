@@ -466,8 +466,14 @@ html {
   margin-block: 1rem 0;
 }
 
-.docs-agent-callout .docs-code-block.docs-prompt {
-  margin-block: 0.5rem 0;
+/* The setup prompt is prose: wrap it, and keep its first line clear of the copy button. */
+.docs-agent-callout pre {
+  padding-right: 3rem;
+}
+.docs-agent-callout pre,
+.docs-agent-callout pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* === Table of contents === */
