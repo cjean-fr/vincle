@@ -17,6 +17,7 @@
     "@shikijs/engine-oniguruma": "4.5.0",
     "@shikijs/langs": "4.5.0",
     "@vincle/core": "workspace:*",
+    "@vincle/flow": "workspace:*",
     "@vincle/ssg": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
     "beautiful-mermaid": "^1.1.3",

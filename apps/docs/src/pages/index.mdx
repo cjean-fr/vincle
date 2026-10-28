@@ -4,6 +4,8 @@ description: "Compose typed JSX views in your existing server. Add progressive H
 prose: false
 ---
 
+import StreamingReplay from "../components/StreamingReplay";
+
 <div class="docs-home">
   <section class="docs-home-hero" aria-labelledby="home-title">
     <div class="docs-hero-copy">
@@ -48,7 +50,7 @@ prose: false
         <span>From JSX to HTML</span>
         <span class="docs-example-language">TypeScript</span>
       </div>
-      ```tsx title="hello.tsx"
+      ```tsx {1,8} title="hello.tsx"
       import { renderToString } from "@vincle/core";
 
       function App({ name }: { name: string }) {
@@ -121,51 +123,74 @@ prose: false
   </div>
 </section>
 
-  <section class="docs-home-section docs-foundations" aria-labelledby="streaming-title">
-    <div>
+  <section class="docs-home-section docs-stream" aria-labelledby="streaming-title">
+    <div class="docs-section-heading">
       <h2 id="streaming-title">The page can arrive before the results.</h2>
-      <p>Keep the heading visible while an async component loads. With flow, a fallback fills the space until its HTML is ready.</p>
-      <p>Choose how it is delivered: natively, or through an HTMX or Turbo adapter.</p>
-      <a class="docs-text-link" href="/guide/views">
-        {"Follow the complete example"}
-      </a>
+      <div>
+        <p>Keep the heading visible while an async component loads. With flow, a fallback fills the space until its HTML is ready.</p>
+        <p>Choose how it is delivered: natively, or through an HTMX or Turbo adapter.</p>
+        <a class="docs-text-link" href="/guide/views">
+          {"Follow the complete example"}
+        </a>
+      </div>
     </div>
-    <div class="docs-hero-example">
-      ```tsx title="results-page.tsx"
-      import { Defer, renderToStream } from "@vincle/flow";
-      import { NativeAdapter } from "@vincle/flow/adapters";
+    <div class="docs-stream-grid">
+      <div class="docs-hero-example">
+        ```tsx {5-7,12} title="results-page.tsx"
+        // Results is an ordinary async component; the page opts in:
+        function Page() {
+          return (
+            <main>
+              <Defer fallback={<p>Loading results…</p>}>
+                <Results />
+              </Defer>
+            </main>
+          );
+        }
 
-      async function findResults() {
-        return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
-      }
+        const stream = renderToStream(() => <Page />, NativeAdapter);
+        ```
+        <p class="docs-example-note">The preview runs the exact file below.</p>
+        <details class="docs-stream-full">
+          <summary>The full results-page.tsx, as executed</summary>
 
-      async function Results() {
-        const items = await findResults();
-        return (
-          <ul>
-            {items.map((item) => (
-              <li>
-                <a href={item.href}>{item.title}</a>
-              </li>
-            ))}
-          </ul>
-        );
-      }
+          ```tsx {25-27,32} title="results-page.tsx"
+          import { Defer, renderToStream } from "@vincle/flow";
+          import { NativeAdapter } from "@vincle/flow/adapters";
 
-      function Page() {
-        return (
-          <main>
-            <h1>Search results</h1>
-            <Defer fallback={<p>Loading results…</p>}>
-              <Results />
-            </Defer>
-          </main>
-        );
-      }
+          async function findResults() {
+            return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
+          }
 
-      const stream = renderToStream(() => <Page />, NativeAdapter);
-      ```
-      <p class="docs-example-note">The Results component stays the same. The page opts into deferred rendering.</p>
+          async function Results() {
+            const items = await findResults();
+            return (
+              <ul>
+                {items.map((item) => (
+                  <li>
+                    <a href={item.href}>{item.title}</a>
+                  </li>
+                ))}
+              </ul>
+            );
+          }
+
+          function Page() {
+            return (
+              <main>
+                <h1>Search results</h1>
+                <Defer fallback={<p>Loading results…</p>}>
+                  <Results />
+                </Defer>
+              </main>
+            );
+          }
+
+          const stream = renderToStream(() => <Page />, NativeAdapter);
+          ```
+        </details>
+      </div>
+      <StreamingReplay />
     </div>
 
   </section>
