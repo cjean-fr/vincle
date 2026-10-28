@@ -365,3 +365,15 @@
     position: static;
   }
 }
+
+.docs-stream-full {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--docs-color-text-secondary);
+}
+.docs-stream-full summary {
+  cursor: pointer;
+}
+.docs-stream-full[open] summary {
+  margin-bottom: 0.75rem;
+}
