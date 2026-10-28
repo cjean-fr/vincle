@@ -35,7 +35,7 @@ export function llmsTxt(
     group.entries.push({ url: page.url, title: page.title, order });
     sections.set(section, group);
   }
-  const sorted = [...sections.entries()].sort((a, b) => a[1].order - b[1].order);
+  const sorted = [...sections.entries()].toSorted((a, b) => a[1].order - b[1].order);
   for (const [section, group] of sorted) {
     lines.push(`## ${section}`, "");
     group.entries.sort((a, b) => a.order - b.order);
