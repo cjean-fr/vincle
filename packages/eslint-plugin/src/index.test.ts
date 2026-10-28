@@ -15,8 +15,8 @@ describe("plugin index", () => {
   it("has all 8 rules", () => {
     const ruleNames = Object.keys(rules).toSorted();
     expect(ruleNames).toEqual([
+      "no-ambiguous-html-children",
       "no-context",
-      "no-dangerously-set-inner-html-children",
       "no-global-jsx-namespace",
       "no-javascript-urls",
       "no-react-hooks",
@@ -58,7 +58,7 @@ describe("plugin index", () => {
       "@vincle/no-unsafe-event-handlers": "warn",
       "@vincle/no-javascript-urls": "error",
       "@vincle/no-context": "error",
-      "@vincle/no-dangerously-set-inner-html-children": "error",
+      "@vincle/no-ambiguous-html-children": "error",
       "@vincle/no-refs": "error",
       "@vincle/no-global-jsx-namespace": "error",
     });
