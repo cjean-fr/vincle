@@ -35,7 +35,11 @@ attribute takes the same braces, with the names you know from HTML:
 
 ```tsx {2} title="link.tsx"
 export function Link({ post }: { post: Post }) {
-  return <a class="card" href={post.url}>{post.title}</a>;
+  return (
+    <a class="card" href={post.url}>
+      {post.title}
+    </a>
+  );
 }
 ```
 
