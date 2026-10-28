@@ -197,25 +197,17 @@ import StreamingReplay from "../components/StreamingReplay";
 
   <section class="docs-home-section docs-foundations docs-agents" aria-labelledby="agents-title">
     <div>
-      <h2 id="agents-title">Written for agents, too.</h2>
-      <p>An assistant can read this documentation as Markdown: every page answers at its URL plus <code>.md</code>, the index lives at <code>llms.txt</code>, and the whole corpus in one file at <code>llms-full.txt</code>.</p>
-      <p>The docs also say what Vincle does not do (no client-side rendering, no hydration), so an agent can recommend it, or advise against it, on facts.</p>
+      <h2 id="agents-title">Ask your agent.</h2>
+      <p>This documentation is written to be read by an assistant: every page answers as Markdown at its URL plus <code>.md</code>, and the whole corpus fits in one file.</p>
+      <p>So hand it to yours and ask for a verdict on your project. The docs state what Vincle does not do (no client-side rendering, no hydration), so the answer can be an argued no.</p>
     </div>
-    <div class="docs-feature-list">
-      <a href="/llms.txt" class="docs-feature-link">
-        <div>
-          <h3>llms.txt</h3>
-          <p>The documentation index, one link per page, for agents that pick what to read.</p>
-        </div>
-        <span aria-hidden="true">↗</span>
-      </a>
-      <a href="/llms-full.txt" class="docs-feature-link">
-        <div>
-          <h3>llms-full.txt</h3>
-          <p>Every page inlined in a single Markdown file, for agents that read everything at once.</p>
-        </div>
-        <span aria-hidden="true">↗</span>
-      </a>
+    <div class="docs-hero-example">
+      ```text title="To paste to your agent"
+      Read https://vincle.cjean.fr/llms-full.txt and tell me whether Vincle
+      (server-side JSX to HTML) fits my project: <describe your project>.
+      If it does not fit, say so and point me to a better option.
+      ```
+      <p class="docs-example-note"><a class="docs-text-link" href="/llms.txt">llms.txt</a> is the index when your agent prefers picking pages; <a class="docs-text-link" href="/llms-full.txt">llms-full.txt</a> is everything at once.</p>
     </div>
   </section>
 
