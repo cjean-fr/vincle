@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Refuse an HTML tag that has both `children` and `dangerouslySetInnerHTML` at construction, with the new `ERR_VINCLE_DANGEROUS_HTML_CHILDREN` code: React's rule and exact condition, so `null`/`undefined` children stay legal while `false` refuses. A `null` `dangerouslySetInnerHTML` prop is now treated as absent instead of throwing a bare `TypeError` on `.__html`.
 - Export `createElement` for automatic JSX compiler fallback calls after a spread, with positional children taking priority without changing the input props.
 - Leave `dangerouslySetInnerHTML` on function components untouched. Only native HTML tags interpret and validate this prop.
 

@@ -21,6 +21,7 @@
 export const ERR_INVALID_TAG = "ERR_VINCLE_INVALID_TAG";
 export const ERR_VOID_CHILDREN = "ERR_VINCLE_VOID_CHILDREN";
 export const ERR_DANGEROUS_HTML = "ERR_VINCLE_DANGEROUS_HTML";
+export const ERR_DANGEROUS_HTML_CHILDREN = "ERR_VINCLE_DANGEROUS_HTML_CHILDREN";
 export const ERR_FUNCTION_ATTR = "ERR_VINCLE_FUNCTION_ATTR";
 export const ERR_VNODE_AS_TEXT = "ERR_VINCLE_VNODE_AS_TEXT";
 export const ERR_FUNCTION_AS_TEXT = "ERR_VINCLE_FUNCTION_AS_TEXT";
@@ -53,7 +54,8 @@ export type ErrorCode =
 export type TypeErrorCode =
   | typeof ERR_INVALID_TAG
   | typeof ERR_VOID_CHILDREN
-  | typeof ERR_DANGEROUS_HTML;
+  | typeof ERR_DANGEROUS_HTML
+  | typeof ERR_DANGEROUS_HTML_CHILDREN;
 
 /**
  * Build an error already stamped, so a throw stays one expression.

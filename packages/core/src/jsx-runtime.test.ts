@@ -160,6 +160,60 @@ describe("function components own dangerouslySetInnerHTML", () => {
   });
 });
 
+describe("children and dangerouslySetInnerHTML on an HTML tag", () => {
+  // React's rule, with React's exact condition (`pushInnerHTML` in react-dom):
+  // the two are concurrent sources of content, refused at construction, where
+  // jsx() already judges void children and tag names. `null`/`undefined`
+  // children are no content; `false` is a value React counts, so
+  // `{cond && <b />}` refuses with cond false.
+
+  test("written children refuse: TypeError, at construction", () => {
+    expect(() =>
+      jsx("div", { dangerouslySetInnerHTML: { __html: "<b>x</b>" }, children: "y" }),
+    ).toThrow("cannot have both children and dangerouslySetInnerHTML");
+  });
+
+  test("the refusal carries the dedicated error code", () => {
+    let thrown: unknown;
+    try {
+      jsx("div", { dangerouslySetInnerHTML: { __html: "<b>x</b>" }, children: "y" });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(TypeError);
+    expect(thrown).toMatchObject({ code: "ERR_VINCLE_DANGEROUS_HTML_CHILDREN" });
+  });
+
+  test("false children count as content: {cond && <b />} refuses", () => {
+    expect(() =>
+      jsx("div", { dangerouslySetInnerHTML: { __html: "<b>x</b>" }, children: false }),
+    ).toThrow("cannot have both children and dangerouslySetInnerHTML");
+  });
+
+  test("an array of children refuses as one source", () => {
+    expect(() =>
+      jsx("div", { dangerouslySetInnerHTML: { __html: "<b>x</b>" }, children: ["a", null] }),
+    ).toThrow("cannot have both children and dangerouslySetInnerHTML");
+  });
+
+  test("null children are no content: __html applies", async () => {
+    const node = jsx("div", {
+      dangerouslySetInnerHTML: { __html: "<b>x</b>" },
+      children: null,
+    });
+    expect(await renderToString(node)).toBe("<div><b>x</b></div>");
+  });
+
+  test("a null prop is no prop: children render, nothing is replaced", async () => {
+    const node = jsx("div", { dangerouslySetInnerHTML: null, children: "biz" });
+    expect(await renderToString(node)).toBe("<div>biz</div>");
+  });
+
+  test("a null prop on a void element leaves it legal and childless", async () => {
+    expect(await renderToString(jsx("input", { dangerouslySetInnerHTML: null }))).toBe("<input>");
+  });
+});
+
 describe("jsxAttr", () => {
   test("string value", () => {
     const r = jsxAttr("class", "foo") as RawString;

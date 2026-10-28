@@ -206,11 +206,10 @@ describe("dangerouslySetInnerHTML", () => {
     }
   });
 
-  test("it replaces children and is never emitted as an attribute", async () => {
+  test("is never emitted as an attribute", async () => {
     const v = jsx("div", {
       class: "c",
       dangerouslySetInnerHTML: { __html: "<i>x</i>" },
-      children: "ignored",
     });
     expect(await renderToString(v)).toBe('<div class="c"><i>x</i></div>');
   });
