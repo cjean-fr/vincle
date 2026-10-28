@@ -1,7 +1,7 @@
 import { fullUrl, type SsgPlugin } from "@vincle/ssg";
 
-import type { ResolvedSidebarItem } from "./types.js";
 import type { SearchDocument } from "../_client/search-rank.js";
+import type { ResolvedSidebarItem } from "./types.js";
 import type { DocsConfig, ResolvedSidebar } from "./types.js";
 
 import docs from "../../docs.config.js";
@@ -26,7 +26,10 @@ export function llmsTxt(
   // Sections follow the sidebar hierarchy (tab, then categories), ordered by
   // the nav's editorial order — evaluate (Guide), then build (Integration),
   // then go deeper (API); pages without a trail land under "Pages", last.
-  const sections = new Map<string, { order: number; entries: { url: string; title: string; order: number }[] }>();
+  const sections = new Map<
+    string,
+    { order: number; entries: { url: string; title: string; order: number }[] }
+  >();
   for (const page of pages) {
     const order = page.order ?? NO_TAB_ORDER_LLMS;
     const section = page.trail && page.trail.length > 0 ? page.trail.join(" / ") : "Pages";
