@@ -78,7 +78,7 @@ describe("blog recipe", () => {
       html.indexOf(`href="${u}"`),
     );
     expect(order.every((i) => i >= 0)).toBe(true);
-    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order).toEqual([...order].toSorted((a, b) => a - b));
     expect(html).toContain('href="/blog/tags/intro/"');
   });
 
