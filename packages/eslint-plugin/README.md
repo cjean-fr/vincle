@@ -28,15 +28,16 @@ export default [vincle.configs.recommended];
 Rule names use the `@vincle/` prefix. All are enabled as errors by the
 recommended config, except `no-unsafe-event-handlers` (warning).
 
-| Rule                       | Checks                                                     |
-| -------------------------- | ---------------------------------------------------------- |
-| `no-react-imports`         | React and React DOM imports                                |
-| `no-react-hooks`           | React hooks                                                |
-| `no-unsafe-event-handlers` | Inline handler strings and function-valued HTML attributes |
-| `no-javascript-urls`       | `javascript:` links                                        |
-| `no-context`               | React context                                              |
-| `no-refs`                  | React refs                                                 |
-| `no-global-jsx-namespace`  | Global JSX types instead of Vincle types                   |
+| Rule                                     | Checks                                                     |
+| ---------------------------------------- | ---------------------------------------------------------- |
+| `no-react-imports`                       | React and React DOM imports                                |
+| `no-react-hooks`                         | React hooks                                                |
+| `no-unsafe-event-handlers`               | Inline handler strings and function-valued HTML attributes |
+| `no-javascript-urls`                     | `javascript:` links                                        |
+| `no-context`                             | React context                                              |
+| `no-dangerously-set-inner-html-children` | Children plus `dangerouslySetInnerHTML` on a component     |
+| `no-refs`                                | React refs                                                 |
+| `no-global-jsx-namespace`                | Global JSX types instead of Vincle types                   |
 
 [Documentation](https://vincle.cjean.fr) ·
 [Rule implementations](https://github.com/cjean-fr/vincle/tree/main/packages/eslint-plugin/src/rules)
