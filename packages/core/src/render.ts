@@ -245,7 +245,7 @@ async function settleInDocumentOrder(
  */
 export function settleConcurrent(parts: Array<string | Promise<string>>): Promise<string[]> {
   return new Promise((resolve, reject) => {
-    const values = new Array<string>(parts.length);
+    const values = Array.from<string>({ length: parts.length });
     let remaining = parts.length;
     if (remaining === 0) {
       resolve(values);
