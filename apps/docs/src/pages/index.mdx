@@ -195,6 +195,23 @@ import StreamingReplay from "../components/StreamingReplay";
 
   </section>
 
+  <section class="docs-home-section docs-foundations docs-agents" aria-labelledby="agents-title">
+    <div>
+      <h2 id="agents-title">Ask your agent.</h2>
+      <p>This documentation is written to be read by an assistant: every page answers as Markdown at its URL plus <code>.md</code>, and the whole corpus fits in one file.</p>
+      <p>So hand it to yours and ask for a verdict on your project. The docs state what Vincle does not do (no client-side rendering, no hydration), so the answer can be an argued no.</p>
+    </div>
+    <div class="docs-hero-example">
+      ```text title="To paste to your agent"
+      Read https://vincle.cjean.fr/llms-full.txt. Brief me on what Vincle
+      (server-side JSX to HTML) would bring to my project:
+      <describe your project>. Then give your verdict; if it does not fit,
+      say so and point me to a better option.
+      ```
+      <p class="docs-example-note"><a class="docs-text-link" href="/llms.txt">llms.txt</a> is the index when your agent prefers picking pages; <a class="docs-text-link" href="/llms-full.txt">llms-full.txt</a> is everything at once.</p>
+    </div>
+  </section>
+
   <section class="docs-home-section docs-foundations" aria-labelledby="features-title">
     <div>
       <h2 id="features-title">Built into the renderer.</h2>
