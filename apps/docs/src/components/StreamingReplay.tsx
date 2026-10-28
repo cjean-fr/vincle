@@ -56,14 +56,28 @@ export default async function StreamingReplay() {
     <div class="docs-stream-replay">
       <div class="docs-stream-stage">
         <p class="docs-stream-label">{"1 · The shell arrives first"}</p>
-        <div class="docs-stream-frame">{raw(shell)}</div>
+        <div class="docs-stream-frame">
+          <div class="docs-stream-chrome" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <div class="docs-stream-view">{raw(shell)}</div>
+        </div>
       </div>
       <span class="docs-stream-arrow" aria-hidden="true">
         {"→"}
       </span>
       <div class="docs-stream-stage">
         <p class="docs-stream-label">{"2 · The patch replaces the fallback"}</p>
-        <div class="docs-stream-frame">{raw(after)}</div>
+        <div class="docs-stream-frame">
+          <div class="docs-stream-chrome" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <div class="docs-stream-view">{raw(after)}</div>
+        </div>
       </div>
       <details class="docs-stream-wire">
         <summary>{"The patch, as sent on the wire"}</summary>
