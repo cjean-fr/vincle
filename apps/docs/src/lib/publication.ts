@@ -1,6 +1,7 @@
 import { fullUrl, type SsgPlugin } from "@vincle/ssg";
 
 import type { SearchDocument } from "../_client/search-rank.js";
+import type { ResolvedSidebarItem } from "./types.js";
 import type { DocsConfig, ResolvedSidebar } from "./types.js";
 
 import docs from "../../docs.config.js";
@@ -8,8 +9,10 @@ import ssg from "../../ssg.config.js";
 import { categoriesOf, tabFor } from "./sidebar.js";
 import { hasSocialCard, socialCardPath, socialCardPng, summarize } from "./social-card.js";
 
+const NO_TAB_ORDER_LLMS = Number.MAX_SAFE_INTEGER;
+
 export function llmsTxt(
-  pages: readonly { url: string; title: string }[],
+  pages: readonly { url: string; title: string; trail?: readonly string[]; order?: number }[],
   config: DocsConfig,
 ): string {
   const lines: string[] = [
@@ -19,11 +22,30 @@ export function llmsTxt(
     "",
     "Every page is also available as Markdown at its URL plus `.md` (home page: `/index.md`).",
     "",
-    "## Pages",
-    "",
   ];
-  for (const page of pages) lines.push(`- [${page.title}](${fullUrl(page.url, ssg.site)})`);
-  lines.push("");
+  // Sections follow the sidebar hierarchy (tab, then categories), ordered by
+  // the nav's editorial order — evaluate (Guide), then build (Integration),
+  // then go deeper (API); pages without a trail land under "Pages", last.
+  const sections = new Map<
+    string,
+    { order: number; entries: { url: string; title: string; order: number }[] }
+  >();
+  for (const page of pages) {
+    const order = page.order ?? NO_TAB_ORDER_LLMS;
+    const section = page.trail && page.trail.length > 0 ? page.trail.join(" / ") : "Pages";
+    const group = sections.get(section) ?? { order, entries: [] };
+    group.order = Math.min(group.order, order);
+    group.entries.push({ url: page.url, title: page.title, order });
+    sections.set(section, group);
+  }
+  const sorted = [...sections.entries()].toSorted((a, b) => a[1].order - b[1].order);
+  for (const [section, group] of sorted) {
+    lines.push(`## ${section}`, "");
+    group.entries.sort((a, b) => a.order - b.order);
+    for (const page of group.entries)
+      lines.push(`- [${page.title}](${fullUrl(page.url, ssg.site)})`);
+    lines.push("");
+  }
   return lines.join("\n");
 }
 
@@ -117,14 +139,47 @@ function htmlToText(html: string, options?: { mainOnly?: boolean }): string {
  */
 const SOCIAL_CARD_CONCURRENCY = 8;
 
-/** The tab and sidebar categories of a page, from the navigation its layout already resolves. */
-async function trailOf(page: { url: string; meta: object }): Promise<string[]> {
+/** Sidebar page order per resolved sidebar, built once: the nav's editorial order. */
+const sidebarOrders = new WeakMap<ResolvedSidebar, Map<string, number>>();
+function orderMapOf(sidebar: ResolvedSidebar): Map<string, number> {
+  const cached = sidebarOrders.get(sidebar);
+  if (cached) return cached;
+  const order = new Map<string, number>();
+  let next = 0;
+  const walk = (items: readonly ResolvedSidebarItem[]) => {
+    for (const item of items) {
+      if (item.kind === "page") {
+        if (!order.has(item.href)) order.set(item.href, next++);
+      } else walk(item.items);
+    }
+  };
+  for (const group of sidebar.groups) walk(group.items);
+  sidebarOrders.set(sidebar, order);
+  return order;
+}
+
+const NO_TAB_ORDER = Number.MAX_SAFE_INTEGER;
+
+/**
+ * The navigation position of a page: its sidebar trail (tab, then categories)
+ * and a sort key following the nav's editorial order (tabs as configured,
+ * sidebar order within). Pages outside any tab sort last.
+ */
+async function navMetaOf(page: {
+  url: string;
+  meta: object;
+}): Promise<{ trail: string[]; order: number }> {
   const tab = tabFor(docs.tabs, page.url);
-  if (!tab) return [];
+  if (!tab) return { trail: [], order: NO_TAB_ORDER };
   const resolve = (page.meta as { documentation?: () => Promise<{ sidebar: ResolvedSidebar }> })
     .documentation;
-  const categories = resolve ? categoriesOf((await resolve()).sidebar, page.url) : [];
-  return [tab.label, ...categories];
+  const sidebar = resolve ? (await resolve()).sidebar : null;
+  const categories = sidebar ? categoriesOf(sidebar, page.url) : [];
+  const sidebarOrder = sidebar ? (orderMapOf(sidebar).get(page.url) ?? 0) : 0;
+  return {
+    trail: [tab.label, ...categories],
+    order: docs.tabs.indexOf(tab) * 1_000_000 + sidebarOrder,
+  };
 }
 
 /** Search, LLM and social artifacts consume the same final HTML, read once per page. */
@@ -132,7 +187,8 @@ export const documentationArtifacts: SsgPlugin = {
   name: "documentation-artifacts",
   async publish(context) {
     const search: SearchDocument[] = [];
-    const pages: { url: string; title: string; text: string }[] = [];
+    const pages: { url: string; title: string; text: string; trail: string[]; order: number }[] =
+      [];
     const cardTasks: (() => Promise<void>)[] = [];
     for (const page of context.outputs) {
       if (page.meta.search === false) continue;
@@ -140,7 +196,7 @@ export const documentationArtifacts: SsgPlugin = {
       const title = page.meta.title ?? page.url;
       const main = htmlToText(html, { mainOnly: true });
       const keywords = (page.meta as { keywords?: string[] }).keywords;
-      const trail = await trailOf(page);
+      const { trail, order } = await navMetaOf(page);
       search.push({
         url: page.url,
         title,
@@ -160,7 +216,7 @@ export const documentationArtifacts: SsgPlugin = {
           context.emit({ path: socialCardPath(page.url), content: () => socialCardPng(card) }),
         );
       }
-      pages.push({ url: page.url, title, text: htmlToText(html) });
+      pages.push({ url: page.url, title, text: htmlToText(html), trail, order });
     }
     // Cards only write distinct files, so their emission order does not matter.
     let nextCard = 0;
