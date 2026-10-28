@@ -26,6 +26,7 @@ export const messages = {
   githubRepository: "Source code on GitHub",
   onNpm: "Available on npm",
   mitLicensed: "MIT licensed",
+  llmsTxt: "Docs for LLMs",
   lastUpdated: "Last updated: {date}",
   contents: "Table of contents",
   onThisPage: "On this page",

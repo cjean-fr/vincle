@@ -3,9 +3,9 @@ import { Defer, renderToStream } from "@vincle/flow";
 import { NativeAdapter } from "@vincle/flow/adapters";
 
 /**
- * The home page shows this exact code in its results-page.tsx fence and the
- * replay below renders what the code actually emits: the shell with its
- * fallback, then the patch that replaces it. Nothing here is a mockup.
+ * The home page's results-page.tsx fence shows the Page and stream of this
+ * code, and the replay below renders what it actually emits: the shell with
+ * its fallback, then the patch that replaces it. Nothing here is a mockup.
  */
 async function findResults() {
   return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
@@ -65,9 +65,6 @@ export default async function StreamingReplay() {
           <div class="docs-stream-view">{raw(shell)}</div>
         </div>
       </div>
-      <span class="docs-stream-arrow" aria-hidden="true">
-        {"→"}
-      </span>
       <div class="docs-stream-stage">
         <p class="docs-stream-label">{"2 · The patch replaces the fallback"}</p>
         <div class="docs-stream-frame">
