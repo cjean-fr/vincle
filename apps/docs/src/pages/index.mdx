@@ -123,17 +123,20 @@ import StreamingReplay from "../components/StreamingReplay";
   </div>
 </section>
 
-  <section class="docs-home-section docs-foundations" aria-labelledby="streaming-title">
-    <div>
+  <section class="docs-home-section docs-stream" aria-labelledby="streaming-title">
+    <div class="docs-section-heading">
       <h2 id="streaming-title">The page can arrive before the results.</h2>
-      <p>Keep the heading visible while an async component loads. With flow, a fallback fills the space until its HTML is ready.</p>
-      <p>Choose how it is delivered: natively, or through an HTMX or Turbo adapter.</p>
-      <a class="docs-text-link" href="/guide/views">
-        {"Follow the complete example"}
-      </a>
+      <div>
+        <p>Keep the heading visible while an async component loads. With flow, a fallback fills the space until its HTML is ready.</p>
+        <p>Choose how it is delivered: natively, or through an HTMX or Turbo adapter.</p>
+        <a class="docs-text-link" href="/guide/views">
+          {"Follow the complete example"}
+        </a>
+      </div>
     </div>
-    <div class="docs-hero-example">
-      ```tsx {25-27,32} title="results-page.tsx"
+    <div class="docs-stream-grid">
+      <div class="docs-hero-example">
+        ```tsx {25-27,32} title="results-page.tsx"
       import { Defer, renderToStream } from "@vincle/flow";
       import { NativeAdapter } from "@vincle/flow/adapters";
 
@@ -167,7 +170,8 @@ import StreamingReplay from "../components/StreamingReplay";
 
       const stream = renderToStream(() => <Page />, NativeAdapter);
       ```
-      <p class="docs-example-note">The Results component stays the same. The page opts into deferred rendering.</p>
+        <p class="docs-example-note">The Results component stays the same. The page opts into deferred rendering.</p>
+      </div>
       <StreamingReplay />
     </div>
 
