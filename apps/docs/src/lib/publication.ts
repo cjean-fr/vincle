@@ -9,7 +9,7 @@ import { categoriesOf, tabFor } from "./sidebar.js";
 import { hasSocialCard, socialCardPath, socialCardPng, summarize } from "./social-card.js";
 
 export function llmsTxt(
-  pages: readonly { url: string; title: string }[],
+  pages: readonly { url: string; title: string; trail?: readonly string[] }[],
   config: DocsConfig,
 ): string {
   const lines: string[] = [
@@ -19,11 +19,21 @@ export function llmsTxt(
     "",
     "Every page is also available as Markdown at its URL plus `.md` (home page: `/index.md`).",
     "",
-    "## Pages",
-    "",
   ];
-  for (const page of pages) lines.push(`- [${page.title}](${fullUrl(page.url, ssg.site)})`);
-  lines.push("");
+  // Sections follow the sidebar hierarchy (tab, then categories), in order of
+  // first appearance; a page without a trail lands under "Pages".
+  const sections = new Map<string, { url: string; title: string }[]>();
+  for (const page of pages) {
+    const section = page.trail && page.trail.length > 0 ? page.trail.join(" / ") : "Pages";
+    const list = sections.get(section) ?? [];
+    list.push(page);
+    sections.set(section, list);
+  }
+  for (const [section, entries] of sections) {
+    lines.push(`## ${section}`, "");
+    for (const page of entries) lines.push(`- [${page.title}](${fullUrl(page.url, ssg.site)})`);
+    lines.push("");
+  }
   return lines.join("\n");
 }
 
@@ -132,7 +142,7 @@ export const documentationArtifacts: SsgPlugin = {
   name: "documentation-artifacts",
   async publish(context) {
     const search: SearchDocument[] = [];
-    const pages: { url: string; title: string; text: string }[] = [];
+    const pages: { url: string; title: string; text: string; trail: string[] }[] = [];
     const cardTasks: (() => Promise<void>)[] = [];
     for (const page of context.outputs) {
       if (page.meta.search === false) continue;
@@ -160,7 +170,7 @@ export const documentationArtifacts: SsgPlugin = {
           context.emit({ path: socialCardPath(page.url), content: () => socialCardPng(card) }),
         );
       }
-      pages.push({ url: page.url, title, text: htmlToText(html) });
+      pages.push({ url: page.url, title, text: htmlToText(html), trail });
     }
     // Cards only write distinct files, so their emission order does not matter.
     let nextCard = 0;
