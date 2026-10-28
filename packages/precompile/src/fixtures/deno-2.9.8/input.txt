@@ -1,0 +1,16 @@
+function Card(){}
+const UI={Card};
+const p={a:'x',key:'spread',children:'spread child'};
+const v='dynamic';
+const cases=[
+<Card {...p} key="after"/>,<Card key="before" {...p}/>,<Card {...p} a="A"/>,
+<Card/>,<Card key="only"/>,<Card key/>,<Card key={undefined}/>,
+<Card children="attribute"/>,<Card {...p}>text</Card>,<Card {...p}>{v}</Card>,
+<Card {...p}>first<span>second</span></Card>,<Card>{v}{1}</Card>,
+<Card>first{v}<span>second</span></Card>,<Card><UI.Card/><span>x</span></Card>,
+<Card><><span>a</span><span>b</span></></Card>,
+<div {...p} key="native">own</div>,<UI.Card key="member"/>,<svg:rect {...p} key="namespace"/>,
+<Card a="&amp;" title="line&#10;two"/>,<Card>{/*comment*/}</Card>,
+<Card key="first" {...p} key="last"/>,<Card dangerouslySetInnerHTML={{__html:42}}/>,
+];
+console.log(JSON.stringify(cases));
