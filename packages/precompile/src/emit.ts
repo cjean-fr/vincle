@@ -50,21 +50,8 @@ function walkChildren(node: AnyNode, visit: (child: AnyNode, key: string) => boo
 }
 
 /**
- * A transformed element/fragment is an ordinary expression. In expression
- * position (variable init, ternary branch, attribute container…) it can be
- * spliced verbatim, but as a direct JSX child of a PRESERVED element (a
- * component, or a host element skipped for spread/dangerouslySetInnerHTML) it
- * must be wrapped in a JSX expression container: otherwise the generated
- * `jsxTemplate\`…\`` lands as literal JSXText and the page renders its own
- * source code instead of the markup.
- */
-function wrapForJsxChild(text: string, inJsxChildren: boolean): string {
-  return inJsxChildren ? `{${text}}` : text;
-}
-
-/**
  * True when the tree holds a JSX element or fragment anywhere, including a
- * component at the root that the transform deliberately leaves as JSX. Used by
+ * component at the root. Used by
  * the Vite adapter to tell genuine JSX from a `.tsx` that only compares with
  * `<` or carries it in a string.
  */
@@ -88,24 +75,13 @@ export function collectNode(
   node: AnyNode,
   ctx: TransformContext,
   replacements: Replacement[],
-  inJsxChildren = false,
 ): void {
   if (node.type === "JSXElement") {
     const el = node as unknown as JSXElement;
-    if (isEligibleElement(el, ctx)) {
-      replacements.push({
-        start: el.start,
-        end: el.end,
-        text: wrapForJsxChild(transformElement(el, ctx), inJsxChildren),
-      });
-      return;
-    }
-    // Preserved element (component / spread / dangerouslySetInnerHTML): its
-    // direct `children` are JSX-child positions, everything else (attribute
-    // expressions…) stays expression position.
-    walkChildren(node, (child, key) => {
-      collectNode(child, ctx, replacements, key === "children");
-      return false;
+    replacements.push({
+      start: el.start,
+      end: el.end,
+      text: emitElementExpression(el, ctx),
     });
     return;
   }
@@ -114,13 +90,13 @@ export function collectNode(
     replacements.push({
       start: frag.start,
       end: frag.end,
-      text: wrapForJsxChild(transformFragment(frag, ctx), inJsxChildren),
+      text: transformFragment(frag, ctx),
     });
     return;
   }
 
   walkChildren(node, (child) => {
-    collectNode(child, ctx, replacements, false);
+    collectNode(child, ctx, replacements);
     return false;
   });
 }
@@ -143,7 +119,7 @@ function isEligibleElement(node: JSXElement, ctx: TransformContext): boolean {
   // `jsxTemplate` judges from the template itself.
   if (!ctx.compatibility && animationNeedsRuntime(tag, briefs)) return false;
   // Two element shapes the transform declines rather than answer for. Both are
-  // handed back as ordinary JSX: the same treatment a component gets, so the
+  // handed to jsx directly: the same treatment a component gets, so the
   // runtime that the app compiles against decides, with its own rules.
   //
   // - **A rawtext element with a dynamic hole.** HTML escaping is not merely
@@ -191,6 +167,155 @@ function attrName(attr: JSXAttribute): string {
   // the local part is `attr.name.name.name`, not `attr.name.name` (which would
   // stringify to "[object Object]" and corrupt e.g. `xlink:href`).
   return `${attr.name.namespace.name}:${attr.name.name.name}`;
+}
+
+/** One expression for a whole element, with no downstream JSX lowering. */
+function emitElementExpression(node: JSXElement, ctx: TransformContext): string {
+  return isEligibleElement(node, ctx) ? transformElement(node, ctx) : transformCall(node, ctx);
+}
+
+/** Deno's fallback contract: jsx(tag, props, explicitKey). Shared by both dialects. */
+function transformCall(node: JSXElement, ctx: TransformContext): string {
+  const name = node.openingElement.name;
+  const component =
+    name.type === "JSXMemberExpression" ||
+    (name.type === "JSXIdentifier" && /^[A-Z]/.test(name.name));
+  const tag =
+    name.type === "JSXIdentifier"
+      ? component
+        ? name.name
+        : JSON.stringify(name.name)
+      : name.type === "JSXNamespacedName"
+        ? JSON.stringify(`${name.namespace.name}:${name.name.name}`)
+        : ctx.source.slice(name.start, name.end);
+  const props: string[] = [];
+  let key: string | undefined;
+  for (const attr of node.openingElement.attributes) {
+    if (attr.type === "JSXSpreadAttribute") {
+      props.push(`...(${processExpressionForJsx(attr.argument, ctx)})`);
+      continue;
+    }
+    const rawName = attrName(attr);
+    const prop =
+      !ctx.compatibility || rawName === "dangerouslySetInnerHTML"
+        ? rawName
+        : component && attr.name.type === "JSXIdentifier"
+          ? rawName
+          : attrNameFor(rawName, ctx);
+    const init = attr.value;
+    let value: string;
+    if (init === null) value = "true";
+    else if (init.type === "Literal") {
+      // Deno normalizes decoded attribute strings line by line, not JSX text.
+      const decoded = decodeJsxEntities(init.value);
+      value = JSON.stringify(
+        decoded
+          .replace(/\r?\n$/, "")
+          .split(/\r?\n/)
+          .map((line) => line.trimStart())
+          .join(" "),
+      );
+    } else if (init.type === "JSXExpressionContainer") {
+      if (init.expression.type === "JSXEmptyExpression") continue;
+      value = processExpressionForJsx(init.expression, ctx);
+    } else {
+      value = processExpressionForJsx(init as unknown as Expression, ctx);
+    }
+    // Bare key is an ordinary true prop. Only a valued attribute is lifted.
+    // Moving the last expression after props also matches Deno's evaluation order.
+    if (prop === "key" && init !== null) key = value;
+    else props.push(`${JSON.stringify(prop)}: (${value})`);
+  }
+  const children = callChildren(node.children, ctx);
+  if (children !== undefined) props.push(`children: (${children})`);
+  ctx.used.add("jsx");
+  return `jsx(${tag}, ${props.length ? `{ ${props.join(", ")} }` : "null"}${key === undefined ? "" : `, (${key})`})`;
+}
+
+/** Deno's child grouping belongs to the call contract, not a foreign compiler. */
+function callChildren(children: JSXChild[], ctx: TransformContext): string | undefined {
+  if (children.length === 0) return undefined;
+  if (children.length === 1) {
+    const child = children[0]!;
+    if (child.type === "JSXText") {
+      return JSON.stringify(decodeJsxEntities(collapseJsxWhitespace(child.value).trimEnd()));
+    }
+    if (child.type === "JSXExpressionContainer") {
+      return child.expression.type === "JSXEmptyExpression"
+        ? undefined
+        : processExpressionForJsx(child.expression, ctx);
+    }
+    if (child.type === "JSXElement") return emitElementExpression(child, ctx);
+    if (child.type === "JSXFragment") return callChildren(child.children, ctx);
+    return undefined;
+  }
+  let textCount = 0;
+  let serializableCount = 0;
+  const expressions: string[] = [];
+  let text = "";
+  const flush = () => {
+    if (text) expressions.push(JSON.stringify(text));
+    text = "";
+  };
+  for (const child of children) {
+    if (child.type === "JSXText") {
+      const value = decodeJsxEntities(collapseJsxWhitespace(child.value));
+      if (value) textCount++;
+      text += value;
+    } else if (child.type === "JSXExpressionContainer") {
+      const expr = child.expression;
+      if (expr.type === "JSXEmptyExpression") continue;
+      if (expr.type === "Literal" && typeof expr.value === "boolean") continue;
+      if (
+        expr.type === "Literal" &&
+        (typeof expr.value === "number" || typeof expr.value === "string")
+      ) {
+        text += typeof expr.value === "string" ? escapeContent(expr.value) : String(expr.value);
+      } else {
+        flush();
+        expressions.push(processExpressionForJsx(expr, ctx));
+      }
+    } else if (child.type === "JSXElement") {
+      flush();
+      if (isEligibleElement(child, ctx)) serializableCount++;
+      expressions.push(emitElementExpression(child, ctx));
+    } else if (child.type === "JSXFragment") {
+      flush();
+      const inner = callChildren(child.children, ctx);
+      if (inner !== undefined) expressions.push(inner.startsWith("[") ? `...(${inner})` : inner);
+    }
+  }
+  flush();
+  if (serializableCount > 1 || (serializableCount === 1 && textCount > 0)) {
+    const out = new TemplateBuilder();
+    // The reference merges literal expressions before template emission.
+    // Emit that normalized stream, not the original expression containers.
+    const normalized = children.filter(
+      (child) =>
+        !(
+          child.type === "JSXExpressionContainer" &&
+          (child.expression.type === "JSXEmptyExpression" ||
+            (child.expression.type === "Literal" && typeof child.expression.value === "boolean"))
+        ),
+    );
+    for (const child of normalized) {
+      if (
+        child.type === "JSXExpressionContainer" &&
+        child.expression.type === "Literal" &&
+        (typeof child.expression.value === "string" || typeof child.expression.value === "number")
+      ) {
+        out.static(
+          typeof child.expression.value === "string"
+            ? escapeContent(child.expression.value)
+            : String(child.expression.value),
+        );
+      } else emitChildren([child], out, ctx, undefined);
+    }
+    return out.build(ctx);
+  }
+  return expressions.length === 1 && !expressions[0]!.startsWith("...")
+    ? expressions[0]
+    : `[${expressions.join(", ")}]`;
 }
 
 function transformElement(node: JSXElement, ctx: TransformContext): string {
@@ -483,8 +608,7 @@ function emitChildren(
           out.static(`</${tag}>`);
         }
       } else {
-        // Component / spread / dangerouslySetInnerHTML element: left as JSX for
-        // the compiler, and passed to `jsxTemplate` WITHOUT `jsxEscape`: the
+        // Component / spread / dangerouslySetInnerHTML element: direct jsx call, passed to `jsxTemplate` WITHOUT `jsxEscape`: the
         // Deno/Preact precompile contract. `jsx()` returns a VNode, which is not
         // a value to escape: it is markup to render, and `jsxTemplate` renders
         // it through the tree walk. Wrapping it here would double-handle it
@@ -508,7 +632,7 @@ function emitChildren(
  * for HTML, which inside `<script>`/`<style>` produces entities the parser will
  * never decode. There is no rawtext hole to serve here, though:
  * `isEligibleElement` declines a rawtext element that has one, so the element
- * reaches this file's output as JSX and its content is the runtime's business.
+ * reaches this file's output as a jsx call and its content is the runtime's business.
  */
 function escapeCall(exprText: string, ctx: TransformContext, scalar = false): string {
   const helper = ctx.compatibility || scalar ? "jsxEscape" : "jsxEscapeDeferred";

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Lower components and non-template host elements to Deno-style direct `jsx` calls instead of leaving JSX for a later compiler. Preserve spread props, explicit `key` as a third argument, and Deno child grouping, with native Deno 2.9.8 call-oracle regressions. Keep Vincle's runtime host-prop policies and pass the explicit key there too.
+
 - Promote a declaration-level `import type { jsxAttr }` to a value binding without emitting a second local identifier, and keep other type imports and aliases intact.
 - On Vite 8, detect the JSX runtime from the resolved `oxc` config only: follow an `esbuild.jsxImportSource` Vite converted when `esbuild.jsx` is `"automatic"`, and ignore `oxc: false`, `jsx: "preserve"`, a classic runtime and an empty source. Vite 5–7 keep the esbuild fallback when `oxc` is absent.
 - Fail the build only when genuine host or component JSX reaches it with no detectable runtime; a `.tsx` with no JSX, such as a less-than comparison or a `"<"` string, no longer trips the check.
