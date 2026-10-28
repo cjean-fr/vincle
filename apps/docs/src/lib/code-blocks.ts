@@ -56,7 +56,7 @@ const aliases: Record<string, string> = {
 
 /** Parse `{1,3-5}` line marks from a fence's meta string (shiki convention). */
 function parseLineMarks(meta: string): Set<number> {
-  const spec = /\{([\d\s,\-]+)\}/.exec(meta)?.[1];
+  const spec = /\{([\d\s,-]+)\}/.exec(meta)?.[1];
   const marks = new Set<number>();
   if (!spec) return marks;
   for (const part of spec.split(",")) {
