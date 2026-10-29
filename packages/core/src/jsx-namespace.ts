@@ -3237,14 +3237,14 @@ export namespace JSX {
    * correctly. Widening stops there; an object or a symbol return is still an
    * error.
    *
-   * `Awaitable<Renderable>`, not `Renderable`, for the one shape the flat type
-   * cannot express: `JSX.Element` is itself awaitable, so an async component that
-   * *writes its return type down* as `async (): Promise<JSX.Element>`
-   * (the annotation anyone arriving from React reaches for) creates a promise of a
-   * promise. Inference collapses it, so the flat type holds only as long as nobody
-   * annotates. Making `Renderable` itself recursive is the other way to say this,
-   * and TypeScript refuses it: a type reached through its own `then` callback is
-   * TS1062. The extra level belongs on the boundary, where the walk resolves it.
+   * `Awaitable<Renderable>`, not `Renderable`, for the component that *writes
+   * its return type down* as `async (): Promise<JSX.Element>` (the annotation
+   * anyone arriving from React reaches for): a promise of the whole union is
+   * one promise layer more than `Renderable` itself carries, so the boundary
+   * adds it. The promise layer stays at the boundary deliberately: a
+   * `Promise<Self>` member inside the union would make `Awaited`-style
+   * unfolding diverge (TS2589), where recursion through `Iterable` is lazy
+   * and safe.
    */
   export type ElementType = string | ((props: any) => Awaitable<Renderable>);
 
