@@ -1,8 +1,7 @@
 /** @jsxImportSource @vincle/core */
 
-import { expect, test } from "bun:test";
-
 import { renderToString, type JSX } from "@vincle/core";
+import { expect, test } from "bun:test";
 
 // The contract this file pins is mostly compile-time: `bun check` type-checks
 // it, so a regression that narrows `JSX.Element` fails the build here, not in
