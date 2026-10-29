@@ -42,9 +42,11 @@ export function Card({ title, children }: CardProps) {
 }
 ```
 
-Replace `ReactNode` and `ReactElement` with `JSX.Element`: the one union
-covers both (it is also exported under the name `Renderable`). Replace
-`React.FC<Props>` with an ordinary function taking `Props`. For
+Replace `ReactNode` with `JSX.Element`: children, return values, anything
+that renders (the union is also exported under the name `Renderable`). Where
+React code introspects a `ReactElement`'s structure, annotate
+[`VNode`](/api/core/jsx-types#vnode) instead: the wide union makes no
+structural promise. Replace `React.FC<Props>` with an ordinary function taking `Props`. For
 context, import `createContext` and `useContext` from `@vincle/core`: a context
 created by React cannot be read by Vincle. Client hooks, refs, and React library
 components need a behavioral rewrite; changing the JSX compiler does not make
