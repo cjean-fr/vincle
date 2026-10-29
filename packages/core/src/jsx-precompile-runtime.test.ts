@@ -498,7 +498,7 @@ describe("jsxTemplate: VNode holes", () => {
     const later = <T>(v: T, ms: number): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(v), ms));
     const Writer = async () => {
-      await later(null, 5);
+      await later(null, 20);
       Scope.set(KEY, "written");
       return "w";
     };
@@ -529,7 +529,7 @@ describe("jsxTemplate: VNode holes", () => {
     const later = <T>(v: T, ms: number): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(v), ms));
     const Writer = async () => {
-      await later(null, 2);
+      await later(null, 20);
       Scope.set(KEY, "w");
       return "W";
     };
@@ -550,9 +550,11 @@ describe("jsxTemplate: VNode holes", () => {
       return renderToString(viaTreeWalk());
     });
     expect(a).toBe(b);
-    // The reader (1 ms) outruns the writer's awaited `Scope.set` (2 ms) on
+    // The reader (1 ms) outruns the writer's awaited `Scope.set` (20 ms) on
     // both paths: concurrency changes what the channel delivers, never the
-    // parity between them.
+    // parity between them. 20/1, not 2/1: when the event loop polls late,
+    // timers due in the same pass fire in scheduling order, and the writer
+    // is scheduled first - a 1 ms margin inverts the race under CI load.
     expect(a).toBe("<p>W|i</p>");
   });
 });
