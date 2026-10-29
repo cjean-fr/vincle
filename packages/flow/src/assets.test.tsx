@@ -47,7 +47,11 @@ describe("claimAsset", () => {
 });
 
 describe("resolveAssets", () => {
-  const style = (content: string | (() => string), attrs = {}) => ({ type: "style" as const, content, attrs });
+  const style = (content: string | (() => string), attrs = {}) => ({
+    type: "style" as const,
+    content,
+    attrs,
+  });
 
   it("keeps the first occurrence in document order, whatever the claim order", async () => {
     const state = createAssetState();

@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Keep `<Style>` / `<Script>` deduplication on document order under concurrent siblings: the first occurrence of a `name` *in the document* emits, even when a later occurrence finishes rendering first. Claims now register a mark and the winner is decided after the render, so only the winning occurrence's content factory is evaluated, with the Provider and `Scope` context of its own position.
+- Keep `<Style>` / `<Script>` deduplication on document order under concurrent siblings: the first occurrence of a `name` _in the document_ emits, even when a later occurrence finishes rendering first. Claims now register a mark and the winner is decided after the render, so only the winning occurrence's content factory is evaluated, with the Provider and `Scope` context of its own position.
 
 ### Added
 
