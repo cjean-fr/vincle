@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Keep `<Style>` / `<Script>` deduplication on document order under concurrent siblings: the first occurrence of a `name` *in the document* emits, even when a later occurrence finishes rendering first. Claims now register a mark and the winner is decided after the render, so only the winning occurrence's content factory is evaluated, with the Provider and `Scope` context of its own position.
+
 ### Added
 
 - Add the `update` merge type: it replaces the target's content and keeps the element itself. Turbo maps it to its `update` stream action, HTMX to the `innerHTML` swap, and the Native polyfill replaces the target's children with `replaceChildren` (falling back to the placeholder's range when the target has no element). `NativeAdapter` now declares it, so `merge="update"` is accepted there too.

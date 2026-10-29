@@ -66,11 +66,15 @@ const Feed = async () => {
 const html = await renderToString(<Feed />);
 ```
 
-Components run one at a time, in document order, never in parallel, including
-in arrays, iterables and precompiled templates. So two siblings touching `Scope`
-never race, and when one throws or rejects, the ones after it are not invoked.
-A promise you created before rendering is already running; for concurrent
-regions, use [`Defer` and `Slot`](/integration/flow/components) from `@vincle/flow`.
+Siblings start in document order and overlap as soon as one of them awaits:
+their synchronous prefixes always run in document order, then their async work
+proceeds concurrently, in arrays, iterables and precompiled templates alike.
+The output is joined in document order, whatever the completion order. `Scope`
+is shared by the whole render and never arbitrated: a `Scope.set` before a
+component's first `await` is visible to later siblings; one placed after an
+`await` races with the other siblings, so which reader sees it depends on
+timing. When a sibling throws or rejects, the others still run to completion
+and `renderToString` rejects with the first failure in document order.
 
 ## Concurrent renders
 
