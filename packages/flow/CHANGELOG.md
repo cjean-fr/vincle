@@ -9,6 +9,11 @@
 ### Added
 
 - Add the `update` merge type: it replaces the target's content and keeps the element itself. Turbo maps it to its `update` stream action, HTMX to the `innerHTML` swap, and the Native polyfill replaces the target's children with `replaceChildren` (falling back to the placeholder's range when the target has no element). `NativeAdapter` now declares it, so `merge="update"` is accepted there too.
+- Pass each `Patch` a `first` boolean, `true` on the boundary's first patch of the response, while the placeholder's `fallback` is still in place. An adapter whose boundary is an element replaces the placeholder's content on that patch instead of inserting next to it, so the fallback does not stay next to the streamed content; the built-in HTMX and Turbo adapters do so, and the Native polyfill empties the placeholder's range before inserting.
+
+### Changed
+
+- Say in the fragment error log, when no `onError` handler is set, that the placeholder keeps its fallback.
 
 ## 0.11.0 — 2026-10-11
 

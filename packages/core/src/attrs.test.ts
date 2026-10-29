@@ -12,7 +12,7 @@ import {
 } from "./attrs.js";
 import { valueToText } from "./escape.js";
 import { jsx } from "./jsx-runtime.js";
-import { renderToString } from "./render.js";
+import { renderNode, renderToString } from "./render.js";
 import { isAnimationTag } from "./tag.js";
 import { raw, rawUrl } from "./types.js";
 
@@ -816,5 +816,39 @@ describe("a RawString attribute value cannot end the attribute", () => {
     expect(buildAttrs({ style: raw('font-family:"Foo"') }, "div")).toBe(
       ' style="font-family:&quot;Foo&quot;"',
     );
+  });
+});
+
+describe("Date values follow the runtime time zone", () => {
+  const instant = new Date(Date.UTC(2026, 9, 25, 22, 30));
+
+  test("a Date renders as String(date) under the runtime zone", async () => {
+    const saved = process.env.TZ;
+    try {
+      const seen = new Set<string>();
+      for (const zone of ["UTC", "Asia/Tokyo", "America/Los_Angeles"]) {
+        process.env.TZ = zone;
+        const expected = String(instant);
+        seen.add(expected);
+        expect(valueToText(instant)).toBe(expected);
+        expect(String(renderNode(instant))).toBe(expected);
+        expect(String(buildAttrs({ dateTime: instant }, "time"))).toContain(
+          `datetime="${expected}"`,
+        );
+        expect(String(await renderToString(jsx("script", { children: instant })))).toContain(
+          expected,
+        );
+      }
+      // The contract is the runtime zone: the same instant must differ across zones,
+      // so a test environment that ignores TZ changes fails here instead of passing silently.
+      expect(seen.size).toBeGreaterThan(1);
+    } finally {
+      if (saved === undefined) delete process.env.TZ;
+      else process.env.TZ = saved;
+    }
+  });
+
+  test("an invalid date keeps String's `Invalid Date`", () => {
+    expect(valueToText(new Date(Number.NaN))).toBe("Invalid Date");
   });
 });

@@ -52,8 +52,9 @@ export type Renderable =
 | `Iterable<Renderable>`           | `Set`, `Map.values()`, generator | Drained, then rendered in order         |
 | `AsyncIterable<Renderable>`      | `AsyncGenerator`                 | Awaited per item, flushed between items |
 
-Anything else, such as a plain object, a `Date`, or a `URL`, is rendered through
-its string form. A function or a symbol is a type error.
+Anything else, such as a plain object or a `URL`, is rendered through its string
+form. A function or a symbol is a type error. A `Date` is one of these values, so its
+text follows the runtime's time zone and locale, in content and in attributes.
 
 ## VNode
 
