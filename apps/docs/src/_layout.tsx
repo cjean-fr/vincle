@@ -1,4 +1,4 @@
-import type { Renderable } from "@vincle/core";
+import type { JSX } from "@vincle/core";
 import type { PageContext } from "@vincle/ssg";
 
 import { Layout } from "./components/Layout.js";
@@ -9,7 +9,7 @@ import { useToc } from "./lib/toc.js";
 export default async function DocumentationLayout({
   children,
   meta,
-}: PageContext & { children: Renderable }) {
+}: PageContext & { children: JSX.Element }) {
   const resolveContext = meta["documentation"] as (() => Promise<DocsRenderContext>) | undefined;
   if (!resolveContext) throw new Error("Documentation layout requires its discovery context.");
   const documentation = await resolveContext();

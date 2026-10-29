@@ -1,4 +1,4 @@
-import { raw, renderToString, jsx, type JSX, type Renderable } from "@vincle/core";
+import { raw, renderToString, jsx, type JSX } from "@vincle/core";
 
 export type CspPolicy = Readonly<Record<string, readonly string[]>>;
 
@@ -72,7 +72,7 @@ export type ScriptProps = Omit<
   JSX.IntrinsicElements["script"],
   "children" | "dangerouslySetInnerHTML"
 > & {
-  children?: Renderable;
+  children?: JSX.Element;
 };
 
 /** Ordinary script rendering, without CSP registration or required context. */

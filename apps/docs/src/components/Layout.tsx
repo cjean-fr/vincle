@@ -1,4 +1,4 @@
-import { raw, type JSX, type Renderable } from "@vincle/core";
+import { raw, type JSX } from "@vincle/core";
 import { Asset } from "@vincle/vite-plugin";
 
 import { useDocs } from "../lib/context.js";
@@ -17,7 +17,7 @@ import { ThemeToggle, themeInitScriptSource } from "./ThemeToggle.js";
 /** Restore package manager before content paints; CSS selects the initial panel. */
 const tabsInitScriptSource = `try{var p=localStorage.getItem("docs-tabs-sync:pkg-manager");if(p==="npm"||p==="pnpm"||p==="bun")document.documentElement.setAttribute("data-docs-package-manager",p)}catch{}`;
 
-export async function Layout({ children }: { children: Renderable }): Promise<JSX.Element> {
+export async function Layout({ children }: { children: JSX.Element }): Promise<JSX.Element> {
   const page = useDocs();
   const { config, meta, currentPage } = page;
   const collector = new CspService();

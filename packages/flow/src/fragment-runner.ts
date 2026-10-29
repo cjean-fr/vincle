@@ -41,7 +41,12 @@ async function emitError(
   error: unknown,
   opts: FlowOptions,
 ): Promise<void> {
-  console.error(`[vincle/flow] Error rendering ${kind} "${id}"`, error);
+  if (onError) console.error(`[vincle/flow] Error rendering ${kind} "${id}"`, error);
+  else
+    console.error(
+      `[vincle/flow] Error rendering ${kind} "${id}"; without onError the placeholder keeps its fallback`,
+      error,
+    );
   if (opts.signal?.aborted) return;
   const ui = onError?.(error, { id, kind });
   if (ui != null) {
