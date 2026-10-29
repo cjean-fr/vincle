@@ -88,10 +88,7 @@ describe("JSX.Element = Renderable, end to end", () => {
           () => (
             <html>
               <body>
-                <Defer
-                  target="boom"
-                  onError={() => "Oops & sorry"}
-                >
+                <Defer target="boom" onError={() => "Oops & sorry"}>
                   {() => {
                     throw new Error("boom");
                   }}
