@@ -10,7 +10,7 @@ import {
 } from "./errors.js";
 import { escapeContent, isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { ownChildren } from "./props.js";
-import { renderNode } from "./render.js";
+import { renderNode, settleConcurrent } from "./render.js";
 import { isVoidElement, serializeStatic, voidChildrenMessage } from "./serialize.js";
 import { invalidTagMessage, isValidTag } from "./tag.js";
 import { renderElementAttr } from "./template-attrs.js";
@@ -232,8 +232,9 @@ async function escapeArrayFrom(
   from: number,
 ): Promise<RawString> {
   // Same rule as `renderChildrenFrom`: once one element suspends, the rest
-  // start at once and join in document order. A synchronous throw becomes a
-  // rejection so the remaining elements still start.
+  // start at once, join in document order, and the first rejection in time
+  // rejects the render. A synchronous throw becomes a rejection so the
+  // remaining elements still start.
   const parts: Array<string | Promise<string>> = [pending];
   for (let i = from; i < arr.length; i++) {
     let part: string | Promise<string>;
@@ -244,29 +245,7 @@ async function escapeArrayFrom(
     }
     parts.push(part);
   }
-  let out = prefix;
-  let failure: unknown;
-  let failed = false;
-  for (const part of await Promise.all(parts.map(settle))) {
-    if (part.failed) {
-      if (!failed) failure = part.reason;
-      failed = true;
-      continue;
-    }
-    out += part.value;
-  }
-  if (failed) throw failure;
-  return new RawString(out);
-}
-
-/** Wrap one sibling's outcome so `Promise.all` survives a rejection. */
-function settle(
-  part: string | Promise<string>,
-): Promise<{ value: string; failed?: false } | { reason: unknown; failed: true }> {
-  return Promise.resolve(part).then(
-    (value) => ({ value }),
-    (reason: unknown) => ({ reason, failed: true as const }),
-  );
+  return new RawString(prefix + (await settleConcurrent(parts)).join(""));
 }
 
 /**
@@ -492,19 +471,11 @@ function renderTemplateAsync(
     parts.push(part);
   }
   return (async () => {
+    const texts = await settleConcurrent(parts);
     let out = prefix;
-    let failure: unknown;
-    let failed = false;
-    for (let j = 0; j < parts.length; j++) {
-      const part = await settle(parts[j]!);
-      if (part.failed) {
-        if (!failed) failure = part.reason;
-        failed = true;
-        continue;
-      }
-      out = appendHole(out, part.value) + (templates[from + j] ?? "");
+    for (let j = 0; j < texts.length; j++) {
+      out = appendHole(out, texts[j]!) + (templates[from + j] ?? "");
     }
-    if (failed) throw failure;
     return new RawString(out);
   })();
 }

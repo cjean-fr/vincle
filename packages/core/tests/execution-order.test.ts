@@ -89,7 +89,7 @@ describe("siblings start left to right, then overlap", () => {
     expect(reached).toBe(true);
   });
 
-  test("the first failure in document order surfaces, whatever the timing", async () => {
+  test("the first failure in time surfaces, whatever the document order", async () => {
     const LatePositionEarlyFailure = () =>
       later("x", 1).then(() => Promise.reject(new Error("second-in-doc")));
     const EarlyPositionLateFailure = () =>
@@ -100,7 +100,38 @@ describe("siblings start left to right, then overlap", () => {
           children: [jsx(EarlyPositionLateFailure, {}), jsx(LatePositionEarlyFailure, {})],
         }),
       ),
-    ).rejects.toThrow("first-in-doc");
+    ).rejects.toThrow("second-in-doc");
+  });
+
+  test("a failure rejects without waiting for a sibling that never settles", async () => {
+    const Fail = () => later("x", 5).then(() => Promise.reject(new Error("fast-fail")));
+    const Hangs = () => new Promise<string>(() => {});
+    const t0 = Date.now();
+    await expect(
+      renderToString(jsx("p", { children: [jsx(Fail, {}), jsx(Hangs, {})] })),
+    ).rejects.toThrow("fast-fail");
+    expect(Date.now() - t0).toBeLessThan(1000);
+  });
+
+  test("a late sibling rejection after the reported one is swallowed, not unhandled", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const FailEarly = () => later("x", 5).then(() => Promise.reject(new Error("reported")));
+      const FailLate = () => later("x", 40).then(() => Promise.reject(new Error("late")));
+      const Slow = () => later("slow", 60);
+      await expect(
+        renderToString(
+          jsx("p", { children: [jsx(FailEarly, {}), jsx(FailLate, {}), jsx(Slow, {})] }),
+        ),
+      ).rejects.toThrow("reported");
+      // Let the late failure and the slow sibling settle past the rejection.
+      await later(null, 120);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
   });
 });
 

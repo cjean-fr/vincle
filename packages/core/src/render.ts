@@ -19,8 +19,8 @@ import { TemplateNode } from "./types.js";
  * Components may be async. Sibling subtrees start in document order and run
  * concurrently once one of them suspends; the output is joined in document
  * order whatever the completion order. A failure arrives as a rejection,
- * never as a synchronous throw, and reports the first failure in document
- * order after the concurrent siblings have settled.
+ * never as a synchronous throw, and rejects as soon as it happens, without
+ * waiting for the siblings still in flight.
  *
  * @example
  * ```tsx
@@ -194,7 +194,9 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
  * a value after awaiting races with readers in other siblings, exactly like
  * any shared state in concurrent async code. Coordination that must be
  * ordered goes through `<Defer>` / `<Slot>` in `@vincle/flow`. A rejection
- * reports the first failure in document order after every sibling settled.
+ * rejects the render immediately, without waiting for the siblings still in
+ * flight; their handlers stay attached, so a late failure is swallowed rather
+ * than surfaced as an unhandled rejection.
  */
 function renderChildrenFrom(
   prefix: string,
@@ -223,28 +225,42 @@ async function settleInDocumentOrder(
   parts: Array<string | Promise<string>>,
   rawtextTag: string | undefined,
 ): Promise<string> {
-  const settled = await Promise.all(
-    parts.map((part) =>
-      Promise.resolve(part).then(
-        (value) => ({ value }),
-        (reason: unknown) => ({ reason }),
-      ),
-    ),
-  );
+  const values = await settleConcurrent(parts);
   let out = prefix;
-  let failure: { reason: unknown } | undefined;
-  for (const result of settled) {
-    if ("reason" in result) {
-      failure ??= result;
-      continue;
-    }
-    out =
-      rawtextTag === undefined
-        ? out + result.value
-        : joinRawTagContent(out, result.value, rawtextTag);
+  for (const value of values) {
+    out = rawtextTag === undefined ? out + value : joinRawTagContent(out, value, rawtextTag);
   }
-  if (failure) throw failure.reason;
   return out;
+}
+
+/**
+ * Resolve every part to its value, in list order. The first rejection *in
+ * time* rejects the whole: a slow sibling never delays a failure that already
+ * happened. Every part gets its handler up front, so the siblings still in
+ * flight afterwards settle quietly - their work is not cancelled, only
+ * dropped. Shared by the tree walk (`settleInDocumentOrder`), the precompiled
+ * template holes and the array holes.
+ *
+ * @internal
+ */
+export function settleConcurrent(parts: Array<string | Promise<string>>): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const values = new Array<string>(parts.length);
+    let remaining = parts.length;
+    if (remaining === 0) {
+      resolve(values);
+      return;
+    }
+    parts.forEach((part, i) => {
+      Promise.resolve(part).then(
+        (value) => {
+          values[i] = value;
+          if (--remaining === 0) resolve(values);
+        },
+        (reason: unknown) => reject(reason),
+      );
+    });
+  });
 }
 
 /**

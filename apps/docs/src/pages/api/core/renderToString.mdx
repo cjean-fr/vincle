@@ -73,8 +73,9 @@ The output is joined in document order, whatever the completion order. `Scope`
 is shared by the whole render and never arbitrated: a `Scope.set` before a
 component's first `await` is visible to later siblings; one placed after an
 `await` races with the other siblings, so which reader sees it depends on
-timing. When a sibling throws or rejects, the others still run to completion
-and `renderToString` rejects with the first failure in document order.
+timing. When a sibling throws or rejects, `renderToString` rejects at once
+with that failure: siblings already in flight are not awaited or cancelled -
+their work finishes in the background and a late failure is swallowed.
 
 ## Concurrent renders
 
