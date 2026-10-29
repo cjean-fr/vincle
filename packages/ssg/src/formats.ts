@@ -27,7 +27,7 @@ function scriptHandler(name: "module" | "jsx"): PageHandler {
       if (producer === undefined)
         throw failure(`No default export: ${source.file}`, {
           reason: "SOURCE_FAILED",
-          hint: "Add a default component for JSX/TSX, or a default content/output producer for JS/TS.",
+          hint: "Add a default component for JSX/TSX, or a default content/output producer for JS/TS. If the file is a helper rather than a page, prefix its name with _ (for example _utils.ts) so it is not routed.",
           context: { file: source.file },
         });
       return {
