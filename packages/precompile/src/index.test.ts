@@ -1244,12 +1244,13 @@ describe("precompileTransform", () => {
       expect(await renderToString(mod.ListPage())).toBe("<ul><b>de</b><b>de</b></ul>");
     });
 
-    it("component holes keep document order under async rendering", async () => {
-      // Sibling component holes must render sequentially: a setContext in the
-      // left sibling must be visible to the right one. Rendering them with
-      // Promise.all would race: the regression the ordering rule forbids.
-      // `context(id)` is deterministic across module boundaries, so the test
-      // can reset the same key the module writes.
+    it("component holes overlap under async rendering, output in document order", async () => {
+      // Sibling component holes start in document order and overlap once one
+      // suspends; the output is joined in document order. An awaited
+      // `Scope.set` in the left sibling races with the right one, so the
+      // reader sees the seed: core shares the Scope and does not arbitrate
+      // it. `context(id)` is deterministic across module boundaries, so the
+      // test can reset the same key the module writes.
       const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
       const code = [
         `/** @jsxImportSource @vincle/core */`,
@@ -1277,7 +1278,7 @@ describe("precompileTransform", () => {
         );
       }
       expect(results.size).toBe(1);
-      expect([...results][0]).toBe("<div>wwritten</div>");
+      expect([...results][0]).toBe("<div>winitial</div>");
     });
 
     it("re-export adapter produces byte-identical transform to direct @vincle/core import", () => {
