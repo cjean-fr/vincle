@@ -5,21 +5,21 @@ import { renderToString } from "../src/render.js";
 import { Scope } from "../src/scope.js";
 
 /**
- * Components execute in document order.
+ * Siblings render concurrently; output stays in document order.
  *
- * This is the engine's sequencing rule, and it is observable, so it is pinned
- * here rather than left to be inferred from the implementation.
+ * The engine starts children left to right. As long as every child is
+ * synchronous that is the whole story. The first time a child suspends, every
+ * remaining sibling starts as well, and their asynchronous work overlaps.
+ * Whatever the completion order, the emitted document keeps the document
+ * order: a slow first sibling never pushes a fast second one out of place.
  *
- * `renderToString` used to start every remaining sibling before awaiting any of
- * them, overlapping their I/O. The overlap was deliberate and it was free: right
- * up until a component mutated the context. Then the document depended on how long
- * each sibling took: a reader that awaited 1 ms saw the old value, the same reader
- * awaiting 20 ms saw the new one. Same tree, same code, two documents.
- *
- * The rule replaces all of that with something a developer can hold in their head:
- * **what runs before you in the document ran before you.** Overlapping I/O is
- * still available where it can be seen in the markup: `<Defer>` / `<Slot>` in
- * `@vincle/flow`.
+ * Scope is shared by the whole render and the engine does not arbitrate it:
+ * a write made before a component's first await is visible to every sibling
+ * (their synchronous prefixes run in document order); a write made after an
+ * await races with the other siblings' continuations, so which reader sees
+ * which value depends on timing. Cross-sibling communication that must be
+ * deterministic goes through markup (`<Defer>` / `<Slot>` in `@vincle/flow`),
+ * not through awaited Scope writes.
  */
 
 const KEY = Scope.key<string>("execution-order");
@@ -28,8 +28,8 @@ const later = <T>(value: T, ms: number): Promise<T> =>
 
 const seedInitial = () => Scope.set(KEY, "initial");
 
-describe("execution order is document order", () => {
-  test("siblings run left to right, whatever they await", async () => {
+describe("siblings start left to right, then overlap", () => {
+  test("a slow first sibling does not delay a fast second one", async () => {
     const calls: string[] = [];
     const Slow = () => {
       calls.push("slow:start");
@@ -49,12 +49,30 @@ describe("execution order is document order", () => {
     expect(await renderToString(jsx("p", { children: [jsx(Slow, {}), jsx(Fast, {})] }))).toBe(
       "<p>slowfast</p>",
     );
-    // The point: `fast:start` comes after `slow:end`. Under the previous overlap
-    // it came first, and `fast` had finished before `slow` was even awaited.
-    expect(calls).toEqual(["slow:start", "slow:end", "fast:start", "fast:end"]);
+    // Both start in document order; the fast one finishes first; the document
+    // still reads slow then fast.
+    expect(calls).toEqual(["slow:start", "fast:start", "fast:end", "slow:end"]);
   });
 
-  test("a sibling that rejects stops the ones after it", async () => {
+  test("a synchronous component throw does not stop later siblings either", async () => {
+    let reached = false;
+    const Boom = () => {
+      throw new Error("boom");
+    };
+    const After = () => {
+      reached = true;
+      return "after";
+    };
+    await expect(
+      renderToString(jsx("p", { children: [jsx(Boom, {}), jsx(After, {})] })),
+    ).rejects.toThrow("boom");
+    // `renderNode` normalizes a component's synchronous throw to a rejection,
+    // so from the sibling list it is indistinguishable from an async failure:
+    // the remaining siblings still start, and the failure still surfaces.
+    expect(reached).toBe(true);
+  });
+
+  test("an asynchronous failure does not stop later siblings", async () => {
     let reached = false;
     const Boom = async () => {
       throw new Error("boom");
@@ -66,60 +84,95 @@ describe("execution order is document order", () => {
     await expect(
       renderToString(jsx("p", { children: [jsx(Boom, {}), jsx(After, {})] })),
     ).rejects.toThrow("boom");
-    expect(reached).toBe(false);
+    // Boom suspended, After started: sibling work already in flight is not
+    // cancelled. The rejection still surfaces.
+    expect(reached).toBe(true);
+  });
+
+  test("the first failure in time surfaces, whatever the document order", async () => {
+    const LatePositionEarlyFailure = () =>
+      later("x", 1).then(() => Promise.reject(new Error("second-in-doc")));
+    const EarlyPositionLateFailure = () =>
+      later("x", 20).then(() => Promise.reject(new Error("first-in-doc")));
+    await expect(
+      renderToString(
+        jsx("p", {
+          children: [jsx(EarlyPositionLateFailure, {}), jsx(LatePositionEarlyFailure, {})],
+        }),
+      ),
+    ).rejects.toThrow("second-in-doc");
+  });
+
+  test("a failure rejects without waiting for a sibling that never settles", async () => {
+    const Fail = () => later("x", 5).then(() => Promise.reject(new Error("fast-fail")));
+    const Hangs = () => new Promise<string>(() => {});
+    const t0 = Date.now();
+    await expect(
+      renderToString(jsx("p", { children: [jsx(Fail, {}), jsx(Hangs, {})] })),
+    ).rejects.toThrow("fast-fail");
+    expect(Date.now() - t0).toBeLessThan(1000);
+  });
+
+  test("a late sibling rejection after the reported one is swallowed, not unhandled", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const FailEarly = () => later("x", 5).then(() => Promise.reject(new Error("reported")));
+      const FailLate = () => later("x", 40).then(() => Promise.reject(new Error("late")));
+      const Slow = () => later("slow", 60);
+      await expect(
+        renderToString(
+          jsx("p", { children: [jsx(FailEarly, {}), jsx(FailLate, {}), jsx(Slow, {})] }),
+        ),
+      ).rejects.toThrow("reported");
+      // Let the late failure and the slow sibling settle past the rejection.
+      await later(null, 120);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
   });
 });
 
-describe("setContext is visible to whatever renders after it", () => {
-  const Writer = (value: string, ms: number) => async () => {
-    await later(null, ms);
-    Scope.set(KEY, value);
-    return `w(${value})`;
-  };
-  const Reader = (ms: number) => async () => {
-    await later(null, ms);
-    return Scope.get(KEY);
-  };
-
-  test("a later sibling reads what an earlier one wrote", async () => {
+describe("Scope is shared; the engine does not arbitrate sibling writes", () => {
+  test("a write before the first await is visible to later siblings", async () => {
+    const Writer = () => {
+      Scope.set(KEY, "written");
+      return later("w(written)", 5);
+    };
+    const Reader = () => Scope.get(KEY);
     expect(
       await Scope.with(async () => {
         seedInitial();
-        return renderToString(
-          jsx("div", { children: [jsx(Writer("written", 5), {}), jsx(Reader(0), {})] }),
-        );
+        return renderToString(jsx("div", { children: [jsx(Writer, {}), jsx(Reader, {})] }));
       }),
     ).toBe("<div>w(written)written</div>");
   });
 
-  // The regression that motivated the rule. Only the reader's latency changes.
-  test("the document does not depend on how long anything takes", async () => {
-    const results: string[] = [];
-    for (const readerDelay of [0, 1, 5, 20]) {
-      results.push(
-        await Scope.with(async () => {
-          seedInitial();
-          return renderToString(
-            jsx("div", {
-              children: [jsx(Writer("written", 5), {}), jsx(Reader(readerDelay), {})],
-            }),
-          );
-        }),
-      );
-    }
-    expect(new Set(results).size).toBe(1);
-    expect(results[0]).toBe("<div>w(written)written</div>");
-  });
-
-  test("an earlier sibling cannot see a later one's write", async () => {
-    expect(
-      await Scope.with(async () => {
+  // The counterpart of the guarantee above: once a writer awaits, its write
+  // races with the other siblings' continuations. Core makes no promise here;
+  // the document legitimately depends on timing. Both outcomes are pinned so
+  // the contract stays honest rather than silently timing-dependent.
+  test("an awaited write races with sibling readers", async () => {
+    const Writer = async () => {
+      await later(null, 5);
+      Scope.set(KEY, "written");
+      return "w";
+    };
+    const Reader = (ms: number) => async () => {
+      await later(null, ms);
+      return Scope.get(KEY);
+    };
+    const renderWith = (readerDelay: number) =>
+      Scope.with(async () => {
         seedInitial();
         return renderToString(
-          jsx("div", { children: [jsx(Reader(0), {}), jsx(Writer("written", 1), {})] }),
+          jsx("div", { children: [jsx(Writer, {}), jsx(Reader(readerDelay), {})] }),
         );
-      }),
-    ).toBe("<div>initialw(written)</div>");
+      });
+    expect(await renderWith(0)).toBe("<div>winitial</div>");
+    expect(await renderWith(50)).toBe("<div>wwritten</div>");
   });
 
   test("a parent's write reaches its own children", async () => {
@@ -143,14 +196,22 @@ describe("setContext is visible to whatever renders after it", () => {
   test("a write outlives the render that made it, within its scope", async () => {
     await Scope.with(async () => {
       Scope.set(KEY, "initial");
-      await renderToString(jsx("p", { children: jsx(Writer("written", 1), {}) }));
-      expect(await renderToString(jsx("p", { children: jsx(Reader(0), {}) }))).toBe(
-        "<p>written</p>",
-      );
+      const Writer = async () => {
+        await later(null, 1);
+        Scope.set(KEY, "written");
+        return "w";
+      };
+      const Reader = () => Scope.get(KEY);
+      await renderToString(jsx("p", { children: jsx(Writer, {}) }));
+      expect(await renderToString(jsx("p", { children: jsx(Reader, {}) }))).toBe("<p>written</p>");
     });
   });
 
   test("concurrent renders stay isolated from each other", async () => {
+    const Reader = (ms: number) => async () => {
+      await later(null, ms);
+      return Scope.get(KEY);
+    };
     const render = (value: string) =>
       Scope.with(async () => {
         Scope.set(KEY, value);
@@ -175,8 +236,8 @@ const orderedPaths: [string, (children: unknown[]) => unknown][] = [
 ];
 
 for (const [name, build] of orderedPaths) {
-  describe(`${name}: sequential async tail`, () => {
-    test("later components start after awaited context writes", async () => {
+  describe(`${name}: concurrent async tail`, () => {
+    test("every sibling starts once one suspends; output keeps document order", async () => {
       const calls: string[] = [];
       const Writer = (value: string) => async () => {
         calls.push(`${value}:start`);
@@ -187,10 +248,11 @@ for (const [name, build] of orderedPaths) {
       };
       const Reader = () => {
         calls.push("read");
-        return Scope.get(KEY);
+        return Scope.get(KEY) ?? "unset";
       };
-      const html = await Scope.with(() =>
-        renderToString(
+      const html = await Scope.with(() => {
+        seedInitial();
+        return renderToString(
           build([
             "prefix",
             jsx(Writer("first"), {}),
@@ -198,16 +260,18 @@ for (const [name, build] of orderedPaths) {
             jsx(Reader, {}),
             "suffix",
           ]),
-        ),
-      );
+        );
+      });
       const tag = name === "rawtext tree walk" ? "script" : "p";
-      expect(html).toBe(`<${tag}>prefixfirstsecondsecondsuffix</${tag}>`);
-      expect(calls).toEqual(["first:start", "first:end", "second:start", "second:end", "read"]);
+      // Starts stay in document order; the reader runs before either awaited
+      // write lands, so it sees the seed; the output never reorders.
+      expect(calls).toEqual(["first:start", "second:start", "read", "first:end", "second:end"]);
+      expect(html).toBe(`<${tag}>prefixfirstsecondinitialsuffix</${tag}>`);
     });
 
     for (const inTail of [false, true]) {
       for (const asynchronous of [false, true]) {
-        test(`${inTail ? "tail" : "first"} failure (${asynchronous ? "async" : "sync"}) stops later components`, async () => {
+        test(`${inTail ? "tail" : "first"} failure (${asynchronous ? "async" : "sync"}) does not stop later components`, async () => {
           let reached = false;
           const error = new Error("stop");
           const Boom = () => {
@@ -220,8 +284,11 @@ for (const [name, build] of orderedPaths) {
           };
           const children = [jsx(Boom, {}), jsx(After, {})];
           if (inTail) children.unshift(jsx(async () => "first", {}));
+          // Component failures always arrive as rejections (`renderNode`
+          // normalizes the synchronous throw), so siblings always overlap and
+          // in-flight work completes; the rejection still surfaces.
           await expect(renderToString(build(children))).rejects.toBe(error);
-          expect(reached).toBe(false);
+          expect(reached).toBe(true);
         });
       }
     }

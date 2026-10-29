@@ -152,6 +152,33 @@ describe("tree context", () => {
     expect(useContext(Locale)).toBe("fr");
   });
 
+  test("sibling Providers of one context stay on their own frame under concurrency", async () => {
+    // The left sibling suspends longer; the right sibling's Provider runs and
+    // unwinds first. The left continuation must still read its own frame:
+    // Provider state lives in ALS frame chains, not in shared mutable slots.
+    const later = <T>(v: T, ms: number): Promise<T> =>
+      new Promise((resolve) => setTimeout(() => resolve(v), ms));
+    const SlowReader = async () => {
+      await later(null, 20);
+      return jsx(Reader, {});
+    };
+    const FastReader = async () => {
+      await later(null, 1);
+      return jsx(Reader, {});
+    };
+    expect(
+      await renderToString(
+        jsx("div", {
+          children: [
+            jsx(Locale.Provider, { value: "left", children: jsx(SlowReader, {}) }),
+            jsx(Locale.Provider, { value: "right", children: jsx(FastReader, {}) }),
+          ],
+        }),
+      ),
+    ).toBe("<div><b>left</b><b>right</b></div>");
+    expect(useContext(Locale)).toBe("fr");
+  });
+
   test("errors unwind and execution context remains separate", async () => {
     const Key = Scope.key<string>("tree-separation");
     const Fail = async () => {

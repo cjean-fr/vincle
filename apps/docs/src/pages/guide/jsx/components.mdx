@@ -76,7 +76,10 @@ async function Profile({ id }: { id: string }) {
 }
 ```
 
-Sibling async branches run in document order, one at a time.
+Sibling async branches start in document order and overlap as soon as one
+awaits; the output is joined in document order whatever the completion order.
+To let a slow part render after the page instead of holding it, use
+[`Defer` and `Slot`](/integration/flow/components) from `@vincle/flow`.
 
 ## What you don't need
 

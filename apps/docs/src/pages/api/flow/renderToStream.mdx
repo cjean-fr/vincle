@@ -81,8 +81,9 @@ It returns the stream only: headers are yours to set, or use
 The shell is never streamed progressively, `transformShell` included: it is
 rendered in full, `<head>` and all, and only then emitted. A fully synchronous
 page is a single chunk. Only fragments arrive later. Async siblings in the
-shell resolve in document order, not concurrently; for regions that render in
-parallel and patch into place, use [`<Defer>` and `<Slot>`](/api/flow/components).
+shell overlap (core's rule) but their output stays in document order; for
+regions that should stream in later and patch into place, use
+[`<Defer>` and `<Slot>`](/api/flow/components).
 
 A `<Defer>` whose content is an `AsyncIterable` streams one patch per item,
 with its `merge` type, and keeps the stream open until the iterable is

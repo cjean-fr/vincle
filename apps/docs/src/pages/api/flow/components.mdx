@@ -94,7 +94,10 @@ two sit in the page.
 ## Style / Script: asset emission
 
 `<Style>` and `<Script>` emit their tag where they stand, once per `name`: the
-first occurrence wins, later ones render nothing.
+first occurrence _in the document_ wins, later ones render nothing, even when a
+later occurrence finishes rendering first (siblings are concurrent). Only the
+winning occurrence's content factory is evaluated; it runs with the Provider
+and `Scope` context of its own position.
 
 ```tsx
 import { Style, Script } from "@vincle/flow/components";
