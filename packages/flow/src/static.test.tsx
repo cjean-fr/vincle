@@ -22,6 +22,25 @@ describe("renderToStatic", () => {
     expect(result).not.toContain("<script>");
   });
 
+  it("accepts a plain string as Defer fallback, since JSX.Element covers Renderable", async () => {
+    const result = await renderToStatic(
+      async (ctx) => {
+        const html = await ctx.renderPage(() => (
+          <html>
+            <body>
+              <Defer target="content" fallback="Loading & waiting">
+                <span>real</span>
+              </Defer>
+            </body>
+          </html>
+        ));
+        return html;
+      },
+      { adapter: NativeAdapter },
+    );
+    expect(result).toContain("Loading &amp; waiting");
+  });
+
   it("collects fragments without flushing them", async () => {
     const AsyncContent = async () => (<span>real</span>) as VNode;
     const result = await renderToStatic(

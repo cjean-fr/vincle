@@ -149,8 +149,10 @@ export const rawUrl = (value: string): RawUrl => new RawUrl(value);
 export type Awaitable<T> = T | Promise<T>;
 
 /**
- * What a component may *return*: much wider than `JSX.Element` (only what `jsx()`
- * produces). Keeping the two apart is what removes the casts.
+ * Every value the renderers accept: what a component may return and what
+ * `children` receives. `JSX.Element` names this same union, so the React-habit
+ * annotation type-checks; one union, not a narrow/wide pair, is what removes
+ * the casts.
  */
 export type Renderable = Awaitable<
   | VNode

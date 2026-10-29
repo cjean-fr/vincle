@@ -55,10 +55,9 @@ const html = await renderToString(
 );
 ```
 
-Type `children` as [`Renderable`](/api/core/jsx-types#renderable), not
-`JSX.Element`: children can also be text, a list or a promise, and
-`JSX.Element` is one element, so TypeScript rejects several children with
-"expects a single child".
+Type `children` as [`Renderable`](/api/core/jsx-types#renderable): children
+can also be text, a list or a promise. `JSX.Element` names the same union, so
+the React habit type-checks too.
 
 ## Async components
 
