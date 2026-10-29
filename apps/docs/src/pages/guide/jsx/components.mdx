@@ -34,9 +34,9 @@ Props are typed with ordinary TypeScript. Children arrive in the `children`
 prop, so one component's output becomes another's content:
 
 ```tsx
-import { renderToString, type Renderable } from "@vincle/core";
+import { renderToString, type JSX } from "@vincle/core";
 
-function Layout({ title, children }: { title: string; children: Renderable }) {
+function Layout({ title, children }: { title: string; children: JSX.Element }) {
   return (
     <html lang="en">
       <head>
@@ -55,9 +55,10 @@ const html = await renderToString(
 );
 ```
 
-Type `children` as [`Renderable`](/api/core/jsx-types#renderable): children
-can also be text, a list or a promise. `JSX.Element` names the same union, so
-the React habit type-checks too.
+Type `children` as `JSX.Element`, the annotation you already know from
+React: children can also be text, a list or a promise. The union it names is
+exported as [`Renderable`](/api/core/jsx-types#renderable) when you want to
+refer to it by name.
 
 ## Async components
 

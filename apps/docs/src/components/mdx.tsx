@@ -1,11 +1,11 @@
 /** @jsxImportSource @vincle/core */
-import { raw, type Renderable } from "@vincle/core";
+import { raw, type JSX } from "@vincle/core";
 
 function RawHtml({ html }: { html: string }) {
   return raw(html);
 }
 
-function Card({ title, children }: { title: string; children?: Renderable }) {
+function Card({ title, children }: { title: string; children?: JSX.Element }) {
   return (
     <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
       <div class="border-b border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900">
@@ -16,7 +16,7 @@ function Card({ title, children }: { title: string; children?: Renderable }) {
   );
 }
 
-function AgentCallout({ title, children }: { title: string; children?: Renderable }) {
+function AgentCallout({ title, children }: { title: string; children?: JSX.Element }) {
   return (
     <aside class="docs-agent-callout">
       <p class="docs-agent-callout-title">{title}</p>
