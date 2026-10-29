@@ -467,11 +467,11 @@ html {
 }
 
 /* The setup prompt is prose: wrap it, and keep its first line clear of the copy button. */
-.docs-agent-callout pre {
+.docs-agent-callout .docs-code-block:not(.docs-terminal) pre {
   padding-right: 3rem;
 }
-.docs-agent-callout pre,
-.docs-agent-callout pre code {
+.docs-agent-callout .docs-code-block:not(.docs-terminal) pre,
+.docs-agent-callout .docs-code-block:not(.docs-terminal) pre code {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
