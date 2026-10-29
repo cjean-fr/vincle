@@ -34,9 +34,9 @@ Props are typed with ordinary TypeScript. Children arrive in the `children`
 prop, so one component's output becomes another's content:
 
 ```tsx
-import { renderToString, type JSX } from "@vincle/core";
+import { renderToString, type Renderable } from "@vincle/core";
 
-function Layout({ title, children }: { title: string; children: JSX.Element | JSX.Element[] }) {
+function Layout({ title, children }: { title: string; children: Renderable }) {
   return (
     <html lang="en">
       <head>
@@ -54,6 +54,11 @@ const html = await renderToString(
   </Layout>,
 );
 ```
+
+Type `children` as [`Renderable`](/api/core/jsx-types#renderable), not
+`JSX.Element`: children can also be text, a list or a promise, and
+`JSX.Element` is one element, so TypeScript rejects several children with
+"expects a single child".
 
 ## Async components
 

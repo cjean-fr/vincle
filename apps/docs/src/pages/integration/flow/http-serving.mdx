@@ -29,6 +29,22 @@ Bun.serve({
 The response body is a stream: the shell is flushed immediately: the browser starts parsing HTML while
 fragments are still rendering.
 
+Bun closes an idle connection after 10 seconds by default. Idle covers a
+handler still preparing its first byte, and a stream pausing between
+fragments: a slow data source then resets the response mid-page. Raise
+[`idleTimeout`](https://bun.com/docs/runtime/http/server#idletimeout) (in
+seconds, 255 at most, `0` disables) when data can be that slow:
+
+```tsx
+Bun.serve({
+  port: 3000,
+  idleTimeout: 60,
+  async fetch(req) {
+    return serve(req, () => <Page />, NativeAdapter);
+  },
+});
+```
+
 ### Signature
 
 ```tsx
