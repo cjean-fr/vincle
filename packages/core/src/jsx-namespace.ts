@@ -14,15 +14,7 @@
  * @module
  */
 
-import type { VNode } from "./jsx-runtime.js";
-import type {
-  Awaitable,
-  ClassValue,
-  RawString,
-  RawUrl,
-  Renderable,
-  TemplateNode,
-} from "./types.js";
+import type { Awaitable, ClassValue, RawString, RawUrl, Renderable } from "./types.js";
 
 // @generated:start
 type CSSGlobals = "-moz-initial" | "inherit" | "initial" | "revert" | "revert-layer" | "unset";
@@ -3226,32 +3218,33 @@ export type CSSProperties = {
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace JSX {
   /**
-   * What `jsx()` produces: a `VNode`, a `RawString` when static serialization
-   * succeeded, or a promise of one when an attribute value is itself a promise.
+   * Every value the renderers accept: the same union as `Renderable`, under
+   * the name anyone arriving from React reaches for first. `children:
+   * JSX.Element` therefore takes a single node, text, a list, a promise or an
+   * async iterable, instead of rejecting several children with TS2746.
    *
-   * `RawString` is a first-class renderable leaf. `renderNode` special-cases
-   * `instanceof RawString` before it ever looks at `VNode`, so it belongs here
-   * rather than behind a cast at each call site.
+   * The trade-off, chosen deliberately: `Element` no longer promises one node
+   * with structure. Code that needs the node itself (tag, props) types it as
+   * `VNode`, not `JSX.Element`.
    */
-  export type Element = Awaitable<VNode | RawString | TemplateNode>;
+  export type Element = Renderable;
 
   /**
    * What may be used as a component.
    *
-   * The return type is `Renderable`, not `Element`: the renderers handle far more
-   * than nodes. `() => "text"`, `() => 42`, `() => [<a/>, <b/>]` and
-   * `async () => <div/>` all render correctly, and `Element` as the component
-   * contract rejects every one of them. Widening stops there; an object or a
-   * symbol return is still an error.
+   * The return type is the whole `Renderable` union: `() => "text"`,
+   * `() => 42`, `() => [<a/>, <b/>]` and `async () => <div/>` all render
+   * correctly. Widening stops there; an object or a symbol return is still an
+   * error.
    *
-   * `Awaitable<Renderable>`, not `Renderable`, for the one shape the flat type
-   * cannot express: `JSX.Element` is itself awaitable, so an async component that
-   * *writes its return type down* as `async (): Promise<JSX.Element>`
-   * (the annotation anyone arriving from React reaches for) creates a promise of a
-   * promise. Inference collapses it, so the flat type holds only as long as nobody
-   * annotates. Making `Renderable` itself recursive is the other way to say this,
-   * and TypeScript refuses it: a type reached through its own `then` callback is
-   * TS1062. The extra level belongs on the boundary, where the walk resolves it.
+   * `Awaitable<Renderable>`, not `Renderable`, for the component that *writes
+   * its return type down* as `async (): Promise<JSX.Element>` (the annotation
+   * anyone arriving from React reaches for): a promise of the whole union is
+   * one promise layer more than `Renderable` itself carries, so the boundary
+   * adds it. The promise layer stays at the boundary deliberately: a
+   * `Promise<Self>` member inside the union would make `Awaited`-style
+   * unfolding diverge (TS2589), where recursion through `Iterable` is lazy
+   * and safe.
    */
   export type ElementType = string | ((props: any) => Awaitable<Renderable>);
 

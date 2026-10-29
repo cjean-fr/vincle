@@ -43,7 +43,7 @@ receive or forward its value as a prop. `Article` is an ordinary component
 defined for this example, not a Vincle API:
 
 ```tsx
-import type { Renderable } from "@vincle/core";
+import type { JSX } from "@vincle/core";
 import { createContext, useContext, renderToString } from "@vincle/core";
 
 const Language = createContext("fr");
@@ -52,7 +52,7 @@ function Label() {
   return <span>{useContext(Language)}</span>;
 }
 
-function Article({ children }: { children: Renderable }) {
+function Article({ children }: { children: JSX.Element }) {
   return <main>{children}</main>;
 }
 
