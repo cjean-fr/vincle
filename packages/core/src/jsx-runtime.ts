@@ -10,7 +10,7 @@ import {
 } from "./errors.js";
 import { escapeContent, isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { ownChildren } from "./props.js";
-import { renderNode, sequenceFrom } from "./render.js";
+import { renderNode } from "./render.js";
 import { isVoidElement, serializeStatic, voidChildrenMessage } from "./serialize.js";
 import { invalidTagMessage, isValidTag } from "./tag.js";
 import { renderElementAttr } from "./template-attrs.js";
@@ -231,11 +231,41 @@ async function escapeArrayFrom(
   arr: unknown[],
   from: number,
 ): Promise<RawString> {
-  return new RawString(
-    await sequenceFrom(prefix + (await pending), arr, from, (out, value) => {
-      const part = renderValue(value);
-      return typeof part === "string" ? out + part : part.then((text) => out + text);
-    }),
+  // Same rule as `renderChildrenFrom`: once one element suspends, the rest
+  // start at once and join in document order. A synchronous throw becomes a
+  // rejection so the remaining elements still start.
+  const parts: Array<string | Promise<string>> = [pending];
+  for (let i = from; i < arr.length; i++) {
+    let part: string | Promise<string>;
+    try {
+      part = renderValue(arr[i]);
+    } catch (error) {
+      part = Promise.reject(error);
+    }
+    parts.push(part);
+  }
+  let out = prefix;
+  let failure: unknown;
+  let failed = false;
+  for (const part of await Promise.all(parts.map(settle))) {
+    if (part.failed) {
+      if (!failed) failure = part.reason;
+      failed = true;
+      continue;
+    }
+    out += part.value;
+  }
+  if (failed) throw failure;
+  return new RawString(out);
+}
+
+/** Wrap one sibling's outcome so `Promise.all` survives a rejection. */
+function settle(
+  part: string | Promise<string>,
+): Promise<{ value: string; failed?: false } | { reason: unknown; failed: true }> {
+  return Promise.resolve(part).then(
+    (value) => ({ value }),
+    (reason: unknown) => ({ reason, failed: true as const }),
   );
 }
 
@@ -290,10 +320,11 @@ export function jsxAttr(
  * template literal that interleaves static template fragments with escaped
  * values and VNodes (components the transform left in place, Deno-style).
  *
- * A VNode hole renders through the tree walk (`renderNode`), one hole at a
- * time, in document order: the same sequencing rule as `renderChildrenFrom`
- * in `render.ts`. `Promise.all` over the holes would overlap siblings that
- * mutate the context: the race the sequential walk exists to prevent.
+ * A VNode hole renders through the tree walk (`renderNode`). Holes are
+ * siblings, so they follow the rule of `renderChildrenFrom` in `render.ts`:
+ * started left to right, concurrent once one suspends, joined in document
+ * order. The join itself is sequential, which is what lets `appendHole` keep
+ * judging dropped-attribute separators from the accumulated prefix.
  *
  * One pass: scanning `values` for a promise, mapping them to text, then walking
  * the result to interleave is three traversals and one array for what is almost
@@ -446,13 +477,34 @@ function renderTemplateAsync(
     new RawString(appendHole(prefix, text) + (templates[from] ?? ""));
   if (from === values.length)
     return typeof firstPart === "string" ? finishFirst(firstPart) : firstPart.then(finishFirst);
+  // Concurrent tail, same rule as `renderChildrenFrom`: the holes after the
+  // suspended one all start now (a synchronous throw becomes a rejection so
+  // they still do), then join left to right. `appendHole` stays a join-time
+  // step: it reads the accumulated prefix, which only exists in order.
+  const parts: Array<string | Promise<string>> = [firstPart];
+  for (let i = from; i < values.length; i++) {
+    let part: string | Promise<string>;
+    try {
+      part = renderAt(values[i], i);
+    } catch (error) {
+      part = Promise.reject(error);
+    }
+    parts.push(part);
+  }
   return (async () => {
-    const initial = appendHole(prefix, await firstPart) + (templates[from] ?? "");
-    const out = await sequenceFrom(initial, values, from, (acc, value, i) => {
-      const part = renderAt(value, i);
-      const append = (text: string) => appendHole(acc, text) + (templates[i + 1] ?? "");
-      return typeof part === "string" ? append(part) : part.then(append);
-    });
+    let out = prefix;
+    let failure: unknown;
+    let failed = false;
+    for (let j = 0; j < parts.length; j++) {
+      const part = await settle(parts[j]!);
+      if (part.failed) {
+        if (!failed) failure = part.reason;
+        failed = true;
+        continue;
+      }
+      out = appendHole(out, part.value) + (templates[from + j] ?? "");
+    }
+    if (failed) throw failure;
     return new RawString(out);
   })();
 }

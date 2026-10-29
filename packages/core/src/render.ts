@@ -16,9 +16,11 @@ import { TemplateNode } from "./types.js";
 /**
  * Render a JSX tree to an HTML string. Text is escaped; only `raw()` is not.
  *
- * Components may be async, and any nesting of promises, arrays, iterables and
- * async iterables resolves in document order. Every failure arrives as a
- * rejection, never as a synchronous throw.
+ * Components may be async. Sibling subtrees start in document order and run
+ * concurrently once one of them suspends; the output is joined in document
+ * order whatever the completion order. A failure arrives as a rejection,
+ * never as a synchronous throw, and reports the first failure in document
+ * order after the concurrent siblings have settled.
  *
  * @example
  * ```tsx
@@ -158,6 +160,7 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
   // Concatenate directly instead of filling an array then joining: the
   // intermediate array costs 35% of the time on `realworld` (V8 profile), GC
   // included.
+  // Isolation is uniform across runtimes; only scheduling differs (below).
   let out = "";
   if (rawtextTag === undefined) {
     for (let i = 0; i < children.length; i++) {
@@ -171,8 +174,9 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
 
   for (let i = 0; i < children.length; i++) {
     const part = renderChild(children[i], rawtextTag);
-    // First child that suspends: the rest is finished by the sequential tail.
-    // What is already rendered stays a plain string, never an array element.
+    // First child that suspends: the rest is started at once and joined in
+    // document order. What is already rendered stays a plain string, never an
+    // array element.
     if (typeof part !== "string") return renderChildrenFrom(out, part, children, i + 1, rawtextTag);
     out = joinRawTagContent(out, part, rawtextTag);
   }
@@ -180,33 +184,67 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
 }
 
 /**
- * Finish a child list whose `from - 1`-th element suspended: one child at a
- * time, each started only once its left sibling is done.
+ * Finish a child list whose `from - 1`-th element suspended: start every
+ * remaining sibling at once, then join in document order.
  *
- * This is the engine's sequencing rule, not an implementation detail:
- * **components execute in document order.** Starting every remaining sibling
- * before awaiting any (`Promise.all`) would overlap their I/O and make the
- * document depend on which one finished first: a real race, since `context.ts`
- * is a mutable execution stack overlapping siblings would share. Deliberate
- * concurrency instead goes through `<Defer>` / `<Slot>` in `@vincle/flow`,
- * visible in the markup.
+ * This is the engine's concurrency rule: **siblings run concurrently, output
+ * stays in document order.** Their synchronous sections still execute in
+ * document order (start order), but async completions overlap. `Scope` is
+ * shared per render and the engine does not arbitrate it: a sibling that sets
+ * a value after awaiting races with readers in other siblings, exactly like
+ * any shared state in concurrent async code. Coordination that must be
+ * ordered goes through `<Defer>` / `<Slot>` in `@vincle/flow`. A rejection
+ * reports the first failure in document order after every sibling settled.
  */
-async function renderChildrenFrom(
+function renderChildrenFrom(
   prefix: string,
   pending: Promise<string>,
   children: unknown[],
   from: number,
   rawtextTag: string | undefined,
 ): Promise<string> {
-  const first = await pending;
-  const initial =
-    rawtextTag === undefined ? prefix + first : joinRawTagContent(prefix, first, rawtextTag);
-  return sequenceFrom(initial, children, from, (out, child) => {
-    const part = renderChild(child, rawtextTag);
-    const append = (text: string) =>
-      rawtextTag === undefined ? out + text : joinRawTagContent(out, text, rawtextTag);
-    return typeof part === "string" ? append(part) : part.then(append);
-  });
+  const parts: Array<string | Promise<string>> = [pending];
+  for (let i = from; i < children.length; i++) {
+    let part: string | Promise<string>;
+    try {
+      part = renderChild(children[i], rawtextTag);
+    } catch (error) {
+      // Concurrent mode starts every sibling: a synchronous throw becomes a
+      // rejection so the remaining siblings still start.
+      part = Promise.reject(error);
+    }
+    parts.push(part);
+  }
+  return settleInDocumentOrder(prefix, parts, rawtextTag);
+}
+
+async function settleInDocumentOrder(
+  prefix: string,
+  parts: Array<string | Promise<string>>,
+  rawtextTag: string | undefined,
+): Promise<string> {
+  const settled = await Promise.all(
+    parts.map((part) =>
+      Promise.resolve(part).then(
+        (value) => ({ value }),
+        (reason: unknown) => ({ reason }),
+      ),
+    ),
+  );
+  let out = prefix;
+  let failure: { reason: unknown } | undefined;
+  for (const result of settled) {
+    if ("reason" in result) {
+      failure ??= result;
+      continue;
+    }
+    out =
+      rawtextTag === undefined
+        ? out + result.value
+        : joinRawTagContent(out, result.value, rawtextTag);
+  }
+  if (failure) throw failure.reason;
+  return out;
 }
 
 /**
@@ -215,11 +253,10 @@ async function renderChildrenFrom(
  * not introduce an await.
  *
  * The callback receives the accumulated text and returns its replacement.
- * This lets the tree walk join rawtext safely and the precompile runtime
- * remove a dropped attribute's separator, rather than only concatenate.
- * `renderChildrenFrom`, `escapeArrayFrom` and `renderTemplateAsync` share this
- * rule. Pull-based async iterables and attribute-object resolution have their
- * own loops; they do not assemble an indexed list of rendered strings.
+ * Kept for callers that genuinely need sequential steps: the engine's own
+ * sibling lists (children, template holes, array holes) start concurrently
+ * once one suspends and only their *join* is sequential, in
+ * `settleInDocumentOrder` and its template/array counterparts.
  *
  * @internal
  */
