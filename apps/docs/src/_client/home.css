@@ -104,7 +104,16 @@
 .dark .docs-hero-example .docs-code-block {
   --docs-code-header: #272c30;
 }
-/* Keep the complete example readable even on narrow screens. */
+/* Keep the complete example readable even on narrow screens, with the first
+   line clear of the copy button. */
+.docs-hero-example .docs-code-block pre {
+  padding-right: 3rem;
+}
+/* Marked rows still reach the pre's padding edge on the right. */
+.docs-hero-example .docs-code-block.has-marks pre code .line {
+  margin-right: -3rem;
+  padding-right: 3rem;
+}
 .docs-hero-example .docs-code-block pre,
 .docs-hero-example .docs-code-block pre code {
   white-space: pre-wrap;
@@ -154,6 +163,7 @@
   padding-block: 4.5rem;
 }
 .docs-home h2 {
+  text-wrap: balance;
   font-size: clamp(1.75rem, 3vw, 2.25rem);
   line-height: 1.2;
   font-weight: 600;
@@ -168,6 +178,17 @@
 }
 .docs-section-heading p {
   max-width: 38ch;
+}
+.docs-section-heading p + p {
+  margin-top: 0.75rem;
+}
+/* The streaming heading shares the demo's columns: the title leads over the
+   code, the intro sits over the replay, both on the first baseline. */
+.docs-stream .docs-section-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1.25rem 3rem;
+  align-items: baseline;
 }
 .docs-home-section p {
   color: var(--docs-color-text-body);
@@ -293,14 +314,10 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   justify-items: stretch;
-  gap: 0.5rem;
+  /* Steps separate more than a label from its frame (0.35rem). */
+  gap: 1.5rem;
   position: sticky;
   top: 5rem;
-}
-.docs-stream-replay .docs-stream-arrow {
-  justify-self: center;
-  transform: rotate(90deg);
-  line-height: 1;
 }
 .docs-stream-label {
   margin: 0 0 0.35rem;
@@ -361,10 +378,6 @@
   font-weight: 500;
 }
 
-.docs-stream-arrow {
-  font-size: 1.1rem;
-  color: var(--docs-color-text-secondary);
-}
 .docs-stream-wire {
   grid-column: 1 / -1;
   font-size: 0.8rem;
@@ -385,30 +398,17 @@
   .docs-stream-replay {
     grid-template-columns: 1fr;
   }
-  .docs-stream-arrow {
-    transform: rotate(90deg);
-    justify-self: center;
-  }
 }
 
 @media (max-width: 900px) {
-  .docs-stream-grid {
+  .docs-stream-grid,
+  .docs-stream .docs-section-heading {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .docs-stream-grid {
     gap: 2rem;
   }
   .docs-stream-replay {
     position: static;
   }
-}
-
-.docs-stream-full {
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--docs-color-text-secondary);
-}
-.docs-stream-full summary {
-  cursor: pointer;
-}
-.docs-stream-full[open] summary {
-  margin-bottom: 0.75rem;
 }

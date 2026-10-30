@@ -136,11 +136,12 @@ import StreamingReplay from "../components/StreamingReplay";
     </div>
     <div class="docs-stream-grid">
       <div class="docs-hero-example">
-        ```tsx {5-7,12} title="results-page.tsx"
+        ```tsx {6-8,13} title="results-page.tsx"
         // Results is an ordinary async component; the page opts in:
         function Page() {
           return (
             <main>
+              <h1>Search results</h1>
               <Defer fallback={<p>Loading results…</p>}>
                 <Results />
               </Defer>
@@ -150,45 +151,6 @@ import StreamingReplay from "../components/StreamingReplay";
 
         const stream = renderToStream(() => <Page />, NativeAdapter);
         ```
-        <p class="docs-example-note">The preview runs the exact file below.</p>
-        <details class="docs-stream-full">
-          <summary>The full results-page.tsx, as executed</summary>
-
-          ```tsx {25-27,32} title="results-page.tsx"
-          import { Defer, renderToStream } from "@vincle/flow";
-          import { NativeAdapter } from "@vincle/flow/adapters";
-
-          async function findResults() {
-            return [{ title: "Getting started", href: "/guide/getting-started/installation" }];
-          }
-
-          async function Results() {
-            const items = await findResults();
-            return (
-              <ul>
-                {items.map((item) => (
-                  <li>
-                    <a href={item.href}>{item.title}</a>
-                  </li>
-                ))}
-              </ul>
-            );
-          }
-
-          function Page() {
-            return (
-              <main>
-                <h1>Search results</h1>
-                <Defer fallback={<p>Loading results…</p>}>
-                  <Results />
-                </Defer>
-              </main>
-            );
-          }
-
-          const stream = renderToStream(() => <Page />, NativeAdapter);
-          ```
-        </details>
       </div>
       <StreamingReplay />
     </div>
