@@ -466,6 +466,10 @@ html {
   margin-block: 1rem 0;
 }
 
+.docs-agent-callout .docs-code-block.docs-prompt {
+  margin-block: 0.5rem 0;
+}
+
 /* === Table of contents === */
 .docs-toc-track {
   position: relative;
