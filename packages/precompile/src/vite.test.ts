@@ -16,7 +16,7 @@ function errorCtx(): { error: (msg: string) => never } {
 }
 
 describe("the vite adapter", () => {
-  function callTransform(
+  async function callTransform(
     code: string,
     id: string,
     config?: PluginConfig,
@@ -27,59 +27,59 @@ describe("the vite adapter", () => {
     // @ts-expect-error: accessing internal Vite plugin lifecycle hooks that aren't on the public type
     plugin.configResolved?.(resolvedConfig);
     // @ts-expect-error: accessing internal Vite plugin transform hook
-    return plugin.transform!(code, id);
+    return await plugin.transform!(code, id);
   }
 
-  it("returns a Vite plugin object", () => {
+  it("returns a Vite plugin object", async () => {
     const plugin = precompile();
     expect(plugin.name).toBe("@vincle/precompile");
     expect(plugin.enforce).toBe("pre");
     expect(typeof plugin.transform).toBe("function");
   });
 
-  it("skips non-JSX files", () => {
-    const result = callTransform('console.log("hello");', "/src/test.ts");
+  it("skips non-JSX files", async () => {
+    const result = await callTransform('console.log("hello");', "/src/test.ts");
     expect(result).toBeUndefined();
   });
 
-  it("skips node_modules", () => {
-    const result = callTransform("<div>hello</div>", "/node_modules/foo/test.tsx");
+  it("skips node_modules", async () => {
+    const result = await callTransform("<div>hello</div>", "/node_modules/foo/test.tsx");
     expect(result).toBeUndefined();
   });
 
-  it("skips files without JSX", () => {
-    const result = callTransform('const x = "no JSX here";', "/src/app.tsx");
+  it("skips files without JSX", async () => {
+    const result = await callTransform('const x = "no JSX here";', "/src/app.tsx");
     expect(result).toBeUndefined();
   });
 
-  it("transforms JSX with default virtual runtime module", () => {
+  it("transforms JSX with default virtual runtime module", async () => {
     const code = `const x = <div class="foo">{name}</div>;`;
-    const result = callTransform(code, "/src/app.tsx");
+    const result = await callTransform(code, "/src/app.tsx");
     expect(result).not.toBeUndefined();
     expect(result!.code).toContain("virtual:vincle-precompile-runtime");
     expect(result!.code).toContain("jsxTemplate");
     expect(result!.code).toContain("name");
   });
 
-  it("uses explicit runtimeSource when provided", () => {
+  it("uses explicit runtimeSource when provided", async () => {
     const code = `const x = <div>hello</div>;`;
-    const result = callTransform(code, "/src/app.tsx", {
+    const result = await callTransform(code, "/src/app.tsx", {
       runtimeSource: "custom/jsx-runtime",
     });
     expect(result).not.toBeUndefined();
     expect(result!.code).toContain("custom/jsx-runtime");
   });
 
-  it("falls back to the virtual runtime module when no runtimeSource given", () => {
+  it("falls back to the virtual runtime module when no runtimeSource given", async () => {
     const code = `const x = <div>hello</div>;`;
-    const result = callTransform(code, "/src/app.tsx", undefined, "preact");
+    const result = await callTransform(code, "/src/app.tsx", undefined, "preact");
     expect(result).not.toBeUndefined();
     expect(result!.code).toContain("virtual:vincle-precompile-runtime");
   });
 
-  it("prefers explicit runtimeSource over the default", () => {
+  it("prefers explicit runtimeSource over the default", async () => {
     const code = `const x = <div>hello</div>;`;
-    const result = callTransform(
+    const result = await callTransform(
       code,
       "/src/app.tsx",
       { runtimeSource: "custom/jsx-runtime" },
@@ -90,26 +90,38 @@ describe("the vite adapter", () => {
     expect(result!.code).not.toContain("preact/jsx-runtime");
   });
 
-  it("transforms JSX in .jsx files", () => {
+  it("transforms JSX in .jsx files", async () => {
     const code = `const x = <div>hello</div>;`;
-    const result = callTransform(code, "/src/app.jsx");
+    const result = await callTransform(code, "/src/app.jsx");
     expect(result).not.toBeUndefined();
     expect(result!.code).toContain("jsxTemplate");
   });
 
-  it("uses the virtual runtime module even when esbuild.jsxImportSource is set", () => {
+  it("uses the virtual runtime module even when esbuild.jsxImportSource is set", async () => {
     const code = `<div/>`;
-    const result = callTransform(code, "/src/a.tsx", undefined, "preact");
+    const result = await callTransform(code, "/src/a.tsx", undefined, "preact");
     expect(result!.code).toContain("virtual:vincle-precompile-runtime");
   });
 
-  it("passes through sourcemap from transform", () => {
-    const result = callTransform("<div>{name}</div>", "/src/app.tsx");
+  it("passes through sourcemap from transform", async () => {
+    const result = await callTransform("<div>{name}</div>", "/src/app.tsx");
     expect(result).not.toBeUndefined();
     expect(result!.map).toBeDefined();
     expect(result!.map!.sources).toContain("/src/app.tsx");
   });
 
+  it("precompiles a file whose pragma names a compatible runtime", async () => {
+    const code = `/** @jsxImportSource preact */\nconst x = <div>hello</div>;`;
+    const result = await callTransform(code, "/src/app.tsx");
+    expect(result).not.toBeUndefined();
+    expect(result!.code).toContain("preact/jsx-runtime");
+  });
+
+  it("delegates when a file's pragma names an incompatible runtime", async () => {
+    const code = `/** @jsxImportSource node:path */\nconst x = <div>hello</div>;`;
+    const result = await callTransform(code, "/src/app.tsx");
+    expect(result).toBeUndefined();
+  });
   it("falls back to Deno's output when the runtime cannot be loaded", async () => {
     const plugin = precompile({
       runtimeSource: "totally-bogus-module-xyz",
@@ -420,19 +432,19 @@ function named(code: string, re: RegExp): string[] {
 }
 
 describe("plugin config", () => {
-  it("rejects a non-string runtimeSource at plugin creation", () => {
+  it("rejects a non-string runtimeSource at plugin creation", async () => {
     expect(() => precompile({ runtimeSource: 42 as never })).toThrow(
       "[vincle/precompile] config: runtimeSource must be a non-empty string module",
     );
   });
 
-  it("rejects an empty runtimeSource at plugin creation", () => {
+  it("rejects an empty runtimeSource at plugin creation", async () => {
     expect(() => precompile({ runtimeSource: "" })).toThrow(
       "[vincle/precompile] config: runtimeSource must be a non-empty string module",
     );
   });
 
-  it("accepts a valid config", () => {
+  it("accepts a valid config", async () => {
     const plugin = precompile({
       runtimeSource: "@vincle/core/jsx-precompile-runtime",
     });
@@ -465,7 +477,7 @@ describe("declared but never applied", () => {
     };
   }
 
-  it("warns when no JSX module went through Vite", () => {
+  it("warns when no JSX module went through Vite", async () => {
     const b = build({ runtimeSource: "@vincle/core/jsx-precompile-runtime" });
     b.transform("export const a = 1;", "/app/client.ts");
     const [warning] = b.end();
@@ -473,14 +485,14 @@ describe("declared but never applied", () => {
     expect(warning).toContain("no .jsx/.tsx module passed through it at all");
   });
 
-  it("says so when JSX modules passed but held no JSX", () => {
+  it("says so when JSX modules passed but held no JSX", async () => {
     const b = build({ runtimeSource: "@vincle/core/jsx-precompile-runtime" });
     b.transform("export const a = 1;", "/app/thing.tsx");
     const [warning] = b.end();
     expect(warning).toContain("1 .jsx/.tsx module(s) passed through it");
   });
 
-  it("does not mistake less-than operators or '<' strings for JSX", () => {
+  it("does not mistake less-than operators or '<' strings for JSX", async () => {
     for (const code of [
       "export const a = b < c;",
       'export const a = "<b>";',
@@ -492,7 +504,7 @@ describe("declared but never applied", () => {
     }
   });
 
-  it("fails when genuine host or component JSX has no detectable runtime", () => {
+  it("fails when genuine host or component JSX has no detectable runtime", async () => {
     for (const code of ["export const a = <p>hi</p>;", "export const a = <Comp />;"]) {
       const b = build();
       b.transform(code, "/app/thing.tsx");
@@ -500,13 +512,13 @@ describe("declared but never applied", () => {
     }
   });
 
-  it("stays quiet once a module has been precompiled", () => {
+  it("stays quiet once a module has been precompiled", async () => {
     const b = build({ runtimeSource: "@vincle/core/jsx-precompile-runtime" });
     b.transform("export const a = <div>x</div>;", "/app/page.tsx");
     expect(b.end()).toEqual([]);
   });
 
-  it("stays quiet in dev, where the hook fires at server close", () => {
+  it("stays quiet in dev, where the hook fires at server close", async () => {
     const plugin = precompile({ runtimeSource: "@vincle/core/jsx-precompile-runtime" });
     const warnings: string[] = [];
     // @ts-expect-error: Vite plugin lifecycle hooks are not on the public type
