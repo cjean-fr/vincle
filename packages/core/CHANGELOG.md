@@ -4,7 +4,7 @@
 
 ### Changed
 
-- **Breaking (behavior)**: sibling subtrees now render concurrently. They still start in document order and their output is still joined in document order, but once a sibling suspends, the remaining siblings start instead of waiting for it. Two consequences for code that relied on sequential execution: a `Scope.set` placed after an `await` in one sibling races with readers in the other siblings (writes before the first `await` stay visible to later siblings), and a sibling that throws or rejects no longer prevents the later siblings from running - `renderToString` rejects with the first failure in document order after every sibling has settled. The precompiled-template and array paths follow the same rule, so precompiled and dynamic trees still render the same bytes. A fully synchronous tree is unchanged.
+- **Breaking (behavior)**: sibling subtrees now render concurrently. They still start in document order and their output is still joined in document order, but once a sibling suspends, the remaining siblings start instead of waiting for it. Two consequences for code that relied on sequential execution: a `Scope.set` placed after an `await` in one sibling races with readers in the other siblings (writes before the first `await` stay visible to later siblings), and a sibling that throws or rejects no longer prevents the later siblings from running - `renderToString` rejects at once with that failure, without waiting for the siblings still in flight. The precompiled-template and array paths follow the same rule, so precompiled and dynamic trees still render the same bytes. A fully synchronous tree is unchanged.
 
 ### Fixed
 
