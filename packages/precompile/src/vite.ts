@@ -11,9 +11,8 @@ import precompileTransform, {
   type PluginConfig,
   type RenderAttr,
   type RenderEscape,
-  detectJsxImportSource,
-  normalizeJsxSource,
 } from "./index.js";
+import { detectJsxImportSource, normalizeJsxSource } from "./jsx-source.js";
 import { declaredRuntimeHelpers } from "./runtime-helpers.js";
 
 export type { PluginConfig };

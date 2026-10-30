@@ -14,31 +14,11 @@ import type {
 import { assertRuntimeSource } from "./config.js";
 import { RUNTIME_SOURCE } from "./core/index.js";
 import { collectNode } from "./emit.js";
+import { detectJsxImportSource, normalizeJsxSource } from "./jsx-source.js";
 import { normalizeRuntimeHelpers } from "./runtime-helpers.js";
 import { injectRuntimeImport } from "./runtime-import.js";
 
 export type { PluginConfig, RenderAttr, RenderEscape, TransformResult } from "./types.js";
-
-/**
- * Extract the JSX import source declared by a `@jsxImportSource` pragma, if any.
- * Only leading comments are considered, so a mention in code does not count.
- * Returns `null` when no pragma is present (the file is treated as using the
- * configured source).
- */
-function detectJsxImportSource(code: string): string | null {
-  const head = code.slice(0, 2048);
-  const match = head.match(/@jsxImportSource\s+([^\s*]+)/);
-  return match ? match[1]! : null;
-}
-
-/**
- * Canonical form of a JSX import source: strip the `/jsx-runtime` or
- * `/jsx-dev-runtime` suffix (and any trailing file extension) so that
- * `@vincle/core` and `@vincle/core/jsx-runtime` compare equal.
- */
-function normalizeJsxSource(src: string): string {
-  return src.replace(/\/jsx-(dev-)?runtime(\.[a-z]+)?$/, "").replace(/\.[a-z]+$/, "");
-}
 
 export default function precompileTransform(
   code: string,
