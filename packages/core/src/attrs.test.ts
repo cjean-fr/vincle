@@ -10,7 +10,7 @@ import {
   resolveAttrName,
   serializeAttr,
 } from "./attrs.js";
-import { coerceToText, valueToText } from "./escape.js";
+import { valueToText } from "./escape.js";
 import { jsx } from "./jsx-runtime.js";
 import { renderNode, renderToString } from "./render.js";
 import { isAnimationTag } from "./tag.js";
@@ -819,37 +819,36 @@ describe("a RawString attribute value cannot end the attribute", () => {
   });
 });
 
-describe("Date values do not depend on the time zone", () => {
+describe("Date values follow the runtime time zone", () => {
   const instant = new Date(Date.UTC(2026, 9, 25, 22, 30));
 
-  test("the same instant renders the same text in every zone", async () => {
+  test("a Date renders as String(date) under the runtime zone", async () => {
     const saved = process.env.TZ;
     try {
       const seen = new Set<string>();
-      for (const zone of ["UTC", "Asia/Tokyo", "Europe/Paris", "America/Los_Angeles"]) {
+      for (const zone of ["UTC", "Asia/Tokyo", "America/Los_Angeles"]) {
         process.env.TZ = zone;
-        seen.add(
-          [
-            valueToText(instant),
-            String(renderNode(instant)),
-            String(buildAttrs({ dateTime: instant }, "time")),
-            await renderToString(jsx("script", { children: instant })),
-          ].join("|"),
+        const expected = String(instant);
+        seen.add(expected);
+        expect(valueToText(instant)).toBe(expected);
+        expect(String(renderNode(instant))).toBe(expected);
+        expect(String(buildAttrs({ dateTime: instant }, "time"))).toContain(
+          `datetime="${expected}"`,
+        );
+        expect(String(await renderToString(jsx("script", { children: instant })))).toContain(
+          expected,
         );
       }
-      expect([...seen]).toHaveLength(1);
+      // The contract is the runtime zone: the same instant must differ across zones,
+      // so a test environment that ignores TZ changes fails here instead of passing silently.
+      expect(seen.size).toBeGreaterThan(1);
     } finally {
       if (saved === undefined) delete process.env.TZ;
       else process.env.TZ = saved;
     }
   });
 
-  test("is an ISO 8601 UTC string, and an invalid date keeps `Invalid Date`", () => {
-    expect(valueToText(instant)).toBe("2026-10-25T22:30:00.000Z");
-    expect(coerceToText(new Date(0))).toBe("1970-01-01T00:00:00.000Z");
-    expect(coerceToText(new Date(Number.NaN))).toBe("Invalid Date");
-    expect(String(buildAttrs({ dateTime: instant }, "time"))).toContain(
-      'datetime="2026-10-25T22:30:00.000Z"',
-    );
+  test("an invalid date keeps String's `Invalid Date`", () => {
+    expect(valueToText(new Date(Number.NaN))).toBe("Invalid Date");
   });
 });

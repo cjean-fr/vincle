@@ -1,5 +1,5 @@
 import { ERR_FUNCTION_ATTR, vincleError } from "./errors.js";
-import { coerceToText, escapeAttr, isSafeScheme } from "./escape.js";
+import { escapeAttr, isSafeScheme } from "./escape.js";
 import { isAnimationTag } from "./tag.js";
 import { RawString, RawUrl } from "./types.js";
 
@@ -470,7 +470,7 @@ function attrFragment(
   }
 
   // Only a plain object is a style bag: a class instance (`style={new Date()}`)
-  // isn't, and falls through to the text coercion like any other attribute.
+  // isn't, and falls through to `String(value)` like any other attribute.
   if (attrName === "style" && isPlainObject(value)) {
     const styleStr = styleToString(value as Record<string, string | number | null | undefined>);
     return styleStr ? `${prefix}style="${escapeAttr(styleStr)}"` : "";
@@ -481,7 +481,7 @@ function attrFragment(
     return s ? `${prefix}class="${escapeAttr(s)}"` : "";
   }
 
-  let str = coerceToText(value);
+  let str = String(value);
   if (url !== NOT_URL && !isAllowedUrl(str, url)) str = "#blocked";
   return `${prefix}${attrName}="${escapeAttr(str)}"`;
 }

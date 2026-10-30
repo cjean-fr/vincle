@@ -385,21 +385,11 @@ export function renderLeaf(v: unknown, rawtextTag: string | undefined): string {
       ERR_FUNCTION_AS_TEXT,
     );
   }
-  // Inside rawtext the text coercion goes under the tag's own escape: an entity
+  // Inside rawtext the coercion is `String` under the tag's own escape: an entity
   // is never decoded there, so HTML-escaping would put `&lt;` in the JavaScript.
-  const text = coerceToText(v);
-  return rawtextTag === undefined ? escapeContent(text) : escapeRawTagContent(text, rawtextTag);
-}
-
-/**
- * The text of a value no earlier branch claimed. A `Date` is an ISO 8601 UTC
- * string: `String(date)` follows the runtime's time zone, so the same instant
- * would render differently on a CI runner and on a laptop. An invalid date has
- * no ISO form and keeps `String`'s `Invalid Date`.
- */
-export function coerceToText(v: unknown): string {
-  if (v instanceof Date) return Number.isNaN(v.getTime()) ? "Invalid Date" : v.toISOString();
-  return String(v);
+  return rawtextTag === undefined
+    ? escapeContent(String(v))
+    : escapeRawTagContent(String(v), rawtextTag);
 }
 
 export function valueToText(v: unknown): string {
