@@ -11,6 +11,8 @@
 - **Breaking**: remove build timings: the `timings` option, `ssg build --timings`, the `timings` field of the `build()` result and the `BuildTimings` type. The build summary line stays.
 - Answer a malformed percent-encoded path in `ssg dev` with 400 instead of a 500 and a stack trace.
 - **Breaking**: a `notFound` function now receives the percent-decoded path, the same one pages are resolved with, instead of the raw request path. `/caf%C3%A9` reaches it as `/café`.
+- Warn when discovery finds no route files, naming the rule that skips names starting with `.` or `_` and the `src` option; an empty `src/pages` used to build zero pages silently.
+- Point the missing-default-export hint at the `_` prefix for helper modules that are not pages.
 
 ## 0.4.0
 

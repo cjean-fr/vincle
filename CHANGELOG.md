@@ -2,6 +2,29 @@
 
 Package changes are recorded in each package's `CHANGELOG.md`.
 
+## Unreleased
+
+### Changed
+
+- Docs: use `ssg generate` through a Turbo `generate` task for the docs build. `ssg build` stays as a deprecated alias.
+- Docs: remove the unused French localization layer and the configuration framework, which are replaced by plain modules; cache syntax highlighting on disk; show the search shortcut that matches the platform.
+- Docs: reorganize `llms.txt` along the documentation's sidebar hierarchy and link it from the footer of every page.
+- Docs: rebuild the installation and setup guides around from-scratch Node and Bun projects, and the coming-from-templates guide around the HTML-you-know bridge.
+
+### Added
+
+- Docs: a recipe that builds a blog from files, with a feed and tag pages, checked against a real build; the `vincle-blog` agent skill points to it from the installation page.
+- Docs: a callout on the installation page with a copyable setup prompt for coding agents, with and without the `vincle` agent skill.
+- Docs: replay the streaming demo's real wire output next to its code on the home page.
+- Docs: highlight the code lines listed in a fence's `{1,3-5}` meta.
+- Docs: render mermaid fences as diagrams at build time.
+- Docs: show a tab and category breadcrumb in search results, and declare `BreadcrumbList` structured data on documentation pages.
+- Skill: map React's `defaultValue`, `defaultChecked` and `defaultSelected` to the HTML `value`, `checked` and `selected` attributes in the `vincle` agent skill's migration table.
+
+### Fixed
+
+- Docs: give published pages distinct titles and a stable website name in structured data, and keep the icon file header comment out of rendered pages.
+
 ## 2026-10-25
 
 ### Added
