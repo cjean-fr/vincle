@@ -182,13 +182,15 @@
 .docs-section-heading p + p {
   margin-top: 0.75rem;
 }
-/* The streaming heading shares the demo's columns: the title leads over the
-   code, the intro sits over the replay, both on the first baseline. */
+/* The streaming intro is longer than a side note: it reads under its title,
+   at a prose measure, and the demo takes the full width below. */
 .docs-stream .docs-section-heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 1.25rem 3rem;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: start;
+  gap: 1rem;
+}
+.docs-stream .docs-section-heading p {
+  max-width: 60ch;
 }
 .docs-home-section p {
   color: var(--docs-color-text-body);
@@ -300,8 +302,8 @@
 }
 .docs-stream-grid {
   display: grid;
-  /* minmax(0, …) here and in the replay: the unbreakable wire patch must scroll,
-     not widen its column. */
+  /* minmax(0, …) here and in the replay: long code or markup must never widen
+     its column. */
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap: 3rem;
   align-items: start;
@@ -391,8 +393,10 @@
   padding: 0.6rem 0.8rem;
   border: 1px solid var(--docs-color-border);
   border-radius: 0.4rem;
-  overflow-x: auto;
   font-size: 0.75rem;
+  /* One long line of markup: wrap it rather than show a scrollbar. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 @media (max-width: 640px) {
   .docs-stream-replay {
@@ -401,11 +405,8 @@
 }
 
 @media (max-width: 900px) {
-  .docs-stream-grid,
-  .docs-stream .docs-section-heading {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .docs-stream-grid {
+    grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
   }
   .docs-stream-replay {
