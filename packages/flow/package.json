@@ -1,6 +1,6 @@
 {
   "name": "@vincle/flow",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "HTML document orchestration layer for @vincle/core",
   "keywords": [
     "deferred",

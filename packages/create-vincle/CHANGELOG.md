@@ -1,6 +1,6 @@
 # create-vincle
 
-## Unreleased
+## 0.10.1 — 2026-10-31
 
 ### Fixed
 
