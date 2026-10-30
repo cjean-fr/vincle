@@ -45,6 +45,10 @@ describe("serializeAttr: the value taxonomy", () => {
     // Booleans: name alone on a boolean attribute, stringified otherwise.
     ["disabled", true, "disabled"],
     ["disabled", false, ""],
+    ["buffer", true, "buffer"],
+    ["buffer", false, ""],
+    ["sanitize", true, "sanitize"],
+    ["sanitize", false, ""],
     ["data-active", true, 'data-active="true"'],
     ["data-active", false, 'data-active="false"'],
     // Text escaping.
