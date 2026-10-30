@@ -1,6 +1,6 @@
 {
   "name": "create-vincle",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Interactive project bootstrapper for Vincle with Bun, Deno, and Node templates",
   "keywords": [
     "bootstrap",

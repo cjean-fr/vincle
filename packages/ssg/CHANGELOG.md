@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 — 2026-10-31
 
 - Follow eligible non-private symbolic source links and resolve relative imports from their target by default; Vite's `resolve.preserveSymlinks` keeps link-side resolution. Broken or cyclic links fail discovery.
 - URL-encode each segment in `imageUrl()` while generated files keep the raw variant path, so names such as `#lesgens.jpg` and `100%completed.png` are served unchanged.
 - Keep automatic layout lookup inside the source boundary for custom-discovered sources outside `src`; explicit `meta.layout` remains an intentional selection.
-- Depend on `@vincle/core` and `@vincle/vite-plugin` with caret ranges (`^0.9.1` and `^0.9.0` in the packed manifest) instead of exact versions, so a project that updates Core receives one copy shared with SSG, and a Core fix reaches SSG users without a new SSG release.
+- Depend on `@vincle/core` and `@vincle/vite-plugin` with caret ranges (`^0.9.2` and `^0.9.0` in the packed manifest) instead of exact versions, so a project that updates Core receives one copy shared with SSG, and a Core fix reaches SSG users without a new SSG release.
 - Declare `engines.node` (`>=22.12.0`), the minimum Node that Vite 8 and oxc-parser accept on the Node 22 line, so a package manager can warn or refuse on an unsupported Node.
 - Add `ssg generate`, the command that writes the site. `ssg build` still works as a deprecated alias and prints a warning; it will be removed in a later release.
 - **Breaking**: remove build timings: the `timings` option, `ssg build --timings`, the `timings` field of the `build()` result and the `BuildTimings` type. The build summary line stays.

@@ -2,7 +2,7 @@
 
 Package changes are recorded in each package's `CHANGELOG.md`.
 
-## Unreleased
+## 2026-10-31
 
 ### Changed
 

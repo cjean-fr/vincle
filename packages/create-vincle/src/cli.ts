@@ -13,7 +13,7 @@ import {
   type Runtime,
 } from "./runtime";
 
-const VERSION = "0.10.0";
+const VERSION = "0.10.1";
 
 export interface ParsedArgs {
   target?: string;

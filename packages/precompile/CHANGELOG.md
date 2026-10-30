@@ -1,6 +1,6 @@
 # @vincle/precompile
 
-## Unreleased
+## 0.9.1 — 2026-10-31
 
 - Lower components and non-template host elements to Deno-style direct `jsx` calls instead of leaving JSX for a later compiler. Preserve spread props, explicit `key` as a third argument, and Deno child grouping, with native Deno 2.9.8 call-oracle regressions. Keep Vincle's runtime host-prop policies and pass the explicit key there too.
 
