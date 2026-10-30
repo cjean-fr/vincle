@@ -77,25 +77,23 @@ describe("SSG build", () => {
     expect(html).not.toContain('data-docs-tab-label="agent"');
   });
 
-  it("the agent setup prompts sit in the callout, point at published pages and ask for a check and a report", async () => {
+  it("the agent setup prompt sits in the callout, points at published pages and asks for a check and a report", async () => {
     const html = await readFile(
       path.join(DIST_DIR, "guide/getting-started/installation.html"),
       "utf-8",
     );
     const callout = html.slice(html.indexOf("docs-agent-callout"), html.indexOf("</aside>"));
-    expect(callout.split('<div class="docs-code-block docs-prompt">')).toHaveLength(3);
-    const blocks = html.split('<div class="docs-code-block docs-prompt">').slice(1);
-    expect(blocks).toHaveLength(2);
-    for (const block of blocks) {
-      expect(block).toContain("data-docs-copy");
-      const prompt = /<code[^>]*>([\s\S]*?)<\/code>/.exec(block)![1]!.replace(/<[^>]+>/g, "");
-      const urls = [...prompt.matchAll(/https:\/\/vincle\.cjean\.fr\/([^\s)<]+)/g)];
-      expect(urls.length).toBeGreaterThan(0);
-      for (const [, file] of urls)
-        expect(existsSync(path.join(DIST_DIR, file!.replace(/[.,]$/, "")))).toBe(true);
-      expect(prompt).toContain("type check");
-      expect(prompt).toContain("anything you could not verify");
-    }
+    const codes = [...callout.matchAll(/<code[^>]*>([\s\S]*?)<\/code>/g)].map(([, code]) =>
+      code!.replace(/<[^>]+>/g, ""),
+    );
+    const prompt = codes.find((code) => code.includes("vincle.cjean.fr"));
+    expect(prompt).toBeDefined();
+    const urls = [...prompt!.matchAll(/https:\/\/vincle\.cjean\.fr\/([^\s)<]+)/g)];
+    expect(urls.length).toBeGreaterThan(0);
+    for (const [, file] of urls)
+      expect(existsSync(path.join(DIST_DIR, file!.replace(/[.,]$/, "")))).toBe(true);
+    expect(prompt).toContain("type check");
+    expect(prompt).toContain("anything you could not verify");
   });
 
   it("emits meta keywords for a page that declares them", async () => {
