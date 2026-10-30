@@ -203,13 +203,14 @@ await renderToString(
 
 ## Migration from React
 
-| React pattern                  | @vincle/core equivalent                              |
-| ------------------------------ | ---------------------------------------------------- |
-| `useState`, `useEffect`        | Fetch data before render, pass as props              |
-| `createContext` / `<Provider>` | `createContext(defaultValue)` + `<Context.Provider>` |
-| Event handler functions        | String values only (`onClick="alert(1)"`)            |
-| `ref`                          | Not supported                                        |
-| `className`                    | Both `class` and `className` accepted                |
+| React pattern                                       | @vincle/core equivalent                                                              |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `useState`, `useEffect`                             | Fetch data before render, pass as props                                              |
+| `createContext` / `<Provider>`                      | `createContext(defaultValue)` + `<Context.Provider>`                                 |
+| Event handler functions                             | String values only (`onClick="alert(1)"`)                                            |
+| `ref`                                               | Not supported                                                                        |
+| `defaultValue`, `defaultChecked`, `defaultSelected` | Not typed; use `value` / `checked` / `selected` (the attribute is the initial value) |
+| `className`                                         | Both `class` and `className` accepted                                                |
 
 <!-- skip-typecheck: React, not vincle -->
 
