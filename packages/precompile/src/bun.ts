@@ -117,17 +117,20 @@ export default function precompileBun(config?: PluginConfig): BunPrecompilePlugi
               renderEscape: RenderEscape | undefined;
             } | null = null;
             try {
-              const mod = (await import(/* @vite-ignore */ runtimePath)) as Record<string, unknown>;
-              if (typeof mod["jsxTemplate"] !== "function") {
+              const fileMod = (await import(/* @vite-ignore */ runtimePath)) as Record<
+                string,
+                unknown
+              >;
+              if (typeof fileMod["jsxTemplate"] !== "function") {
                 loaded = null;
               } else {
-                const helpers = declaredRuntimeHelpers(
-                  mod as Parameters<typeof declaredRuntimeHelpers>[0],
+                const fileHelpers = declaredRuntimeHelpers(
+                  fileMod as Parameters<typeof declaredRuntimeHelpers>[0],
                   runtimePath,
                 );
                 loaded = {
-                  renderAttr: helpers?.jsxAttr ?? undefined,
-                  renderEscape: helpers?.jsxEscape ?? undefined,
+                  renderAttr: fileHelpers?.jsxAttr ?? undefined,
+                  renderEscape: fileHelpers?.jsxEscape ?? undefined,
                 };
               }
             } catch {
