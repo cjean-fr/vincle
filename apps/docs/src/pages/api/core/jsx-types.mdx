@@ -52,8 +52,11 @@ export type Renderable =
 | `Iterable<Renderable>`           | `Set`, `Map.values()`, generator | Drained, then rendered in order         |
 | `AsyncIterable<Renderable>`      | `AsyncGenerator`                 | Awaited per item, flushed between items |
 
-Anything else, such as a plain object, a `Date`, or a `URL`, is rendered through
-its string form. A function or a symbol is a type error.
+Anything else, such as a plain object or a `URL`, is rendered through its string
+form. A function or a symbol is a type error. A `Date` is one of these values in
+@vincle/core 0.9.1, so its text follows the runtime's time zone and locale; from
+0.9.2 it renders as an ISO 8601 UTC string (`2026-10-25T22:30:00.000Z`), in
+content and in attributes.
 
 ## VNode
 
