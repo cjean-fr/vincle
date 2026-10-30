@@ -73,6 +73,20 @@ describe("precompileTransform", () => {
     expect(precompileTransform("const x = 1;", "/src/app.tsx")).toBeNull();
   });
 
+  it("leaves a file untouched when its pragma names a different runtime", () => {
+    const source = `const x = <div>hi</div>;`;
+    const code = `/** @jsxImportSource preact */\n${source}`;
+    expect(precompileTransform(code, "/src/app.tsx", { runtimeSource: RT })).toBeNull();
+  });
+
+  it("treats @vincle/core and @vincle/core/jsx-runtime as the same runtime", () => {
+    const source = `const x = <div>hi</div>;`;
+    const code = `/** @jsxImportSource @vincle/core */\n${source}`;
+    const result = precompileTransform(code, "/src/app.tsx", { runtimeSource: RT });
+    expect(result).not.toBeNull();
+    expect(result!.code).toContain("jsx-runtime");
+  });
+
   it("rejects an invalid runtimeSource even when there is no JSX", () => {
     for (const runtimeSource of ["", null, 42]) {
       expect(() =>
