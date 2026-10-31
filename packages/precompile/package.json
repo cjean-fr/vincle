@@ -1,6 +1,6 @@
 {
   "name": "@vincle/precompile",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "JSX precompile transform for @vincle/core, with Vite and Bun adapters",
   "keywords": [
     "bun",
