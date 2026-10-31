@@ -14,6 +14,7 @@ import type {
 import { assertRuntimeSource } from "./config.js";
 import { RUNTIME_SOURCE } from "./core/index.js";
 import { collectNode } from "./emit.js";
+import { detectJsxImportSource, normalizeJsxSource } from "./jsx-source.js";
 import { normalizeRuntimeHelpers } from "./runtime-helpers.js";
 import { injectRuntimeImport } from "./runtime-import.js";
 
@@ -28,6 +29,16 @@ export default function precompileTransform(
 ): TransformResult | null {
   assertRuntimeSource(config);
   const rtSource = config?.runtimeSource ?? RUNTIME_SOURCE;
+
+  // Respect the JSX import source declared by the file. A file whose source
+  // is not the runtime configured for this build is left untouched: its JSX
+  // is compiled later by the bundler's own transform, which honours the
+  // pragma. Returning `null` means "no change" (verbatim source).
+  const declared = detectJsxImportSource(code);
+  if (declared !== null && normalizeJsxSource(declared) !== normalizeJsxSource(rtSource)) {
+    return null;
+  }
+
   const lang = id.endsWith(".tsx") ? "tsx" : "jsx";
 
   const result = parseSync(id, code, {

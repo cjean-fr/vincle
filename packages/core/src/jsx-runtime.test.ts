@@ -236,6 +236,26 @@ describe("jsxAttr", () => {
     expect(r.value).toBe("");
   });
 
+  test("boolean true for buffer attribute", () => {
+    const r = jsxAttr("buffer", true) as RawString;
+    expect(r.value).toBe("buffer");
+  });
+
+  test("boolean false for buffer attribute", () => {
+    const r = jsxAttr("buffer", false) as RawString;
+    expect(r.value).toBe("");
+  });
+
+  test("boolean true for sanitize attribute", () => {
+    const r = jsxAttr("sanitize", true) as RawString;
+    expect(r.value).toBe("sanitize");
+  });
+
+  test("boolean false for sanitize attribute", () => {
+    const r = jsxAttr("sanitize", false) as RawString;
+    expect(r.value).toBe("");
+  });
+
   // The fragment is bare: the separating space is the transform's, and
   // `jsxTemplate` is what takes it back when these cases return "".
   test("null/undefined are skipped", () => {

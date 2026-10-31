@@ -12,6 +12,7 @@ import precompileTransform, {
   type RenderAttr,
   type RenderEscape,
 } from "./index.js";
+import { detectJsxImportSource, normalizeJsxSource } from "./jsx-source.js";
 import { declaredRuntimeHelpers } from "./runtime-helpers.js";
 
 export type { PluginConfig };
@@ -31,6 +32,11 @@ const RESOLVED_VIRTUAL_ID = "\0" + VIRTUAL_MODULE_ID;
  * `/jsx-runtime` to the import source value.
  */
 const FRAMEWORK_RUNTIME_SUFFIX = "/jsx-runtime";
+
+function toRuntimePath(source: string): string {
+  if (source.endsWith("/jsx-runtime") || source.endsWith("/jsx-dev-runtime")) return source;
+  return `${source}/jsx-runtime`;
+}
 
 /**
  * Vite 8 is the first release with an `oxc` option. Older resolved configs have
@@ -93,6 +99,16 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
    * cannot load: the transform then emits Deno's output.
    */
   let renderEscape: RenderEscape | null = null;
+
+  /**
+   * Cache of per-file runtimes loaded on demand when a file's pragma names a
+   * source different from the one configured for this build. Keyed by the
+   * runtime module path; `null` means "tried and incompatible / unloadable".
+   */
+  const perFileRuntimeCache = new Map<
+    string,
+    { renderAttr: RenderAttr | null; renderEscape: RenderEscape | null } | null
+  >();
 
   /**
    * When jsxImportSource is set, this holds the candidate path
@@ -230,19 +246,71 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       renderEscape = helpers?.jsxEscape ?? null;
     },
 
-    transform(code: string, id: string) {
+    async transform(code: string, id: string) {
       modulesSeen++;
       if (!id.endsWith(".tsx") && !id.endsWith(".jsx")) return;
       if (id.includes("node_modules")) return;
       jsxFileModules++;
       if (!code.includes("<")) return;
 
+      // Per-file runtime: a pragma may name a different source than the one
+      // configured for this build. If that runtime declares the "vincle"
+      // precompile dialect, precompile with it; otherwise delegate to the
+      // bundler's own transform (return undefined).
+      let resolvedRuntimeSourceForFile = runtimeSourceForTransform;
+      let renderAttrForFile: RenderAttr | null = renderAttr;
+      let renderEscapeForFile: RenderEscape | null = renderEscape;
+
+      const declared = detectJsxImportSource(code);
+      if (declared !== null) {
+        const configuredBase =
+          runtimeSourceForTransform === VIRTUAL_MODULE_ID
+            ? resolvedRuntimeSource
+            : runtimeSourceForTransform;
+        if (normalizeJsxSource(declared) !== normalizeJsxSource(configuredBase)) {
+          const runtimePath = toRuntimePath(declared);
+          if (!perFileRuntimeCache.has(runtimePath)) {
+            let loaded: {
+              renderAttr: RenderAttr | null;
+              renderEscape: RenderEscape | null;
+            } | null = null;
+            try {
+              const mod = (await import(/* @vite-ignore */ runtimePath)) as Record<string, unknown>;
+              if (typeof mod["jsxTemplate"] !== "function") {
+                loaded = null;
+              } else {
+                const helpers = declaredRuntimeHelpers(
+                  mod as Parameters<typeof declaredRuntimeHelpers>[0],
+                  runtimePath,
+                );
+                loaded = {
+                  renderAttr: helpers?.jsxAttr ?? null,
+                  renderEscape: helpers?.jsxEscape ?? null,
+                };
+              }
+            } catch {
+              loaded = null;
+            }
+            perFileRuntimeCache.set(runtimePath, loaded);
+          }
+          const cached = perFileRuntimeCache.get(runtimePath);
+          if (cached === undefined || cached === null) {
+            // Incompatible or unloadable runtime: delegate to the bundler.
+            if (containsJsx(code, id)) jsxModulesSeen++;
+            return;
+          }
+          resolvedRuntimeSourceForFile = runtimePath;
+          renderAttrForFile = cached.renderAttr;
+          renderEscapeForFile = cached.renderEscape;
+        }
+      }
+
       const result = precompileTransform(
         code,
         id,
-        { runtimeSource: runtimeSourceForTransform },
-        renderAttr ?? undefined,
-        renderEscape ?? undefined,
+        { runtimeSource: resolvedRuntimeSourceForFile },
+        renderAttrForFile ?? undefined,
+        renderEscapeForFile ?? undefined,
       );
 
       // The transform returns null for a `.tsx` that carries only a less-than

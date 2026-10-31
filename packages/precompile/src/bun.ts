@@ -2,7 +2,12 @@ import { readFile } from "node:fs/promises";
 
 import { assertRuntimeSource } from "./config.js";
 import { RUNTIME_SOURCE } from "./core/index.js";
-import precompileTransform, { type PluginConfig } from "./index.js";
+import precompileTransform, {
+  type PluginConfig,
+  type RenderAttr,
+  type RenderEscape,
+} from "./index.js";
+import { detectJsxImportSource, normalizeJsxSource } from "./jsx-source.js";
 import { declaredRuntimeHelpers } from "./runtime-helpers.js";
 
 export type { PluginConfig };
@@ -27,6 +32,11 @@ export interface BunPrecompilePlugin {
 }
 
 const JSX_FILE = /\.[jt]sx$/;
+
+function toRuntimePath(source: string): string {
+  if (source.endsWith("/jsx-runtime") || source.endsWith("/jsx-dev-runtime")) return source;
+  return `${source}/jsx-runtime`;
+}
 
 /**
  * The transform as a Bun plugin, for a server with no Vite in front of it.
@@ -79,13 +89,71 @@ export default function precompileBun(config?: PluginConfig): BunPrecompilePlugi
       const renderAttr = helpers?.jsxAttr;
       const renderEscape = helpers?.jsxEscape;
 
+      const perFileCache = new Map<
+        string,
+        { renderAttr: RenderAttr | undefined; renderEscape: RenderEscape | undefined } | null
+      >();
+
       build.onLoad({ filter: JSX_FILE }, async ({ path }) => {
         if (path.includes("node_modules")) return undefined;
 
         const code = await readFile(path, "utf8");
         if (!code.includes("<")) return undefined;
 
-        const result = precompileTransform(code, path, { runtimeSource }, renderAttr, renderEscape);
+        // Per-file runtime via pragma.
+        let runtimeSourceForFile = runtimeSource;
+        let renderAttrForFile = renderAttr;
+        let renderEscapeForFile = renderEscape;
+
+        const declared = detectJsxImportSource(code);
+        if (
+          declared !== null &&
+          normalizeJsxSource(declared) !== normalizeJsxSource(runtimeSource)
+        ) {
+          const runtimePath = toRuntimePath(declared);
+          if (!perFileCache.has(runtimePath)) {
+            let loaded: {
+              renderAttr: RenderAttr | undefined;
+              renderEscape: RenderEscape | undefined;
+            } | null = null;
+            try {
+              const fileMod = (await import(/* @vite-ignore */ runtimePath)) as Record<
+                string,
+                unknown
+              >;
+              if (typeof fileMod["jsxTemplate"] !== "function") {
+                loaded = null;
+              } else {
+                const fileHelpers = declaredRuntimeHelpers(
+                  fileMod as Parameters<typeof declaredRuntimeHelpers>[0],
+                  runtimePath,
+                );
+                loaded = {
+                  renderAttr: fileHelpers?.jsxAttr ?? undefined,
+                  renderEscape: fileHelpers?.jsxEscape ?? undefined,
+                };
+              }
+            } catch {
+              loaded = null;
+            }
+            perFileCache.set(runtimePath, loaded);
+          }
+          const cached = perFileCache.get(runtimePath);
+          if (cached === null || cached === undefined) {
+            return undefined; // delegate to bundler
+          }
+          runtimeSourceForFile = runtimePath;
+          renderAttrForFile = cached.renderAttr;
+          renderEscapeForFile = cached.renderEscape;
+        }
+
+        const result = precompileTransform(
+          code,
+          path,
+          { runtimeSource: runtimeSourceForFile },
+          renderAttrForFile,
+          renderEscapeForFile,
+        );
         if (result === null || result.code === code) return undefined;
 
         return { contents: result.code, loader: path.endsWith(".tsx") ? "tsx" : "jsx" };
