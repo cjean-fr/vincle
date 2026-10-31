@@ -2,6 +2,10 @@
 
 ## 0.10.1 — 2026-10-31
 
+### Changed
+
+- Generate projects using `@vincle/core` `^0.10.0` instead of `^0.9.1`.
+
 ### Fixed
 
 - Print the package version with `--version`: it printed 0.9.0 while the package is 0.10.0. A test now compares it with `package.json`.

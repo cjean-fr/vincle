@@ -14,6 +14,7 @@
 ### Changed
 
 - Say in the fragment error log, when no `onError` handler is set, that the placeholder keeps its fallback.
+- Require `@vincle/core` `^0.10.0` as a peer, the version whose concurrent sibling rendering the deduplication order builds on.
 
 ## 0.11.0 — 2026-10-11
 

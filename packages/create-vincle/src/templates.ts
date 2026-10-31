@@ -1,6 +1,6 @@
 import { runtimeDevCommand, type Runtime } from "./runtime";
 
-export const CORE_VERSION = "0.9.1";
+export const CORE_VERSION = "0.10.0";
 export const BUN_TYPES_VERSION = "^1.4.2";
 export const NODE_TYPES_VERSION = "^26.6.2";
 export const TSX_VERSION = "^4.23.15";
