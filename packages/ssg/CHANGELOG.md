@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.5.0 — 2026-10-31
+## Unreleased
+
+- **Breaking**: compile pages, layouts and MDX through Vite in every build, and remove the esbuild fallback compiler along with the `esbuild` dependency. Sites without a `vite.config` or client entries build as before, and the consumer's tsconfig path aliases stay resolved. When `assets` disables the conventional integration, a project `vite.config` now also applies to page compilation, as it already did in `ssg dev`. `viteModules()` from `@vincle/ssg/vite` supplies the same compiler to custom pipelines.
 
 - Follow eligible non-private symbolic source links and resolve relative imports from their target by default; Vite's `resolve.preserveSymlinks` keeps link-side resolution. Broken or cyclic links fail discovery.
 - URL-encode each segment in `imageUrl()` while generated files keep the raw variant path, so names such as `#lesgens.jpg` and `100%completed.png` are served unchanged.

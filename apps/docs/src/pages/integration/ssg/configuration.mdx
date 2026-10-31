@@ -119,7 +119,8 @@ A `vite.config.ts` at the project root applies to the pages and the client
 assets alike: aliases and plugins included. Set the base path with `base` in
 the SSG configuration, not in Vite's: SSG passes it to Vite, and reports a
 conflicting value. The Vite integration is **one** asset integration, the one
-detected by default: declaring `assets` makes it explicit.
+detected by default: declaring `assets` makes it explicit. Page compilation
+always goes through Vite, even without a `vite.config` or client assets.
 
 ## Plugins
 

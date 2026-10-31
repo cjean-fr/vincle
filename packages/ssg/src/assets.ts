@@ -120,6 +120,8 @@ export async function prepareAssets(preparation: {
   /** true = session-owned build, never disposed by this build. */
   owned: readonly boolean[];
   modules?: ModuleLoader;
+  /** Releases the fallback compiler; undefined when an integration or the session provides modules. */
+  dispose?(): Promise<void>;
 }> {
   const { assets, root, src, runtime, base, work, session } = preparation;
   // A development session resolved the integrations once, at startup: rebuilding
@@ -204,7 +206,15 @@ export async function prepareAssets(preparation: {
       : providers.length === 1
         ? builds[providers[0]!]!.modules
         : undefined;
-    return { builds, owned, ...(modules ? { modules } : {}) };
+    if (modules) return { builds, owned, modules };
+    if (session) return { builds, owned };
+    // Vite is the only page compiler: without an integration-provided loader the
+    // build still compiles through Vite, applying the project's vite.config if any.
+    // tsconfig paths stay resolved, as they were by the previous compiler.
+    const fallback = await (
+      await import("./vite.js")
+    ).viteModules({ root, resolve: { tsconfigPaths: true } }, runtime.importSource);
+    return { builds, owned, modules: fallback.modules, dispose: fallback.dispose };
   } catch (error) {
     await disposeBuilds(builds.filter((_, index) => !owned[index]));
     throw error;

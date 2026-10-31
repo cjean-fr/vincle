@@ -167,7 +167,6 @@
       "dependencies": {
         "@vincle/core": "workspace:^",
         "@vincle/vite-plugin": "workspace:^",
-        "esbuild": "^0.28.2",
         "gray-matter": "catalog:",
         "satteri": "^0.10.5",
         "vite": "catalog:",
