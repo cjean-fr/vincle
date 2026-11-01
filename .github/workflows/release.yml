@@ -1,4 +1,5 @@
 name: Manual Release (Bun)
+run-name: "Release ${{ inputs.package }}"
 
 on:
   workflow_dispatch:
