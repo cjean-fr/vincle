@@ -33,6 +33,7 @@
   },
   "type": "module",
   "scripts": {
+    "indexnow": "bun apps/docs/scripts/indexnow.ts",
     "build": "turbo build",
     "check": "turbo run check //#check:static //#check:scripts //#check:ci //#check:published-types //#check:packed",
     "check:fast": "turbo run check //#check:static //#check:scripts //#check:ci //#check:published-types",
