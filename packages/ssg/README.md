@@ -608,3 +608,5 @@ retained as a fallback. Helpers beside `src/pages/` are never discovered as rout
 
 For `src/pages`, layout discovery reaches the shared `src/_layout.tsx`.
 A closer layout in `src/pages` or a subsection overrides that shared layout.
+
+[Documentation](https://vincle.cjean.fr/integration/ssg/overview)
