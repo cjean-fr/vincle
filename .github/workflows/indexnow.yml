@@ -1,0 +1,25 @@
+name: IndexNow
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  indexnow:
+    name: Notify IndexNow
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Notify IndexNow
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: bun run indexnow
