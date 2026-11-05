@@ -16,6 +16,8 @@ export interface PageMeta extends SsgMeta {
   csp?: string;
   /** Opt out of the handler's prose wrapper (default for `.mdx`: on). */
   prose?: boolean;
+  /** Keep the page out of search engines: serves meta robots noindex. */
+  noindex?: boolean;
 }
 
 // No `sidebar` here: label, order, grouping and hiding are decided by each
