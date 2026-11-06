@@ -78,6 +78,8 @@ export function PageFooter() {
               <a href="https://www.npmjs.com/package/@vincle/core">{t("onNpm")}</a>
               <a href="https://github.com/cjean-fr/vincle/blob/main/LICENSE">{t("mitLicensed")}</a>
               <a href="/llms.txt">{t("llmsTxt")}</a>
+              <a href="/privacy">{t("privacy")}</a>
+              <a href="/legal">{t("legalNotice")}</a>
             </p>
           ) : (
             pageFacts
