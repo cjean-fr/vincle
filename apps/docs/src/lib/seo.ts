@@ -7,7 +7,8 @@ import { hasSocialCard, socialCardPath } from "./social-card.js";
 
 export function getHeaders(page: DocsRenderContext) {
   const { config, meta, currentPage, hasMarkdownAlternate = false } = page;
-  const card = !meta.image && ssg.site !== undefined && hasSocialCard(currentPage);
+  const card =
+    !meta.image && meta.noindex !== true && ssg.site !== undefined && hasSocialCard(currentPage);
   return {
     title: meta.title ? `${meta.title} - ${config.title}` : config.title,
     description: meta.description ?? config.description,
@@ -17,6 +18,7 @@ export function getHeaders(page: DocsRenderContext) {
     imageSize: card ? { width: 1200, height: 630 } : null,
     canonical: ssg.site ? fullUrl(currentPage, ssg.site) : null,
     isErrorPage: currentPage === "/404",
+    noindex: currentPage === "/404" || meta.noindex === true,
     currentPage,
     hasMarkdownAlternate,
   };

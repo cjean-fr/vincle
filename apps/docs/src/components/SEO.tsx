@@ -14,18 +14,19 @@ export function SEOHeader({ page }: SEOProps) {
     image,
     imageSize,
     isErrorPage,
+    noindex,
     currentPage,
     hasMarkdownAlternate,
   } = getHeaders(page);
   return (
     <>
-      {isErrorPage && <meta name="robots" content="noindex" />}
+      {noindex && <meta name="robots" content="noindex" />}
       {/* One icon only, because `public/` holds just the one. */}
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       <title>{title}</title>
       {description && <meta name="description" content={description} />}
       {keywords && <meta name="keywords" content={keywords} />}
-      {canonical && !isErrorPage && <link rel="canonical" href={canonical} />}
+      {canonical && !noindex && <link rel="canonical" href={canonical} />}
       {/* Markdown twin of this page, for agents (RSS-style alternate). */}
       {!isErrorPage && hasMarkdownAlternate && (
         <link rel="alternate" type="text/markdown" href={markdownPath(currentPage)} />

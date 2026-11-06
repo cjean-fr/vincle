@@ -265,6 +265,11 @@ describe("published page metadata", () => {
     for (const file of pageFiles()) {
       const html = await readFile(path.join(DIST_DIR, file), "utf-8");
       const canonical = /<link rel="canonical" href="([^"]+)">/.exec(html)?.[1];
+      // Pages served with robots noindex deliberately declare no canonical.
+      if (/<meta name="robots" content="noindex"/.test(html)) {
+        expect(canonical, `${file} canonical`).toBeUndefined();
+        continue;
+      }
       expect(canonical, `${file} canonical`).toBe(`${SITE}${routeOf(file)}`);
     }
   });
@@ -390,6 +395,8 @@ describe("social cards", () => {
     for (const file of [...new Bun.Glob("**/*.html").scanSync(DIST_DIR)].toSorted()) {
       if (/(?:^|\/)404\.html$/.test(file)) continue;
       const html = await readFile(path.join(DIST_DIR, file), "utf-8");
+      // Pages opted out of indexing carry no card.
+      if (/<meta name="robots" content="noindex"/.test(html)) continue;
       const image = /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1];
       if (!image?.startsWith(`${ssg.site}/`)) {
         broken.push(`${file} → ${image ?? "no og:image"}`);
