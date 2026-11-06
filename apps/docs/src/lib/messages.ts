@@ -28,7 +28,6 @@ export const messages = {
   mitLicensed: "MIT licensed",
   llmsTxt: "Docs for LLMs",
   legalNotice: "Legal notice",
-  privacy: "Privacy",
   lastUpdated: "Last updated: {date}",
   contents: "Table of contents",
   onThisPage: "On this page",

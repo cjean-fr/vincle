@@ -331,7 +331,7 @@ describe("breadcrumb JSON-LD", () => {
   });
 
   it("declares none on the home page, outside a tab or on the 404", async () => {
-    for (const file of ["index.html", "privacy.html", "404.html"]) {
+    for (const file of ["index.html", "legal.html", "404.html"]) {
       expect(await breadcrumbs(file)).toHaveLength(0);
     }
   });
