@@ -21,7 +21,8 @@ export function SEOHeader({ page }: SEOProps) {
   return (
     <>
       {noindex && <meta name="robots" content="noindex" />}
-      {/* One icon only, because `public/` holds just the one. */}
+      {/* ICO first for WebKitGTK (Epiphany), SVG for modern browsers. */}
+      <link rel="icon" href="/favicon.ico" sizes="32x32" />
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       <title>{title}</title>
       {description && <meta name="description" content={description} />}
