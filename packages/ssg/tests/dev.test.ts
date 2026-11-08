@@ -532,7 +532,7 @@ test("incremental rendering isolates pages, tracks raw data and nearest layouts,
           publishedOut = ctx.out;
           expect(new TextDecoder().decode(await ctx.read("two/b/index.html"))).toContain(":B");
           expect(ctx.outputs).toHaveLength(ctx.pages.length);
-          const finalB = ctx.outputs.find((output) => output.url === "/two/b/")!;
+          const finalB = ctx.outputs.find((output) => output.url === "/two/b")!;
           expect(await finalB.read()).toContain(":B");
           expect(finalB.meta.title).toBe("B");
           if (fail) throw new Error("publication failed");

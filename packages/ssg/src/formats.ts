@@ -37,6 +37,7 @@ function scriptHandler(name: "module" | "jsx"): PageHandler {
           if (name === "jsx")
             return {
               path: context.outputPath(),
+              url: context.route,
               content: () => context.runtime.render(create),
             };
           const result = await create();
