@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking (behavior)**: give JSX and TSX pages the route as their public URL, as Markdown and MDX pages already have. `/about` replaces `/about/` in the built-in sitemap, in sitemap translation alternates and in the `url` of plugin outputs (`PublishedPage.url`, for example in a search index). The files stay at `about/index.html`, the host still serves both forms, and a canonical link built from the route now matches the sitemap. Custom handlers and module producers keep the URL of their file path unless they set `output.url`.
+
 ## 0.5.0 — 2026-11-01
 
 - Follow eligible non-private symbolic source links and resolve relative imports from their target by default; Vite's `resolve.preserveSymlinks` keeps link-side resolution. Broken or cyclic links fail discovery.
