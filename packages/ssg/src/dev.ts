@@ -18,9 +18,9 @@ import { type AssetSession, disposeBuilds, resolveAssetIntegrations } from "./as
 import { basePath, withBase } from "./base.js";
 import { buildCached, buildSummary } from "./build.js";
 import { sourceDirectory } from "./conventions.js";
-import { developmentModules } from "./dev-modules.js";
 import { diagnose } from "./errors.js";
 import { resolveMimeTypes, type MimeTypes } from "./mime.js";
+import { createModuleLoader, vincleExternals } from "./modules.js";
 import { PublicationCache } from "./outputs.js";
 import { PageCache } from "./page-cache.js";
 import { loadViteConfig } from "./vite-config.js";
@@ -128,7 +128,7 @@ async function start(options: DevOptions): Promise<DevServer> {
   const work = await mkdtemp(path.join(tmpdir(), "vincle-dev-"));
   // Builds keep their temporary files beside out, inside work.
   const out = path.join(work, "site");
-  const compiler = developmentModules(importSource, src);
+  const compiler = createModuleLoader(importSource, src);
   const cache = new PageCache(compiler.dependencies);
   const publication = new PublicationCache();
   const watchedAssets = new Set<string>();
@@ -343,14 +343,7 @@ async function start(options: DevOptions): Promise<DevServer> {
         environments: {
           ssr: {
             resolve: {
-              external: [
-                "@vincle/core",
-                "@vincle/core/jsx-runtime",
-                "@vincle/core/jsx-dev-runtime",
-                "@vincle/vite-plugin",
-                "@vincle/ssg",
-                "@vincle/ssg/image",
-              ],
+              external: vincleExternals,
               conditions: ["node", "development", ...bun],
               externalConditions: ["node", ...bun],
             },

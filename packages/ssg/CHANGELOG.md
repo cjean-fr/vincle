@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Build and development load page, layout and compiled sources through one Vite module loader, with the same module identity, invalidation and diagnostics on both paths. A Markdown/MDX source reached through a symbolic link now resolves the relative imports of its compiled module from the link target in `ssg build` too, matching `ssg dev`.
+
 - **Breaking**: compile pages, layouts and MDX through Vite in every build, and remove the esbuild fallback compiler along with the `esbuild` dependency. Sites without a `vite.config` or client entries build as before, and the consumer's tsconfig path aliases stay resolved. When `assets` disables the conventional integration, a project `vite.config` now also applies to page compilation, as it already did in `ssg dev`. `viteModules()` from `@vincle/ssg/vite` supplies the same compiler to custom pipelines.
 
 ## 0.5.1 — 2026-11-09

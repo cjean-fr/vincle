@@ -5,7 +5,6 @@ import path from "node:path";
 import {
   build as buildVite,
   createServer,
-  isRunnableDevEnvironment,
   mergeConfig,
   resolveConfig,
   type InlineConfig,
@@ -17,6 +16,7 @@ import type { AssetIntegration, JsxRuntime } from "./types.js";
 import { withBase } from "./base.js";
 import { clientEntries } from "./conventions.js";
 import { failure, diagnose } from "./errors.js";
+import { createModuleLoader, vincleExternals } from "./modules.js";
 import { flattenPlugins, loadViteConfig } from "./vite-config.js";
 
 /**
@@ -183,18 +183,7 @@ export async function viteModules(config: InlineConfig = {}, importSource = "@vi
 
 async function createViteModules(shared: InlineConfig, user: InlineConfig, importSource: string) {
   const root = shared.root ?? process.cwd();
-  const compiled = new Map<string, string>();
-  const bridge: Plugin = {
-    name: "vincle-ssg-modules",
-    enforce: "pre",
-    resolveId(id) {
-      if (id.endsWith(".vincle-compiled.js") && compiled.has(id)) return id;
-      return undefined;
-    },
-    load(id) {
-      return compiled.get(id);
-    },
-  };
+  const loader = createModuleLoader(importSource, root);
   const ssr = user.ssr ?? {};
   const ssrEnvironment = user.environments?.["ssr"] ?? {};
   const resolve = ssrEnvironment.resolve ?? {};
@@ -202,7 +191,7 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
   const conditions = "Bun" in globalThis ? ["bun"] : [];
   const server = await createServer({
     ...shared,
-    plugins: [bridge, ...(await productionPlugins(user.plugins ?? [], shared))],
+    plugins: [loader.plugin, ...(await productionPlugins(user.plugins ?? [], shared))],
     appType: "custom",
     server: { ...user.server, middlewareMode: true, hmr: false, ws: false, watch: null },
     optimizeDeps: { noDiscovery: true, include: [] },
@@ -212,14 +201,7 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
         ...ssrEnvironment,
         resolve: {
           ...resolve,
-          external: [
-            "@vincle/core",
-            "@vincle/core/jsx-runtime",
-            "@vincle/core/jsx-dev-runtime",
-            "@vincle/vite-plugin",
-            "@vincle/ssg",
-            "@vincle/ssg/image",
-          ],
+          external: vincleExternals,
           conditions: [...(resolve.conditions ?? fallback.conditions ?? ["node"]), ...conditions],
           externalConditions: [
             ...(resolve.externalConditions ?? fallback.externalConditions ?? ["node"]),
@@ -247,36 +229,11 @@ async function createViteModules(shared: InlineConfig, user: InlineConfig, impor
     },
   });
   try {
-    const environment = server.environments["ssr"];
-    if (!environment || !isRunnableDevEnvironment(environment))
-      throw failure("Vite has no runnable server environment.", {
-        reason: "ASSETS_FAILED",
-        hint: "Keep a Node-compatible ssr environment, or provide a custom AssetIntegration with a ModuleLoader for your runtime.",
-        context: { root },
-      });
+    loader.environment();
     return {
-      modules: {
-        async load(file: string, requestedSource: string, code?: string) {
-          if (requestedSource !== importSource)
-            throw failure("Source runtime differs from the prepared Vite runtime.", {
-              reason: "INVALID_CONFIG",
-              hint: "Use one runtime.importSource for the whole build, including pages and layouts.",
-              context: { file, importSource: requestedSource, expected: importSource },
-            });
-          const id = code === undefined ? file : `${file}.vincle-compiled.js`;
-          if (code !== undefined) compiled.set(id, code);
-          return diagnose(
-            () => environment.runner.import<Record<string, unknown>>(id),
-            "Could not compile or evaluate Vite source",
-            {
-              reason: "COMPILATION_FAILED",
-              hint: "Check source syntax/imports and the shared Vite aliases/plugins. Inspect the original module-runner error in cause.",
-              context: { file, phase: "compile" },
-            },
-          );
-        },
-      },
+      modules: loader.modules,
       async dispose() {
+        loader.dispose();
         await server.close();
       },
     };
