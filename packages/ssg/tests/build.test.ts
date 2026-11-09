@@ -236,7 +236,7 @@ test("site is the origin and base the path prefix of sitemap URLs", () =>
     await build({ root, site: "https://example.com", base: "docs", assets: false });
     const sitemap = await file(root, "sitemap.xml");
     expect(sitemap).toContain("<loc>https://example.com/docs/</loc>");
-    expect(sitemap).toContain("<loc>https://example.com/docs/guide/intro/</loc>");
+    expect(sitemap).toContain("<loc>https://example.com/docs/guide/intro</loc>");
     expect(await file(root, "guide/intro/index.html")).toBe("<p>Intro</p>");
     await expect(
       build({ root, site: "https://example.com/docs/", base: "/docs/", assets: false }),
@@ -433,7 +433,7 @@ test("search integrations consume final HTML and sitemap connects existing trans
     const documents = JSON.parse(await file(root, "search.json"));
     expect(documents).toHaveLength(2);
     expect(documents.find((doc: { locale: string }) => doc.locale === "fr")).toEqual({
-      url: "/fr/bienvenue/",
+      url: "/fr/bienvenue",
       title: "Bienvenue",
       locale: "fr",
       html: "<html><main>Bonjour</main></html>",
@@ -442,14 +442,14 @@ test("search integrations consume final HTML and sitemap connects existing trans
     const entries = [...xml.matchAll(/<url>(.*?)<\/url>/g)].map((match) => match[1]!);
     expect(entries).toHaveLength(3);
     for (const entry of entries.filter(
-      (candidate) => !candidate.includes("<loc>https://example.com/docs/fr/seul/"),
+      (candidate) => !candidate.includes("<loc>https://example.com/docs/fr/seul</loc>"),
     )) {
-      expect(entry).toContain('hreflang="en" href="https://example.com/docs/welcome/"');
-      expect(entry).toContain('hreflang="fr" href="https://example.com/docs/fr/bienvenue/"');
-      expect(entry).toContain('hreflang="x-default" href="https://example.com/docs/welcome/"');
+      expect(entry).toContain('hreflang="en" href="https://example.com/docs/welcome"');
+      expect(entry).toContain('hreflang="fr" href="https://example.com/docs/fr/bienvenue"');
+      expect(entry).toContain('hreflang="x-default" href="https://example.com/docs/welcome"');
     }
     expect(
-      entries.find((entry) => entry.includes("<loc>https://example.com/docs/fr/seul/")),
+      entries.find((entry) => entry.includes("<loc>https://example.com/docs/fr/seul</loc>")),
     ).not.toContain("x-default");
     expect(xml).not.toContain("hidden");
     await put(
