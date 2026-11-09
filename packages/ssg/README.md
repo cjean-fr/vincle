@@ -258,7 +258,7 @@ The page compiler shares Vite's production configuration, aliases and build-sele
 plugins with the asset compiler. Pages and layouts reuse a single server module
 graph for the build; it closes after publication or failure. A Vite configuration
 with no browser entry still supplies page compilation without generating client
-JavaScript. The fallback compiler retains the consumer's tsconfig path aliases.
+JavaScript. Page compilation always runs through Vite, even without a Vite configuration or client assets, and the consumer's tsconfig path aliases stay resolved.
 
 For an existing asset build, `viteModules(config)` from `@vincle/ssg/vite` supplies
 that same compiler without rebuilding assets. Pass its `modules` to

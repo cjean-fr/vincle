@@ -198,6 +198,7 @@ async function buildInternal(
   await mkdir(path.dirname(out), { recursive: true });
   const work = await mkdtemp(path.join(path.dirname(out), ".vincle-build-"));
   let preparedBuilds: readonly AssetBuild[] = [];
+  let disposeModules: (() => Promise<void>) | undefined;
   let result: { files: string[] };
   try {
     try {
@@ -212,6 +213,7 @@ async function buildInternal(
         ...(session ? { session } : {}),
       });
       preparedBuilds = preparedAssets.builds.filter((_, index) => !preparedAssets.owned[index]);
+      disposeModules = preparedAssets.dispose;
       const publicDirectory = path.join(root, "public");
       const publicCopy = (await exists(publicDirectory)) ? [{ from: publicDirectory }] : [];
       const renderRuntime = assetRuntime(runtime, preparedAssets.builds);
@@ -316,9 +318,12 @@ async function buildInternal(
     } catch (error) {
       // Cleanup must not replace a failed build's original diagnostic.
       await disposeBuilds(preparedBuilds);
+      await disposeModules?.().catch(() => undefined);
       throw error;
     }
-    const first = await disposeBuilds(preparedBuilds);
+    const first =
+      (await disposeBuilds(preparedBuilds)) ??
+      (await disposeModules?.().catch((error: unknown) => error));
     if (first !== undefined)
       throw contextualError(first, "Asset cleanup failed after site publication", {
         reason: "ASSETS_FAILED",

@@ -160,14 +160,13 @@
     },
     "packages/ssg": {
       "name": "@vincle/ssg",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "bin": {
         "ssg": "./bin.js",
       },
       "dependencies": {
         "@vincle/core": "workspace:^",
         "@vincle/vite-plugin": "workspace:^",
-        "esbuild": "^0.28.2",
         "gray-matter": "catalog:",
         "satteri": "^0.10.5",
         "vite": "catalog:",

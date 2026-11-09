@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking**: compile pages, layouts and MDX through Vite in every build, and remove the esbuild fallback compiler along with the `esbuild` dependency. Sites without a `vite.config` or client entries build as before, and the consumer's tsconfig path aliases stay resolved. When `assets` disables the conventional integration, a project `vite.config` now also applies to page compilation, as it already did in `ssg dev`. `viteModules()` from `@vincle/ssg/vite` supplies the same compiler to custom pipelines.
+
 ## 0.5.1 — 2026-11-09
 
 - Give JSX and TSX pages the route as their public URL, as Markdown and MDX pages already have. `/about` replaces `/about/` in the built-in sitemap, in sitemap translation alternates and in the `url` of plugin outputs (`PublishedPage.url`, for example in a search index), so a canonical link built from the route matches the sitemap. The files stay at `about/index.html` and the host still serves both forms. Custom handlers and module producers keep the URL of their file path unless they set `output.url`.

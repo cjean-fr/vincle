@@ -8,7 +8,7 @@ import type { ModuleLoader } from "../src/types.js";
 import { discoverPages } from "../src/handlers.js";
 import { renderPage } from "../src/lifecycle.js";
 import { createMdxHandler, MdxCache } from "../src/mdx.js";
-import { loadModule } from "../src/module.js";
+import { viteModules } from "../src/vite.js";
 
 async function fixture(run: (directory: string) => Promise<void>) {
   const directory = await mkdtemp(path.resolve(import.meta.dirname, "../.mdx-test-"));
@@ -59,23 +59,28 @@ test("static Markdown preserves Core URL policy and executable MDX uses the acti
   fixture(async (src) => {
     const file = path.join(src, "article.mdx");
     let imports = 0;
-    const modules: ModuleLoader = {
-      load: (...args) => {
-        imports++;
-        return loadModule(...args);
-      },
-    };
-    const cache = new MdxCache();
-    await writeFile(file, "[unsafe](javascript:alert%281%29) ![image](javascript:foo)");
-    const staticPage = await cache.load(file, modules);
-    const html = await renderToString(staticPage.Component({}));
-    expect(html).toContain('href="#blocked"');
-    expect(html).toContain('src="#blocked"');
-    expect(imports).toBe(0);
-    await writeFile(file, '{"Executed"}');
-    const executable = await cache.load(file, modules);
-    expect(await renderToString(executable.Component({}))).toContain("Executed");
-    expect(imports).toBe(1);
+    const prepared = await viteModules({ configFile: false });
+    try {
+      const modules: ModuleLoader = {
+        load: (...args) => {
+          imports++;
+          return prepared.modules.load(...args);
+        },
+      };
+      const cache = new MdxCache();
+      await writeFile(file, "[unsafe](javascript:alert%281%29) ![image](javascript:foo)");
+      const staticPage = await cache.load(file, modules);
+      const html = await renderToString(staticPage.Component({}));
+      expect(html).toContain('href="#blocked"');
+      expect(html).toContain('src="#blocked"');
+      expect(imports).toBe(0);
+      await writeFile(file, '{"Executed"}');
+      const executable = await cache.load(file, modules);
+      expect(await renderToString(executable.Component({}))).toContain("Executed");
+      expect(imports).toBe(1);
+    } finally {
+      await prepared.dispose();
+    }
   }));
 
 test("a discovered page uses one source snapshot for its HTML, metadata and Markdown", () =>

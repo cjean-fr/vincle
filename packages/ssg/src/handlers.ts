@@ -13,17 +13,32 @@ import { sourceDirectory } from "./conventions.js";
 import { failure, diagnose, contextualError } from "./errors.js";
 import { resolveHandlers, vincleRuntime } from "./formats.js";
 import { metadata } from "./metadata.js";
-import { loadModule } from "./module.js";
 import { routeForFile, outputPathForRoute } from "./routes.js";
 
+/**
+ * Standalone discovery compiles through Vite, the only page compiler, applying the
+ * project's vite.config as build() and dev() do. build() manages its own compiler's
+ * lifecycle; this convenience compiler stays open for the process, like the
+ * underlying Node module cache.
+ */
 function defaultModules(): ModuleLoader {
+  const compilers = new Map<string, Promise<ModuleLoader>>();
   const cache = new Map<string, Promise<Record<string, unknown>>>();
   return {
     load(file, importSource, compiled) {
       const key = `${file}\0${importSource}\0${compiled ?? ""}`;
       let pending = cache.get(key);
       if (!pending) {
-        pending = loadModule(file, importSource, compiled);
+        let compiler = compilers.get(importSource);
+        if (!compiler) {
+          compiler = import("./vite.js")
+            .then(({ viteModules }) =>
+              viteModules({ resolve: { tsconfigPaths: true } }, importSource),
+            )
+            .then((prepared) => prepared.modules);
+          compilers.set(importSource, compiler);
+        }
+        pending = compiler.then((modules) => modules.load(file, importSource, compiled));
         cache.set(key, pending);
       }
       return pending;
