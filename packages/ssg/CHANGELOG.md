@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.5.1 — 2026-11-09
 
-- **Breaking (behavior)**: give JSX and TSX pages the route as their public URL, as Markdown and MDX pages already have. `/about` replaces `/about/` in the built-in sitemap, in sitemap translation alternates and in the `url` of plugin outputs (`PublishedPage.url`, for example in a search index). The files stay at `about/index.html`, the host still serves both forms, and a canonical link built from the route now matches the sitemap. Custom handlers and module producers keep the URL of their file path unless they set `output.url`.
+- Give JSX and TSX pages the route as their public URL, as Markdown and MDX pages already have. `/about` replaces `/about/` in the built-in sitemap, in sitemap translation alternates and in the `url` of plugin outputs (`PublishedPage.url`, for example in a search index), so a canonical link built from the route matches the sitemap. The files stay at `about/index.html` and the host still serves both forms. Custom handlers and module producers keep the URL of their file path unless they set `output.url`.
 
 ## 0.5.0 — 2026-11-01
 
