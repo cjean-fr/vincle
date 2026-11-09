@@ -1,6 +1,6 @@
 # @vincle/vite-plugin
 
-## 0.9.1 — 2026-10-31
+## 0.9.1 — 2026-11-01
 
 - Accept `@vincle/core` `^0.10.0` as a peer alongside `^0.9.1`.
 

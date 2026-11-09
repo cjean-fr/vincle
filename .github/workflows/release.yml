@@ -1,4 +1,5 @@
 name: Manual Release (Bun)
+run-name: "Release ${{ inputs.package }}"
 
 on:
   workflow_dispatch:
@@ -25,7 +26,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -61,7 +62,7 @@ jobs:
         run: bun run build --filter="${{ steps.meta.outputs.package_name }}"
 
       - name: Setup Node (for OIDC support)
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: "https://registry.npmjs.org"

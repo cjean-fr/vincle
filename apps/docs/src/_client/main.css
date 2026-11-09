@@ -651,6 +651,12 @@ html.dark .docs-theme-toggle-sun {
   font-weight: 400;
   opacity: 0.5;
 }
+.docs-footer-list {
+  /* Adjacent links have no whitespace between them (JSX strips it), so an
+     inline list has no wrap point in Firefox: give the items real boxes. */
+  display: flex;
+  flex-wrap: wrap;
+}
 .docs-footer-list > * {
   white-space: nowrap;
 }

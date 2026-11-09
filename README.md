@@ -12,6 +12,8 @@ hidden.
 You replace the React/Next.js component → HTML pipeline with one that
 doesn't ship a 150 KB runtime to the browser.
 
+**Documentation:** [vincle.cjean.fr](https://vincle.cjean.fr)
+
 ## Getting started
 
 Start with `@vincle/core` to render JSX to HTML. Add `@vincle/flow` when

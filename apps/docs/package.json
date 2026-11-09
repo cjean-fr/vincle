@@ -10,7 +10,8 @@
     "bench:memory": "bun scripts/bench-memory.ts",
     "format": "oxfmt '**/*.{jsx,tsx,mdx}'",
     "test": "bun test",
-    "check": "bun check"
+    "check": "bun check",
+    "indexnow": "bun scripts/indexnow.ts"
   },
   "dependencies": {
     "@shikijs/core": "4.5.0",

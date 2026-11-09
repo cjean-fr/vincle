@@ -4,6 +4,12 @@
 
 - **Breaking**: compile pages, layouts and MDX through Vite in every build, and remove the esbuild fallback compiler along with the `esbuild` dependency. Sites without a `vite.config` or client entries build as before, and the consumer's tsconfig path aliases stay resolved. When `assets` disables the conventional integration, a project `vite.config` now also applies to page compilation, as it already did in `ssg dev`. `viteModules()` from `@vincle/ssg/vite` supplies the same compiler to custom pipelines.
 
+## 0.5.1 — 2026-11-09
+
+- Give JSX and TSX pages the route as their public URL, as Markdown and MDX pages already have. `/about` replaces `/about/` in the built-in sitemap, in sitemap translation alternates and in the `url` of plugin outputs (`PublishedPage.url`, for example in a search index), so a canonical link built from the route matches the sitemap. The files stay at `about/index.html` and the host still serves both forms. Custom handlers and module producers keep the URL of their file path unless they set `output.url`.
+
+## 0.5.0 — 2026-11-01
+
 - Follow eligible non-private symbolic source links and resolve relative imports from their target by default; Vite's `resolve.preserveSymlinks` keeps link-side resolution. Broken or cyclic links fail discovery.
 - URL-encode each segment in `imageUrl()` while generated files keep the raw variant path, so names such as `#lesgens.jpg` and `100%completed.png` are served unchanged.
 - Keep automatic layout lookup inside the source boundary for custom-discovered sources outside `src`; explicit `meta.layout` remains an intentional selection.
@@ -16,7 +22,7 @@
 - Warn when discovery finds no route files, naming the rule that skips names starting with `.` or `_` and the `src` option; an empty `src/pages` used to build zero pages silently.
 - Point the missing-default-export hint at the `_` prefix for helper modules that are not pages.
 
-## 0.4.0
+## 0.4.0 — 2026-10-24
 
 - Add `base`, the path prefix the site is served under, next to `site`, now the public origin. It sets the sitemap URLs and Vite's `base` in builds and in dev; a different Vite `base` is a configuration error. A path in `site` alone is still accepted.
 - Accept several asset integrations in `assets`, prepared, copied and released in declaration order, the first declared wrapping the renderer innermost; an explicit array (`[]` included) disables conventional detection. **Breaking**: `assets` is no longer a single integration, and `DevOptions` no longer omits it, so `ssg dev` prepares the declared integrations instead of Vite's alone. A single integration stays valid.
@@ -24,6 +30,16 @@
 - **Breaking**: resolve `AssetBuild.directory` from the project root, so an integration may return a relative preparation directory; a relative directory that used to resolve against the working directory now resolves against `root`.
 - Add `@vincle/ssg/image`: `images({ converter, descriptors })` validates its descriptors when called, then generates every declared width and format through a project-provided converter, memoizing decoding by source state and encoding per variant, and watching the masters. `imageUrl()` is the single source of the public variant path.
 - Add `<Picture>`, which renders a declared descriptor as one `<source>` per format except the last, plus an `<img>` fallback from the last format, prefixes the configured `base` once, and fails the build with `ERR_VINCLE_IMAGE_UNDECLARED` or `ERR_VINCLE_IMAGE_INVALID` instead of publishing a 404. `setImages()` installs the registry outside a build.
+
+## 0.3.2 — 2026-10-15
+
+- Connect custom discovery to the development page cache and invalidate navigation-dependent output through render keys, so `ssg dev` reuses rendered pages across rebuilds.
+- Preserve the previous publication's cached snapshots when a publication fails, and share layout probes within each build.
+- Simplify the SSG lifecycle, CLI and publication functions.
+
+## 0.3.1 — 2026-10-15
+
+- Keep Node platform defaults out of client builds: the shared Vite configuration no longer spreads resolved defaults, whose SSR environment targets Node, into the client `rolldownOptions`.
 
 ## 0.3.0
 
