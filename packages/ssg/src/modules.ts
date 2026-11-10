@@ -10,7 +10,25 @@ import { diagnose, failure } from "./errors.js";
 const suffix = ".vincle-compiled.js";
 const sourceOf = (file: string) => (file.endsWith(suffix) ? file.slice(0, -suffix.length) : file);
 
-export function developmentModules(importSource: string, sourceDirectory: string) {
+/**
+ * Vincle's own packages evaluate in the host process, never in the module runner,
+ * so pages share one Core instance with the SSG.
+ */
+export const vincleExternals = [
+  "@vincle/core",
+  "@vincle/core/jsx-runtime",
+  "@vincle/core/jsx-dev-runtime",
+  "@vincle/vite-plugin",
+  "@vincle/ssg",
+  "@vincle/ssg/image",
+];
+
+/**
+ * The one source module loader: build() wraps it around its own Vite server and
+ * dev() plugs it into the development server, so module identity, invalidation
+ * and diagnostics are the same on both paths.
+ */
+export function createModuleLoader(importSource: string, sourceDirectory: string) {
   const compiled = new Map<string, string>();
   /** Compiled module id -> logical source file that produced it. */
   const origins = new Map<string, string>();
@@ -34,7 +52,7 @@ export function developmentModules(importSource: string, sourceDirectory: string
     }
   }
   const plugin: Plugin = {
-    name: "vincle-ssg-development-modules",
+    name: "vincle-ssg-modules",
     enforce: "pre",
     configureServer(value) {
       server = value;
@@ -57,10 +75,10 @@ export function developmentModules(importSource: string, sourceDirectory: string
   function environment() {
     const value = server.environments["ssr"];
     if (!value || !isRunnableDevEnvironment(value))
-      throw failure("Vite has no runnable development SSR environment.", {
+      throw failure("Vite has no runnable SSR environment.", {
         reason: "COMPILATION_FAILED",
-        hint: "Configure a Node-compatible ssr environment for the development module runner.",
-        context: { phase: "dev" },
+        hint: "Keep a Node-compatible ssr environment, or provide a custom AssetIntegration with a ModuleLoader for your runtime.",
+        context: { root: server.config.root },
       });
     return value;
   }
@@ -126,9 +144,9 @@ export function developmentModules(importSource: string, sourceDirectory: string
     },
     async load(file, source, code) {
       if (source !== importSource)
-        throw failure("The page runtime differs from the development runtime.", {
+        throw failure("Source runtime differs from the module loader runtime.", {
           reason: "INVALID_CONFIG",
-          hint: "Use the same runtime.importSource for all handlers and layouts.",
+          hint: "Use one runtime.importSource for the whole build, including pages and layouts.",
           context: { file, importSource: source, expected: importSource },
         });
       const id = code === undefined ? file : canonicalSource(file) + suffix;
@@ -142,11 +160,11 @@ export function developmentModules(importSource: string, sourceDirectory: string
       }
       return diagnose(
         () => environment().runner.import<Record<string, unknown>>(id),
-        "Could not evaluate development source",
+        "Could not compile or evaluate Vite source",
         {
           reason: "COMPILATION_FAILED",
-          hint: "Check this source and its imports, aliases and serve plugins. The original Vite error is included in cause.",
-          context: { file, phase: "dev" },
+          hint: "Check source syntax/imports and the shared Vite aliases/plugins. Inspect the original module-runner error in cause.",
+          context: { file, phase: "compile" },
         },
       );
     },
@@ -201,7 +219,7 @@ export function developmentModules(importSource: string, sourceDirectory: string
       if (!(cache instanceof Map))
         throw failure("The Vite module graph cannot release deleted source nodes.", {
           reason: "COMPILATION_FAILED",
-          hint: "Use a supported Vite 8 version; the development graph cleanup adapter must match Vite's raw URL cache.",
+          hint: "Use a supported Vite 8 version; the module graph cleanup adapter must match Vite's raw URL cache.",
           context: { phase: "dev" },
         });
       await Promise.all(
@@ -251,6 +269,7 @@ export function developmentModules(importSource: string, sourceDirectory: string
   return {
     plugin,
     modules,
+    environment,
     refresh,
     dependencies,
     async setWatched(files: Iterable<string>) {
