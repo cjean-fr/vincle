@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Escape `&`, `<` and `>` in the body of a `<script>` or `<style>` in an `<svg>` element, except the tag that closes it. The HTML parser reads that text as markup, not as raw text, so a `<` opened a tag there. This is a temporary best-effort pass made when an element whose tag is `svg` is written, in the walk and in the static path. It follows `foreignObject`, `desc` and `title` as HTML again, reads tags with a scan rather than a parser, and does not cover MathML (`script` and `style` are not MathML elements) or an `<svg>` that is only written in a template's text (precompiled output, a hand-written `jsxTemplate`). Content from `raw()` in such a body is rewritten too.
+- Provisional: escape `&`, `<` and `>` in the body of a `<script>` or `<style>` inside an `<svg>` element, except the tag that closes it, so the HTML parser reads it as text. It runs when an element whose tag is `svg` is written. `foreignObject`, `desc` and `title` are treated as HTML. It reads tags with a scan, not a parser. Content from `raw()` in such a body is escaped too.
 
 ## 0.10.0 — 2026-11-01
 

@@ -1,28 +1,19 @@
-// Temporary mitigation, until the renderer knows the namespace of the element
-// it renders. In an HTML document, the text of a `<script>` or a `<style>` is
-// raw text only in the HTML namespace. Under `<svg>` it is ordinary
-// markup: a `<` opens a tag, an `&` starts a character reference, and an `<img>`
-// in it leaves the foreign element for HTML.
+// Provisional: escapes the text of `<script>` and `<style>` inside an `<svg>`.
+// Under `<svg>` the HTML parser reads that text as markup, not as raw text: a
+// `<` opens a tag and `&` starts a character reference.
 // @see https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inforeign
 //
 // `serializeElement` hands the finished content of an element whose tag is `svg`
 // to `escapeForeignText`, which escapes `&`, `<` and `>` in the body of every
-// `<script>` and `<style>` it finds in svg content, except the tag that closes
-// the body. Only an `svg` element pays for it. It is best effort:
-//   - it follows tags with a quote-aware scan, not a parser. A tag written inside
-//     a comment or a CDATA section is read as a tag, and so are the tags that
-//     leave foreign content (`<svg><div>`);
-//   - it follows the HTML integration points of svg, where the text is HTML
-//     again: `foreignObject`, `desc` and `title`;
-//   - a nested `svg` element is its own pass and is skipped here, so a nested
-//     root that is only written as text (`raw()`, a template) is not scanned;
-//   - the walk has already neutralized a `</script` or `</style` in the text
-//     (`<\/style`), so that backslash form is what the output keeps;
-//   - an `<svg>` that is only written in a template's text (precompiled output,
-//     a hand-written `jsxTemplate`) is not an element here and is not seen;
-//   - MathML is not handled: `script` and `style` are not MathML vocabulary
-//     (https://www.w3.org/TR/mathml-core/), and it is not a root here.
-// Content from `raw()` in such a body is rewritten too: it is a string by then.
+// `<script>` and `<style>` in that content, except the tag that closes the body.
+// Only an `svg` element runs it. What it does:
+//   - it reads tags with a quote-aware scan, not a parser: a tag written inside a
+//     comment or a CDATA section is read as a tag;
+//   - it treats `foreignObject`, `desc` and `title` as HTML, and leaves their
+//     script and style as they are;
+//   - it skips a nested `svg` element: that element escaped its own content;
+//   - a `</script` or `</style` in the text keeps the `<\/` form the walk wrote;
+//   - content from `raw()` in a body is escaped like any other text.
 
 const RE_TAG = /<(\/?)(svg|foreignobject|desc|title|script|style)(?=[\s/>])/gi;
 const RE_SCRIPT_CLOSE = /<\/script(?=[\s/>])/gi;
