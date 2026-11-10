@@ -48,6 +48,14 @@ export function outputPathForRoute(route: string, extension = ".html"): string {
   return `${stem || "index"}${extension}`;
 }
 
+/** The URL path of a route or file path: each segment URL-encoded, as a host maps it back to the file name. */
+export function urlForPath(route: string): string {
+  return route
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
 /** Resolve a route under the configured public site URL, including its deployment path. */
 export function fullUrl(route: string, site?: string | URL): string {
   if (site === undefined) return route;

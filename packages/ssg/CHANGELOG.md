@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Breaking**: compile pages, layouts and MDX through Vite in every build, and remove the esbuild fallback compiler along with the `esbuild` dependency. Sites without a `vite.config` or client entries build as before, and the consumer's tsconfig path aliases stay resolved. When `assets` disables the conventional integration, a project `vite.config` now also applies to page compilation, as it already did in `ssg dev`. `viteModules()` from `@vincle/ssg/vite` supplies the same compiler to custom pipelines.
+- URL-encode each segment of the public URL derived from a route or file path, as `imageUrl()` already does, so a page named `100%.md` is listed as `/100%25` and served from `100%/index.html`, in `ssg dev` as by a static host. Non-ASCII routes now appear encoded in `PublishedPage.url` (`/caf%C3%A9`); the sitemap is unchanged. An explicit `output.url` is used as given.
 
 ## 0.5.1 — 2026-11-09
 

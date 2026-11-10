@@ -97,7 +97,7 @@ async function userConfig(
 }
 
 /** Map a base-relative request path onto a generated file. */
-function generatedFile(pathname: string, files: ReadonlySet<string>) {
+export function generatedFile(pathname: string, files: ReadonlySet<string>) {
   const candidates =
     !pathname || pathname.endsWith("/")
       ? [`${pathname}index.html`]
@@ -109,7 +109,7 @@ const requestUrl = (request: Connect.IncomingMessage) =>
   new URL(request.originalUrl ?? request.url ?? "/", "http://localhost");
 
 /** The path as generated files are named: percent-decoded once, `undefined` when malformed. */
-function decodedPathname(url: URL): string | undefined {
+export function decodedPathname(url: URL): string | undefined {
   try {
     return decodeURIComponent(url.pathname);
   } catch {
