@@ -10,6 +10,7 @@ import {
   valueToText,
 } from "./escape.js";
 import { isVoidElement, serializeElement, serializeVoidElement } from "./serialize.js";
+import { escapeSvgScripts } from "./svg-script.js";
 import { providerMarker, RawString, VNode, type ProvideFn } from "./types.js";
 import { TemplateNode } from "./types.js";
 
@@ -42,7 +43,10 @@ import { TemplateNode } from "./types.js";
  */
 export function renderToString(node: unknown): Promise<string> {
   try {
-    return Promise.resolve(renderNode(node));
+    const out = renderNode(node);
+    return typeof out === "string"
+      ? Promise.resolve(escapeSvgScripts(out))
+      : out.then(escapeSvgScripts);
   } catch (error) {
     // The signature promises a `Promise<string>`; a synchronous throw would
     // escape the caller's `.catch()`.

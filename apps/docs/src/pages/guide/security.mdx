@@ -207,6 +207,15 @@ the second one closes for real. The plain child form emits the same bytes fully
 neutralised. It is a `RawString`, so rule 2 applies: you are vouching for the
 whole string, element boundary included.
 
+**`<script>` under `<svg>` is only partly covered.** In an HTML document, the
+text of an SVG `<script>` is not raw text: the parser reads a `<` there as the
+start of a tag. After rendering, `renderToString` escapes every `<` of such a
+body except the closing `</script`. This is a best-effort pass over the output,
+not a parser: it follows only `<svg>` and `<foreignObject>` (a script in a
+`<foreignObject>` is an HTML script and is left alone), reads a tag written in a
+comment as a tag, and does not cover `<style>` under `<svg>`, anything under
+`<math>`, or `&`. Content from `raw()` in such a body is rewritten too.
+
 ## What the compiler guarantees (and what it doesn't)
 
 A common question: if the JSX compiler already turned `<div>` into a `jsx()`

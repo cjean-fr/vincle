@@ -1,5 +1,11 @@
 # @vincle/core
 
+## Unreleased
+
+### Fixed
+
+- Escape the `<` of a `<script>` body under `<svg>` in the string `renderToString` returns, except the `</script` that closes it. The HTML parser reads that text as markup, not as raw text, so a `<` opened a tag there. This is a temporary best-effort pass on the output: it covers only `<script>` (not `<style>`, not MathML), only `<`, and follows only `<svg>` and `<foreignObject>`. Content from `raw()` in such a body is rewritten too. Output that has no `<svg` is returned unchanged.
+
 ## 0.10.0 — 2026-11-01
 
 ### Changed
