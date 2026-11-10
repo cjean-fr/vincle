@@ -24,28 +24,19 @@ function jsx(
 ): VNode | RawString | Promise<RawString> {
   const props = attributes ?? {};
 
-  // The one door in, so the one place a string tag is judged. Whatever exit
-  // takes over below, whether static serialization, a VNode, or `dsih`,
-  // inherits a valid name that the tree walk can trust. The check used to sit in the
-  // `VNode` constructor, which was a second door while the class was exported
-  // as a value; it is not anymore, so the fork no longer has to cover it.
+  // The only place a string tag is validated: every exit below inherits a
+  // valid name the tree walk can trust.
   if (typeof tag === "string" && !isValidTag(tag)) {
     throw vincleTypeError(invalidTagMessage(tag), ERR_INVALID_TAG);
   }
 
-  // Read first, `hasOwn` only if the read finds something: an absent
-  // `dangerouslySetInnerHTML` costs one property miss for almost every
-  // element, just as it did before the guard existed. It is the one prop worth
-  // guarding: it bypasses the escaping chain, and an `Object.prototype` gadget
-  // for it is plain JSON. A polluted `children` reaches the document escaped.
-  //
-  // Only a string tag is the HTML sink: a function tag's
-  // `dangerouslySetInnerHTML` is a business prop the component owns, sent to it
-  // untouched — never read here, never validated, its children not replaced.
+  // Read first, `hasOwn` only on a hit: an absent prop costs one property miss.
+  // The prop bypasses escaping and an `Object.prototype` gadget for it is plain
+  // JSON, hence the guard. Only a string tag is the HTML sink: a function tag's
+  // prop belongs to the component and is passed through untouched.
   const isStringTag = typeof tag === "string";
   const dsihValue = isStringTag ? props["dangerouslySetInnerHTML"] : undefined;
-  // A `null` prop is no prop: React's `null != innerHTML` condition treats it
-  // as absent, so the children render untouched instead of crashing on `.__html`.
+  // A `null` prop is absent, as in React (`null != innerHTML`).
   const dsih = (
     dsihValue != null && Object.hasOwn(props, "dangerouslySetInnerHTML") ? dsihValue : undefined
   ) as { __html: string | null | undefined } | undefined;
@@ -58,11 +49,9 @@ function jsx(
   // `dangerouslySetInnerHTML` is trusted HTML: `raw` keeps it unescaped.
   let children = ownChildren(props);
   if (dsih !== undefined) {
-    // React's rule, with React's exact condition (`pushInnerHTML` in
-    // react-dom): children and `__html` are two sources of content, so the
-    // conflict is refused at construction rather than dropping one silently.
-    // `null` and `undefined` children are no content; `false` is a value React
-    // counts, so `{cond && <b />}` under this prop refuses with cond false.
+    // React's rule (`pushInnerHTML` in react-dom): two sources of content are
+    // refused rather than dropping one. `null` and `undefined` are no content;
+    // `false` counts, so `{cond && <b />}` refuses when cond is false.
     if (children != null) {
       throw vincleTypeError(
         `[vincle/core] <${tag}> cannot have both children and dangerouslySetInnerHTML: ` +
@@ -81,14 +70,9 @@ function jsx(
       );
   }
 
-  // Judged on the final children, the `dsih` substitution included: an `__html`
-  // is content the way a written child is, and a void element takes neither.
-  //
-  // An element that serialized never reaches this: it judged itself on its way
-  // out. One that declined judged too, and is judged again here, because the two
-  // read `children` separately: a props getter is free to answer `undefined` to
-  // the first read and content to the second, and this is the read the `VNode`
-  // keeps. `dsih` is the one exit the static path never sees at all.
+  // A void element takes neither children nor `__html`. Checked again here
+  // because the static path reads `children` separately and a props getter may
+  // answer differently each time; this is the read the `VNode` keeps.
   if (isStringTag && isVoidElement(tag) && children !== undefined) {
     throw vincleTypeError(voidChildrenMessage(tag), ERR_VOID_CHILDREN);
   }
@@ -100,10 +84,8 @@ const jsxs = jsx;
 
 /**
  * Classic `createElement(tag, attributes, ...children)`: positional children
- * win over `attributes.children`. No positional child passes `attributes`
- * through untouched; one or more copies the attributes and writes `children`
- * on the copy, so the caller's props are never mutated. An explicit
- * `undefined` in a position still counts, it overrides, it is not "absent".
+ * win over `attributes.children` (an explicit `undefined` overrides). The
+ * caller's props are never mutated.
  */
 export function createElement(
   tag: string | ((props: any) => any),
@@ -122,20 +104,16 @@ function Fragment({ children }: { children?: Renderable }): Renderable {
 
 // ── Precompile runtime helpers ────────────────────────────────────────────
 //
-// jsxEscape, jsxAttr, and jsxTemplate support the Deno/Bun-style JSX
-// precompile transform (`jsxImportSource: "precompile"`). They handle the
-// per-value encoding that the transform delegates to the runtime.
+// jsxEscape, jsxAttr, and jsxTemplate support the Deno/Bun-style JSX precompile
+// transform (`jsxImportSource: "precompile"`): the transform delegates
+// per-value encoding to them.
 
 /**
  * Escape a value for insertion into a JSX template literal.
  *
- * Follows the Deno/Preact precompile contract: a `VNode` passes through
- * untouched: the renderer (`jsxTemplate`, or the tree walk for a fragment
- * result) is the rendez-vous that turns it into HTML. Stringifying it here
- * would emit `[object Object]` instead of the component's markup.
- *
- * Plain values become `RawString`; a `VNode` passes through. Values whose
- * rendering may read a Provider become `TemplateNode` until the tree walk.
+ * Follows the Deno/Preact precompile contract: a `VNode` passes through, plain
+ * values become `RawString`, and values that may read a Provider become
+ * `TemplateNode` until the tree walk.
  */
 export function jsxEscape(
   v: unknown,
@@ -162,8 +140,8 @@ function hasDeferredChild(values: unknown[]): boolean {
 export function jsxEscapeDeferred(
   v: unknown,
 ): RawString | VNode | TemplateNode | Promise<RawString | VNode> {
-  // Objects and functions may run user code during coercion. Keep that work
-  // inside the Provider and after earlier component siblings.
+  // Objects and functions may run user code during coercion: keep that inside
+  // the Provider and after earlier component siblings.
   if (v === null || (typeof v !== "object" && typeof v !== "function") || v instanceof RawString)
     return jsxEscape(v);
   return new TemplateNode(() => {
@@ -174,14 +152,12 @@ export function jsxEscapeDeferred(
   });
 }
 
-// Single pass, matching `renderChildrenAsync` in `render.ts`: a three-pass form
-// (`map`, then `some`, then concatenate) is several times slower on the
-// all-synchronous case that's the norm here.
+// Single pass, like `renderChildrenAsync`: a three-pass form is several times
+// slower on the all-synchronous case.
 function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
   let out = "";
   for (let i = 0; i < arr.length; i++) {
     const value = arr[i];
-    // Array holes need the text, not one short-lived RawString per primitive.
     if (typeof value === "string") {
       out += escapeContent(value);
       continue;
@@ -214,16 +190,10 @@ function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
 /**
  * Finish an array whose `from - 1`-th element suspended.
  *
- * `pending` resolves to **final text**, and the two call sites are what makes
- * that worth stating: one holds a `Promise<RawString | VNode>`, the other a
- * `Promise<string>` the tree walk has already rendered. Both must arrive here
- * rendered. A value still to be rendered goes back through the leaf taxonomy,
- * where `escapeContent` runs over finished markup: an async component inside
- * an array then comes out as `&lt;i&gt;two&lt;/i&gt;` on the precompile path
- * and `<i>two</i>` on every other one.
- *
- * Ordinary code reaches this: `{items.map(() => <AsyncComp/>)}` is exactly that
- * shape, and the shipped transform wraps it in `jsxEscape`.
+ * `pending` must resolve to **final text**: unrendered values would be escaped
+ * over finished markup, turning an async component in an array into
+ * `&lt;i&gt;two&lt;/i&gt;` on the precompile path only.
+ * `{items.map(() => <AsyncComp/>)}` is this shape.
  */
 async function escapeArrayFrom(
   prefix: string,
@@ -231,10 +201,8 @@ async function escapeArrayFrom(
   arr: unknown[],
   from: number,
 ): Promise<RawString> {
-  // Same rule as `renderChildrenFrom`: once one element suspends, the rest
-  // start at once, join in document order, and the first rejection in time
-  // rejects the render. A synchronous throw becomes a rejection so the
-  // remaining elements still start.
+  // Same rule as `renderChildrenFrom`. A synchronous throw becomes a rejection
+  // so the remaining elements still start.
   const parts: Array<string | Promise<string>> = [pending];
   for (let i = from; i < arr.length; i++) {
     let part: string | Promise<string>;
@@ -249,18 +217,12 @@ async function escapeArrayFrom(
 }
 
 /**
- * What dialect of the precompile contract this runtime speaks.
+ * Which dialect of the precompile contract this runtime speaks.
  *
- * A transform reads it to know whether it may improve on Deno's output or must
- * reproduce it: only a runtime that answers `"vincle"` promises that a
- * precompiled page renders the same bytes as the dynamic one, because only that
- * promise makes correcting the reference transform safe. Anything else,
- * Preact, Hono, a hand-written adapter: gets Deno's output, defects included,
- * since that is the behaviour its own helpers were written against.
- *
- * An adapter keeps the dialect by re-exporting everything (`export * from`);
- * a named re-export of the three helpers alone drops it, and the transform then
- * treats the target as a foreign runtime. That is the conservative direction.
+ * Only `"vincle"` promises that a precompiled page renders the same bytes as
+ * the dynamic one, so only then may a transform improve on Deno's output; any
+ * other runtime gets it as is. An adapter keeps the dialect by re-exporting
+ * everything (`export * from`); a named re-export of the three helpers drops it.
  */
 export const precompileDialect = "vincle";
 
@@ -269,22 +231,14 @@ export const precompileDialect = "vincle";
  * separating space. Called by the precompile transform for each attribute
  * expression.
  *
- * Bare because that is the contract every precompile transform is written
- * against: the separator lives in the transform's own static text, so a
- * template compiled for Deno's runtime runs here and vice versa. What that
- * costs is the space left behind when this returns `""`, and `jsxTemplate`
- * takes it back at assembly time, where knowing that the space sits inside a
- * start tag is possible.
+ * Bare because the separator lives in the transform's static text, so Deno
+ * templates run here. `jsxTemplate` removes the space left by an empty result
+ * at assembly time, when it knows it sits inside a start tag.
  *
  * An animation's `attributeName` and the four names it writes through come back
- * as an `ElementAttr` instead: their judge needs the tag, which only the
- * `jsxTemplate` holding the start tag has.
+ * as an `ElementAttr`: judging them needs the tag, which only `jsxTemplate` has.
  *
- * The value taxonomy lives in `serializeAttr` (`attrs.ts`): the same module
- * `buildAttrs` delegates to, so the two paths agree by construction rather than
- * by a case list: a divergence between them can go as far as closing the start tag.
- * This wrapper is the async rendez-vous for the precompile path: a promised
- * value recurses per attribute, where `buildAttrsAsync` resolves the batch.
+ * The value taxonomy lives in `serializeAttr` (`attrs.ts`), shared with `buildAttrs`.
  */
 export function jsxAttr(
   name: string,
@@ -299,15 +253,10 @@ export function jsxAttr(
  * template literal that interleaves static template fragments with escaped
  * values and VNodes (components the transform left in place, Deno-style).
  *
- * A VNode hole renders through the tree walk (`renderNode`). Holes are
- * siblings, so they follow the rule of `renderChildrenFrom` in `render.ts`:
- * started left to right, concurrent once one suspends, joined in document
- * order. The join itself is sequential, which is what lets `appendHole` keep
- * judging dropped-attribute separators from the accumulated prefix.
- *
- * One pass: scanning `values` for a promise, mapping them to text, then walking
- * the result to interleave is three traversals and one array for what is almost
- * always a two-hole template.
+ * A VNode hole renders through the tree walk. Holes follow
+ * `renderChildrenFrom`: concurrent once one suspends, joined in document order
+ * so `appendHole` can read the accumulated prefix. A single pass avoids three
+ * traversals and an array for what is usually a two-hole template.
  */
 export function jsxTemplate(
   templates: ArrayLike<string>,
@@ -316,27 +265,19 @@ export function jsxTemplate(
   return renderTemplate(templates, values);
 }
 
-/** The body both `jsxTemplate` and `jsxTemplateDeferred` share, minus the rest parameter. */
+/** The body `jsxTemplate` and `jsxTemplateDeferred` share. */
 function renderTemplate(templates: ArrayLike<string>, values: unknown[]): RawString | TemplateNode {
   if (values.length === 1 && values[0] instanceof RawString && values[0].value !== "")
     return new RawString((templates[0] ?? "") + values[0].value + (templates[1] ?? ""));
   let out = templates[0] ?? "";
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
-    // `RawString` first: it is what the transform's own `jsxEscape` and
-    // `jsxAttr` hand back, so it is the shape almost every hole arrives as.
-    // Through the taxonomy below it reaches the same `.value` after ten tests,
-    // `isDeferredValue`'s five, two of them `Symbol` lookups, then
-    // `valueToText`'s guard and `renderLeaf`'s own order.
+    // `RawString` first: almost every hole is one, and the taxonomy below needs ten tests to reach it.
     if (v instanceof RawString) {
       out = appendHole(out, v.value);
     } else if (v === null || v === undefined || typeof v === "boolean") {
-      // The empty string `renderLeaf` answers, without reaching it.
       out = appendHole(out, "");
     } else if (isDeferredValue(v)) {
-      // Inside the deferred branch, which only objects reach: an `ElementAttr`
-      // costs the holes already headed for the async path one test, and a
-      // plain hole nothing.
       if (!(v instanceof ElementAttr))
         return new TemplateNode(() => renderTemplateAsync(out, v, values, i + 1, templates));
       const text = renderElementAttr(v, templates, values, i);
@@ -384,10 +325,9 @@ export function jsxTemplateDeferred(
  * Append one hole's text, dropping the separator a dropped attribute leaves.
  *
  * `<input ${jsxAttr("value", null)}>` renders `<input>`, the same bytes the
- * runtime path emits: the space in front of the hole belongs to an attribute
- * that is not there. Only an empty hole inside a start tag loses it: text keeps
- * its spaces (`<p>a ${""}b</p>` stays `a b`), and so does a hole inside a
- * quoted value (`<div title="a ${""}">`), which is why the scan counts quotes.
+ * runtime path emits. Only an empty hole inside a start tag loses the space:
+ * text keeps its spaces (`<p>a ${""}b</p>`), and so does a quoted value
+ * (`<div title="a ${""}">`), hence the quote count.
  */
 function appendHole(out: string, text: string): string {
   if (text !== "") return out + text;
@@ -418,12 +358,8 @@ function resumeAfter(
 
 /**
  * A hole the synchronous path can't finish alone: a `VNode`, a `Promise`, or a
- * container that may hold one (array, iterable): the same taxonomy
- * `jsxEscape` owns. Delegating rather than inlining it is what keeps
- * `jsxTemplate` and `jsxEscape` agreeing on the same value. An array holding a
- * `VNode` is where they diverge most easily: one rendering it, the other
- * throwing, and while the shipped transform never emits that shape, this
- * public export lets a caller build it.
+ * container that may hold one. Same taxonomy as `jsxEscape`; an array holding a
+ * `VNode` is where they would diverge, and this public export lets a caller build one.
  */
 function isDeferredValue(v: unknown): boolean {
   return (
@@ -444,7 +380,6 @@ function renderTemplateAsync(
   from: number,
   templates: ArrayLike<string>,
 ): RawString | Promise<RawString> {
-  // A hole is rendered with its index: an `ElementAttr` needs the template around it.
   const renderAt = (v: unknown, i: number): string | Promise<string> =>
     v instanceof ElementAttr
       ? renderElementAttr(v, templates, values, i)
@@ -456,10 +391,8 @@ function renderTemplateAsync(
     new RawString(appendHole(prefix, text) + (templates[from] ?? ""));
   if (from === values.length)
     return typeof firstPart === "string" ? finishFirst(firstPart) : firstPart.then(finishFirst);
-  // Concurrent tail, same rule as `renderChildrenFrom`: the holes after the
-  // suspended one all start now (a synchronous throw becomes a rejection so
-  // they still do), then join left to right. `appendHole` stays a join-time
-  // step: it reads the accumulated prefix, which only exists in order.
+  // Concurrent tail, same rule as `renderChildrenFrom`. `appendHole` runs at
+  // join time: it reads the accumulated prefix, which only exists in order.
   const parts: Array<string | Promise<string>> = [firstPart];
   for (let i = from; i < values.length; i++) {
     let part: string | Promise<string>;
@@ -482,14 +415,9 @@ function renderTemplateAsync(
 
 /**
  * One template hole to final text: a `VNode` through the tree walk, a promise
- * awaited recursively, a container through `jsxEscape`, which owns the
- * container taxonomy, and anything else through `valueToText`, the shared leaf
- * taxonomy (escape.ts).
- *
- * The container branch is what makes `jsxTemplate` and `jsxEscape` agree on the
- * same value instead of one rendering it and the other throwing; see
- * `isDeferredValue`. It delegates rather than re-walking, so a fix to what counts
- * as a renderable container lands in one place.
+ * awaited recursively, and anything else through `valueToText` (escape.ts).
+ * Containers delegate to `renderNode` so `jsxTemplate` and `jsxEscape` agree;
+ * see `isDeferredValue`.
  */
 function renderValue(v: unknown): string | Promise<string> {
   if (v instanceof TemplateNode) {
@@ -510,6 +438,6 @@ function renderEscaped(v: RawString | VNode | TemplateNode): string | Promise<st
 export { jsx, jsxs, Fragment };
 export type { VNode } from "./types.js";
 
-// TypeScript resolves `JSX.*` from the module named in `jsxImportSource`, which
-// for `jsx: react-jsx` is this one. Declared once in `./jsx-namespace.ts`.
+// TypeScript resolves `JSX.*` from the module named in `jsxImportSource`;
+// declared once in `./jsx-namespace.ts`.
 export type { JSX } from "./jsx-namespace.js";
