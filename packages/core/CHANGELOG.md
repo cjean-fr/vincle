@@ -1,5 +1,11 @@
 # @vincle/core
 
+## Unreleased
+
+### Fixed
+
+- Provisional: escape `&`, `<` and `>` in the body of a `<script>` or `<style>` inside an `<svg>` element, except the tag that closes it, so the HTML parser reads it as text. It runs when an element whose tag is `svg` is written. `foreignObject`, `desc` and `title` are treated as HTML. It reads tags with a scan, not a parser. Content from `raw()` in such a body is escaped too.
+
 ## 0.10.0 — 2026-11-01
 
 ### Changed
