@@ -44,17 +44,12 @@ export function renderToString(node: unknown): Promise<string> {
   try {
     return Promise.resolve(renderNode(node));
   } catch (error) {
-    // The signature promises a `Promise<string>`; a synchronous throw would
-    // escape the caller's `.catch()`.
+    // A synchronous throw would escape the caller's `.catch()`.
     return Promise.reject(error);
   }
 }
 
-/**
- * An element with no children, which is the only shape a void tag can take by
- * the time it reaches the walk. The vocabulary is consulted here and nowhere
- * else on this path.
- */
+/** An element with no children: the only shape a void tag can take at this point. */
 function writeChildless(tag: string, attrStr: string): string {
   return isVoidElement(tag)
     ? serializeVoidElement(tag, attrStr)
@@ -62,22 +57,15 @@ function writeChildless(tag: string, attrStr: string): string {
 }
 
 export function renderNode(vnode: unknown): string | Promise<string> {
-  // Two tests, not a second copy of the leaf taxonomy: anything that is not an
-  // object is a leaf by construction, and `RawString` is the one object the
-  // static path hands back by the thousand. Everything they admit goes to
-  // `renderLeaf`, which owns what a leaf renders as. Without them a text node
-  // would pay five protocol tests, including two `Symbol` lookups, to reach
-  // the same answer. Avoiding those tests saves 3.5 to 7.6% across `text`, `stack` and `realworld`.
+  // Fast path for leaves and `RawString`: saves 3.5 to 7.6% on `text`, `stack`, `realworld`.
   if (typeof vnode !== "object" || vnode === null) return renderLeaf(vnode, undefined);
   if (vnode instanceof RawString) return vnode.value;
 
-  // ── Async primitives ──
   if (vnode instanceof Promise) {
     return vnode.then(renderNode);
   }
   if (Array.isArray(vnode)) return renderChildrenAsync(vnode);
   if (vnode instanceof VNode) {
-    // ── Component ──
     if (typeof vnode.tag === "function") {
       const comp = vnode.tag;
       const provide = (comp as unknown as { [providerMarker]?: ProvideFn })[providerMarker];
@@ -90,9 +78,7 @@ export function renderNode(vnode: unknown): string | Promise<string> {
       } catch (error) {
         return Promise.reject(annotate(error, comp));
       }
-      // Reuses the `then` that was already there: no extra promise link, and
-      // `renderNode` is passed by reference: a `(r) => renderNode(r)` wrapper is
-      // one closure allocated per component rendered, for nothing.
+      // By reference: a wrapper would allocate a closure per component.
       if (result instanceof Promise) {
         return result.then(renderNode, (error: unknown) => {
           throw annotate(error, comp);
@@ -106,19 +92,13 @@ export function renderNode(vnode: unknown): string | Promise<string> {
       return renderNode(result);
     }
 
-    // ── Regular element ──
-    // The tag name was validated at the door (`jsx()`), the only way an element
-    // is built; re-checking here would charge every element for the same answer
-    // twice.
+    // The tag is validated in `jsx()`, the only way an element is built.
     const { tag, attrs, children } = vnode;
 
     const attrStr = buildAttrs(attrs, tag);
     const childTag = isRawtextTag(tag) ? tag : undefined;
 
-    // A promised attribute value (`<a href={resolveUrl()}>`): the only reason
-    // `buildAttrs` asks to be awaited. Once we are async anyway, the element
-    // reduces to its two parts, so there is nothing here to keep in step with the
-    // synchronous form below.
+    // Promised attribute value, e.g. `<a href={resolveUrl()}>`.
     if (typeof attrStr !== "string") {
       return attrStr.then(async (resolved) =>
         children === undefined
@@ -127,8 +107,6 @@ export function renderNode(vnode: unknown): string | Promise<string> {
       );
     }
 
-    // Children rule out a void element: the constructor refused that one, so
-    // the branch that has them writes without asking the vocabulary anything.
     if (children !== undefined) {
       const content = renderChildrenAsync(children, childTag);
       if (content instanceof Promise) {
@@ -142,25 +120,18 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     const result = vnode.render();
     return result instanceof Promise ? result.then((value) => value.value) : result.value;
   }
-  // Neither an array nor a VNode is ever an async iterable, and VNode is the
-  // dominant case: only what is left pays for the protocol tests.
+  // Arrays and VNodes are never async iterables: only the rest pays for the protocol tests.
   if (isAsyncIterable(vnode)) return collectAsyncIterable(vnode, renderNode);
   if (isIterable(vnode)) return renderChildrenAsync(Array.from(vnode));
   return valueToText(vnode);
 }
 
 function renderChildrenAsync(children: unknown, rawtextTag?: string): string | Promise<string> {
-  // A lone child is one child: it goes through `renderChild`, which carries the
-  // rawtext rule. Inlining the string case here and falling through to
-  // `renderNode` for the rest loses that rule: `<script>{promise}</script>` has
-  // exactly one child.
+  // A lone child needs the rawtext rule too (`<script>{promise}</script>`).
   if (!Array.isArray(children)) return renderChild(children, rawtextTag);
   if (children.length === 0) return "";
 
-  // Concatenate directly instead of filling an array then joining: the
-  // intermediate array costs 35% of the time on `realworld` (V8 profile), GC
-  // included.
-  // Isolation is uniform across runtimes; only scheduling differs (below).
+  // Concatenate directly: an intermediate array costs 35% on `realworld`.
   let out = "";
   if (rawtextTag === undefined) {
     for (let i = 0; i < children.length; i++) {
@@ -174,9 +145,7 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
 
   for (let i = 0; i < children.length; i++) {
     const part = renderChild(children[i], rawtextTag);
-    // First child that suspends: the rest is started at once and joined in
-    // document order. What is already rendered stays a plain string, never an
-    // array element.
+    // First child that suspends: start the rest and join in document order.
     if (typeof part !== "string") return renderChildrenFrom(out, part, children, i + 1, rawtextTag);
     out = joinRawTagContent(out, part, rawtextTag);
   }
@@ -185,18 +154,13 @@ function renderChildrenAsync(children: unknown, rawtextTag?: string): string | P
 
 /**
  * Finish a child list whose `from - 1`-th element suspended: start every
- * remaining sibling at once, then join in document order.
+ * remaining sibling, then join in document order.
  *
- * This is the engine's concurrency rule: **siblings run concurrently, output
- * stays in document order.** Their synchronous sections still execute in
- * document order (start order), but async completions overlap. `Scope` is
- * shared per render and the engine does not arbitrate it: a sibling that sets
- * a value after awaiting races with readers in other siblings, exactly like
- * any shared state in concurrent async code. Coordination that must be
- * ordered goes through `<Defer>` / `<Slot>` in `@vincle/flow`. A rejection
- * rejects the render immediately, without waiting for the siblings still in
- * flight; their handlers stay attached, so a late failure is swallowed rather
- * than surfaced as an unhandled rejection.
+ * **Siblings run concurrently, output stays in document order.** `Scope` is
+ * shared per render and not arbitrated: a sibling that sets a value after
+ * awaiting races with other siblings. Ordered coordination goes through
+ * `<Defer>` / `<Slot>` in `@vincle/flow`. A rejection rejects the render
+ * immediately; handlers stay attached, so late failures are swallowed.
  */
 function renderChildrenFrom(
   prefix: string,
@@ -211,8 +175,7 @@ function renderChildrenFrom(
     try {
       part = renderChild(children[i], rawtextTag);
     } catch (error) {
-      // Concurrent mode starts every sibling: a synchronous throw becomes a
-      // rejection so the remaining siblings still start.
+      // A synchronous throw becomes a rejection so the remaining siblings still start.
       part = Promise.reject(error);
     }
     parts.push(part);
@@ -235,11 +198,8 @@ async function settleInDocumentOrder(
 
 /**
  * Resolve every part to its value, in list order. The first rejection *in
- * time* rejects the whole: a slow sibling never delays a failure that already
- * happened. Every part gets its handler up front, so the siblings still in
- * flight afterwards settle quietly - their work is not cancelled, only
- * dropped. Shared by the tree walk (`settleInDocumentOrder`), the precompiled
- * template holes and the array holes.
+ * time* rejects the whole. Siblings still in flight settle quietly (not
+ * cancelled, only dropped). Shared by the tree walk, template holes and array holes.
  *
  * @internal
  */
@@ -264,15 +224,10 @@ export function settleConcurrent(parts: Array<string | Promise<string>>): Promis
 }
 
 /**
- * Finish an array in document order: each step starts after the previous one
- * completes, and a rejection stops the remaining steps. Synchronous steps do
- * not introduce an await.
- *
- * The callback receives the accumulated text and returns its replacement.
- * Kept for callers that genuinely need sequential steps: the engine's own
- * sibling lists (children, template holes, array holes) start concurrently
- * once one suspends and only their *join* is sequential, in
- * `settleInDocumentOrder` and its template/array counterparts.
+ * Run steps in document order: each starts after the previous one completes,
+ * and a rejection stops the rest. The callback receives the accumulated text
+ * and returns its replacement. The engine's own sibling lists use
+ * `settleConcurrent` instead.
  *
  * @internal
  */
@@ -284,7 +239,6 @@ export async function sequenceFrom<T>(
 ): Promise<string> {
   let out = prefix;
   for (let i = from; i < items.length; i++) {
-    // Bounded by the loop condition; `noUncheckedIndexedAccess` cannot see it.
     const next = step(out, items[i]!, i);
     out = typeof next === "string" ? next : await next;
   }
@@ -294,12 +248,9 @@ export async function sequenceFrom<T>(
 /**
  * Render one child, carrying the rawtext rule of `<script>` / `<style>`.
  *
- * Must reach a wrapped string too (promise, iterable), not just a direct one,
- * `<script>{await getCode()}</script>` otherwise HTML-escaped the code instead
- * of leaving it as JS, since an HTML parser never decodes entities inside
- * rawtext. An element `VNode` child stays on `renderNode` (it produces markup,
- * which re-escaping would corrupt); a component child is invoked so its result
- * still carries the rule: `<script><Analytics/></script>` is ordinary.
+ * Wrapped strings (promise, iterable) follow the rule: rawtext never decodes
+ * entities, so `<script>{await getCode()}</script>` must not be HTML-escaped.
+ * Element `VNode`s stay on `renderNode`; a component's result carries the rule.
  */
 function renderChild(child: unknown, rawtextTag: string | undefined): string | Promise<string> {
   if (typeof child === "string") {
@@ -313,28 +264,14 @@ function renderChild(child: unknown, rawtextTag: string | undefined): string | P
 
 const isElementNode = (v: unknown): boolean => v instanceof VNode && typeof v.tag === "string";
 
-/**
- * The leaf taxonomy of `renderNode`, re-walked with the rawtext rule attached.
- *
- * It exists rather than a `rawtextTag` parameter on `renderNode` because that
- * parameter would be threaded through every node of every tree to serve two tag
- * names. Passing that parameter would burden the hot path; this separate
- * function runs only for `<script>` or `<style>` elements.
- */
+/** `renderNode` with the rawtext rule attached, kept apart so the hot path has no `rawtextTag` parameter. */
 function renderRawtextChild(child: unknown, rawtextTag: string): string | Promise<string> {
   if (child instanceof Promise) return child.then((r) => renderRawtextChild(r, rawtextTag));
   if (child instanceof TemplateNode) return renderNode(child);
-  // A component: invoked here rather than in `renderNode`, so that whatever it
-  // returns comes back through this function and keeps the rule. The promise and
-  // async-iterable shapes it may return are already handled above and below,
-  // only the call, its synchronous throw and its annotation are mirrored.
+  // Components are invoked here so their result keeps the rule.
   if (child instanceof VNode) {
-    // An element node reaching here is the shape `renderChild` sends straight to
-    // `renderNode`; mirror that decision rather than assume a component. The entry
-    // guard only covers the *direct* child: a `<div/>` arriving through a promise,
-    // an array or a component's return would otherwise reach `comp(child.attrs)`
-    // and throw `comp is not a function`, naming an internal variable instead of
-    // the problem.
+    // `renderChild` only guards the direct child: an element arriving through a
+    // promise, array or component return must not be called as a component.
     if (typeof child.tag === "string") return renderNode(child);
     const comp = child.tag as (props: Record<string, unknown>) => unknown;
     const provide = (comp as unknown as { [providerMarker]?: ProvideFn })[providerMarker];
@@ -347,8 +284,7 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
     } catch (error) {
       return Promise.reject(annotate(error, comp));
     }
-    // `<script>` is cold; one `catch` for both async shapes is fine here,
-    // where `renderNode` above splits them for the hot path's sake.
+    // Cold path: one `catch` covers both async shapes.
     const rendered = renderRawtextChild(result, rawtextTag);
     if (typeof rendered !== "string") {
       return rendered.catch((error: unknown) => {
@@ -370,10 +306,7 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
 }
 
 /**
- * Drain an async iterable in document order: the same sequencing rule as
- * `sequenceFrom`, over a pull-based source. `map` renders each chunk; the
- * precompile runtime passes its own (`jsxEscape` + hole render), the walk
- * passes `renderNode`.
+ * Drain an async iterable in document order; `map` renders each chunk.
  *
  * @internal
  */
@@ -400,38 +333,28 @@ export async function collectAsyncIterable(
 }
 
 // ── Error annotation ──────────────────────────────────────────────────────
-// `[Profile] not found` says where; `not found` alone doesn't. Innermost
-// component only (no re-annotation up the chain), `Error` instances only
-// (a thrown string keeps its identity), `message` only (`instanceof`/`cause`
-// survive).
+// `[Profile] not found` says where. Innermost component only, `Error`
+// instances only, `message` only (`instanceof` and `cause` survive).
 
 const ANNOTATED = new WeakSet<Error>();
 
 type ComponentTag = (props: Record<string, unknown>) => unknown;
 
-/**
- * `displayName` first: the function a HOC returns is named after the HOC, and
- * a minifier renames the rest. It is the one hook a component has to say what
- * it should be called.
- */
+/** `displayName` first: a HOC's result is named after the HOC, and minifiers rename the rest. */
 function componentName(comp: ComponentTag): string {
   const display = (comp as { displayName?: unknown }).displayName;
   if (typeof display === "string" && display !== "") return display;
   return comp.name || "<anonymous>";
 }
 
-/**
- * Prefix a thrown error's message with the name of the component that threw,
- * once. Returns the very same value it was given in every other case.
- */
+/** Prefix an error's message with the name of the component that threw, once. */
 function annotate(error: unknown, comp: ComponentTag): unknown {
   if (!(error instanceof Error) || ANNOTATED.has(error)) return error;
   ANNOTATED.add(error);
   try {
     error.message = `[${componentName(comp)}] ${error.message}`;
   } catch {
-    // A frozen error, or a getter-only `message`. Nothing to write, and nothing
-    // worth failing an otherwise-fine render for.
+    // Frozen error or getter-only `message`: not worth failing the render.
   }
   return error;
 }
