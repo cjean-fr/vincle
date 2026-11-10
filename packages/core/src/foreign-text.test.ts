@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
+import { escapeForeignText } from "./foreign-text.js";
 import { jsx, jsxTemplate, jsxTemplateDeferred } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
-import { escapeSvgContent } from "./svg-script.js";
 import { raw } from "./types.js";
 
 const script = (children: unknown, props: Record<string, unknown> = {}) =>
@@ -21,7 +21,7 @@ describe("script under an <svg> element", () => {
 
   test("a tag in the body does not leave the svg", async () => {
     const out = await renderToString(svg(script("a<img src=x onerror=alert(1)>")));
-    expect(out).toBe("<svg><script>a&lt;img src=x onerror=alert(1)></script></svg>");
+    expect(out).toBe("<svg><script>a&lt;img src=x onerror=alert(1)&gt;</script></svg>");
     expect(out).not.toContain("<img");
   });
 
@@ -33,7 +33,7 @@ describe("script under an <svg> element", () => {
   test("a closer-like sequence in the text was already neutralized", async () => {
     // The HTML-boundary rule makes it `\u003c/script>`; the rest is escaped here.
     expect(await renderToString(svg(script("a</script><img>")))).toBe(
-      "<svg><script>a\\u003c/script>&lt;img></script></svg>",
+      "<svg><script>a\\u003c/script&gt;&lt;img&gt;</script></svg>",
     );
   });
 
@@ -63,7 +63,7 @@ describe("script under an <svg> element", () => {
     );
   });
 
-  test("a nested svg is processed once more without harm", async () => {
+  test("a nested svg is escaped once, by its own element", async () => {
     expect(await renderToString(svg(svg(script("a<b"))))).toBe(
       "<svg><svg><script>a&lt;b</script></svg></svg>",
     );
@@ -71,41 +71,37 @@ describe("script under an <svg> element", () => {
 
   test("content from raw() inside the body is rewritten too", async () => {
     expect(await renderToString(svg(script(raw("a<b>c"))))).toBe(
-      "<svg><script>a&lt;b>c</script></svg>",
+      "<svg><script>a&lt;b&gt;c</script></svg>",
     );
   });
 });
 
 describe("the scan of the svg content", () => {
   test("upper-case script tags, and a second script after a closed one", () => {
-    expect(escapeSvgContent("<SCRIPT>a<b</SCRIPT><g/><script>c<d</script>")).toBe(
+    expect(escapeForeignText("<SCRIPT>a<b</SCRIPT><g/><script>c<d</script>")).toBe(
       "<SCRIPT>a&lt;b</SCRIPT><g/><script>c&lt;d</script>",
     );
   });
 
   test("an unterminated body is escaped to the end", () => {
-    expect(escapeSvgContent("<script>a<b")).toBe("<script>a&lt;b");
+    expect(escapeForeignText("<script>a<b")).toBe("<script>a&lt;b");
   });
 
   test("a self-closing script has no body", () => {
-    expect(escapeSvgContent("<script src=x /><g><b>t</b></g>")).toBe(
+    expect(escapeForeignText("<script src=x /><g><b>t</b></g>")).toBe(
       "<script src=x /><g><b>t</b></g>",
     );
   });
 
-  test("a script in a foreignObject is an HTML script, until a nested svg", () => {
+  test("a script in a foreignObject is an HTML script", () => {
     expect(
-      escapeSvgContent(
-        "<foreignObject><script>a<b</script><svg><script>c<d</script></svg></foreignObject><script>e<f</script>",
-      ),
-    ).toBe(
-      "<foreignObject><script>a<b</script><svg><script>c&lt;d</script></svg></foreignObject><script>e&lt;f</script>",
-    );
+      escapeForeignText("<foreignObject><script>a<b</script></foreignObject><script>e<f</script>"),
+    ).toBe("<foreignObject><script>a<b</script></foreignObject><script>e&lt;f</script>");
   });
 
   test("content without a script is returned as is", () => {
     const html = '<path d="M0 0"/><g><b>t</b></g>';
-    expect(escapeSvgContent(html)).toBe(html);
+    expect(escapeForeignText(html)).toBe(html);
   });
 });
 
@@ -125,15 +121,6 @@ describe("what stays as it was", () => {
       "<svg><foreignObject><script>a<b</script></foreignObject></svg>",
     );
   });
-
-  test("style under svg and everything under math are not touched here", async () => {
-    expect(await renderToString(svg(jsx("style", { children: "a<b" })))).toBe(
-      "<svg><style>a<b</style></svg>",
-    );
-    expect(await renderToString(jsx("math", { children: script("a<b") }))).toBe(
-      "<math><script>a<b</script></math>",
-    );
-  });
 });
 
 describe("known limits (best effort, see security.mdx)", () => {
@@ -143,13 +130,46 @@ describe("known limits (best effort, see security.mdx)", () => {
     );
   });
 
-  test("&amp; is not touched: only < is in scope", async () => {
-    expect(await renderToString(svg(script("a&&b")))).toBe("<svg><script>a&&b</script></svg>");
+  test("a root written only as text inside a root is not scanned", async () => {
+    expect(await renderToString(svg(raw("<svg><script>a<b</script></svg>")))).toBe(
+      "<svg><svg><script>a<b</script></svg></svg>",
+    );
   });
 
   test("a tag written in a comment is read as a tag", () => {
-    expect(escapeSvgContent("<!-- <foreignObject> --><script>a<b</script>")).toBe(
+    expect(escapeForeignText("<!-- <foreignObject> --><script>a<b</script>")).toBe(
       "<!-- <foreignObject> --><script>a<b</script>",
+    );
+  });
+});
+
+describe("style and integration points", () => {
+  const PAYLOAD = "a{}<img src=x onerror=alert(1)>&amp;";
+  const style = (children: unknown) => jsx("style", { children });
+
+  test("style under svg: & < > are escaped", async () => {
+    const esc = "a{}&lt;img src=x onerror=alert(1)&gt;&amp;amp;";
+    expect(await renderToString(svg(style(PAYLOAD)))).toBe(`<svg><style>${esc}</style></svg>`);
+  });
+
+  test("HTML integration points keep their text as HTML", async () => {
+    for (const tag of ["foreignObject", "desc", "title"]) {
+      expect(await renderToString(svg(jsx(tag, { children: style(PAYLOAD) })))).toBe(
+        `<svg><${tag}><style>${PAYLOAD}</style></${tag}></svg>`,
+      );
+    }
+  });
+
+  test("a style outside any root is untouched, and so is its sibling's root", async () => {
+    expect(await renderToString([svg(style("a<b")), style("a<b")])).toBe(
+      "<svg><style>a&lt;b</style></svg><style>a<b</style>",
+    );
+  });
+
+  test("a nested root inside an integration point is escaped by its own element", async () => {
+    const inner = jsx("foreignObject", { children: [style("a<b"), svg(style("a<b"))] });
+    expect(await renderToString(svg(inner))).toBe(
+      "<svg><foreignObject><style>a<b</style><svg><style>a&lt;b</style></svg></foreignObject></svg>",
     );
   });
 });
