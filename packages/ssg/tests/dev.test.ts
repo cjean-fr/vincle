@@ -7,8 +7,8 @@ import { createServer, isRunnableDevEnvironment } from "vite";
 
 import type { AssetIntegration, PageContext } from "../src/types.js";
 
-import { developmentModules } from "../src/dev-modules.js";
 import { dev } from "../src/dev.js";
+import { createModuleLoader } from "../src/modules.js";
 
 async function waitForText(url: string, text: string) {
   let html = "";
@@ -1342,7 +1342,7 @@ test("deleted compiled symlink releases its virtual source and origin", async ()
   await writeFile(target, "# Content");
   await symlink(target, link);
   const runtime = "@vincle/core/jsx-runtime";
-  const loader = developmentModules(runtime, path.join(root, "src"));
+  const loader = createModuleLoader(runtime, path.join(root, "src"));
   const server = await createServer({
     root,
     configFile: false,

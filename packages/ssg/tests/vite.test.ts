@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { build } from "../src/index.js";
@@ -185,6 +185,27 @@ test("pages, layouts, MDX and assets share aliases, build plugins and one source
     );
     const client = result.files.find((name) => /^assets\/main-.*\.js$/.test(name))!;
     expect(await readFile(path.join(root, "dist", client), "utf8")).toContain("shared-production");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("a symlinked MDX page resolves its compiled imports from the link target", async () => {
+  const root = await mkdtemp(path.join(import.meta.dirname, "../.ssg-vite-linked-"));
+  try {
+    const outside = path.join(root, "shared-docs");
+    await mkdir(outside, { recursive: true });
+    await writeFile(path.join(outside, "value.ts"), 'export const value="linked-target";');
+    await writeFile(
+      path.join(outside, "article.mdx"),
+      'import {value} from "./value"\n\n# Linked\n\n{value}',
+    );
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await symlink(path.join(outside, "article.mdx"), path.join(root, "src/article.mdx"));
+    await build({ root, assets: false });
+    expect(await readFile(path.join(root, "dist/article/index.html"), "utf8")).toContain(
+      "linked-target",
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
