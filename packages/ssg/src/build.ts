@@ -20,11 +20,11 @@ import { resolveHandlers, vincleRuntime } from "./formats.js";
 import { discoverPages } from "./handlers.js";
 import { createPageRenderer } from "./lifecycle.js";
 import { generateSite, generateSiteCached, type PublicationCache } from "./outputs.js";
-import { fullUrl } from "./routes.js";
+import { fullUrl, urlForPath } from "./routes.js";
 import { sitemapOutputs } from "./sitemap.js";
 
-function publicUrl(output: SsgOutput): string {
-  const url = output.url ?? `/${output.path.replace(/(^|\/)index\.html$/, "$1")}`;
+export function publicUrl(output: SsgOutput): string {
+  const url = output.url ?? urlForPath(`/${output.path.replace(/(^|\/)index\.html$/, "$1")}`);
   if (
     !url.startsWith("/") ||
     url.startsWith("//") ||

@@ -7,6 +7,7 @@ import { failure } from "./errors.js";
 import { createMdxHandler } from "./mdx.js";
 import { moduleMeta } from "./metadata.js";
 import { withAdditionalOutputs } from "./results.js";
+import { urlForPath } from "./routes.js";
 
 export const vincleRuntime: JsxRuntime = {
   importSource: "@vincle/core",
@@ -37,7 +38,7 @@ function scriptHandler(name: "module" | "jsx"): PageHandler {
           if (name === "jsx")
             return {
               path: context.outputPath(),
-              url: context.route,
+              url: urlForPath(context.route),
               content: () => context.runtime.render(create),
             };
           const result = await create();

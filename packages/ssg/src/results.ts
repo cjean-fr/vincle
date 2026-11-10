@@ -1,6 +1,7 @@
 import type { SsgOutput, SsgOutputs, SsgProducer, PageContext } from "./types.js";
 
 import { failure } from "./errors.js";
+import { urlForPath } from "./routes.js";
 
 export async function* iterateOutputs(value: SsgOutputs): AsyncGenerator<SsgOutput> {
   if (value && typeof value === "object" && "path" in value) yield value as SsgOutput;
@@ -41,7 +42,7 @@ export function markdownOutputs(
   return [
     {
       path: context.outputPath(),
-      url: context.route,
+      url: urlForPath(context.route),
       content: () => context.runtime.render(create),
     },
     { path: context.outputPath(".md"), content: text, sitemap: false },
