@@ -2,16 +2,20 @@
 // it renders: the text of a `<script>` under `<svg>` is not raw text for the
 // HTML parser, so a `<` in it opens a tag and an `<img>` leaves the `<svg>`.
 //
-// This runs once on the finished string and escapes every `<` of an svg script
-// body except the closing `</script`. It is deliberately narrow:
+// `serializeElement` hands the finished content of an `<svg>` element to
+// `escapeSvgContent`, which escapes every `<` of a `<script>` body in it except
+// the closing `</script`. Only an element whose tag is `svg` pays for it. It is
+// deliberately narrow:
 //   - only `<script>`, only under `<svg>` (not `<style>`, not MathML);
 //   - `<svg>` and `<foreignObject>` are the only elements it follows: a script
 //     inside a `<foreignObject>` is an HTML script and is left alone, until a
 //     nested `<svg>` opens again;
 //   - it reads tags with a quote-aware scan, not a parser: a tag written inside
 //     a comment or a CDATA section is read as a tag, and so are the other tags
-//     that leave foreign content (`<svg><div>`), see `security.mdx`.
-// Content from `raw()` inside such a body is rewritten too: the output is a
+//     that leave foreign content (`<svg><div>`), see `security.mdx`;
+//   - an `<svg>` that is only written in a template's text (precompiled output,
+//     a hand-written `jsxTemplate`) is not an element here, so it is not seen.
+// Content from `raw()` inside such a body is rewritten too: the content is a
 // string by then, and the body is escaped whatever its source.
 
 const RE_TAG = /<(\/?)(svg|foreignobject|script)(?=[\s/>])/gi;
@@ -35,18 +39,15 @@ function tagEnd(html: string, from: number): number {
 }
 
 /**
- * Escape the `<` of every `<script>` body that sits under an `<svg>`, except
- * the `</script` that closes it.
+ * Escape the `<` of every `<script>` body in the content of an `<svg>` element,
+ * except the `</script` that closes it.
  *
  * @internal
  */
-export function escapeSvgScripts(html: string): string {
-  // The gate is two literal searches, not a case-insensitive regex: on a page of
-  // tens of kilobytes the regex alone cost a third of the render. A mixed-case
-  // `<Svg` is not seen by it.
-  if (!html.includes("<svg") && !html.includes("<SVG")) return html;
-  // The enclosing svg / foreignObject elements, innermost last.
-  const open: Array<"svg" | "fo"> = [];
+export function escapeSvgContent(html: string): string {
+  // The enclosing svg / foreignObject elements, innermost last: the content
+  // starts inside the `<svg>` it belongs to.
+  const open: Array<"svg" | "fo"> = ["svg"];
   let out = "";
   let copied = 0;
   RE_TAG.lastIndex = 0;

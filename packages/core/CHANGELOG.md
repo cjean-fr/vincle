@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Escape the `<` of a `<script>` body under `<svg>` in the string `renderToString` returns, except the `</script` that closes it. The HTML parser reads that text as markup, not as raw text, so a `<` opened a tag there. This is a temporary best-effort pass on the output: it covers only `<script>` (not `<style>`, not MathML), only `<`, and follows only `<svg>` and `<foreignObject>`. Content from `raw()` in such a body is rewritten too. Output that has no `<svg` is returned unchanged.
+- Escape the `<` of a `<script>` body in an `<svg>` element, except the `</script` that closes it. The HTML parser reads that text as markup, not as raw text, so a `<` opened a tag there. This is a temporary best-effort pass made when an element whose tag is `svg` is written, in the walk and in the static path: it covers only `<script>` (not `<style>`, not MathML), only `<`, and follows only `<svg>` and `<foreignObject>`. An `<svg>` that is only written in a template's text (precompiled output, a hand-written `jsxTemplate`) is not seen. Content from `raw()` in such a body is rewritten too.
 
 ## 0.10.0 — 2026-11-01
 

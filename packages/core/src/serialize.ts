@@ -27,6 +27,7 @@ import {
   renderLeaf,
 } from "./escape.js";
 import { ownChildren } from "./props.js";
+import { escapeSvgContent } from "./svg-script.js";
 import { isVoidElement, voidChildrenMessage } from "./tag.js";
 import { RawString, TemplateNode, VNode } from "./types.js";
 
@@ -48,6 +49,8 @@ export { isValidTag, invalidTagMessage, isVoidElement, voidChildrenMessage } fro
  * than checked.
  */
 export function serializeElement(tag: string, attrStr: string, content: string): string {
+  // The one place both the walk and the static path write an element: see `svg-script.ts`.
+  if (tag === "svg") content = escapeSvgContent(content);
   return `<${tag}${attrStr}>${content}</${tag}>`;
 }
 
