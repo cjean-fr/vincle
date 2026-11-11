@@ -98,6 +98,19 @@ export function childContext(
   tag: string,
   attrs: Record<string, unknown>,
 ): ParseContext {
+  // Every transitional tag (and only those) starts with s, m, f, d, t or a:
+  // gate on the first letter, case folded by bit, so the common `<div>` never
+  // pays for toLowerCase. What passes the gate is checked in full.
+  const first = tag.charCodeAt(0) | 32;
+  if (
+    first !== 115 /* s */ &&
+    first !== 109 /* m */ &&
+    first !== 102 /* f */ &&
+    first !== 100 /* d */ &&
+    first !== 116 /* t */ &&
+    first !== 97 /* a */
+  )
+    return ctx;
   const lower = tag.toLowerCase();
   if (!TRANSITIONS.has(lower)) return ctx;
   const ns = childNamespace(ctx.ns, lower, attrs);
