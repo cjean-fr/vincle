@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-### Fixed
+### Changed
 
-- Provisional: escape `&`, `<` and `>` in the body of a `<script>` or `<style>` inside an `<svg>` element, except the tag that closes it, so the HTML parser reads it as text. It runs when an element whose tag is `svg` is written. `foreignObject`, `desc` and `title` are treated as HTML. It reads tags with a scan, not a parser. Content from `raw()` in such a body is escaped too.
+- **Proof of concept, on branch `v2`, not for release as-is.** The tree is now neutral until render: `jsx()` always builds a `VNode` and the render walk carries the parser context (HTML / SVG / MathML namespace, rawtext) down to the escaping layer, replacing the hybrid static-serialization fork and the provisional foreign-text pass. `<script>` and `<style>` children are treated as rawtext only in the HTML namespace; under `<svg>` or `<math>` their text is escaped like any other, which resolves the over-escaping the provisional fix addressed, by construction rather than by a special case. Errors that construction used to raise (content in a void element, a function as an attribute value) are now rejected at render, where the context exists; codes and messages are unchanged. Adds `renderToXml` under the new `@vincle/core/xml` subpath, rendering the same neutral tree to XML. Open before any merge: whether the non-neutral tag vocabulary stays acceptable at render (contract decision), JSX typing for the XML entry, SSG integration, and the measured render-throughput cost on deep trees (about 27% on the `stack` bench case in a reduced A/B protocol; the `text` case shows no measurable difference).
 
 ## 0.10.0 — 2026-11-01
 

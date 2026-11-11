@@ -1,13 +1,18 @@
 # @vincle/core architecture
 
-Core renders JSX to HTML through a hybrid representation: static elements become
-trusted serialized HTML, while components and dynamic values remain deferred
-until the tree walk. Static, dynamic and precompiled paths share serialization
-policy and must produce equivalent output.
+Core renders JSX to HTML from a single neutral representation: every element is a
+VNode until the render walk, which carries the parser context (HTML / SVG / MathML
+namespace, rawtext) down to the escaping layer. Escaping therefore follows the
+namespace the content stands in, and the tree can render to a second vocabulary
+(`@vincle/core/xml`) without being rebuilt. Dynamic and precompiled paths share
+serialization policy and must produce equivalent output.
 
 - `src/jsx-runtime.ts` and `src/types.ts`: construction and node representations,
   including the precompile helpers (`jsxTemplate`, `jsxAttr`, `jsxEscape`).
+- `src/parse-context.ts`: the parser context the walk threads — namespace
+  transitions and the markup-text scan of trusted (`raw()`, template) bytes.
 - `src/render.ts`: component evaluation and ordered asynchronous rendering.
+- `src/xml.ts`: `renderToXml`, the XML rendering of the same neutral tree.
 - `src/serialize.ts`, `src/attrs.ts`, `src/template-attrs.ts`, `src/escape.ts`,
   `src/tag.ts` and `src/props.ts`: HTML serialization, escaping and validation.
 - `src/jsx-precompile-runtime.ts`: the entry point the precompile transform
