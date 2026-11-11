@@ -7,6 +7,7 @@ export default defineConfig({
     "jsx-runtime": "src/jsx-runtime.ts",
     "jsx-dev-runtime": "src/jsx-dev-runtime.ts",
     "jsx-precompile-runtime": "src/jsx-precompile-runtime.ts",
+    xml: "src/xml.ts",
   },
   format: "esm",
   clean: true,

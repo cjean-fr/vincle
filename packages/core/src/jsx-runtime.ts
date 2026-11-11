@@ -5,23 +5,26 @@ import {
   ERR_DANGEROUS_HTML,
   ERR_AMBIGUOUS_HTML_CHILDREN,
   ERR_INVALID_TAG,
-  ERR_VOID_CHILDREN,
   vincleTypeError,
 } from "./errors.js";
 import { escapeContent, isAsyncIterable, isIterable, valueToText } from "./escape.js";
+import { mayTransition, scanTextContext, type ParseContext } from "./parse-context.js";
 import { ownChildren } from "./props.js";
 import { renderNode, settleConcurrent } from "./render.js";
-import { isVoidElement, serializeStatic, voidChildrenMessage } from "./serialize.js";
 import { invalidTagMessage, isValidTag } from "./tag.js";
 import { renderElementAttr } from "./template-attrs.js";
 import { VNode, raw, RawString, TemplateNode } from "./types.js";
 
-// ── Hybrid JSX: serialize static trees in one pass; keep dynamic trees as VNodes ──
+// ── Neutral tree: every element is a VNode; serialization is the walk's job ──
+//
+// jsx() builds the tree and never serializes it: the escaping of a text node
+// depends on the parser context it lands in (rawtext in HTML, ordinary markup
+// in foreign content), which is only known when the tree is walked.
 
 function jsx(
   tag: string | ((props: any) => any),
   attributes: Record<string, unknown> | null,
-): VNode | RawString | Promise<RawString> {
+): VNode {
   const props = attributes ?? {};
 
   // The only place a string tag is validated: every exit below inherits a
@@ -40,11 +43,6 @@ function jsx(
   const dsih = (
     dsihValue != null && Object.hasOwn(props, "dangerouslySetInnerHTML") ? dsihValue : undefined
   ) as { __html: string | null | undefined } | undefined;
-
-  if (isStringTag && dsih === undefined) {
-    const html = serializeStatic(tag, props);
-    if (html !== null) return html;
-  }
 
   // `dangerouslySetInnerHTML` is trusted HTML: `raw` keeps it unescaped.
   let children = ownChildren(props);
@@ -70,13 +68,6 @@ function jsx(
       );
   }
 
-  // A void element takes neither children nor `__html`. Checked again here
-  // because the static path reads `children` separately and a props getter may
-  // answer differently each time; this is the read the `VNode` keeps.
-  if (isStringTag && isVoidElement(tag) && children !== undefined) {
-    throw vincleTypeError(voidChildrenMessage(tag), ERR_VOID_CHILDREN);
-  }
-
   return new VNode(tag, props, children);
 }
 
@@ -91,7 +82,7 @@ export function createElement(
   tag: string | ((props: any) => any),
   attributes: Record<string, unknown> | null,
   ...children: unknown[]
-): VNode | RawString | Promise<RawString> {
+): VNode {
   if (children.length === 0) return jsx(tag, attributes);
   const props = { ...attributes };
   props["children"] = children.length === 1 ? children[0] : children;
@@ -144,8 +135,8 @@ export function jsxEscapeDeferred(
   // the Provider and after earlier component siblings.
   if (v === null || (typeof v !== "object" && typeof v !== "function") || v instanceof RawString)
     return jsxEscape(v);
-  return new TemplateNode(() => {
-    const rendered = renderNode(v);
+  return new TemplateNode((ctx) => {
+    const rendered = renderNode(v, ctx);
     return rendered instanceof Promise
       ? rendered.then((text) => new RawString(text))
       : new RawString(rendered);
@@ -153,7 +144,9 @@ export function jsxEscapeDeferred(
 }
 
 // Single pass, like `renderChildrenAsync`: a three-pass form is several times
-// slower on the all-synchronous case.
+// slower on the all-synchronous case. Reached only when no element or
+// component hides in the array (`hasDeferredChild`), so the render calls below
+// never meet a context-sensitive tree: the HTML default is a formality here.
 function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
   let out = "";
   for (let i = 0; i < arr.length; i++) {
@@ -175,7 +168,7 @@ function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
       return escapeArrayFrom(out, part.then(renderEscaped), arr, i + 1);
     }
     if (part instanceof VNode || part instanceof TemplateNode) {
-      const rendered = renderNode(part);
+      const rendered = renderNode(part, HTML_ROOT);
       if (rendered instanceof Promise) {
         return escapeArrayFrom(out, rendered, arr, i + 1);
       }
@@ -207,7 +200,7 @@ async function escapeArrayFrom(
   for (let i = from; i < arr.length; i++) {
     let part: string | Promise<string>;
     try {
-      part = renderValue(arr[i]);
+      part = renderValue(arr[i], HTML_ROOT);
     } catch (error) {
       part = Promise.reject(error);
     }
@@ -254,9 +247,9 @@ export function jsxAttr(
  * values and VNodes (components the transform left in place, Deno-style).
  *
  * A VNode hole renders through the tree walk. Holes follow
- * `renderChildrenFrom`: concurrent once one suspends, joined in document order
- * so `appendHole` can read the accumulated prefix. A single pass avoids three
- * traversals and an array for what is usually a two-hole template.
+ * `renderChildrenFrom`: concurrent once one suspends, joined in document
+ * order so `appendHole` can read the accumulated prefix. A single pass avoids
+ * three traversals and an array for what is usually a two-hole template.
  */
 export function jsxTemplate(
   templates: ArrayLike<string>,
@@ -265,7 +258,14 @@ export function jsxTemplate(
   return renderTemplate(templates, values);
 }
 
-/** The body `jsxTemplate` and `jsxTemplateDeferred` share. */
+/**
+ * The body `jsxTemplate` and `jsxTemplateDeferred` share.
+ *
+ * Runs context-free: the holes it bakes eagerly are escaped strings, plain
+ * values and attributes, whose bytes are the same in every namespace. A hole
+ * that needs the tree walk defers the remainder to a `TemplateNode`, which the
+ * walk calls with the parser context at the template's position.
+ */
 function renderTemplate(templates: ArrayLike<string>, values: unknown[]): RawString | TemplateNode {
   if (values.length === 1 && values[0] instanceof RawString && values[0].value !== "")
     return new RawString((templates[0] ?? "") + values[0].value + (templates[1] ?? ""));
@@ -279,10 +279,14 @@ function renderTemplate(templates: ArrayLike<string>, values: unknown[]): RawStr
       out = appendHole(out, "");
     } else if (isDeferredValue(v)) {
       if (!(v instanceof ElementAttr))
-        return new TemplateNode(() => renderTemplateAsync(out, v, values, i + 1, templates));
+        return new TemplateNode((ctx) =>
+          renderTemplateAsync(out, v, values, i + 1, templates, contextAt(ctx, out)),
+        );
       const text = renderElementAttr(v, templates, values, i);
       if (typeof text !== "string")
-        return new TemplateNode(() => resumeAfter(out, text, values, i, templates));
+        return new TemplateNode((ctx) =>
+          resumeAfter(out, text, values, i, templates, contextAt(ctx, out)),
+        );
       out = appendHole(out, text);
     } else {
       out = appendHole(out, valueToText(v));
@@ -301,8 +305,8 @@ export function jsxTemplateDeferred(
     const value = values[0];
     const prefix = templates[0] ?? "";
     const suffix = templates[1] ?? "";
-    return new TemplateNode(() => {
-      const rendered = renderNode(value);
+    return new TemplateNode((ctx) => {
+      const rendered = renderNode(value, contextAt(ctx, prefix));
       const finish = (text: string) => new RawString(appendHole(prefix, text) + suffix);
       return rendered instanceof Promise ? rendered.then(finish) : finish(rendered);
     });
@@ -311,14 +315,29 @@ export function jsxTemplateDeferred(
     const value = values[0];
     const prefix = templates[0] ?? "";
     const suffix = templates[1] ?? "";
-    return new TemplateNode(() => {
-      const part = value.render();
+    return new TemplateNode((ctx) => {
+      const part = value.render(contextAt(ctx, prefix));
       const finish = (result: RawString) =>
         new RawString(appendHole(prefix, result.value) + suffix);
       return part instanceof Promise ? part.then(finish) : finish(part);
     });
   }
   return renderTemplate(templates, values);
+}
+
+/**
+ * The parser context a deferred template hole stands in: the walk's context at
+ * the template's position, moved past the markup the template already emitted.
+ * The scan is the price of a template text holding its own `<svg>` root; the
+ * precheck keeps it to templates that actually carry one.
+ */
+function contextAt(ctx: ParseContext, emitted: string): ParseContext {
+  return mayTransition(emitted) ? scanTextContext(ctx, emitted) : ctx;
+}
+
+/** The context of the hole after `emitted`, when the hole's own output is balanced. */
+function scanChunk(ctx: ParseContext, chunk: string): ParseContext {
+  return mayTransition(chunk) ? scanTextContext(ctx, chunk) : ctx;
 }
 
 /**
@@ -352,8 +371,9 @@ function resumeAfter(
   values: unknown[],
   hole: number,
   templates: ArrayLike<string>,
+  ctx: ParseContext,
 ): RawString | Promise<RawString> {
-  return renderTemplateAsync(prefix, text.then(raw), values, hole + 1, templates);
+  return renderTemplateAsync(prefix, text.then(raw), values, hole + 1, templates, ctx);
 }
 
 /**
@@ -373,20 +393,26 @@ function isDeferredValue(v: unknown): boolean {
   );
 }
 
+/**
+ * Finish a template whose hole at `from - 1` deferred. `ctx` is that hole's
+ * parser context; each later hole's context comes from the static chunk before
+ * it, a hole's own output counting as namespace-balanced.
+ */
 function renderTemplateAsync(
   prefix: string,
   first: unknown,
   values: unknown[],
   from: number,
   templates: ArrayLike<string>,
+  ctx: ParseContext,
 ): RawString | Promise<RawString> {
-  const renderAt = (v: unknown, i: number): string | Promise<string> =>
+  const renderAt = (v: unknown, i: number, holeCtx: ParseContext): string | Promise<string> =>
     v instanceof ElementAttr
       ? renderElementAttr(v, templates, values, i)
       : v instanceof Promise
-        ? v.then((r: unknown) => renderAt(r, i))
-        : renderValue(v);
-  const firstPart = renderAt(first, from - 1);
+        ? v.then((r: unknown) => renderAt(r, i, holeCtx))
+        : renderValue(v, holeCtx);
+  const firstPart = renderAt(first, from - 1, ctx);
   const finishFirst = (text: string) =>
     new RawString(appendHole(prefix, text) + (templates[from] ?? ""));
   if (from === values.length)
@@ -394,14 +420,16 @@ function renderTemplateAsync(
   // Concurrent tail, same rule as `renderChildrenFrom`. `appendHole` runs at
   // join time: it reads the accumulated prefix, which only exists in order.
   const parts: Array<string | Promise<string>> = [firstPart];
+  let holeCtx = scanChunk(ctx, templates[from] ?? "");
   for (let i = from; i < values.length; i++) {
     let part: string | Promise<string>;
     try {
-      part = renderAt(values[i], i);
+      part = renderAt(values[i], i, holeCtx);
     } catch (error) {
       part = Promise.reject(error);
     }
     parts.push(part);
+    holeCtx = scanChunk(holeCtx, templates[i + 1] ?? "");
   }
   return (async () => {
     const texts = await settleConcurrent(parts);
@@ -419,21 +447,24 @@ function renderTemplateAsync(
  * Containers delegate to `renderNode` so `jsxTemplate` and `jsxEscape` agree;
  * see `isDeferredValue`.
  */
-function renderValue(v: unknown): string | Promise<string> {
+function renderValue(v: unknown, ctx: ParseContext): string | Promise<string> {
   if (v instanceof TemplateNode) {
-    const rendered = v.render();
+    const rendered = v.render(ctx);
     return rendered instanceof Promise ? rendered.then((value) => value.value) : rendered.value;
   }
-  if (v instanceof Promise) return v.then(renderValue);
-  if (v instanceof VNode) return renderNode(v);
-  if (Array.isArray(v) || isIterable(v) || isAsyncIterable(v)) return renderNode(v);
+  if (v instanceof Promise) return v.then((r) => renderValue(r, ctx));
+  if (v instanceof VNode) return renderNode(v, ctx);
+  if (Array.isArray(v) || isIterable(v) || isAsyncIterable(v)) return renderNode(v, ctx);
   return valueToText(v);
 }
 
 /** The two shapes `jsxEscape` can settle to, reduced to final text. */
 function renderEscaped(v: RawString | VNode | TemplateNode): string | Promise<string> {
-  return v instanceof RawString ? v.value : renderNode(v);
+  return v instanceof RawString ? v.value : renderNode(v, HTML_ROOT);
 }
+
+/** Context for the rare eager render in `escapeArray`, which no VNode reaches. */
+const HTML_ROOT: ParseContext = { ns: "html", tag: "", parent: null };
 
 export { jsx, jsxs, Fragment };
 export type { VNode } from "./types.js";

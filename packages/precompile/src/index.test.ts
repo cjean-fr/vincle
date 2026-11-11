@@ -1331,16 +1331,20 @@ describe("precompileTransform", () => {
         runtimePath,
         `/** @jsxImportSource @vincle/core */\nexport const html = ${body};`,
       );
-      const rtMod = (await import(runtimePath)) as { html: { value: string } };
+      const rtMod = (await import(runtimePath)) as { html: unknown };
 
       const preSrc = precompileTransform(`export const html = ${body};`, "/src/app.tsx", {
         runtimeSource: RT,
       })!.code;
       const prePath = join(TMP, `pre-${rand()}.ts`);
       writeFileSync(prePath, preSrc);
-      const preMod = (await import(prePath)) as { html: { value: string } };
+      const preMod = (await import(prePath)) as { html: unknown };
 
-      expect(preMod.html.value).toBe(rtMod.html.value);
+      // Both paths render the same tree: the runtime returns a VNode, the
+      // precompiled module a TemplateNode, and the walk treats them alike.
+      expect(await renderToString(preMod.html as never)).toBe(
+        await renderToString(rtMod.html as never),
+      );
     });
 
     it("rawtext: a static <style> stays precompiled, byte-identical to the runtime path", async () => {
@@ -1352,7 +1356,7 @@ describe("precompileTransform", () => {
         runtimePath,
         `/** @jsxImportSource @vincle/core */\nexport const html = ${body};`,
       );
-      const rtMod = (await import(runtimePath)) as { html: { value: string } };
+      const rtMod = (await import(runtimePath)) as { html: unknown };
 
       const preSrc = precompileTransform(
         `export const html = ${body};`,
@@ -1365,9 +1369,13 @@ describe("precompileTransform", () => {
       expect(preSrc).toContain("jsxTemplate");
       const prePath = join(TMP, `pre-${rand()}.ts`);
       writeFileSync(prePath, preSrc);
-      const preMod = (await import(prePath)) as { html: { value: string } };
+      const preMod = (await import(prePath)) as { html: unknown };
 
-      expect(preMod.html.value).toBe(rtMod.html.value);
+      // Both paths render the same tree: the runtime returns a VNode, the
+      // precompiled module a TemplateNode, and the walk treats them alike.
+      expect(await renderToString(preMod.html as never)).toBe(
+        await renderToString(rtMod.html as never),
+      );
     });
 
     it("rawtext: a <style> with a dynamic hole is handed to the runtime, not templated", async () => {

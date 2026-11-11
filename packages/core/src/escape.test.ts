@@ -9,6 +9,7 @@ import {
   valueToText,
 } from "./escape.js";
 import { jsxEscape } from "./jsx-runtime.js";
+import { HTML_CONTEXT } from "./parse-context.js";
 import { renderNode } from "./render.js";
 import { raw, RawString, VNode } from "./types.js";
 
@@ -466,7 +467,7 @@ describe("one leaf taxonomy, three entry points", () => {
     for (const v of LEAVES) {
       const norm = valueToText(v);
 
-      const walk = renderNode(v);
+      const walk = renderNode(v, HTML_CONTEXT);
       if (typeof walk !== "string" || walk !== norm) {
         failures.push(
           `renderNode(${String(v)}) → ${JSON.stringify(walk)} ≠ ${JSON.stringify(norm)}`,
@@ -484,7 +485,7 @@ describe("one leaf taxonomy, three entry points", () => {
   test("a function is not a text value: valueToText and renderNode throw", () => {
     const fn = () => "fn";
     expect(() => valueToText(fn)).toThrow(/reached a text position/);
-    expect(() => renderNode(fn)).toThrow(/reached a text position/);
+    expect(() => renderNode(fn, HTML_CONTEXT)).toThrow(/reached a text position/);
     // `jsxEscape` defers a function to the render walk, which throws: see
     // function-child.test.ts.
   });

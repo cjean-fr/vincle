@@ -1,6 +1,9 @@
 import { raw, renderToString, type JSX } from "@vincle/core";
 import { escapeAttr } from "@vincle/core/html";
 
+/** The inline polyfill as markup: constant, so built once. */
+const POLYFILL_SCRIPT = raw(`<script>${NATIVE_POLYFILL}</script>`).value;
+
 import { injectIntoHead } from "../utils.js";
 import { NATIVE_POLYFILL } from "./native-polyfill.js";
 import { prepareNativeTemplates } from "./native-shell.js";
@@ -92,7 +95,11 @@ export function withPolyfill<T extends Adapter>(
       const transformed = adapter.transformShell ? adapter.transformShell(shell, ctx) : shell;
       const prepared = prepareNativeTemplates(transformed);
       if (ctx.fragments.size === 0 && !prepared.active) return transformed;
-      return injectIntoHead(prepared.html, String(<script>{NATIVE_POLYFILL}</script>));
+      // The tree is format-neutral: a JSX element is a VNode, not markup, and
+      // `transformShell` is synchronous. The polyfill is flow's own constant,
+      // audited in native.test.tsx to carry no `</script` and no `<!--`: raw()
+      // is the explicit trust boundary, and its bytes pass through verbatim.
+      return injectIntoHead(prepared.html, POLYFILL_SCRIPT);
     },
   };
 }

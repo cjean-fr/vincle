@@ -4,6 +4,8 @@
 // `jsx-runtime.ts` test `instanceof VNode`; living in the module both already
 // import keeps the dependency acyclic.
 
+import { HTML_CONTEXT, type ParseContext } from "./parse-context.js";
+
 /**
  * One element of the tree: a tag, its props, its children. Pure representation,
  * the tag is validated at the door (`jsx()`), so the tree walk trusts what it finds.
@@ -80,8 +82,10 @@ export class RawUrl {
 /** Markup whose component holes must be evaluated at render time. */
 export class TemplateNode implements Promise<RawString> {
   readonly [Symbol.toStringTag] = "Promise";
-  readonly render: () => RawString | Promise<RawString>;
-  constructor(render: () => RawString | Promise<RawString>) {
+  // The walk hands the parser context at the node, so a hole under `<svg>`
+  // is escaped for foreign content even when the `<svg>` is template text.
+  readonly render: (ctx: ParseContext) => RawString | Promise<RawString>;
+  constructor(render: (ctx: ParseContext) => RawString | Promise<RawString>) {
     this.render = render;
   }
 
@@ -90,7 +94,10 @@ export class TemplateNode implements Promise<RawString> {
     onfulfilled?: ((value: RawString) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
-    return Promise.resolve().then(this.render).then(onfulfilled, onrejected);
+    // Awaited without a walk (a transform's own code): the HTML default.
+    return Promise.resolve()
+      .then(() => this.render(HTML_CONTEXT))
+      .then(onfulfilled, onrejected);
   }
 
   catch<TResult = never>(

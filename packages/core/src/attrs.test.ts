@@ -12,6 +12,7 @@ import {
 } from "./attrs.js";
 import { valueToText } from "./escape.js";
 import { jsx } from "./jsx-runtime.js";
+import { HTML_CONTEXT } from "./parse-context.js";
 import { renderNode, renderToString } from "./render.js";
 import { isAnimationTag } from "./tag.js";
 import { raw, rawUrl } from "./types.js";
@@ -833,7 +834,7 @@ describe("Date values", () => {
         process.env.TZ = zone;
         const expected = String(instant);
         expect(valueToText(instant)).toBe(expected);
-        expect(String(renderNode(instant))).toBe(expected);
+        expect(String(renderNode(instant, HTML_CONTEXT))).toBe(expected);
         expect(String(buildAttrs({ dateTime: instant }, "time"))).toContain(
           `datetime="${expected}"`,
         );

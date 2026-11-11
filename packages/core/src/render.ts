@@ -1,4 +1,5 @@
 import { buildAttrs } from "./attrs.js";
+import { ERR_VOID_CHILDREN, vincleTypeError } from "./errors.js";
 import {
   escapeContent,
   escapeRawTagContent,
@@ -9,7 +10,19 @@ import {
   renderLeaf,
   valueToText,
 } from "./escape.js";
-import { isVoidElement, serializeElement, serializeVoidElement } from "./serialize.js";
+import {
+  HTML_CONTEXT,
+  childContext,
+  mayTransition,
+  scanTextContext,
+  type ParseContext,
+} from "./parse-context.js";
+import {
+  isVoidElement,
+  serializeElement,
+  serializeVoidElement,
+  voidChildrenMessage,
+} from "./serialize.js";
 import { providerMarker, RawString, VNode, type ProvideFn } from "./types.js";
 import { TemplateNode } from "./types.js";
 
@@ -21,6 +34,12 @@ import { TemplateNode } from "./types.js";
  * order whatever the completion order. A failure arrives as a rejection,
  * never as a synchronous throw, and rejects as soon as it happens, without
  * waiting for the siblings still in flight.
+ *
+ * Escaping follows the parser context the walk stands in: `<script>` and
+ * `<style>` are raw text in the HTML namespace and ordinary markup in foreign
+ * content, so their text under `<svg>` or `<math>` is escaped as text. The
+ * context is structural (the element tree) and extends through markup text
+ * from `raw()` and templates, which is scanned as it is emitted.
  *
  * @example
  * ```tsx
@@ -42,7 +61,7 @@ import { TemplateNode } from "./types.js";
  */
 export function renderToString(node: unknown): Promise<string> {
   try {
-    return Promise.resolve(renderNode(node));
+    return Promise.resolve(renderNode(node, HTML_CONTEXT));
   } catch (error) {
     // A synchronous throw would escape the caller's `.catch()`.
     return Promise.reject(error);
@@ -56,21 +75,29 @@ function writeChildless(tag: string, attrStr: string): string {
     : serializeElement(tag, attrStr, "");
 }
 
-export function renderNode(vnode: unknown): string | Promise<string> {
+/**
+ * Render one node to final text, in the parser context `ctx`.
+ *
+ * The context only moves for elements that transition namespaces, and for
+ * markup text (see `parse-context.ts`); everything else hands `ctx` along.
+ *
+ * @internal
+ */
+export function renderNode(vnode: unknown, ctx: ParseContext): string | Promise<string> {
   // Fast path for leaves and `RawString`: saves 3.5 to 7.6% on `text`, `stack`, `realworld`.
   if (typeof vnode !== "object" || vnode === null) return renderLeaf(vnode, undefined);
   if (vnode instanceof RawString) return vnode.value;
 
   if (vnode instanceof Promise) {
-    return vnode.then(renderNode);
+    return vnode.then((v) => renderNode(v, ctx));
   }
-  if (Array.isArray(vnode)) return renderChildrenAsync(vnode);
+  if (Array.isArray(vnode)) return renderChildrenAsync(vnode, ctx, undefined);
   if (vnode instanceof VNode) {
     if (typeof vnode.tag === "function") {
       const comp = vnode.tag;
       const provide = (comp as unknown as { [providerMarker]?: ProvideFn })[providerMarker];
       if (provide) {
-        return provide(vnode.attrs["value"], () => renderNode(vnode.children));
+        return provide(vnode.attrs["value"], () => renderNode(vnode.children, ctx));
       }
       let result: unknown;
       try {
@@ -80,35 +107,53 @@ export function renderNode(vnode: unknown): string | Promise<string> {
       }
       // By reference: a wrapper would allocate a closure per component.
       if (result instanceof Promise) {
-        return result.then(renderNode, (error: unknown) => {
-          throw annotate(error, comp);
-        });
+        return result.then(
+          (v) => renderNode(v, ctx),
+          (error: unknown) => {
+            throw annotate(error, comp);
+          },
+        );
       }
       if (isAsyncIterable(result)) {
-        return collectAsyncIterable(result, renderNode).catch((error: unknown) => {
-          throw annotate(error, comp);
-        });
+        return collectAsyncIterable(result, (chunk) => renderNode(chunk, ctx)).catch(
+          (error: unknown) => {
+            throw annotate(error, comp);
+          },
+        );
       }
-      return renderNode(result);
+      return renderNode(result, ctx);
     }
 
     // The tag is validated in `jsx()`, the only way an element is built.
     const { tag, attrs, children } = vnode;
 
+    // A void element takes no children. Checked at render, not construction:
+    // the tree is format-neutral, and the void rule is HTML's.
+    if (isVoidElement(tag) && children !== undefined) {
+      throw vincleTypeError(voidChildrenMessage(tag), ERR_VOID_CHILDREN);
+    }
+
     const attrStr = buildAttrs(attrs, tag);
-    const childTag = isRawtextTag(tag) ? tag : undefined;
+    // The namespace the children stand in decides their escaping: rawtext
+    // only in the HTML namespace, plain text escaping in foreign content.
+    const childCtx = childContext(ctx, tag, attrs);
+    const childTag = childCtx.ns === "html" && isRawtextTag(tag) ? tag : undefined;
 
     // Promised attribute value, e.g. `<a href={resolveUrl()}>`.
     if (typeof attrStr !== "string") {
       return attrStr.then(async (resolved) =>
         children === undefined
           ? writeChildless(tag, resolved)
-          : serializeElement(tag, resolved, await renderChildrenAsync(children, childTag)),
+          : serializeElement(
+              tag,
+              resolved,
+              await renderChildrenAsync(children, childCtx, childTag),
+            ),
       );
     }
 
     if (children !== undefined) {
-      const content = renderChildrenAsync(children, childTag);
+      const content = renderChildrenAsync(children, childCtx, childTag);
       if (content instanceof Promise) {
         return content.then((c) => serializeElement(tag, attrStr, c));
       }
@@ -117,36 +162,58 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     return writeChildless(tag, attrStr);
   }
   if (vnode instanceof TemplateNode) {
-    const result = vnode.render();
+    const result = vnode.render(ctx);
     return result instanceof Promise ? result.then((value) => value.value) : result.value;
   }
   // Arrays and VNodes are never async iterables: only the rest pays for the protocol tests.
-  if (isAsyncIterable(vnode)) return collectAsyncIterable(vnode, renderNode);
-  if (isIterable(vnode)) return renderChildrenAsync(Array.from(vnode));
+  if (isAsyncIterable(vnode)) return collectAsyncIterable(vnode, (chunk) => renderNode(chunk, ctx));
+  if (isIterable(vnode)) return renderChildrenAsync(Array.from(vnode), ctx, undefined);
   return valueToText(vnode);
 }
 
-function renderChildrenAsync(children: unknown, rawtextTag?: string): string | Promise<string> {
+/**
+ * After a sibling whose bytes may open or close a namespace, the context the
+ * next sibling stands in. Only `RawString` output can carry that markup:
+ * escaped text contains no tag, and an element's output is balanced by
+ * construction (a template's is the caller's; see `jsx-runtime.ts`).
+ */
+function contextAfter(ctx: ParseContext, child: unknown, part: string): ParseContext {
+  return child instanceof RawString && mayTransition(part) ? scanTextContext(ctx, part) : ctx;
+}
+
+function renderChildrenAsync(
+  children: unknown,
+  ctx: ParseContext,
+  rawtextTag?: string,
+): string | Promise<string> {
   // A lone child needs the rawtext rule too (`<script>{promise}</script>`).
-  if (!Array.isArray(children)) return renderChild(children, rawtextTag);
+  if (!Array.isArray(children)) return renderChild(children, ctx, rawtextTag);
   if (children.length === 0) return "";
 
   // Concatenate directly: an intermediate array costs 35% on `realworld`.
   let out = "";
   if (rawtextTag === undefined) {
+    let current = ctx;
     for (let i = 0; i < children.length; i++) {
-      const part = renderChild(children[i], undefined);
-      if (typeof part !== "string")
-        return renderChildrenFrom(out, part, children, i + 1, undefined);
+      const child = children[i];
+      const part = renderChild(child, current, undefined);
+      if (typeof part !== "string") {
+        // A suspended sibling's bytes are unknown when the rest start: they
+        // run with the context known so far. A namespace opened and left open
+        // by an async sibling's markup is a documented limit of `raw()`.
+        return renderChildrenFrom(out, part, children, i + 1, current, undefined);
+      }
       out += part;
+      current = contextAfter(current, child, part);
     }
     return out;
   }
 
   for (let i = 0; i < children.length; i++) {
-    const part = renderChild(children[i], rawtextTag);
+    const part = renderChild(children[i], ctx, rawtextTag);
     // First child that suspends: start the rest and join in document order.
-    if (typeof part !== "string") return renderChildrenFrom(out, part, children, i + 1, rawtextTag);
+    if (typeof part !== "string")
+      return renderChildrenFrom(out, part, children, i + 1, ctx, rawtextTag);
     out = joinRawTagContent(out, part, rawtextTag);
   }
   return out;
@@ -167,13 +234,14 @@ function renderChildrenFrom(
   pending: Promise<string>,
   children: unknown[],
   from: number,
+  ctx: ParseContext,
   rawtextTag: string | undefined,
 ): Promise<string> {
   const parts: Array<string | Promise<string>> = [pending];
   for (let i = from; i < children.length; i++) {
     let part: string | Promise<string>;
     try {
-      part = renderChild(children[i], rawtextTag);
+      part = renderChild(children[i], ctx, rawtextTag);
     } catch (error) {
       // A synchronous throw becomes a rejection so the remaining siblings still start.
       part = Promise.reject(error);
@@ -252,31 +320,41 @@ export async function sequenceFrom<T>(
  * entities, so `<script>{await getCode()}</script>` must not be HTML-escaped.
  * Element `VNode`s stay on `renderNode`; a component's result carries the rule.
  */
-function renderChild(child: unknown, rawtextTag: string | undefined): string | Promise<string> {
+function renderChild(
+  child: unknown,
+  ctx: ParseContext,
+  rawtextTag: string | undefined,
+): string | Promise<string> {
   if (typeof child === "string") {
     return rawtextTag === undefined ? escapeContent(child) : escapeRawTagContent(child, rawtextTag);
   }
   if (rawtextTag !== undefined && !isElementNode(child)) {
-    return renderRawtextChild(child, rawtextTag);
+    return renderRawtextChild(child, ctx, rawtextTag);
   }
-  return renderNode(child);
+  return renderNode(child, ctx);
 }
 
 const isElementNode = (v: unknown): boolean => v instanceof VNode && typeof v.tag === "string";
 
 /** `renderNode` with the rawtext rule attached, kept apart so the hot path has no `rawtextTag` parameter. */
-function renderRawtextChild(child: unknown, rawtextTag: string): string | Promise<string> {
-  if (child instanceof Promise) return child.then((r) => renderRawtextChild(r, rawtextTag));
-  if (child instanceof TemplateNode) return renderNode(child);
+function renderRawtextChild(
+  child: unknown,
+  ctx: ParseContext,
+  rawtextTag: string,
+): string | Promise<string> {
+  if (child instanceof Promise) return child.then((r) => renderRawtextChild(r, ctx, rawtextTag));
+  if (child instanceof TemplateNode) return renderNode(child, ctx);
   // Components are invoked here so their result keeps the rule.
   if (child instanceof VNode) {
     // `renderChild` only guards the direct child: an element arriving through a
     // promise, array or component return must not be called as a component.
-    if (typeof child.tag === "string") return renderNode(child);
+    if (typeof child.tag === "string") return renderNode(child, ctx);
     const comp = child.tag as (props: Record<string, unknown>) => unknown;
     const provide = (comp as unknown as { [providerMarker]?: ProvideFn })[providerMarker];
     if (provide) {
-      return provide(child.attrs["value"], () => renderRawtextChild(child.children, rawtextTag));
+      return provide(child.attrs["value"], () =>
+        renderRawtextChild(child.children, ctx, rawtextTag),
+      );
     }
     let result: unknown;
     try {
@@ -285,7 +363,7 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
       return Promise.reject(annotate(error, comp));
     }
     // Cold path: one `catch` covers both async shapes.
-    const rendered = renderRawtextChild(result, rawtextTag);
+    const rendered = renderRawtextChild(result, ctx, rawtextTag);
     if (typeof rendered !== "string") {
       return rendered.catch((error: unknown) => {
         throw annotate(error, comp);
@@ -293,15 +371,15 @@ function renderRawtextChild(child: unknown, rawtextTag: string): string | Promis
     }
     return rendered;
   }
-  if (Array.isArray(child)) return renderChildrenAsync(child, rawtextTag);
+  if (Array.isArray(child)) return renderChildrenAsync(child, ctx, rawtextTag);
   if (isAsyncIterable(child)) {
     return collectAsyncIterable(
       child,
-      (chunk) => renderRawtextChild(chunk, rawtextTag),
+      (chunk) => renderRawtextChild(chunk, ctx, rawtextTag),
       rawtextTag,
     );
   }
-  if (isIterable(child)) return renderChildrenAsync(Array.from(child), rawtextTag);
+  if (isIterable(child)) return renderChildrenAsync(Array.from(child), ctx, rawtextTag);
   return renderLeaf(child, rawtextTag);
 }
 

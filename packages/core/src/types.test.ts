@@ -23,13 +23,13 @@ describe("the tag gate", () => {
     expect(() => jsx("a b", {})).toThrow(/\[vincle\/core\] Invalid tag name "a b"/);
   });
 
-  test("accepts what a compiler emits, on every exit of the fork", () => {
+  test("accepts what a compiler emits, whatever the element holds", () => {
     const Comp = (): string => "x";
-    // static exit: judged before `serializeStatic` takes over
-    expect(jsx("div", {})).toBeInstanceOf(RawString);
-    // VNode exit: a promised child bails the static path
+    // Every element is a VNode; the name was judged at construction.
+    expect((jsx("div", {}) as VNode).tag).toBe("div");
+    // A promised child changes nothing at construction: the name was judged.
     expect((jsx("my-widget", { children: Promise.resolve("x") }) as VNode).tag).toBe("my-widget");
-    // `dsih` exit: serialized or not, the name was judged first
+    // `dsih` likewise: serialized markup or not, the name was judged first.
     expect((jsx("svg:rect", { dangerouslySetInnerHTML: { __html: "x" } }) as VNode).tag).toBe(
       "svg:rect",
     );

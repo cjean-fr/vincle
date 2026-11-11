@@ -5,39 +5,37 @@ import { createContext, useContext } from "./provider.js";
 import { renderToString } from "./render.js";
 import { VNode, RawString } from "./types.js";
 
-// The hybrid model serializes fully-static subtrees to a RawString at jsx() time;
-// anything dynamic (component, dSIH, promise or function child) stays a VNode for
-// the tree-walk render. These tests pin that contract via the return type of
-// jsx() plus the rendered markup.
+// The tree is format-neutral: jsx() always returns a VNode, whatever it could
+// have serialized, and the render walk produces the markup. These tests pin
+// that contract via the return type of jsx() plus the rendered markup.
 //
-// A style object and a class array are *not* dynamic, though they used to leave
-// the static path as if they were: `buildAttrs` serializes both, and the static path calls
-// `buildAttrs`. See `serialize.ts`.
-
+// A style object and a class array are ordinary attributes: `buildAttrs`
+// serializes both at render. See `serialize.ts`.
+//
 describe("static subtree serialization", () => {
-  test("simple static div with text child serializes to RawString", async () => {
+  test("a static element is a VNode and renders its markup", async () => {
     const node = jsx("div", { class: "foo", children: "hello" });
-    expect(node).toBeInstanceOf(RawString);
+    expect(node).toBeInstanceOf(VNode);
     expect(await renderToString(node)).toBe('<div class="foo">hello</div>');
   });
 
   test("static div with number child serializes", async () => {
     const node = jsx("span", { children: 42 });
-    expect(node).toBeInstanceOf(RawString);
+    expect(node).toBeInstanceOf(VNode);
     expect(await renderToString(node)).toBe("<span>42</span>");
   });
 
   test("void element serializes", async () => {
     const br = jsx("br", {});
-    expect(br).toBeInstanceOf(RawString);
+    expect(br).toBeInstanceOf(VNode);
     expect(await renderToString(br)).toBe("<br>");
   });
 
   test("nested static elements serialize", async () => {
     const inner = jsx("span", { class: "inner", children: "text" });
     const outer = jsx("div", { class: "outer", children: inner });
-    expect(inner).toBeInstanceOf(RawString);
-    expect(outer).toBeInstanceOf(RawString);
+    expect(inner).toBeInstanceOf(VNode);
+    expect(outer).toBeInstanceOf(VNode);
     expect(await renderToString(outer)).toBe(
       '<div class="outer"><span class="inner">text</span></div>',
     );
@@ -46,11 +44,11 @@ describe("static subtree serialization", () => {
   test("static element with array children serializes", async () => {
     const items = [jsx("li", { key: "1", children: "a" }), jsx("li", { key: "2", children: "b" })];
     const ul = jsx("ul", { children: items });
-    expect(ul).toBeInstanceOf(RawString);
+    expect(ul).toBeInstanceOf(VNode);
     expect(await renderToString(ul)).toBe("<ul><li>a</li><li>b</li></ul>");
   });
 
-  test("component is NOT serialized (stays a VNode)", () => {
+  test("a component is a VNode too", () => {
     const Comp = () => jsx("div", { children: "hello" });
     const node = jsx(Comp, {});
     expect(node).toBeInstanceOf(VNode);
@@ -58,44 +56,48 @@ describe("static subtree serialization", () => {
 
   test("object style serializes: buildAttrs handles it on both paths", async () => {
     const node = jsx("div", { style: { color: "red" }, children: "x" });
-    expect(node).toBeInstanceOf(RawString);
+    expect(node).toBeInstanceOf(VNode);
     expect(await renderToString(node)).toBe('<div style="color:red">x</div>');
   });
 
   test("class array serializes: buildAttrs handles it on both paths", async () => {
     const node = jsx("div", { class: ["foo", "bar"], children: "x" });
-    expect(node).toBeInstanceOf(RawString);
+    expect(node).toBeInstanceOf(VNode);
     expect(await renderToString(node)).toBe('<div class="foo bar">x</div>');
   });
 
-  // The static path and the tree walk must not merely both work: they must agree.
-  test("serialized attributes are byte-identical to the tree-walk's", async () => {
+  // Every attribute shape `buildAttrs` accepts renders the same through jsx().
+  test("attributes render byte-identically for a jsx() element and a bare VNode", async () => {
     const props = { style: { backgroundColor: "red", "--x": 1 }, class: ["a", "", "b"], id: "i" };
-    const serialized = jsx("p", { ...props, children: "t" });
+    const fromJsx = jsx("p", { ...props, children: "t" });
     const walked = new VNode("p", { ...props }, "t");
-    expect(serialized).toBeInstanceOf(RawString);
-    expect(await renderToString(serialized)).toBe(await renderToString(walked));
+    expect(await renderToString(fromJsx)).toBe(await renderToString(walked));
   });
 
-  test("dangerouslySetInnerHTML is NOT serialized", () => {
+  test("dangerouslySetInnerHTML renders its markup verbatim", async () => {
     const node = jsx("div", { dangerouslySetInnerHTML: { __html: "<p>hello</p>" } });
     expect(node).toBeInstanceOf(VNode);
+    expect(await renderToString(node)).toBe("<div><p>hello</p></div>");
   });
 
-  test("rawtext tag still serializes", async () => {
+  test("a rawtext element renders its content unescaped in HTML", async () => {
     const node = jsx("script", { children: "const x = 1;" });
-    expect(node).toBeInstanceOf(RawString);
+    expect(node).toBeInstanceOf(VNode);
     expect(await renderToString(node)).toBe("<script>const x = 1;</script>");
   });
 
-  test("promise child is NOT serialized", () => {
+  test("a promise child is awaited at render", async () => {
     const node = jsx("div", { children: Promise.resolve("hello") });
     expect(node).toBeInstanceOf(VNode);
+    expect(await renderToString(node)).toBe("<div>hello</div>");
   });
 
-  test("function child is NOT serialized", () => {
+  test("a function child refuses at render, as at every text position", async () => {
     const node = jsx("div", { children: () => jsx("span", {}) });
     expect(node).toBeInstanceOf(VNode);
+    await expect(renderToString(node)).rejects.toThrow(
+      expect.objectContaining({ code: "ERR_VINCLE_FUNCTION_AS_TEXT" }),
+    );
   });
 
   test("fragment with array children renders correctly", async () => {

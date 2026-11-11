@@ -63,6 +63,12 @@
       "import": "./dist/jsx-precompile-runtime.mjs",
       "default": "./dist/jsx-precompile-runtime.mjs"
     },
+    "./xml": {
+      "types": "./dist/xml.d.mts",
+      "dist": "./dist/xml.mjs",
+      "import": "./dist/xml.mjs",
+      "default": "./dist/xml.mjs"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {

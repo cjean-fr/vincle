@@ -67,6 +67,14 @@ describe("NativeAdapter", () => {
     expect(await nativePolyfillHash()).toBe(hash);
   });
 
+  it("keeps the polyfill raw()-safe: no byte sequence that would close its script", () => {
+    // native.tsx injects the polyfill through raw(): the trust boundary holds
+    // only while the constant carries no `</script` and no `<!--`, the two
+    // sequences that would let it break out of its own element.
+    expect(NATIVE_POLYFILL.toLowerCase()).not.toContain("</script");
+    expect(NATIVE_POLYFILL).not.toContain("<!--");
+  });
+
   it("transformShell injects the polyfill when fragments are pending", () => {
     const result = NativeAdapter.transformShell!(
       "<html><head></head><body></body></html>",
