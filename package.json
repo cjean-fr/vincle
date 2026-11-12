@@ -42,7 +42,7 @@
     "lint": "turbo run //#oxlint",
     "test": "turbo test",
     "test:coverage": "turbo run coverage",
-    "oxlint": "oxlint .",
+    "oxlint": "oxlint . --deny-warnings",
     "check:static": "bun scripts/check-static.ts",
     "check:scripts": "bun check --no-script -p scripts/tsconfig.json",
     "check:ci": "bun scripts/check-workflows.ts && bun test scripts",
