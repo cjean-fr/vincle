@@ -14,6 +14,7 @@
     "@vincle/no-javascript-urls": "error",
     "@vincle/no-context": "error",
     "@vincle/no-ambiguous-html-children": "error",
+    "@vincle/no-foreign-rawtext": "warn",
     "@vincle/no-refs": "error",
     "@vincle/no-global-jsx-namespace": "error",
     "consistent-function-scoping": "off",

@@ -26,7 +26,6 @@ import {
   joinRawTagContent,
   renderLeaf,
 } from "./escape.js";
-import { escapeForeignText } from "./foreign-text.js";
 import { ownChildren } from "./props.js";
 import { isVoidElement, voidChildrenMessage } from "./tag.js";
 import { RawString, TemplateNode, VNode } from "./types.js";
@@ -49,8 +48,6 @@ export { isValidTag, invalidTagMessage, isVoidElement, voidChildrenMessage } fro
  * than checked.
  */
 export function serializeElement(tag: string, attrStr: string, content: string): string {
-  // The one place both the walk and the static path write an element: see `foreign-text.ts`.
-  if (tag === "svg") content = escapeForeignText(content);
   return `<${tag}${attrStr}>${content}</${tag}>`;
 }
 

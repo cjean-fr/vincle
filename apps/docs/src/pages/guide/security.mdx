@@ -207,13 +207,23 @@ the second one closes for real. The plain child form emits the same bytes fully
 neutralised. It is a `RawString`, so rule 2 applies: you are vouching for the
 whole string, element boundary included.
 
-**`<script>` and `<style>` under `<svg>` (provisional).** In an HTML document,
-the text of an SVG `<script>` or `<style>` is not raw text: the parser reads a `<`
-there as the start of a tag and `&` as a character reference. When an `<svg>`
-element is written, Vincle escapes `&`, `<` and `>` in the bodies of the
-`<script>` and `<style>` in its content, except the tag that closes them. It
-reads tags with a scan, not a parser, and treats `foreignObject`, `desc` and
-`title` as HTML. Content from `raw()` in such a body is escaped too.
+**`<script>` and `<style>` under `<svg>` or `<math>`.** In an HTML document,
+the text of a `<script>` or `<style>` in foreign content is not raw text: the
+parser reads a `<` there as the start of a tag and `&` as a character reference.
+Ship that source pre-escaped as text, as trusted bytes:
+`raw(escapeContent(source))` with `escapeContent` from `@vincle/core/html`. The
+recipe belongs in `<svg>`/`<math>` subtrees only: in HTML, raw text never
+decodes entities, and the same holds under an HTML integration point
+(`foreignObject`, `desc`, `title`, MathML text elements, `annotation-xml`
+with `encoding="text/html"`), where the HTML rawtext rule already applies.
+A plain `<script>` or `<style>` keeps the HTML rawtext rule everywhere. The
+`@vincle/no-foreign-rawtext` lint rule flags the plain elements under an `<svg>`
+or `<math>` JSX subtree, integration points excluded; the recipe above,
+recognized through the file's direct imports, is not flagged. A barrel that
+re-exports the helpers is not followed: the recipe through it keeps the
+warning, the safe direction. The rule is lexical:
+a script assembled inside a component used under `<svg>` is invisible to it,
+and content opened through `raw()` or a template stays trusted author bytes.
 
 ## What the compiler guarantees (and what it doesn't)
 
