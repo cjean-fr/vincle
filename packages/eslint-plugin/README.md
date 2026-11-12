@@ -35,6 +35,7 @@ recommended config, except `no-unsafe-event-handlers` (warning).
 | `no-unsafe-event-handlers`   | Inline handler strings and function-valued HTML attributes |
 | `no-javascript-urls`         | `javascript:` links                                        |
 | `no-context`                 | React context                                              |
+| `no-foreign-rawtext`         | `<script>`/`<style>` text inside `<svg>`/`<math>`          |
 | `no-ambiguous-html-children` | Children plus `dangerouslySetInnerHTML` on a component     |
 | `no-refs`                    | React refs                                                 |
 | `no-global-jsx-namespace`    | Global JSX types instead of Vincle types                   |

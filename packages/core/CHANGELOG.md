@@ -1,5 +1,11 @@
 # @vincle/core
 
+## Unreleased
+
+### Removed
+
+- The provisional escape of `<script>`/`<style>` bodies inside `<svg>` is gone: it re-escaped `raw()` content, never covered `<math>`, and could not see precompiled templates. A plain `<script>` or `<style>` keeps the HTML rawtext rule everywhere. In foreign content (`<svg>`, `<math>`), where the parser reads that text as markup, ship the source pre-escaped as text instead: `raw(escapeContent(source))` with `escapeContent` from `@vincle/core/html`. The `@vincle/no-foreign-rawtext` lint rule flags the plain elements under an `<svg>` or `<math>` JSX subtree.
+
 ## 0.10.0 — 2026-11-01
 
 ### Changed
