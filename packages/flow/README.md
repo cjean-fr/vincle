@@ -53,7 +53,7 @@ Turbo, HTMX, WebPlatform (requires browser support) and ESI (static only).
 [Streaming](https://vincle.cjean.fr/integration/flow/streaming) ·
 [Static generation](https://vincle.cjean.fr/integration/flow/static) ·
 [Adapters](https://vincle.cjean.fr/integration/flow/adapters) ·
-[API](https://vincle.cjean.fr/api/flow/renderToStream)
+[API](https://vincle.cjean.fr/api/flow/rendertostream)
 
 MIT © Christophe Jean
 

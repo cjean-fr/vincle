@@ -150,7 +150,7 @@ describe("SSG build", () => {
   it("ships a verbatim MDX copy as each page's .md twin", async () => {
     for (const page of [
       "guide/getting-started/installation.mdx",
-      "api/core/renderToString.mdx",
+      "api/core/rendertostring.mdx",
       "integration/flow/adapters.mdx",
     ]) {
       const twin = await readFile(path.join(DIST_DIR, `${page.replace(/\.mdx$/, ".md")}`), "utf-8");

@@ -44,7 +44,7 @@ provide tree-scoped values, and `Scope` holds per-render state.
 For deferred fragments and streaming, add `@vincle/flow`.
 
 [Getting started](https://vincle.cjean.fr/guide/getting-started/first-render) ·
-[API](https://vincle.cjean.fr/api/core/renderToString) ·
+[API](https://vincle.cjean.fr/api/core/rendertostring) ·
 [Security](https://vincle.cjean.fr/guide/security)
 
 MIT © Christophe Jean
