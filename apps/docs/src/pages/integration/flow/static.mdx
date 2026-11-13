@@ -133,7 +133,7 @@ export default async function handler(req: Request): Promise<Response> {
 
 How you publish those bytes at `url` (a blob store, a revalidation call, a CDN
 purge and re-upload) depends on the host and stays in your handler. See
-[`renderFragment`](/api/flow/renderFragment) for the full API.
+[`renderFragment`](/api/flow/renderfragment) for the full API.
 
 Fragment ids must start with a letter and contain only ASCII letters, digits,
 hyphens and underscores. This example rejects symbols such as `BRK.B` or
