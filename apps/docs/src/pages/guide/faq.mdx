@@ -69,7 +69,7 @@ description: "Answers on what Vincle is for, SSR versus SSG, React and template-
         name: "How do I handle async data fetching in Vincle?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Any component can be async: the component that needs data fetches it, with no top-level loader and no prop-drilling. renderToString awaits every async component, siblings in document order, one at a time, and resolves when the whole tree has rendered.",
+          text: "Any component can be async: the component that needs data fetches it, with no top-level loader and no prop-drilling. renderToString awaits every async component: siblings start in document order and overlap as soon as one awaits, with their output joined in document order. It resolves when the whole tree has rendered.",
         },
       },
       {

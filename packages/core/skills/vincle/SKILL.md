@@ -98,11 +98,14 @@ Every component can be `async`. A promise is awaited wherever one can appear: a
 child, a component's return value, an array element, an attribute _value_,
 `dangerouslySetInnerHTML.__html`, or an async iterable.
 
-**Components execute in document order.** A sibling starts once the one to its left
-is done, so what renders before you in the markup ran before you, and the rendered
-document never depends on how long any component took. To overlap independent I/O,
-either `await Promise.all` inside one component (below), or use `<Defer>` /
-`<Slot>` from `@vincle/flow`, which puts the boundary in the markup.
+**Sibling components run concurrently.** Siblings start in document order, and
+as soon as one awaits, the later siblings start too; the output is still joined
+in document order, so the rendered document never depends on how long any
+component took. A `Scope.set` before a component's first `await` is visible to
+later siblings; one placed after an `await` races with them. To overlap
+independent I/O inside one component, `await Promise.all` (below); to send a
+first response before slow parts finish, use `<Defer>` / `<Slot>` from
+`@vincle/flow`, which puts the boundary in the markup.
 
 ```tsx
 // ✅ Async component: await inside, return JSX
@@ -164,7 +167,8 @@ const html2 = await renderToString(
 ```
 
 Use `Scope` for mutable per-request data that a plain helper or a
-later sibling must read. Its `get` throws if no scope or value is present.
+later sibling must read; set it before the writer's first `await` so later
+siblings see it. Its `get` throws if no scope or value is present.
 
 ### Sub-scopes with snapshot
 

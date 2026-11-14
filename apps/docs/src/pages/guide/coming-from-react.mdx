@@ -86,8 +86,9 @@ export function Counter() {
 ### Async is native, not Suspense
 
 Every component can be `async`, anywhere, with no `<Suspense>` boundary and no
-framework: the `await` is the boundary. Sibling async branches run in document
-order, one at a time, and `renderToString` resolves when every branch finishes.
+framework: the `await` is the boundary. Sibling async branches start in
+document order and overlap as soon as one awaits; the output is joined in
+document order, and `renderToString` resolves when every branch finishes.
 
 ```tsx
 async function Comments() {

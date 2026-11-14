@@ -64,8 +64,9 @@ export async function GET() {
 This response contains an HTML fragment. Wrap the view in your document layout
 when serving a complete page.
 
-The response waits for the complete tree. Async components execute in document
-order; making a component async does not run its siblings in parallel.
+The response waits for the complete tree. Async siblings start in document
+order and overlap as soon as one awaits; their output is joined in document
+order whatever the completion order.
 
 ## Let the results arrive later
 

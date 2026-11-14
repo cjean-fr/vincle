@@ -63,8 +63,9 @@ async function UserCard({ id }: { id: string }) {
 const html = await renderToString(<UserCard id="42" />);
 ```
 
-Components execute in document order, one at a time, and the string response
-waits for the whole tree.
+Async siblings start in document order and overlap as soon as one awaits;
+the output is joined in document order, and the string response waits for the
+whole tree.
 
 ## Let slower parts arrive later
 

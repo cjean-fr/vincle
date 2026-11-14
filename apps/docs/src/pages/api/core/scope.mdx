@@ -90,8 +90,9 @@ not call `Label` or `Article`; their functions run during rendering.
 
 `Scope.key<T>(name)` creates a named, typed token. `Scope.with(fn)` runs `fn` in
 an isolated async scope, where `Scope.set(key, value)` writes and
-`Scope.get(key)` reads the last value written, so a later sibling reads what an
-earlier component set. `get` throws outside a scope or when the key has not
+`Scope.get(key)` reads the last value written: a value set before the
+writer's first `await` is visible to later siblings, while one set after an
+`await` races with them. `get` throws outside a scope or when the key has not
 been set.
 
 ```tsx
