@@ -43,8 +43,10 @@ jobs:
           bun run check
           bun run test
 
-      # Republishing an existing version needs no guard here: npm refuses the
-      # duplicate and the job fails there.
+      # A rerun after a failed tag step must not fail on the npm duplicate:
+      # an already-published version skips the publish, and the tag step then
+      # verifies from npm's provenance that this artefact was built from this
+      # checkout before tagging it.
       - name: Locate Package
         id: meta
         env:
@@ -103,6 +105,11 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cd "${{ steps.meta.outputs.package_dir }}"
+          VERSION="$(jq -r '.version' package.json)"
+          if npm view "$PACKAGE_NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "Version $PACKAGE_NAME@$VERSION is already on npm: skipping the publish."
+            exit 0
+          fi
           TARBALL="$(bun pm pack --quiet | tail -n1)"
           # `--access public` explicitly, and not only via each package's
           # `publishConfig`: scoped packages default to `restricted`. Relying
@@ -111,16 +118,40 @@ jobs:
           # already-public name.
           npm publish "$TARBALL" --provenance --access public
 
-      # Tag the exact commit npm built from, so each published version maps to
-      # a readable point in the repository. An existing tag is never moved:
-      # the remote check fails the job instead of overwriting it.
+      # Tag the commit npm actually built from, read back from the published
+      # version's provenance rather than assumed to be HEAD, so each published
+      # version maps to a readable point in the repository. An existing tag is
+      # never moved: the remote check fails the job instead of overwriting it.
       - name: Tag the published commit
         env:
-          PACKAGE_DIR: ${{ steps.meta.outputs.package_dir }}
           PACKAGE_NAME: ${{ steps.meta.outputs.package_name }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          VERSION="$(jq -r '.version' "$PACKAGE_DIR/package.json")"
+          VERSION="$(jq -r '.version' "${{ steps.meta.outputs.package_dir }}/package.json")"
           TAG="$PACKAGE_NAME@$VERSION"
+          HEAD_SHA="$(git rev-parse HEAD)"
+          ENCODED="${PACKAGE_NAME/\//%2f}"
+          URL="https://registry.npmjs.org/-/npm/v1/attestations/$ENCODED@$VERSION"
+          PUBLISHED_SHA=""
+          for attempt in 1 2 3 4 5 6; do
+            PUBLISHED_SHA="$(curl -fsSL "$URL" | jq -r '
+              .attestations[]
+              | select(.predicateType == "https://slsa.dev/provenance/v1")
+              | .bundle.dsseEnvelope.payload' | base64 -d | jq -r --arg repo "$REPOSITORY" '
+              .predicate.buildDefinition.resolvedDependencies[]
+              | select(.digest.gitCommit and (.uri | contains($repo)))
+              | .digest.gitCommit' | head -n1)" && [ -n "$PUBLISHED_SHA" ] && break
+            echo "Provenance for $TAG not visible yet (attempt $attempt); retrying."
+            sleep 10
+          done
+          if [ -z "$PUBLISHED_SHA" ]; then
+            echo "::error::No npm provenance found for $TAG; refusing to guess the published commit."
+            exit 1
+          fi
+          if [ "$PUBLISHED_SHA" != "$HEAD_SHA" ]; then
+            echo "::error::npm built $TAG from $PUBLISHED_SHA, not from this checkout ($HEAD_SHA). Refusing to tag."
+            exit 1
+          fi
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "::error::Tag $TAG already exists; refusing to move it."
             exit 1
