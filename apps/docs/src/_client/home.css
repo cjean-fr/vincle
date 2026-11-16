@@ -226,6 +226,12 @@
   gap: 4rem;
   border-top: 1px solid var(--docs-color-border);
 }
+.docs-independent {
+  border-top: 1px solid var(--docs-color-border);
+}
+.docs-independent .docs-use-cases {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .docs-foundations > div > p {
   margin-top: 1rem;
 }
@@ -285,6 +291,9 @@
   }
   .docs-use-cases,
   .docs-foundations {
+    grid-template-columns: 1fr;
+  }
+  .docs-independent .docs-use-cases {
     grid-template-columns: 1fr;
   }
   .docs-home-section {
