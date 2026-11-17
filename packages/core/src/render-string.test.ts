@@ -89,6 +89,25 @@ describe("renderToString (async)", () => {
     const v = jsx("div", { children: jsx(AsyncBigint, {}) });
     expect(await renderToString(v)).toBe("<div>42</div>");
   });
+
+  test("component returning Promise<null>", async () => {
+    function AsyncEmpty() {
+      return Promise.resolve(null);
+    }
+    const v = jsx("div", { children: jsx(AsyncEmpty, {}) });
+    expect(await renderToString(v)).toBe("<div></div>");
+  });
+
+  test("component returning Promise<boolean>", async () => {
+    function AsyncTrue() {
+      return Promise.resolve(true);
+    }
+    function AsyncFalse() {
+      return Promise.resolve(false);
+    }
+    const v = jsx("div", { children: [jsx(AsyncTrue, {}), jsx(AsyncFalse, {})] });
+    expect(await renderToString(v)).toBe("<div></div>");
+  });
 });
 
 // ── Value kinds the type promises and the walk has to honour ────────────────
