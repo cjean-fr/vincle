@@ -198,6 +198,41 @@ describe("fragment lifecycle", () => {
     await bounded(done);
     expect(errors).toBe(1);
   });
+
+  it("reports every failing stream chunk and never appends completion", async () => {
+    const failure = new Error("chunk failed");
+    function Broken(): never {
+      throw failure;
+    }
+    async function* chunks() {
+      yield <Broken />;
+      yield <Broken />;
+    }
+    const phases: string[] = [];
+    const errors: unknown[] = [];
+    const events: FlowEvent[] = [];
+    const { done } = runFragment(
+      "feed",
+      { content: chunks(), merge: "append" },
+      async (event) => {
+        events.push(event);
+      },
+      {
+        onObserve: ({ phase }) => phases.push(phase),
+        onError: (error) => {
+          errors.push(error);
+          return <span>fallback</span>;
+        },
+      },
+    );
+    await bounded(done);
+    expect(phases).toEqual(["start", "error", "error"]);
+    expect(errors).toEqual([failure, failure]);
+    expect(events).toEqual([
+      { type: "fragment", id: "feed", html: "<span>fallback</span>", merge: "replace" },
+      { type: "fragment", id: "feed", html: "<span>fallback</span>", merge: "replace" },
+    ]);
+  });
 });
 
 describe("error logging", () => {
