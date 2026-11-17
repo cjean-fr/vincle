@@ -212,9 +212,8 @@ import StreamingReplay from "../components/StreamingReplay";
       <article>
         <h3>Built for a simpler need</h3>
         <p>
-          Vincle renders HTML on the server and stops there. It does not inherit a larger framework's release cycle
-          or a client runtime's backwards-compatibility weight: no virtual DOM, no hydration, no reconciler, and
-          none planned.
+          Vincle renders HTML on the server and stops there. Its scope is deliberate: views render to HTML
+          without a virtual DOM, hydration or a reconciler.
         </p>
         <a class="docs-text-link" href="/guide/comparison">
           {"Read the comparison"}
@@ -241,7 +240,7 @@ import StreamingReplay from "../components/StreamingReplay";
         </a>
       </article>
       <article>
-        <h3>A focused tool, not an imposed ecosystem</h3>
+        <h3>A focused tool you adopt view by view</h3>
         <p>
           An MIT-licensed library you adopt view by view, keeping your server and routing. Rendering HTML
           imposes no client runtime; streaming can add a patch script, depending on the adapter. Its APIs are
