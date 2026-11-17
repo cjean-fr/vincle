@@ -223,8 +223,12 @@ const mkType = (src: string): ts.TypeNode => {
   return (probe.statements[0] as ts.TypeAliasDeclaration).type;
 };
 
+// `string & {}` rather than bare `string`: a plain `string` arm swallows the
+// keyword literals of every CSS union (no-redundant-type-constituents) and
+// hides them from editor completions; the intersection keeps any string
+// assignable while leaving the literals visible.
 const INSTANT = new Map<string, ts.TypeNode>([
-  ["TLength", mkType("string | number")],
+  ["TLength", mkType("(string & {}) | number")],
   ["TTime", mkType("string & {}")],
 ]);
 

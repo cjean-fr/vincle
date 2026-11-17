@@ -284,7 +284,7 @@ type CSSRepeatStyle =
   | "round"
   | "space"
   | (string & {});
-type CSSBgSize = string | number | "auto" | "contain" | "cover" | (string & {});
+type CSSBgSize = (string & {}) | number | "auto" | "contain" | "cover";
 type CSSLineStyle =
   | "dashed"
   | "dotted"
@@ -296,7 +296,7 @@ type CSSLineStyle =
   | "outset"
   | "ridge"
   | "solid";
-type CSSLineWidth = string | number | "medium" | "thick" | "thin";
+type CSSLineWidth = (string & {}) | number | "medium" | "thick" | "thin";
 type CSSGeometryBox = CSSVisualBox | "fill-box" | "margin-box" | "stroke-box" | "view-box";
 type CSSQuote = "close-quote" | "no-close-quote" | "no-open-quote" | "open-quote";
 type CSSCursorPredefined =
@@ -405,12 +405,12 @@ type CSSEastAsianVariantValues =
   | "simplified"
   | "traditional";
 type CSSFontWeightAbsolute = "bold" | "normal" | (number & {}) | (string & {});
-type CSSTrackBreadth = string | number | "auto" | "max-content" | "min-content" | (string & {});
+type CSSTrackBreadth = (string & {}) | number | "auto" | "max-content" | "min-content";
 type CSSGridLine = "auto" | (string & {}) | (number & {});
 type CSSPaintBox = CSSVisualBox | "fill-box" | "stroke-box";
 type CSSCompositingOperator = "add" | "exclude" | "intersect" | "subtract";
 type CSSMaskingMode = "alpha" | "luminance" | "match-source";
-type CSSPosition = string | number | "bottom" | "center" | "left" | "right" | "top" | (string & {});
+type CSSPosition = (string & {}) | number | "bottom" | "center" | "left" | "right" | "top";
 type CSSOutlineLineStyle =
   | "dashed"
   | "dotted"
@@ -475,7 +475,7 @@ type CSSPositionArea =
   | (string & {});
 type CSSTryTactic = "flip-block" | "flip-inline" | "flip-start" | (string & {});
 type CSSTrySize = "most-block-size" | "most-height" | "most-inline-size" | "most-width";
-type CSSDasharray = string | number | (string & {}) | (number & {});
+type CSSDasharray = (string & {}) | number | (number & {});
 type CSSAutospace =
   | "ideograph-alpha"
   | "ideograph-numeric"
@@ -498,15 +498,7 @@ type CSSSingleAnimation =
   | "paused"
   | "running"
   | (number & {});
-type CSSBgPosition =
-  | string
-  | number
-  | "bottom"
-  | "center"
-  | "left"
-  | "right"
-  | "top"
-  | (string & {});
+type CSSBgPosition = (string & {}) | number | "bottom" | "center" | "left" | "right" | "top";
 type CSSBgLayer =
   | CSSBgPosition
   | CSSRepeatStyle
@@ -630,18 +622,16 @@ export type CSSProperties = {
   animationRangeEnd?:
     | CSSGlobals
     | CSSTimelineRangeName
-    | string
+    | (string & {})
     | number
     | "normal"
-    | (string & {})
     | undefined;
   animationRangeStart?:
     | CSSGlobals
     | CSSTimelineRangeName
-    | string
+    | (string & {})
     | number
     | "normal"
-    | (string & {})
     | undefined;
   animationTimeline?: CSSGlobals | CSSSingleAnimationTimeline | (string & {}) | undefined;
   animationTimingFunction?: CSSGlobals | CSSEasingFunction | (string & {}) | undefined;
@@ -664,40 +654,30 @@ export type CSSProperties = {
   backgroundOrigin?: CSSGlobals | CSSVisualBox | (string & {}) | undefined;
   backgroundPositionX?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "center"
     | "left"
     | "right"
     | "x-end"
     | "x-start"
-    | (string & {})
     | undefined;
   backgroundPositionY?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "bottom"
     | "center"
     | "top"
     | "y-end"
     | "y-start"
-    | (string & {})
     | undefined;
   backgroundRepeat?: CSSGlobals | CSSRepeatStyle | (string & {}) | undefined;
   backgroundSize?: CSSGlobals | CSSBgSize | (string & {}) | undefined;
-  baselineShift?:
-    | CSSGlobals
-    | string
-    | number
-    | "baseline"
-    | "sub"
-    | "super"
-    | (string & {})
-    | undefined;
+  baselineShift?: CSSGlobals | (string & {}) | number | "baseline" | "sub" | "super" | undefined;
   blockSize?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -706,7 +686,6 @@ export type CSSProperties = {
     | "fit-content"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
   borderBlockEndColor?: CSSGlobals | CSSColor | undefined;
   borderBlockEndStyle?: CSSGlobals | CSSLineStyle | undefined;
@@ -715,14 +694,14 @@ export type CSSProperties = {
   borderBlockStartStyle?: CSSGlobals | CSSLineStyle | undefined;
   borderBlockStartWidth?: CSSGlobals | CSSLineWidth | undefined;
   borderBottomColor?: CSSGlobals | CSSColor | undefined;
-  borderBottomLeftRadius?: CSSGlobals | string | number | (string & {}) | undefined;
-  borderBottomRightRadius?: CSSGlobals | string | number | (string & {}) | undefined;
+  borderBottomLeftRadius?: CSSGlobals | (string & {}) | number | undefined;
+  borderBottomRightRadius?: CSSGlobals | (string & {}) | number | undefined;
   borderBottomStyle?: CSSGlobals | CSSLineStyle | undefined;
   borderBottomWidth?: CSSGlobals | CSSLineWidth | undefined;
   borderCollapse?: CSSGlobals | "collapse" | "separate" | undefined;
-  borderEndEndRadius?: CSSGlobals | string | number | (string & {}) | undefined;
-  borderEndStartRadius?: CSSGlobals | string | number | (string & {}) | undefined;
-  borderImageOutset?: CSSGlobals | string | number | (string & {}) | (number & {}) | undefined;
+  borderEndEndRadius?: CSSGlobals | (string & {}) | number | undefined;
+  borderEndStartRadius?: CSSGlobals | (string & {}) | number | undefined;
+  borderImageOutset?: CSSGlobals | (string & {}) | number | (number & {}) | undefined;
   borderImageRepeat?:
     | CSSGlobals
     | "repeat"
@@ -733,14 +712,7 @@ export type CSSProperties = {
     | undefined;
   borderImageSlice?: CSSGlobals | (string & {}) | (number & {}) | undefined;
   borderImageSource?: CSSGlobals | "none" | (string & {}) | undefined;
-  borderImageWidth?:
-    | CSSGlobals
-    | string
-    | number
-    | "auto"
-    | (string & {})
-    | (number & {})
-    | undefined;
+  borderImageWidth?: CSSGlobals | (string & {}) | number | "auto" | (number & {}) | undefined;
   borderInlineEndColor?: CSSGlobals | CSSColor | undefined;
   borderInlineEndStyle?: CSSGlobals | CSSLineStyle | undefined;
   borderInlineEndWidth?: CSSGlobals | CSSLineWidth | undefined;
@@ -753,15 +725,15 @@ export type CSSProperties = {
   borderRightColor?: CSSGlobals | CSSColor | undefined;
   borderRightStyle?: CSSGlobals | CSSLineStyle | undefined;
   borderRightWidth?: CSSGlobals | CSSLineWidth | undefined;
-  borderSpacing?: CSSGlobals | string | number | (string & {}) | undefined;
-  borderStartEndRadius?: CSSGlobals | string | number | (string & {}) | undefined;
-  borderStartStartRadius?: CSSGlobals | string | number | (string & {}) | undefined;
+  borderSpacing?: CSSGlobals | (string & {}) | number | undefined;
+  borderStartEndRadius?: CSSGlobals | (string & {}) | number | undefined;
+  borderStartStartRadius?: CSSGlobals | (string & {}) | number | undefined;
   borderTopColor?: CSSGlobals | CSSColor | undefined;
-  borderTopLeftRadius?: CSSGlobals | string | number | (string & {}) | undefined;
-  borderTopRightRadius?: CSSGlobals | string | number | (string & {}) | undefined;
+  borderTopLeftRadius?: CSSGlobals | (string & {}) | number | undefined;
+  borderTopRightRadius?: CSSGlobals | (string & {}) | number | undefined;
   borderTopStyle?: CSSGlobals | CSSLineStyle | undefined;
   borderTopWidth?: CSSGlobals | CSSLineWidth | undefined;
-  bottom?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  bottom?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   boxDecorationBreak?: CSSGlobals | "clone" | "slice" | undefined;
   boxShadow?: CSSGlobals | "none" | (string & {}) | undefined;
   boxSizing?: CSSGlobals | "border-box" | "content-box" | undefined;
@@ -827,12 +799,12 @@ export type CSSProperties = {
   colorScheme?: CSSGlobals | "dark" | "light" | "normal" | (string & {}) | undefined;
   columnCount?: CSSGlobals | "auto" | (number & {}) | (string & {}) | undefined;
   columnFill?: CSSGlobals | "auto" | "balance" | undefined;
-  columnGap?: CSSGlobals | string | number | "normal" | (string & {}) | undefined;
+  columnGap?: CSSGlobals | (string & {}) | number | "normal" | undefined;
   columnRuleColor?: CSSGlobals | CSSColor | undefined;
   columnRuleStyle?: CSSGlobals | CSSLineStyle | (string & {}) | undefined;
   columnRuleWidth?: CSSGlobals | CSSLineWidth | (string & {}) | undefined;
   columnSpan?: CSSGlobals | "all" | "none" | undefined;
-  columnWidth?: CSSGlobals | string | number | "auto" | undefined;
+  columnWidth?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   contain?:
     | CSSGlobals
     | "content"
@@ -845,10 +817,10 @@ export type CSSProperties = {
     | "style"
     | (string & {})
     | undefined;
-  containIntrinsicBlockSize?: CSSGlobals | string | number | "none" | (string & {}) | undefined;
-  containIntrinsicHeight?: CSSGlobals | string | number | "none" | (string & {}) | undefined;
-  containIntrinsicInlineSize?: CSSGlobals | string | number | "none" | (string & {}) | undefined;
-  containIntrinsicWidth?: CSSGlobals | string | number | "none" | (string & {}) | undefined;
+  containIntrinsicBlockSize?: CSSGlobals | (string & {}) | number | "none" | undefined;
+  containIntrinsicHeight?: CSSGlobals | (string & {}) | number | "none" | undefined;
+  containIntrinsicInlineSize?: CSSGlobals | (string & {}) | number | "none" | undefined;
+  containIntrinsicWidth?: CSSGlobals | (string & {}) | number | "none" | undefined;
   containerName?: CSSGlobals | "none" | (string & {}) | undefined;
   containerType?:
     | CSSGlobals
@@ -864,8 +836,8 @@ export type CSSProperties = {
   counterReset?: CSSGlobals | "none" | (string & {}) | undefined;
   counterSet?: CSSGlobals | "none" | (string & {}) | undefined;
   cursor?: CSSGlobals | CSSCursorPredefined | (string & {}) | undefined;
-  cx?: CSSGlobals | string | number | (string & {}) | undefined;
-  cy?: CSSGlobals | string | number | (string & {}) | undefined;
+  cx?: CSSGlobals | (string & {}) | number | undefined;
+  cy?: CSSGlobals | (string & {}) | number | undefined;
   d?: CSSGlobals | "none" | (string & {}) | undefined;
   direction?: CSSGlobals | "ltr" | "rtl" | undefined;
   display?:
@@ -899,7 +871,7 @@ export type CSSProperties = {
   filter?: CSSGlobals | "none" | (string & {}) | undefined;
   flexBasis?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -910,7 +882,6 @@ export type CSSProperties = {
     | "fit-content"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
   flexDirection?: CSSGlobals | "column" | "column-reverse" | "row" | "row-reverse" | undefined;
   flexGrow?: CSSGlobals | (number & {}) | (string & {}) | undefined;
@@ -928,18 +899,17 @@ export type CSSProperties = {
   fontSize?:
     | CSSGlobals
     | CSSAbsoluteSize
-    | string
+    | (string & {})
     | number
     | "larger"
     | "math"
     | "smaller"
-    | (string & {})
     | undefined;
   fontSizeAdjust?: CSSGlobals | "from-font" | "none" | (string & {}) | (number & {}) | undefined;
   fontSmooth?:
     | CSSGlobals
     | CSSAbsoluteSize
-    | string
+    | (string & {})
     | number
     | "always"
     | "auto"
@@ -1084,7 +1054,7 @@ export type CSSProperties = {
     | undefined;
   height?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -1094,7 +1064,6 @@ export type CSSProperties = {
     | "fit-content"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
   hyphenateCharacter?: CSSGlobals | "auto" | (string & {}) | undefined;
   hyphenateLimitChars?: CSSGlobals | "auto" | (string & {}) | (number & {}) | undefined;
@@ -1114,7 +1083,7 @@ export type CSSProperties = {
   initialLetterAlign?: CSSGlobals | "alphabetic" | "auto" | "hanging" | "ideographic" | undefined;
   inlineSize?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -1124,12 +1093,11 @@ export type CSSProperties = {
     | "fit-content"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
-  insetBlockEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  insetBlockStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  insetInlineEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  insetInlineStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  insetBlockEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  insetBlockStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  insetInlineEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  insetInlineStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   interpolateSize?: CSSGlobals | "allow-keywords" | "numeric-only" | undefined;
   isolation?: CSSGlobals | "auto" | "isolate" | undefined;
   justifyContent?:
@@ -1174,30 +1142,30 @@ export type CSSProperties = {
     | "right"
     | (string & {})
     | undefined;
-  left?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  letterSpacing?: CSSGlobals | string | number | "normal" | undefined;
+  left?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  letterSpacing?: CSSGlobals | (string & {}) | number | "normal" | undefined;
   lightingColor?: CSSGlobals | CSSColor | undefined;
   lineBreak?: CSSGlobals | "anywhere" | "auto" | "loose" | "normal" | "strict" | undefined;
-  lineHeight?: CSSGlobals | string | number | "normal" | (string & {}) | (number & {}) | undefined;
-  lineHeightStep?: CSSGlobals | string | number | undefined;
+  lineHeight?: CSSGlobals | (string & {}) | number | "normal" | (number & {}) | undefined;
+  lineHeightStep?: CSSGlobals | (string & {}) | number | undefined;
   listStyleImage?: CSSGlobals | "none" | (string & {}) | undefined;
   listStylePosition?: CSSGlobals | "inside" | "outside" | undefined;
   listStyleType?: CSSGlobals | "none" | (string & {}) | undefined;
-  marginBlockEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  marginBlockStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  marginBottom?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  marginInlineEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  marginInlineStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  marginLeft?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  marginRight?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  marginTop?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  marginBlockEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  marginBlockStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  marginBottom?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  marginInlineEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  marginInlineStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  marginLeft?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  marginRight?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  marginTop?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   marginTrim?: CSSGlobals | "all" | "in-flow" | "none" | undefined;
   marker?: CSSGlobals | "none" | (string & {}) | undefined;
   markerEnd?: CSSGlobals | "none" | (string & {}) | undefined;
   markerMid?: CSSGlobals | "none" | (string & {}) | undefined;
   markerStart?: CSSGlobals | "none" | (string & {}) | undefined;
   maskBorderMode?: CSSGlobals | "alpha" | "luminance" | undefined;
-  maskBorderOutset?: CSSGlobals | string | number | (string & {}) | (number & {}) | undefined;
+  maskBorderOutset?: CSSGlobals | (string & {}) | number | (number & {}) | undefined;
   maskBorderRepeat?:
     | CSSGlobals
     | "repeat"
@@ -1208,14 +1176,7 @@ export type CSSProperties = {
     | undefined;
   maskBorderSlice?: CSSGlobals | (string & {}) | (number & {}) | undefined;
   maskBorderSource?: CSSGlobals | "none" | (string & {}) | undefined;
-  maskBorderWidth?:
-    | CSSGlobals
-    | string
-    | number
-    | "auto"
-    | (string & {})
-    | (number & {})
-    | undefined;
+  maskBorderWidth?: CSSGlobals | (string & {}) | number | "auto" | (number & {}) | undefined;
   maskClip?: CSSGlobals | CSSPaintBox | "no-clip" | "view-box" | (string & {}) | undefined;
   maskComposite?: CSSGlobals | CSSCompositingOperator | (string & {}) | undefined;
   maskImage?: CSSGlobals | "none" | (string & {}) | undefined;
@@ -1238,7 +1199,7 @@ export type CSSProperties = {
   mathStyle?: CSSGlobals | "compact" | "normal" | undefined;
   maxBlockSize?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-max-content"
     | "-moz-min-content"
@@ -1247,11 +1208,10 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "none"
-    | (string & {})
     | undefined;
   maxHeight?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -1264,11 +1224,10 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "none"
-    | (string & {})
     | undefined;
   maxInlineSize?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -1278,12 +1237,11 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "none"
-    | (string & {})
     | undefined;
   maxLines?: CSSGlobals | "none" | (number & {}) | (string & {}) | undefined;
   maxWidth?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -1296,11 +1254,10 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "none"
-    | (string & {})
     | undefined;
   minBlockSize?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-max-content"
     | "-moz-min-content"
@@ -1309,11 +1266,10 @@ export type CSSProperties = {
     | "fit-content"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
   minHeight?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -1326,11 +1282,10 @@ export type CSSProperties = {
     | "intrinsic"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
   minInlineSize?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -1340,11 +1295,10 @@ export type CSSProperties = {
     | "fit-content"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
   minWidth?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -1358,17 +1312,16 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "min-intrinsic"
-    | (string & {})
     | undefined;
   mixBlendMode?: CSSGlobals | CSSBlendMode | "plus-darker" | "plus-lighter" | undefined;
-  motionDistance?: CSSGlobals | string | number | (string & {}) | undefined;
+  motionDistance?: CSSGlobals | (string & {}) | number | undefined;
   motionPath?: CSSGlobals | CSSPaintBox | "none" | "view-box" | (string & {}) | undefined;
   motionRotation?: CSSGlobals | "auto" | "reverse" | (string & {}) | undefined;
   objectFit?: CSSGlobals | "contain" | "cover" | "fill" | "none" | "scale-down" | undefined;
   objectPosition?: CSSGlobals | CSSPosition | undefined;
   objectViewBox?: CSSGlobals | "none" | (string & {}) | undefined;
   offsetAnchor?: CSSGlobals | CSSPosition | "auto" | undefined;
-  offsetDistance?: CSSGlobals | string | number | (string & {}) | undefined;
+  offsetDistance?: CSSGlobals | (string & {}) | number | undefined;
   offsetPath?: CSSGlobals | CSSPaintBox | "none" | "view-box" | (string & {}) | undefined;
   offsetPosition?: CSSGlobals | CSSPosition | "auto" | "normal" | undefined;
   offsetRotate?: CSSGlobals | "auto" | "reverse" | (string & {}) | undefined;
@@ -1377,13 +1330,13 @@ export type CSSProperties = {
   order?: CSSGlobals | (number & {}) | (string & {}) | undefined;
   orphans?: CSSGlobals | (number & {}) | (string & {}) | undefined;
   outlineColor?: CSSGlobals | CSSColor | "auto" | undefined;
-  outlineOffset?: CSSGlobals | string | number | undefined;
+  outlineOffset?: CSSGlobals | (string & {}) | number | undefined;
   outlineStyle?: CSSGlobals | CSSOutlineLineStyle | "auto" | undefined;
   outlineWidth?: CSSGlobals | CSSLineWidth | undefined;
   overflowAnchor?: CSSGlobals | "auto" | "none" | undefined;
   overflowBlock?: CSSGlobals | "auto" | "clip" | "hidden" | "scroll" | "visible" | undefined;
   overflowClipBox?: CSSGlobals | "content-box" | "padding-box" | undefined;
-  overflowClipMargin?: CSSGlobals | CSSVisualBox | string | number | (string & {}) | undefined;
+  overflowClipMargin?: CSSGlobals | CSSVisualBox | (string & {}) | number | undefined;
   overflowInline?: CSSGlobals | "auto" | "clip" | "hidden" | "scroll" | "visible" | undefined;
   overflowWrap?: CSSGlobals | "anywhere" | "break-word" | "normal" | undefined;
   overflowX?:
@@ -1411,17 +1364,17 @@ export type CSSProperties = {
   overscrollBehaviorInline?: CSSGlobals | "auto" | "contain" | "none" | undefined;
   overscrollBehaviorX?: CSSGlobals | "auto" | "contain" | "none" | undefined;
   overscrollBehaviorY?: CSSGlobals | "auto" | "contain" | "none" | undefined;
-  paddingBlockEnd?: CSSGlobals | string | number | (string & {}) | undefined;
-  paddingBlockStart?: CSSGlobals | string | number | (string & {}) | undefined;
-  paddingBottom?: CSSGlobals | string | number | (string & {}) | undefined;
-  paddingInlineEnd?: CSSGlobals | string | number | (string & {}) | undefined;
-  paddingInlineStart?: CSSGlobals | string | number | (string & {}) | undefined;
-  paddingLeft?: CSSGlobals | string | number | (string & {}) | undefined;
-  paddingRight?: CSSGlobals | string | number | (string & {}) | undefined;
-  paddingTop?: CSSGlobals | string | number | (string & {}) | undefined;
+  paddingBlockEnd?: CSSGlobals | (string & {}) | number | undefined;
+  paddingBlockStart?: CSSGlobals | (string & {}) | number | undefined;
+  paddingBottom?: CSSGlobals | (string & {}) | number | undefined;
+  paddingInlineEnd?: CSSGlobals | (string & {}) | number | undefined;
+  paddingInlineStart?: CSSGlobals | (string & {}) | number | undefined;
+  paddingLeft?: CSSGlobals | (string & {}) | number | undefined;
+  paddingRight?: CSSGlobals | (string & {}) | number | undefined;
+  paddingTop?: CSSGlobals | (string & {}) | number | undefined;
   page?: CSSGlobals | "auto" | (string & {}) | undefined;
   paintOrder?: CSSGlobals | "fill" | "markers" | "normal" | "stroke" | (string & {}) | undefined;
-  perspective?: CSSGlobals | string | number | "none" | undefined;
+  perspective?: CSSGlobals | (string & {}) | number | "none" | undefined;
   perspectiveOrigin?: CSSGlobals | CSSPosition | undefined;
   pointerEvents?:
     | CSSGlobals
@@ -1466,7 +1419,7 @@ export type CSSProperties = {
     | undefined;
   printColorAdjust?: CSSGlobals | "economy" | "exact" | undefined;
   quotes?: CSSGlobals | "auto" | "none" | (string & {}) | undefined;
-  r?: CSSGlobals | string | number | (string & {}) | undefined;
+  r?: CSSGlobals | (string & {}) | number | undefined;
   resize?:
     | CSSGlobals
     | "block"
@@ -1476,9 +1429,9 @@ export type CSSProperties = {
     | "none"
     | "vertical"
     | undefined;
-  right?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  right?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   rotate?: CSSGlobals | "none" | (string & {}) | undefined;
-  rowGap?: CSSGlobals | string | number | "normal" | (string & {}) | undefined;
+  rowGap?: CSSGlobals | (string & {}) | number | "normal" | undefined;
   rubyAlign?: CSSGlobals | "center" | "space-around" | "space-between" | "start" | undefined;
   rubyMerge?: CSSGlobals | "auto" | "collapse" | "separate" | undefined;
   rubyOverhang?: CSSGlobals | "auto" | "none" | undefined;
@@ -1490,32 +1443,32 @@ export type CSSProperties = {
     | "under"
     | (string & {})
     | undefined;
-  rx?: CSSGlobals | string | number | (string & {}) | undefined;
-  ry?: CSSGlobals | string | number | (string & {}) | undefined;
+  rx?: CSSGlobals | (string & {}) | number | undefined;
+  ry?: CSSGlobals | (string & {}) | number | undefined;
   scale?: CSSGlobals | "none" | (string & {}) | (number & {}) | undefined;
   scrollBehavior?: CSSGlobals | "auto" | "smooth" | undefined;
   scrollInitialTarget?: CSSGlobals | "nearest" | "none" | undefined;
-  scrollMarginBlockEnd?: CSSGlobals | string | number | undefined;
-  scrollMarginBlockStart?: CSSGlobals | string | number | undefined;
-  scrollMarginBottom?: CSSGlobals | string | number | undefined;
-  scrollMarginInlineEnd?: CSSGlobals | string | number | undefined;
-  scrollMarginInlineStart?: CSSGlobals | string | number | undefined;
-  scrollMarginLeft?: CSSGlobals | string | number | undefined;
-  scrollMarginRight?: CSSGlobals | string | number | undefined;
-  scrollMarginTop?: CSSGlobals | string | number | undefined;
-  scrollPaddingBlockEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollPaddingBlockStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollPaddingBottom?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollPaddingInlineEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollPaddingInlineStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollPaddingLeft?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollPaddingRight?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollPaddingTop?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  scrollMarginBlockEnd?: CSSGlobals | (string & {}) | number | undefined;
+  scrollMarginBlockStart?: CSSGlobals | (string & {}) | number | undefined;
+  scrollMarginBottom?: CSSGlobals | (string & {}) | number | undefined;
+  scrollMarginInlineEnd?: CSSGlobals | (string & {}) | number | undefined;
+  scrollMarginInlineStart?: CSSGlobals | (string & {}) | number | undefined;
+  scrollMarginLeft?: CSSGlobals | (string & {}) | number | undefined;
+  scrollMarginRight?: CSSGlobals | (string & {}) | number | undefined;
+  scrollMarginTop?: CSSGlobals | (string & {}) | number | undefined;
+  scrollPaddingBlockEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollPaddingBlockStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollPaddingBottom?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollPaddingInlineEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollPaddingInlineStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollPaddingLeft?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollPaddingRight?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollPaddingTop?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   scrollSnapAlign?: CSSGlobals | "center" | "end" | "none" | "start" | (string & {}) | undefined;
-  scrollSnapMarginBottom?: CSSGlobals | string | number | undefined;
-  scrollSnapMarginLeft?: CSSGlobals | string | number | undefined;
-  scrollSnapMarginRight?: CSSGlobals | string | number | undefined;
-  scrollSnapMarginTop?: CSSGlobals | string | number | undefined;
+  scrollSnapMarginBottom?: CSSGlobals | (string & {}) | number | undefined;
+  scrollSnapMarginLeft?: CSSGlobals | (string & {}) | number | undefined;
+  scrollSnapMarginRight?: CSSGlobals | (string & {}) | number | undefined;
+  scrollSnapMarginTop?: CSSGlobals | (string & {}) | number | undefined;
   scrollSnapStop?: CSSGlobals | "always" | "normal" | undefined;
   scrollSnapType?:
     | CSSGlobals
@@ -1533,7 +1486,7 @@ export type CSSProperties = {
   scrollbarGutter?: CSSGlobals | "auto" | "stable" | (string & {}) | undefined;
   scrollbarWidth?: CSSGlobals | "auto" | "none" | "thin" | undefined;
   shapeImageThreshold?: CSSGlobals | (string & {}) | (number & {}) | undefined;
-  shapeMargin?: CSSGlobals | string | number | (string & {}) | undefined;
+  shapeMargin?: CSSGlobals | (string & {}) | number | undefined;
   shapeOutside?: CSSGlobals | CSSVisualBox | "margin-box" | "none" | (string & {}) | undefined;
   shapeRendering?:
     | CSSGlobals
@@ -1556,13 +1509,13 @@ export type CSSProperties = {
   stroke?: CSSGlobals | CSSPaint | undefined;
   strokeColor?: CSSGlobals | CSSColor | undefined;
   strokeDasharray?: CSSGlobals | CSSDasharray | "none" | undefined;
-  strokeDashoffset?: CSSGlobals | string | number | (string & {}) | (number & {}) | undefined;
+  strokeDashoffset?: CSSGlobals | (string & {}) | number | (number & {}) | undefined;
   strokeLinecap?: CSSGlobals | "butt" | "round" | "square" | undefined;
   strokeLinejoin?: CSSGlobals | "arcs" | "bevel" | "miter" | "miter-clip" | "round" | undefined;
   strokeMiterlimit?: CSSGlobals | (number & {}) | (string & {}) | undefined;
   strokeOpacity?: CSSGlobals | (string & {}) | (number & {}) | undefined;
-  strokeWidth?: CSSGlobals | string | number | (string & {}) | (number & {}) | undefined;
-  tabSize?: CSSGlobals | string | number | (number & {}) | (string & {}) | undefined;
+  strokeWidth?: CSSGlobals | (string & {}) | number | (number & {}) | undefined;
+  tabSize?: CSSGlobals | (string & {}) | number | (number & {}) | undefined;
   tableLayout?: CSSGlobals | "auto" | "fixed" | undefined;
   textAlign?:
     | CSSGlobals
@@ -1635,14 +1588,7 @@ export type CSSProperties = {
     | undefined;
   textDecorationSkipInk?: CSSGlobals | "all" | "auto" | "none" | undefined;
   textDecorationStyle?: CSSGlobals | "dashed" | "dotted" | "double" | "solid" | "wavy" | undefined;
-  textDecorationThickness?:
-    | CSSGlobals
-    | string
-    | number
-    | "auto"
-    | "from-font"
-    | (string & {})
-    | undefined;
+  textDecorationThickness?: CSSGlobals | (string & {}) | number | "auto" | "from-font" | undefined;
   textEmphasisColor?: CSSGlobals | CSSColor | undefined;
   textEmphasisPosition?: CSSGlobals | "auto" | "over" | "under" | (string & {}) | undefined;
   textEmphasisStyle?:
@@ -1657,7 +1603,7 @@ export type CSSProperties = {
     | "triangle"
     | (string & {})
     | undefined;
-  textIndent?: CSSGlobals | string | number | (string & {}) | undefined;
+  textIndent?: CSSGlobals | (string & {}) | number | undefined;
   textJustify?:
     | CSSGlobals
     | "auto"
@@ -1689,7 +1635,7 @@ export type CSSProperties = {
     | "uppercase"
     | (string & {})
     | undefined;
-  textUnderlineOffset?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  textUnderlineOffset?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   textUnderlinePosition?:
     | CSSGlobals
     | "auto"
@@ -1702,7 +1648,7 @@ export type CSSProperties = {
   textWrapMode?: CSSGlobals | "nowrap" | "wrap" | undefined;
   textWrapStyle?: CSSGlobals | "auto" | "balance" | "pretty" | "stable" | undefined;
   timelineScope?: CSSGlobals | "none" | (string & {}) | undefined;
-  top?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  top?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   touchAction?:
     | CSSGlobals
     | "-ms-manipulation"
@@ -1733,14 +1679,13 @@ export type CSSProperties = {
     | undefined;
   transformOrigin?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "bottom"
     | "center"
     | "left"
     | "right"
     | "top"
-    | (string & {})
     | undefined;
   transformStyle?: CSSGlobals | "flat" | "preserve-3d" | undefined;
   transitionBehavior?: CSSGlobals | "allow-discrete" | "normal" | (string & {}) | undefined;
@@ -1748,7 +1693,7 @@ export type CSSProperties = {
   transitionDuration?: CSSGlobals | (string & {}) | undefined;
   transitionProperty?: CSSGlobals | "all" | "none" | (string & {}) | undefined;
   transitionTimingFunction?: CSSGlobals | CSSEasingFunction | (string & {}) | undefined;
-  translate?: CSSGlobals | string | number | "none" | (string & {}) | undefined;
+  translate?: CSSGlobals | (string & {}) | number | "none" | undefined;
   unicodeBidi?:
     | CSSGlobals
     | "-moz-isolate"
@@ -1775,7 +1720,7 @@ export type CSSProperties = {
     | undefined;
   verticalAlign?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "baseline"
     | "bottom"
@@ -1785,10 +1730,9 @@ export type CSSProperties = {
     | "text-bottom"
     | "text-top"
     | "top"
-    | (string & {})
     | undefined;
   viewTimelineAxis?: CSSGlobals | "block" | "inline" | "x" | "y" | (string & {}) | undefined;
-  viewTimelineInset?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  viewTimelineInset?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   viewTimelineName?: CSSGlobals | "none" | (string & {}) | undefined;
   viewTransitionClass?: CSSGlobals | "none" | (string & {}) | undefined;
   viewTransitionName?: CSSGlobals | "match-element" | "none" | (string & {}) | undefined;
@@ -1820,7 +1764,7 @@ export type CSSProperties = {
   widows?: CSSGlobals | (number & {}) | (string & {}) | undefined;
   width?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -1833,7 +1777,6 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "min-intrinsic"
-    | (string & {})
     | undefined;
   willChange?: CSSGlobals | CSSAnimateableFeature | "auto" | (string & {}) | undefined;
   wordBreak?:
@@ -1844,7 +1787,7 @@ export type CSSProperties = {
     | "keep-all"
     | "normal"
     | undefined;
-  wordSpacing?: CSSGlobals | string | number | "normal" | undefined;
+  wordSpacing?: CSSGlobals | (string & {}) | number | "normal" | undefined;
   wordWrap?: CSSGlobals | "break-word" | "normal" | undefined;
   writingMode?:
     | CSSGlobals
@@ -1854,8 +1797,8 @@ export type CSSProperties = {
     | "vertical-lr"
     | "vertical-rl"
     | undefined;
-  x?: CSSGlobals | string | number | (string & {}) | undefined;
-  y?: CSSGlobals | string | number | (string & {}) | undefined;
+  x?: CSSGlobals | (string & {}) | number | undefined;
+  y?: CSSGlobals | (string & {}) | number | undefined;
   zIndex?: CSSGlobals | "auto" | (number & {}) | (string & {}) | undefined;
   zoom?: CSSGlobals | "normal" | "reset" | (string & {}) | (number & {}) | undefined;
   all?: CSSGlobals | undefined;
@@ -1863,10 +1806,9 @@ export type CSSProperties = {
   animationRange?:
     | CSSGlobals
     | CSSTimelineRangeName
-    | string
+    | (string & {})
     | number
     | "normal"
-    | (string & {})
     | undefined;
   background?: CSSGlobals | CSSBgLayer | CSSFinalBgLayer | (string & {}) | undefined;
   backgroundPosition?: CSSGlobals | CSSBgPosition | (string & {}) | undefined;
@@ -1908,7 +1850,7 @@ export type CSSProperties = {
   borderInlineStyle?: CSSGlobals | CSSLineStyle | (string & {}) | undefined;
   borderInlineWidth?: CSSGlobals | CSSLineWidth | (string & {}) | undefined;
   borderLeft?: CSSGlobals | CSSLineWidth | CSSLineStyle | CSSColor | (string & {}) | undefined;
-  borderRadius?: CSSGlobals | string | number | (string & {}) | undefined;
+  borderRadius?: CSSGlobals | (string & {}) | number | undefined;
   borderRight?: CSSGlobals | CSSLineWidth | CSSLineStyle | CSSColor | (string & {}) | undefined;
   borderStyle?: CSSGlobals | CSSLineStyle | (string & {}) | undefined;
   borderTop?: CSSGlobals | CSSLineWidth | CSSLineStyle | CSSColor | (string & {}) | undefined;
@@ -1923,12 +1865,12 @@ export type CSSProperties = {
     | (string & {})
     | undefined;
   columnRule?: CSSGlobals | CSSLineWidth | CSSLineStyle | CSSColor | (string & {}) | undefined;
-  columns?: CSSGlobals | string | number | "auto" | (string & {}) | (number & {}) | undefined;
-  containIntrinsicSize?: CSSGlobals | string | number | "none" | (string & {}) | undefined;
+  columns?: CSSGlobals | (string & {}) | number | "auto" | (number & {}) | undefined;
+  containIntrinsicSize?: CSSGlobals | (string & {}) | number | "none" | undefined;
   container?: CSSGlobals | "none" | (string & {}) | undefined;
   flex?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "auto"
     | "content"
@@ -1936,7 +1878,6 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "none"
-    | (string & {})
     | (number & {})
     | undefined;
   flexFlow?:
@@ -1951,20 +1892,20 @@ export type CSSProperties = {
     | (string & {})
     | undefined;
   font?: CSSGlobals | CSSSystemFamilyName | (string & {}) | undefined;
-  gap?: CSSGlobals | string | number | "normal" | (string & {}) | undefined;
+  gap?: CSSGlobals | (string & {}) | number | "normal" | undefined;
   grid?: CSSGlobals | "none" | (string & {}) | undefined;
   gridArea?: CSSGlobals | CSSGridLine | (string & {}) | undefined;
   gridColumn?: CSSGlobals | CSSGridLine | (string & {}) | undefined;
   gridRow?: CSSGlobals | CSSGridLine | (string & {}) | undefined;
   gridTemplate?: CSSGlobals | "none" | (string & {}) | undefined;
-  inset?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  insetBlock?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  insetInline?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  inset?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  insetBlock?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  insetInline?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   lineClamp?: CSSGlobals | "none" | (number & {}) | (string & {}) | undefined;
   listStyle?: CSSGlobals | "inside" | "none" | "outside" | (string & {}) | undefined;
-  margin?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  marginBlock?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  marginInline?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  margin?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  marginBlock?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  marginInline?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   mask?: CSSGlobals | CSSMaskLayer | (string & {}) | undefined;
   maskBorder?:
     | CSSGlobals
@@ -2018,9 +1959,9 @@ export type CSSProperties = {
     | (string & {})
     | undefined;
   overscrollBehavior?: CSSGlobals | "auto" | "contain" | "none" | (string & {}) | undefined;
-  padding?: CSSGlobals | string | number | (string & {}) | undefined;
-  paddingBlock?: CSSGlobals | string | number | (string & {}) | undefined;
-  paddingInline?: CSSGlobals | string | number | (string & {}) | undefined;
+  padding?: CSSGlobals | (string & {}) | number | undefined;
+  paddingBlock?: CSSGlobals | (string & {}) | number | undefined;
+  paddingInline?: CSSGlobals | (string & {}) | number | undefined;
   placeContent?:
     | CSSGlobals
     | CSSContentDistribution
@@ -2049,18 +1990,18 @@ export type CSSProperties = {
     | (string & {})
     | undefined;
   positionTry?: CSSGlobals | CSSTryTactic | CSSPositionArea | "none" | (string & {}) | undefined;
-  scrollMargin?: CSSGlobals | string | number | (string & {}) | undefined;
-  scrollMarginBlock?: CSSGlobals | string | number | (string & {}) | undefined;
-  scrollMarginInline?: CSSGlobals | string | number | (string & {}) | undefined;
-  scrollPadding?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollPaddingBlock?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollPaddingInline?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  scrollSnapMargin?: CSSGlobals | string | number | (string & {}) | undefined;
+  scrollMargin?: CSSGlobals | (string & {}) | number | undefined;
+  scrollMarginBlock?: CSSGlobals | (string & {}) | number | undefined;
+  scrollMarginInline?: CSSGlobals | (string & {}) | number | undefined;
+  scrollPadding?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollPaddingBlock?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollPaddingInline?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  scrollSnapMargin?: CSSGlobals | (string & {}) | number | undefined;
   scrollTimeline?: CSSGlobals | "none" | (string & {}) | undefined;
   textDecoration?:
     | CSSGlobals
     | CSSColor
-    | string
+    | (string & {})
     | number
     | "auto"
     | "blink"
@@ -2076,7 +2017,6 @@ export type CSSProperties = {
     | "spelling-error"
     | "underline"
     | "wavy"
-    | (string & {})
     | undefined;
   textEmphasis?:
     | CSSGlobals
@@ -2239,7 +2179,7 @@ export type CSSProperties = {
   MozColumnRuleColor?: CSSGlobals | CSSColor | undefined;
   MozColumnRuleStyle?: CSSGlobals | CSSLineStyle | (string & {}) | undefined;
   MozColumnRuleWidth?: CSSGlobals | CSSLineWidth | (string & {}) | undefined;
-  MozColumnWidth?: CSSGlobals | string | number | "auto" | undefined;
+  MozColumnWidth?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   MozContextProperties?:
     | CSSGlobals
     | "fill"
@@ -2252,41 +2192,40 @@ export type CSSProperties = {
   MozFontFeatureSettings?: CSSGlobals | "normal" | (string & {}) | undefined;
   MozFontLanguageOverride?: CSSGlobals | "normal" | (string & {}) | undefined;
   MozHyphens?: CSSGlobals | "auto" | "manual" | "none" | undefined;
-  MozMarginEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  MozMarginStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  MozMarginEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  MozMarginStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   MozOrient?: CSSGlobals | "block" | "horizontal" | "inline" | "vertical" | undefined;
   MozOsxFontSmoothing?:
     | CSSGlobals
     | CSSAbsoluteSize
-    | string
+    | (string & {})
     | number
     | "always"
     | "auto"
     | "never"
     | undefined;
-  MozOutlineRadiusBottomleft?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozOutlineRadiusBottomright?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozOutlineRadiusTopleft?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozOutlineRadiusTopright?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozPaddingEnd?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozPaddingStart?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozPerspective?: CSSGlobals | string | number | "none" | undefined;
+  MozOutlineRadiusBottomleft?: CSSGlobals | (string & {}) | number | undefined;
+  MozOutlineRadiusBottomright?: CSSGlobals | (string & {}) | number | undefined;
+  MozOutlineRadiusTopleft?: CSSGlobals | (string & {}) | number | undefined;
+  MozOutlineRadiusTopright?: CSSGlobals | (string & {}) | number | undefined;
+  MozPaddingEnd?: CSSGlobals | (string & {}) | number | undefined;
+  MozPaddingStart?: CSSGlobals | (string & {}) | number | undefined;
+  MozPerspective?: CSSGlobals | (string & {}) | number | "none" | undefined;
   MozPerspectiveOrigin?: CSSGlobals | CSSPosition | undefined;
   MozStackSizing?: CSSGlobals | "ignore" | "stretch-to-fit" | undefined;
-  MozTabSize?: CSSGlobals | string | number | (number & {}) | (string & {}) | undefined;
+  MozTabSize?: CSSGlobals | (string & {}) | number | (number & {}) | undefined;
   MozTextBlink?: CSSGlobals | "blink" | "none" | undefined;
   MozTextSizeAdjust?: CSSGlobals | "auto" | "none" | (string & {}) | undefined;
   MozTransform?: CSSGlobals | "none" | (string & {}) | undefined;
   MozTransformOrigin?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "bottom"
     | "center"
     | "left"
     | "right"
     | "top"
-    | (string & {})
     | undefined;
   MozTransformStyle?: CSSGlobals | "flat" | "preserve-3d" | undefined;
   MozUserModify?: CSSGlobals | "read-only" | "read-write" | "write-only" | undefined;
@@ -2311,7 +2250,7 @@ export type CSSProperties = {
   msHighContrastAdjust?: CSSGlobals | "auto" | "none" | undefined;
   msHyphenateLimitChars?: CSSGlobals | "auto" | (string & {}) | (number & {}) | undefined;
   msHyphenateLimitLines?: CSSGlobals | "no-limit" | (number & {}) | (string & {}) | undefined;
-  msHyphenateLimitZone?: CSSGlobals | string | number | (string & {}) | undefined;
+  msHyphenateLimitZone?: CSSGlobals | (string & {}) | number | undefined;
   msHyphens?: CSSGlobals | "auto" | "manual" | "none" | undefined;
   msImeAlign?: CSSGlobals | "after" | "auto" | undefined;
   msLineBreak?: CSSGlobals | "anywhere" | "auto" | "loose" | "normal" | "strict" | undefined;
@@ -2344,10 +2283,10 @@ export type CSSProperties = {
     | "visible"
     | undefined;
   msScrollChaining?: CSSGlobals | "chained" | "none" | undefined;
-  msScrollLimitXMax?: CSSGlobals | string | number | "auto" | undefined;
-  msScrollLimitXMin?: CSSGlobals | string | number | undefined;
-  msScrollLimitYMax?: CSSGlobals | string | number | "auto" | undefined;
-  msScrollLimitYMin?: CSSGlobals | string | number | undefined;
+  msScrollLimitXMax?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  msScrollLimitXMin?: CSSGlobals | (string & {}) | number | undefined;
+  msScrollLimitYMax?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  msScrollLimitYMin?: CSSGlobals | (string & {}) | number | undefined;
   msScrollRails?: CSSGlobals | "none" | "railed" | undefined;
   msScrollSnapPointsX?: CSSGlobals | (string & {}) | undefined;
   msScrollSnapPointsY?: CSSGlobals | (string & {}) | undefined;
@@ -2394,14 +2333,13 @@ export type CSSProperties = {
   msTransform?: CSSGlobals | "none" | (string & {}) | undefined;
   msTransformOrigin?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "bottom"
     | "center"
     | "left"
     | "right"
     | "top"
-    | (string & {})
     | undefined;
   msTransitionDelay?: CSSGlobals | (string & {}) | undefined;
   msTransitionDuration?: CSSGlobals | (string & {}) | undefined;
@@ -2417,7 +2355,7 @@ export type CSSProperties = {
     | "normal"
     | undefined;
   msWrapFlow?: CSSGlobals | "auto" | "both" | "clear" | "end" | "maximum" | "start" | undefined;
-  msWrapMargin?: CSSGlobals | string | number | undefined;
+  msWrapMargin?: CSSGlobals | (string & {}) | number | undefined;
   msWrapThrough?: CSSGlobals | "none" | "wrap" | undefined;
   msWritingMode?:
     | CSSGlobals
@@ -2527,21 +2465,20 @@ export type CSSProperties = {
   WebkitBorderBeforeColor?: CSSGlobals | CSSColor | undefined;
   WebkitBorderBeforeStyle?: CSSGlobals | CSSLineStyle | (string & {}) | undefined;
   WebkitBorderBeforeWidth?: CSSGlobals | CSSLineWidth | (string & {}) | undefined;
-  WebkitBorderBottomLeftRadius?: CSSGlobals | string | number | (string & {}) | undefined;
-  WebkitBorderBottomRightRadius?: CSSGlobals | string | number | (string & {}) | undefined;
+  WebkitBorderBottomLeftRadius?: CSSGlobals | (string & {}) | number | undefined;
+  WebkitBorderBottomRightRadius?: CSSGlobals | (string & {}) | number | undefined;
   WebkitBorderImageSlice?: CSSGlobals | (string & {}) | (number & {}) | undefined;
-  WebkitBorderTopLeftRadius?: CSSGlobals | string | number | (string & {}) | undefined;
-  WebkitBorderTopRightRadius?: CSSGlobals | string | number | (string & {}) | undefined;
+  WebkitBorderTopLeftRadius?: CSSGlobals | (string & {}) | number | undefined;
+  WebkitBorderTopRightRadius?: CSSGlobals | (string & {}) | number | undefined;
   WebkitBoxDecorationBreak?: CSSGlobals | "clone" | "slice" | undefined;
   WebkitBoxReflect?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "above"
     | "below"
     | "left"
     | "right"
-    | (string & {})
     | undefined;
   WebkitBoxShadow?: CSSGlobals | "none" | (string & {}) | undefined;
   WebkitBoxSizing?: CSSGlobals | "border-box" | "content-box" | undefined;
@@ -2552,11 +2489,11 @@ export type CSSProperties = {
   WebkitColumnRuleStyle?: CSSGlobals | CSSLineStyle | (string & {}) | undefined;
   WebkitColumnRuleWidth?: CSSGlobals | CSSLineWidth | (string & {}) | undefined;
   WebkitColumnSpan?: CSSGlobals | "all" | "none" | undefined;
-  WebkitColumnWidth?: CSSGlobals | string | number | "auto" | undefined;
+  WebkitColumnWidth?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   WebkitFilter?: CSSGlobals | "none" | (string & {}) | undefined;
   WebkitFlexBasis?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -2567,7 +2504,6 @@ export type CSSProperties = {
     | "fit-content"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
   WebkitFlexDirection?:
     | CSSGlobals
@@ -2584,7 +2520,7 @@ export type CSSProperties = {
   WebkitFontSmoothing?:
     | CSSGlobals
     | CSSAbsoluteSize
-    | string
+    | (string & {})
     | number
     | "always"
     | "auto"
@@ -2620,7 +2556,7 @@ export type CSSProperties = {
   WebkitLineClamp?: CSSGlobals | "none" | (number & {}) | (string & {}) | undefined;
   WebkitLogicalHeight?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -2629,11 +2565,10 @@ export type CSSProperties = {
     | "fit-content"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
   WebkitLogicalWidth?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -2643,18 +2578,11 @@ export type CSSProperties = {
     | "fit-content"
     | "max-content"
     | "min-content"
-    | (string & {})
     | undefined;
-  WebkitMarginEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  WebkitMarginStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  WebkitMarginEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  WebkitMarginStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   WebkitMaskAttachment?: CSSGlobals | CSSAttachment | (string & {}) | undefined;
-  WebkitMaskBoxImageOutset?:
-    | CSSGlobals
-    | string
-    | number
-    | (string & {})
-    | (number & {})
-    | undefined;
+  WebkitMaskBoxImageOutset?: CSSGlobals | (string & {}) | number | (number & {}) | undefined;
   WebkitMaskBoxImageRepeat?:
     | CSSGlobals
     | "repeat"
@@ -2667,10 +2595,9 @@ export type CSSProperties = {
   WebkitMaskBoxImageSource?: CSSGlobals | "none" | (string & {}) | undefined;
   WebkitMaskBoxImageWidth?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "auto"
-    | (string & {})
     | (number & {})
     | undefined;
   WebkitMaskClip?:
@@ -2698,21 +2625,19 @@ export type CSSProperties = {
   WebkitMaskPosition?: CSSGlobals | CSSPosition | (string & {}) | undefined;
   WebkitMaskPositionX?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "center"
     | "left"
     | "right"
-    | (string & {})
     | undefined;
   WebkitMaskPositionY?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "bottom"
     | "center"
     | "top"
-    | (string & {})
     | undefined;
   WebkitMaskRepeat?: CSSGlobals | CSSRepeatStyle | (string & {}) | undefined;
   WebkitMaskRepeatX?: CSSGlobals | "no-repeat" | "repeat" | "round" | "space" | undefined;
@@ -2720,7 +2645,7 @@ export type CSSProperties = {
   WebkitMaskSize?: CSSGlobals | CSSBgSize | (string & {}) | undefined;
   WebkitMaxInlineSize?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "-moz-fit-content"
     | "-moz-max-content"
@@ -2730,13 +2655,12 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "none"
-    | (string & {})
     | undefined;
   WebkitOrder?: CSSGlobals | (number & {}) | (string & {}) | undefined;
   WebkitOverflowScrolling?: CSSGlobals | "auto" | "touch" | undefined;
-  WebkitPaddingEnd?: CSSGlobals | string | number | (string & {}) | undefined;
-  WebkitPaddingStart?: CSSGlobals | string | number | (string & {}) | undefined;
-  WebkitPerspective?: CSSGlobals | string | number | "none" | undefined;
+  WebkitPaddingEnd?: CSSGlobals | (string & {}) | number | undefined;
+  WebkitPaddingStart?: CSSGlobals | (string & {}) | number | undefined;
+  WebkitPerspective?: CSSGlobals | (string & {}) | number | "none" | undefined;
   WebkitPerspectiveOrigin?: CSSGlobals | CSSPosition | undefined;
   WebkitPrintColorAdjust?: CSSGlobals | "economy" | "exact" | undefined;
   WebkitRubyPosition?:
@@ -2757,7 +2681,7 @@ export type CSSProperties = {
     | "y"
     | (string & {})
     | undefined;
-  WebkitShapeMargin?: CSSGlobals | string | number | (string & {}) | undefined;
+  WebkitShapeMargin?: CSSGlobals | (string & {}) | number | undefined;
   WebkitTapHighlightColor?: CSSGlobals | CSSColor | undefined;
   WebkitTextCombine?: CSSGlobals | "all" | "digits" | "none" | (string & {}) | undefined;
   WebkitTextDecorationColor?: CSSGlobals | CSSColor | undefined;
@@ -2815,7 +2739,7 @@ export type CSSProperties = {
     | undefined;
   WebkitTextSizeAdjust?: CSSGlobals | "auto" | "none" | (string & {}) | undefined;
   WebkitTextStrokeColor?: CSSGlobals | CSSColor | undefined;
-  WebkitTextStrokeWidth?: CSSGlobals | string | number | undefined;
+  WebkitTextStrokeWidth?: CSSGlobals | (string & {}) | number | undefined;
   WebkitTextUnderlinePosition?:
     | CSSGlobals
     | "auto"
@@ -2829,14 +2753,13 @@ export type CSSProperties = {
   WebkitTransform?: CSSGlobals | "none" | (string & {}) | undefined;
   WebkitTransformOrigin?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "bottom"
     | "center"
     | "left"
     | "right"
     | "top"
-    | (string & {})
     | undefined;
   WebkitTransformStyle?: CSSGlobals | "flat" | "preserve-3d" | undefined;
   WebkitTransitionDelay?: CSSGlobals | (string & {}) | undefined;
@@ -2870,14 +2793,14 @@ export type CSSProperties = {
     | (number & {})
     | undefined;
   MozColumnRule?: CSSGlobals | CSSLineWidth | CSSLineStyle | CSSColor | (string & {}) | undefined;
-  MozColumns?: CSSGlobals | string | number | "auto" | (string & {}) | (number & {}) | undefined;
-  MozOutlineRadius?: CSSGlobals | string | number | (string & {}) | undefined;
+  MozColumns?: CSSGlobals | (string & {}) | number | "auto" | (number & {}) | undefined;
+  MozOutlineRadius?: CSSGlobals | (string & {}) | number | undefined;
   MozTransition?: CSSGlobals | CSSSingleTransition | (string & {}) | undefined;
   msContentZoomLimit?: CSSGlobals | (string & {}) | undefined;
   msContentZoomSnap?: CSSGlobals | "mandatory" | "none" | "proximity" | (string & {}) | undefined;
   msFlex?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "auto"
     | "content"
@@ -2885,7 +2808,6 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "none"
-    | (string & {})
     | (number & {})
     | undefined;
   msScrollLimit?: CSSGlobals | (string & {}) | undefined;
@@ -2910,7 +2832,7 @@ export type CSSProperties = {
     | (string & {})
     | (number & {})
     | undefined;
-  WebkitBorderRadius?: CSSGlobals | string | number | (string & {}) | undefined;
+  WebkitBorderRadius?: CSSGlobals | (string & {}) | number | undefined;
   WebkitColumnRule?:
     | CSSGlobals
     | CSSLineWidth
@@ -2918,10 +2840,10 @@ export type CSSProperties = {
     | CSSColor
     | (string & {})
     | undefined;
-  WebkitColumns?: CSSGlobals | string | number | "auto" | (string & {}) | (number & {}) | undefined;
+  WebkitColumns?: CSSGlobals | (string & {}) | number | "auto" | (number & {}) | undefined;
   WebkitFlex?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "auto"
     | "content"
@@ -2929,7 +2851,6 @@ export type CSSProperties = {
     | "max-content"
     | "min-content"
     | "none"
-    | (string & {})
     | (number & {})
     | undefined;
   WebkitFlexFlow?:
@@ -2980,7 +2901,7 @@ export type CSSProperties = {
     | "triangle"
     | (string & {})
     | undefined;
-  WebkitTextStroke?: CSSGlobals | CSSColor | string | number | (string & {}) | undefined;
+  WebkitTextStroke?: CSSGlobals | CSSColor | (string & {}) | number | undefined;
   WebkitTransition?: CSSGlobals | CSSSingleTransition | (string & {}) | undefined;
   boxAlign?: CSSGlobals | "baseline" | "center" | "end" | "start" | "stretch" | undefined;
   boxDirection?: CSSGlobals | "inherit" | "normal" | "reverse" | undefined;
@@ -2999,17 +2920,17 @@ export type CSSProperties = {
   boxPack?: CSSGlobals | "center" | "end" | "justify" | "start" | undefined;
   clip?: CSSGlobals | "auto" | (string & {}) | undefined;
   fontStretch?: CSSGlobals | CSSFontStretchAbsolute | undefined;
-  gridColumnGap?: CSSGlobals | string | number | (string & {}) | undefined;
-  gridGap?: CSSGlobals | string | number | (string & {}) | undefined;
-  gridRowGap?: CSSGlobals | string | number | (string & {}) | undefined;
+  gridColumnGap?: CSSGlobals | (string & {}) | number | undefined;
+  gridGap?: CSSGlobals | (string & {}) | number | undefined;
+  gridRowGap?: CSSGlobals | (string & {}) | number | undefined;
   imeMode?: CSSGlobals | "active" | "auto" | "disabled" | "inactive" | "normal" | undefined;
   insetArea?: CSSGlobals | CSSPositionArea | "none" | undefined;
-  offsetBlock?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  offsetBlockEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  offsetBlockStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  offsetInline?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  offsetInlineEnd?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
-  offsetInlineStart?: CSSGlobals | string | number | "auto" | (string & {}) | undefined;
+  offsetBlock?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  offsetBlockEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  offsetBlockStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  offsetInline?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  offsetInlineEnd?: CSSGlobals | (string & {}) | number | "auto" | undefined;
+  offsetInlineStart?: CSSGlobals | (string & {}) | number | "auto" | undefined;
   pageBreakAfter?:
     | CSSGlobals
     | "always"
@@ -3065,11 +2986,11 @@ export type CSSProperties = {
   MozBackgroundClip?: CSSGlobals | CSSBgClip | (string & {}) | undefined;
   MozBackgroundOrigin?: CSSGlobals | CSSVisualBox | (string & {}) | undefined;
   MozBackgroundSize?: CSSGlobals | CSSBgSize | (string & {}) | undefined;
-  MozBorderRadius?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozBorderRadiusBottomleft?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozBorderRadiusBottomright?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozBorderRadiusTopleft?: CSSGlobals | string | number | (string & {}) | undefined;
-  MozBorderRadiusTopright?: CSSGlobals | string | number | (string & {}) | undefined;
+  MozBorderRadius?: CSSGlobals | (string & {}) | number | undefined;
+  MozBorderRadiusBottomleft?: CSSGlobals | (string & {}) | number | undefined;
+  MozBorderRadiusBottomright?: CSSGlobals | (string & {}) | number | undefined;
+  MozBorderRadiusTopleft?: CSSGlobals | (string & {}) | number | undefined;
+  MozBorderRadiusTopright?: CSSGlobals | (string & {}) | number | undefined;
   MozBoxAlign?: CSSGlobals | "baseline" | "center" | "end" | "start" | "stretch" | undefined;
   MozBoxDirection?: CSSGlobals | "inherit" | "normal" | "reverse" | undefined;
   MozBoxFlex?: CSSGlobals | (number & {}) | (string & {}) | undefined;
@@ -3175,19 +3096,18 @@ export type CSSProperties = {
     | undefined;
   OObjectFit?: CSSGlobals | "contain" | "cover" | "fill" | "none" | "scale-down" | undefined;
   OObjectPosition?: CSSGlobals | CSSPosition | undefined;
-  OTabSize?: CSSGlobals | string | number | (number & {}) | (string & {}) | undefined;
+  OTabSize?: CSSGlobals | (string & {}) | number | (number & {}) | undefined;
   OTextOverflow?: CSSGlobals | "clip" | "ellipsis" | (string & {}) | undefined;
   OTransform?: CSSGlobals | "none" | (string & {}) | undefined;
   OTransformOrigin?:
     | CSSGlobals
-    | string
+    | (string & {})
     | number
     | "bottom"
     | "center"
     | "left"
     | "right"
     | "top"
-    | (string & {})
     | undefined;
   OTransition?: CSSGlobals | CSSSingleTransition | (string & {}) | undefined;
   OTransitionDelay?: CSSGlobals | (string & {}) | undefined;
