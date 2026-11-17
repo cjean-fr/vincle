@@ -1260,19 +1260,24 @@ describe("precompileTransform", () => {
 
     it("component holes overlap under async rendering, output in document order", async () => {
       // Sibling component holes start in document order and overlap once one
-      // suspends; the output is joined in document order. An awaited
-      // `Scope.set` in the left sibling races with the right one, so the
-      // reader sees the seed: core shares the Scope and does not arbitrate
-      // it. `context(id)` is deterministic across module boundaries, so the
-      // test can reset the same key the module writes.
+      // suspends; the output is joined in document order. The gate, not a
+      // timer, orders the race: the Writer cannot write before the Reader has
+      // read, so the reader sees the seed every time: core shares the Scope
+      // and does not arbitrate it (render.ts and tests/execution-order.test.ts
+      // state awaited Scope writes race, so a 1 ms vs 5 ms margin leaned on
+      // event-loop timing no contract guarantees; CI flipped it once and the
+      // Set below collected two outputs). The watchdog only fires if the holes
+      // ever stop overlapping. `context(id)` is deterministic across module
+      // boundaries, so the test can reset the same key the module writes.
       const outputPath = join(TMP, `output-${Math.random().toString(36).slice(2)}.tsx`);
       const code = [
         `/** @jsxImportSource @vincle/core */`,
         `import { Scope } from "@vincle/core";`,
         `const KEY = Scope.key<string>("e2e:order");`,
-        `const later = <T,>(v: T, ms: number): Promise<T> => new Promise((r) => setTimeout(() => r(v), ms));`,
-        `const Writer = async () => { await later(null, 5); Scope.set(KEY, "written"); return "w"; };`,
-        `const Reader = async () => { await later(null, 1); return Scope.get(KEY); };`,
+        `// Assigned by the Writer, released by the Reader once it has read.`,
+        `let releaseWriter = (): void => { throw new Error("Reader settled before the Writer started"); };`,
+        `const Writer = async () => { await new Promise<void>((resolve, reject) => { const watchdog = setTimeout(() => reject(new Error("the Writer was never released: the holes did not overlap")), 1000); releaseWriter = () => { clearTimeout(watchdog); resolve(); }; }); Scope.set(KEY, "written"); return "w"; };`,
+        `const Reader = async () => { await Promise.resolve(); const value = Scope.get(KEY); releaseWriter(); return value; };`,
         `export const build = () => <div><Writer /><Reader /></div>;`,
       ].join("\n");
       const result = precompileTransform(code, "/src/app.tsx", {
