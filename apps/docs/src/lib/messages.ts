@@ -17,7 +17,7 @@ export const messages = {
   searchResults: "Search results",
   loadingSearch: "Loading search…",
   searchPlaceholder: "Search docs…",
-  searchFailed: "Failed to load search",
+  searchFailed: "Failed to load search. Try again.",
   typeToSearch: "Type to search",
   noResults: "No results",
   resultCount: "{count} results",

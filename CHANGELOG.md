@@ -2,6 +2,20 @@
 
 Package changes are recorded in each package's `CHANGELOG.md`.
 
+## 2026-11-17
+
+### Added
+
+- Docs: announce search status changes to assistive technology.
+
+### Changed
+
+- Docs: retry a failed search index load with Enter instead of closing and reopening the dialog.
+
+### Fixed
+
+- Docs: wrap ArrowUp from no selection to the last search result, allow reopening the search dialog during its close animation, and keep a slow render from overwriting the results of a newer query.
+
 ## 2026-10-31
 
 ### Changed

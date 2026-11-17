@@ -1,5 +1,6 @@
 import { t } from "../lib/messages.js";
 import { search, type SearchDocument } from "./search-rank.js";
+import { createSearchMachine, type SearchEvent, type SearchState } from "./search-state.js";
 
 /** A run of result text: plain, or the part the query matched. */
 interface Segment {
@@ -10,15 +11,8 @@ interface Segment {
 /** How much of a query a fragment may carry before it stops being a link. */
 const MAX_FRAGMENT_LENGTH = 200;
 
-let index: SearchDocument[] | null = null;
-
-async function loadIndex(): Promise<SearchDocument[]> {
-  if (index) return index;
-  const res = await fetch("/search-index.json");
-  if (!res.ok) throw new Error(`Failed to load search index: ${res.status}`);
-  index = (await res.json()) as SearchDocument[];
-  return index;
-}
+/** The search dialog renders at most this many results; selection follows the DOM. */
+const MAX_RESULTS = 10;
 
 document.addEventListener("DOMContentLoaded", () => {
   const dialog = document.getElementById("search-dialog") as HTMLDialogElement | null;
@@ -31,71 +25,100 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchInput = input;
   const searchStatus = status;
   const searchResults = results;
-  let selectedIndex = -1;
+  const machine = createSearchMachine();
+
+  /** The loaded index. Kept outside the machine: it is a document, not a state. */
+  let documents: SearchDocument[] | null = null;
+  /** The in-flight index request, so repeated opens retry once, not twice. */
+  let loadingIndex: Promise<void> | undefined;
   let dialogAnimation: Animation | undefined;
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
   const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  function clearResults() {
+  function clearResults(): void {
     searchResults.replaceChildren();
     searchResults.classList.remove("active");
     searchStatus.classList.remove("hidden");
   }
 
-  async function open() {
-    if (searchDialog.open) return;
-    searchDialog.showModal();
+  function loadIndex(): void {
+    if (documents || loadingIndex) return;
+    loadingIndex = (async () => {
+      try {
+        const response = await fetch("/search-index.json");
+        if (!response.ok) throw new Error(`Failed to load search index: ${response.status}`);
+        documents = (await response.json()) as SearchDocument[];
+        machine.send({ type: "index-loaded" });
+      } catch {
+        machine.send({ type: "index-failed" });
+      } finally {
+        loadingIndex = undefined;
+      }
+    })();
+  }
+
+  /** Show the dialog, cancelling an in-flight close if there is one. */
+  function showDialog(): void {
+    dialogAnimation?.cancel();
+    dialogAnimation = undefined;
+    searchDialog.classList.remove("closing");
+    if (!searchDialog.open) searchDialog.showModal();
     if (!reducedMotion()) {
       dialogAnimation = searchDialog.animate([{ opacity: 0 }, { opacity: 1 }], {
         duration: 160,
         easing: "ease-out",
       });
     }
-    if (!index) {
-      searchStatus.textContent = t("loadingSearch");
-      searchInput.disabled = true;
-      try {
-        await loadIndex();
-        searchInput.disabled = false;
-        searchInput.placeholder = t("searchPlaceholder");
-      } catch {
-        searchStatus.textContent = t("searchFailed");
-        return;
-      }
-    }
-    if (searchDialog.open && !searchDialog.classList.contains("closing")) {
-      searchInput.focus();
-      render(searchInput.value);
-    }
   }
 
-  function close() {
-    if (!searchDialog.open || searchDialog.classList.contains("closing")) return;
-    dialogAnimation?.cancel();
-    searchDialog.classList.add("closing");
-    selectedIndex = -1;
+  function hideDialog(): void {
     if (reducedMotion()) {
-      searchDialog.close();
+      machine.send({ type: "closed" });
       return;
     }
+    searchDialog.classList.add("closing");
     dialogAnimation = searchDialog.animate([{ opacity: 1 }, { opacity: 0 }], {
       duration: 120,
       easing: "ease-in",
       fill: "forwards",
     });
-    dialogAnimation.onfinish = () => searchDialog.close();
+    dialogAnimation.onfinish = () => {
+      // A reopen cancels the animation and changes state; a late finish must
+      // not close the dialog the reader has just brought back.
+      if (machine.state.phase === "closing") machine.send({ type: "closed" });
+    };
   }
 
-  async function render(q: string) {
-    const docs = await loadIndex();
+  function updateSelection(state: SearchState): void {
+    const items = searchResults.querySelectorAll<HTMLElement>("[data-index]");
+    items.forEach((item, index) => {
+      item.setAttribute("aria-selected", String(index === state.selected));
+    });
+    if (state.selected >= 0) items[state.selected]?.scrollIntoView({ block: "nearest" });
+  }
 
-    if (!q.trim()) {
+  function renderResults(state: SearchState): void {
+    if (state.phase === "loading") {
+      searchStatus.textContent = t("loadingSearch");
+      clearResults();
+      return;
+    }
+    if (state.phase === "error") {
+      searchStatus.textContent = t("searchFailed");
+      clearResults();
+      return;
+    }
+    // Keep the closing frame's contents on screen: it is the fade-out.
+    if (state.phase !== "open") return;
+
+    if (!state.query.trim()) {
       searchStatus.textContent = t("typeToSearch");
       clearResults();
       return;
     }
 
-    const ranked = search(docs, q);
-
+    const ranked = search(documents ?? [], state.query);
     if (ranked.length === 0) {
       searchStatus.textContent = t("noResults");
       clearResults();
@@ -104,52 +127,79 @@ document.addEventListener("DOMContentLoaded", () => {
 
     searchStatus.textContent = t("resultCount", { count: ranked.length });
     searchStatus.classList.add("hidden");
-    selectedIndex = -1;
-
-    const items = await Promise.all(
-      ranked.slice(0, 10).map((hit, i) =>
+    searchResults.replaceChildren(
+      ...ranked.slice(0, MAX_RESULTS).map((hit, index) =>
         createResultItem({
-          index: i,
+          index,
           url: hit.heading ? `${hit.document.url}#${hit.heading.id}` : hit.document.url,
           title: hit.heading ? `${hit.document.title} › ${hit.heading.text}` : hit.document.title,
-          excerpt: snippet(hit.document.text, q),
+          excerpt: snippet(hit.document.text, state.query),
           trail: hit.document.trail ?? [],
-          query: q,
+          query: state.query,
         }),
       ),
     );
-    searchResults.replaceChildren(...items);
     searchResults.classList.add("active");
   }
 
-  function selectNext() {
-    const items = searchResults.querySelectorAll<HTMLElement>("[data-index]");
-    if (items.length === 0) return;
-    selectedIndex = (selectedIndex + 1) % items.length;
-    updateSelection(items);
-  }
+  /**
+   * Apply a state transition to the DOM. This is the only place that reads
+   * `dialog.open`, the `closing` class or `input.disabled`: the rest of the
+   * controller asks the machine what the dialog is doing.
+   */
+  function sync(state: SearchState, previous: SearchState, event: SearchEvent): void {
+    if (state.index === "loading" && previous.index !== "loading") loadIndex();
 
-  function selectPrev() {
-    const items = searchResults.querySelectorAll<HTMLElement>("[data-index]");
-    if (items.length === 0) return;
-    selectedIndex = (selectedIndex - 1 + items.length) % items.length;
-    updateSelection(items);
-  }
-
-  function updateSelection(items: NodeListOf<HTMLElement>) {
-    items.forEach((el, i) => {
-      el.setAttribute("aria-selected", String(i === selectedIndex));
-    });
-    if (selectedIndex >= 0 && items[selectedIndex]) {
-      items[selectedIndex]!.scrollIntoView({ block: "nearest" });
+    switch (state.phase) {
+      case "loading":
+      case "error":
+      case "open":
+        // Only the first visible transition shows (and animates) the dialog;
+        // queries and selection changes must not restart its entrance.
+        if (previous.phase === "closed" || previous.phase === "closing") showDialog();
+        break;
+      case "closing":
+        if (previous.phase !== "closing") hideDialog();
+        break;
+      case "closed":
+        dialogAnimation?.cancel();
+        dialogAnimation = undefined;
+        searchDialog.classList.remove("closing");
+        if (searchDialog.open) searchDialog.close();
+        if (searchInput.value) searchInput.value = "";
+        searchInput.blur();
+        clearResults();
+        break;
     }
+
+    const ready = state.phase === "open";
+    searchInput.disabled = !ready;
+    if (ready) {
+      searchInput.placeholder = t("searchPlaceholder");
+      if (event.type === "open" || event.type === "index-loaded") searchInput.focus();
+    }
+
+    if (
+      state.phase !== previous.phase ||
+      state.index !== previous.index ||
+      state.query !== previous.query ||
+      state.matches !== previous.matches
+    )
+      renderResults(state);
+    if (state.phase === "open") updateSelection(state);
   }
 
-  /** A click is ours only to dismiss the dialog: the anchor does the travel. */
-  function follow() {
+  machine.subscribe(sync);
+
+  function close(): void {
+    machine.send({ type: "close" });
+  }
+
+  function follow(): void {
+    const state = machine.state;
     const items = searchResults.querySelectorAll<HTMLElement>("[data-index]");
-    if (selectedIndex >= 0 && selectedIndex < items.length) {
-      const link = items[selectedIndex]!.querySelector<HTMLAnchorElement>("a");
+    if (state.selected >= 0 && state.selected < items.length) {
+      const link = items[state.selected]!.querySelector<HTMLAnchorElement>("a");
       if (link) {
         location.href = link.href;
         close();
@@ -157,50 +207,63 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  /** Compute what the machine needs to know when the query or index changed. */
+  function updateQuery(value: string): void {
+    const matches = documents ? Math.min(search(documents, value).length, MAX_RESULTS) : 0;
+    machine.send({ type: "query", query: value, matches });
+  }
+
   // Open via any search trigger.
-  document.addEventListener("click", (e) => {
-    const trigger = (e.target as Element | null)?.closest("[data-search-trigger]");
-    if (trigger) {
-      e.preventDefault();
-      open();
-    }
+  document.addEventListener("click", (event) => {
+    const trigger = (event.target as Element | null)?.closest("[data-search-trigger]");
+    if (!trigger) return;
+    event.preventDefault();
+    machine.send({ type: "open" });
   });
 
   // Nothing is intercepted: the anchor carries the query and the page reads it.
   // A modified click opens its tab or window, so the dialog stays put.
-  searchResults.addEventListener("click", (e) => {
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
+  searchResults.addEventListener("click", (event) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
       return;
-    if ((e.target as Element | null)?.closest(".docs-search-result")) close();
+    if ((event.target as Element | null)?.closest(".docs-search-result")) close();
   });
 
-  searchDialog.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
+  searchDialog.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
       close();
       return;
     }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      selectNext();
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      machine.send({ type: "next" });
       return;
     }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      selectPrev();
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      machine.send({ type: "previous" });
       return;
     }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      follow();
-      return;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      // A failed index load is retryable without closing: Enter retries.
+      if (machine.state.phase === "error") machine.send({ type: "open" });
+      else follow();
     }
   });
 
-  // Close when clicking outside (on the backdrop)
-  searchDialog.addEventListener("click", (e) => {
-    if (e.target === searchDialog) close();
+  // Close when clicking outside (on the backdrop).
+  searchDialog.addEventListener("click", (event) => {
+    if (event.target === searchDialog) close();
   });
 
   searchDialog.addEventListener("cancel", (event) => {
@@ -209,32 +272,25 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   searchDialog.addEventListener("close", () => {
-    dialogAnimation?.cancel();
-    searchInput.value = "";
-    searchInput.blur();
-    searchDialog.classList.remove("closing");
+    machine.send({ type: "closed" });
   });
 
-  let debounceTimer: ReturnType<typeof setTimeout>;
   searchInput.addEventListener("input", () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => render(searchInput.value), 150);
+    debounceTimer = setTimeout(() => updateQuery(searchInput.value), 150);
   });
 
-  searchResults.addEventListener("mouseover", (e) => {
-    const item = (e.target as HTMLElement).closest<HTMLElement>("[data-index]");
+  searchResults.addEventListener("mouseover", (event) => {
+    const item = (event.target as Element | null)?.closest<HTMLElement>("[data-index]");
     if (!item) return;
-    const idx = Number(item.dataset["index"]);
-    if (!isNaN(idx)) {
-      selectedIndex = idx;
-      updateSelection(searchResults.querySelectorAll<HTMLElement>("[data-index]"));
-    }
+    const index = Number(item.dataset["index"]);
+    if (!Number.isNaN(index)) machine.send({ type: "select", index });
   });
 
-  document.addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-      e.preventDefault();
-      open();
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+      event.preventDefault();
+      machine.send({ type: "open" });
     }
   });
 });
@@ -349,12 +405,12 @@ function highlightTitle(text: string, query: string): Segment[] {
 
   matches.sort((a, b) => a.start - b.start);
   const merged: { start: number; end: number }[] = [];
-  for (const m of matches) {
+  for (const match of matches) {
     const last = merged[merged.length - 1];
-    if (last && m.start < last.end) {
-      last.end = Math.max(last.end, m.end);
+    if (last && match.start < last.end) {
+      last.end = Math.max(last.end, match.end);
     } else {
-      merged.push({ ...m });
+      merged.push({ ...match });
     }
   }
 
@@ -375,13 +431,13 @@ function highlightTitle(text: string, query: string): Segment[] {
  * there is no parser to keep in trust with the emitter.
  */
 function appendSegments(target: HTMLElement, segments: Segment[]): void {
-  for (const seg of segments) {
-    if (seg.marked) {
+  for (const segment of segments) {
+    if (segment.marked) {
       const mark = document.createElement("mark");
-      mark.textContent = seg.text;
+      mark.textContent = segment.text;
       target.append(mark);
-    } else if (seg.text) {
-      target.append(document.createTextNode(seg.text));
+    } else if (segment.text) {
+      target.append(document.createTextNode(segment.text));
     }
   }
 }

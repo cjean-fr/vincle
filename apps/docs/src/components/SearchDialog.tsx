@@ -56,6 +56,7 @@ export function SearchDialog() {
 
         <p
           id="search-status"
+          role="status"
           class="docs-search-status px-4 py-6 text-center text-sm text-[var(--docs-color-text-secondary)]"
         >
           {t("loading")}
