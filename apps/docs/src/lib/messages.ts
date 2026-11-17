@@ -2,6 +2,7 @@
 export const messages = {
   copyCode: "Copy to clipboard",
   copiedCode: "Copied!",
+  copyFailed: "Copy failed",
   terminalWindow: "Terminal window",
   skipContent: "Skip to content",
   primaryNavigation: "Primary navigation",

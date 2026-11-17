@@ -210,7 +210,8 @@
   background: inherit;
   transform: translateY(-50%) rotate(45deg);
 }
-[data-docs-copy][data-copied] + .docs-copy-tooltip {
+[data-docs-copy][data-copied] + .docs-copy-tooltip,
+[data-docs-copy][data-failed] + .docs-copy-tooltip {
   display: block;
 }
 .docs-code-block.has-title .docs-copy-tooltip {
