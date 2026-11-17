@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
 import { t } from "../src/lib/messages.js";
-import { applyTheme } from "../src/lib/theme.js";
+import { applyTheme, nextTheme } from "../src/lib/theme.js";
 
 function setup(stored: string | null = null, dark = false, blocked = false) {
   const handlers: Record<string, (event: any) => void> = {};
@@ -71,7 +71,7 @@ function setup(stored: string | null = null, dark = false, blocked = false) {
     "",
   );
   runInNewContext(
-    `const applyTheme = ${applyTheme.toString()};\n${new Bun.Transpiler({ loader: "ts" }).transformSync(client)}`,
+    `const applyTheme = ${applyTheme.toString()};\nconst nextTheme = ${nextTheme.toString()};\n${new Bun.Transpiler({ loader: "ts" }).transformSync(client)}`,
     context,
   );
   return {
@@ -134,4 +134,13 @@ test("restores saved preference and still works without localStorage", () => {
   expect(page.dark()).toBe(true);
   page["click"]();
   expect(page.dark()).toBe(false);
+});
+
+test("the theme transition table covers every preference and system pair", () => {
+  expect(nextTheme("auto", true)).toBe("light");
+  expect(nextTheme("auto", false)).toBe("dark");
+  expect(nextTheme("dark", true)).toBe("light");
+  expect(nextTheme("dark", false)).toBe("auto");
+  expect(nextTheme("light", true)).toBe("auto");
+  expect(nextTheme("light", false)).toBe("dark");
 });

@@ -1,4 +1,4 @@
-import { applyTheme, type ThemePreference } from "../lib/theme.js";
+import { applyTheme, nextTheme, type ThemePreference } from "../lib/theme.js";
 
 const systemTheme = matchMedia("(prefers-color-scheme: dark)");
 applyTheme();
@@ -8,24 +8,7 @@ document.addEventListener("click", (event) => {
     return;
   const systemDark = matchMedia("(prefers-color-scheme: dark)").matches;
   const current = document.documentElement.dataset["theme"] as ThemePreference;
-  let preference: ThemePreference;
-
-  if (current === "auto") {
-    // auto → propose the opposite of system
-    preference = systemDark ? "light" : "dark";
-  } else if (current === "dark") {
-    // manual dark → opposite is light
-    // if system prefers light, offer auto (same result)
-    // otherwise offer manual light
-    if (systemDark) preference = "light";
-    else preference = "auto";
-  } else {
-    // manual light → opposite is dark
-    // if system prefers light, offer manual dark
-    // otherwise offer auto (same result)
-    if (systemDark) preference = "auto";
-    else preference = "dark";
-  }
+  const preference = nextTheme(current, systemDark);
 
   applyTheme(preference);
   try {
