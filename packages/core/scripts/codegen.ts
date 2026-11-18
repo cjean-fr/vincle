@@ -612,24 +612,25 @@ function emitInterface(name: string): string {
 
     collectRefs(t, aliasRefs);
     const key = ts.isIdentifier(m.name) ? pn : JSON.stringify(pn);
-    props.push(
-      `${key}${m.questionToken ? "?" : ""}: Awaitable<${printer.printNode(
-        ts.EmitHint.Unspecified,
-        t,
-        sf,
-      )} | RawString${trustedUrlArm(pn)}>;`,
-    );
+    const printed = printer.printNode(ts.EmitHint.Unspecified, t, sf);
+    // `any` already accepts RawString and RawUrl: appending either only adds a
+    // redundant constituent to the printed union.
+    const valueArms = printed === "any" ? "" : ` | RawString${trustedUrlArm(pn)}`;
+    props.push(`${key}${m.questionToken ? "?" : ""}: Awaitable<${printed}${valueArms}>;`);
     if (name !== "SVGAttributes") {
       const nativeName = nativeHTMLName(pn);
       if (nativeName !== undefined) {
         // HTML's serialized spelling accepts numeric strings for numeric
         // React props. Keep the React alias strict, while constraining the
-        // native spelling to strings that actually parse as numbers.
+        // native spelling to strings that actually parse as numbers. A `string`
+        // arm already accepts numeric strings, so the widening is skipped there.
         const printedType = printer.printNode(ts.EmitHint.Unspecified, t, sf);
         const nativeType =
           nativeName === "tabindex"
             ? "number | `${bigint}`"
-            : printedType.replace(/\bnumber\b/g, "number | `${number}`");
+            : /(^|\| )string( \||$)/.test(printedType)
+              ? printedType
+              : printedType.replace(/\bnumber\b/g, "number | `${number}`");
         props.push(
           `${JSON.stringify(nativeName)}${m.questionToken ? "?" : ""}: Awaitable<${nativeType} | RawString${trustedUrlArm(nativeName)}>;`,
         );

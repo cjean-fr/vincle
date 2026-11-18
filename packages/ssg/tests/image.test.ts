@@ -26,7 +26,7 @@ async function fixture(
   }
 }
 
-async function capture(run: () => unknown | Promise<unknown>): Promise<SsgError> {
+async function capture(run: () => unknown): Promise<SsgError> {
   try {
     await run();
   } catch (error) {

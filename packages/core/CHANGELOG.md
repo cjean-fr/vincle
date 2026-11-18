@@ -5,6 +5,7 @@
 ### Fixed
 
 - Keep the keyword literals of the generated CSS unions visible to editor completions: length types now take their open string arm as `string & {}` instead of a bare `string`, which absorbed literals like `"auto"` and left value positions without suggestions. Accepted values are unchanged.
+- Drop redundant arms from a few generated attribute unions: `download` and `inlist` are `any` without a `RawString` arm, and the native spelling of numeric attributes that already accept `string` (`frameborder`, `cellpadding`, `cellspacing`) no longer adds a `` `${number}` `` arm. Accepted values are unchanged.
 
 ### Removed
 

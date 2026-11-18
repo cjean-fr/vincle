@@ -3499,7 +3499,7 @@ export namespace JSX {
     about?: Awaitable<string | undefined | RawString>;
     content?: Awaitable<string | undefined | RawString>;
     datatype?: Awaitable<string | undefined | RawString>;
-    inlist?: Awaitable<any | RawString>;
+    inlist?: Awaitable<any>;
     prefix?: Awaitable<string | undefined | RawString>;
     property?: Awaitable<string | undefined | RawString>;
     rel?: Awaitable<string | undefined | RawString>;
@@ -3576,7 +3576,7 @@ export namespace JSX {
     target?: Awaitable<string | undefined | RawString>;
   }
   export interface AnchorHTMLAttributes extends HTMLAttributes {
-    download?: Awaitable<any | RawString>;
+    download?: Awaitable<any>;
     href?: Awaitable<string | undefined | RawString | RawUrl>;
     hrefLang?: Awaitable<string | undefined | RawString>;
     hreflang?: Awaitable<string | undefined | RawString>;
@@ -3590,7 +3590,7 @@ export namespace JSX {
   export interface AreaHTMLAttributes extends HTMLAttributes {
     alt?: Awaitable<string | undefined | RawString>;
     coords?: Awaitable<string | undefined | RawString>;
-    download?: Awaitable<any | RawString>;
+    download?: Awaitable<any>;
     href?: Awaitable<string | undefined | RawString | RawUrl>;
     hrefLang?: Awaitable<string | undefined | RawString>;
     hreflang?: Awaitable<string | undefined | RawString>;
@@ -3689,7 +3689,7 @@ export namespace JSX {
     allowTransparency?: Awaitable<boolean | undefined | RawString>;
     allowtransparency?: Awaitable<boolean | undefined | RawString>;
     frameBorder?: Awaitable<number | string | undefined | RawString>;
-    frameborder?: Awaitable<number | `${number}` | string | undefined | RawString>;
+    frameborder?: Awaitable<number | string | undefined | RawString>;
     height?: Awaitable<number | string | undefined | RawString>;
     loading?: Awaitable<"eager" | "lazy" | undefined | RawString>;
     marginHeight?: Awaitable<number | undefined | RawString>;
@@ -3936,9 +3936,9 @@ export namespace JSX {
     bgcolor?: Awaitable<string | undefined | RawString>;
     border?: Awaitable<number | undefined | RawString>;
     cellPadding?: Awaitable<number | string | undefined | RawString>;
-    cellpadding?: Awaitable<number | `${number}` | string | undefined | RawString>;
+    cellpadding?: Awaitable<number | string | undefined | RawString>;
     cellSpacing?: Awaitable<number | string | undefined | RawString>;
-    cellspacing?: Awaitable<number | `${number}` | string | undefined | RawString>;
+    cellspacing?: Awaitable<number | string | undefined | RawString>;
     frame?: Awaitable<boolean | undefined | RawString>;
     rules?: Awaitable<"none" | "groups" | "rows" | "columns" | "all" | undefined | RawString>;
     summary?: Awaitable<string | undefined | RawString>;

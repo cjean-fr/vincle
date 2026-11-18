@@ -40,7 +40,7 @@ function renderPortrait(props: PictureProps, base?: string): Promise<string> {
   return renderInScope(props, () => setImages([portrait], { base }));
 }
 
-async function capture(run: () => unknown | Promise<unknown>): Promise<Error> {
+async function capture(run: () => unknown): Promise<Error> {
   try {
     await run();
   } catch (error) {
