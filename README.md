@@ -58,7 +58,12 @@ bun install
 bun run build    # Build all packages
 bun run test     # Run all tests (unit + differential fuzzers)
 bun run check    # Type-check everything
+bun run lint     # Build the lint plugin and lint with Bun canary
 ```
+
+Lint uses `bun x bun@canary` because the built-in linter is not available in
+Bun 1.4.5 stable. It reads `.oxlintrc.json`, including the custom plugin, and
+fails on warnings. Build and test commands keep using the stable runtime.
 
 The differential fuzzers in `@vincle/core` run a fixed seed window, so a CI
 divergence replays from the failure message alone. `VINCLE_FUZZ_SEEDS` and

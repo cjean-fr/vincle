@@ -140,12 +140,12 @@ import StreamingReplay from "../components/StreamingReplay";
         // Results is an ordinary async component; the page opts in:
         function Page() {
           return (
-            <main>
-              <h1>Search results</h1>
+            <div>
+              <h3>Search results</h3>
               <Defer fallback={<p>Loading results…</p>}>
                 <Results />
               </Defer>
-            </main>
+            </div>
           );
         }
 

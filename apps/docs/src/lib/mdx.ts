@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { defineHastPlugin, type MdxCompileOptions } from "satteri";
 
 import { codeBlocks, mermaidBlocks } from "./code-blocks.js";
-import { fenceTabs, wrapTables } from "./hast-plugins.js";
+import { fenceTabs, tableColumnHeaders, wrapTables } from "./hast-plugins.js";
 import { t } from "./messages.js";
 import { setToc, type TocEntry } from "./toc.js";
 
@@ -73,7 +73,14 @@ export const docsMdxOptions: MdxOptions<{ toc: TocEntry[] }> = {
       data: { toc },
       createPlugins() {
         toc.length = 0;
-        return [fenceTabs, mermaidBlocks(), codeBlocks, headingPlugin(ids, toc), wrapTables];
+        return [
+          fenceTabs,
+          mermaidBlocks(),
+          codeBlocks,
+          headingPlugin(ids, toc),
+          tableColumnHeaders,
+          wrapTables,
+        ];
       },
     };
   },

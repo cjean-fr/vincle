@@ -2,6 +2,20 @@ import { defineHastPlugin, type HastContent } from "satteri";
 
 import { t } from "./messages.js";
 
+/** GFM header rows describe columns; preserve explicitly authored scopes. */
+export const tableColumnHeaders = defineHastPlugin({
+  name: "table-column-headers",
+  element: {
+    filter: ["th"],
+    visit(node, ctx) {
+      const row = ctx.parent(node);
+      const group = row && ctx.parent(row);
+      if (group?.type === "element" && group.tagName === "thead" && !node.properties["scope"])
+        ctx.setProperty(node, "scope", "col");
+    },
+  },
+});
+
 export const wrapTables = defineHastPlugin({
   name: "wrap-tables",
   element: {

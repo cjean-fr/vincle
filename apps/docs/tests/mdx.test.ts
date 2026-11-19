@@ -169,3 +169,22 @@ it("draws mermaid fences with unique ids, one copy of each stylesheet and no fon
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+it("marks Markdown table headings as columns without changing their text", async () => {
+  const directory = await fixtureDirectory("mdx-table-test");
+  const file = path.join(directory, "page.mdx");
+  try {
+    await writeFile(
+      file,
+      "# Comparison\n\n| Package | Purpose |\n| --- | --- |\n| core | Render HTML |\n",
+    );
+    const { Component } = await freshCache().load(file, modules);
+    const html = await renderToString(Component({}));
+    expect(html).toContain('<th scope="col">Package</th>');
+    expect(html).toContain('<th scope="col">Purpose</th>');
+    expect(html).toContain("Render HTML");
+    expect(html).toContain("docs-table-wrapper");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

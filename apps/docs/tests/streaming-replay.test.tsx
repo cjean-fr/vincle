@@ -12,6 +12,8 @@ it("replays the real wire output of the home streaming example", async () => {
   // The fallback survives in state 1 only: the patch replaced it in state 2.
   expect(html.match(/Loading results…/g)).toHaveLength(1);
   expect(html).toContain("Getting started");
+  expect(html).not.toMatch(/<main\b/);
+  expect(html.match(/<h3>Search results<\/h3>/g)).toHaveLength(2);
   // The raw patch stays inspectable.
   expect(html).toContain("&lt;template data-for=");
 });

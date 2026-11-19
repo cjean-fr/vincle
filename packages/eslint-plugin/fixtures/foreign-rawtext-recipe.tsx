@@ -1,7 +1,7 @@
 /**
  * Lint fixture, not a test: this file is covered by the repository's own
  * `bun lint` run so the no-foreign-rawtext rule's scope resolution (the
- * SourceCode.getScope path) executes under oxlint itself, not only under
+ * SourceCode.getScope path) executes under Bun itself, not only under
  * the RuleTester. It must stay warning-free: if recipe recognition
  * regresses, the repository lint starts warning here.
  */

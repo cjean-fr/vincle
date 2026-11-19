@@ -45,7 +45,7 @@ jobs:
       - name: Test with nothing built or cached
         run: bun run test
 
-      - name: Lint (builds its oxlint plugin)
+      - name: Lint (Bun canary, builds its plugin)
         run: bun run lint
 
   # `bun test` proves nothing about Node, Deno or workerd, and `@vincle/core`

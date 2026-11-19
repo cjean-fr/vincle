@@ -25,7 +25,9 @@ it("keeps a stable website name separate from each descriptive page title", () =
     page("/", "JSX for the server"),
     page("/guide/introduction", "Introduction"),
   ]) {
-    expect(getStructuredData(context)).toMatchObject({
+    expect(
+      getStructuredData(context)?.["@graph"].find((node) => node["@type"] === "WebSite"),
+    ).toMatchObject({
       "@type": "WebSite",
       name: "Vincle",
       url: "https://vincle.cjean.fr/",

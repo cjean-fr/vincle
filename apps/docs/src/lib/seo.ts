@@ -25,15 +25,37 @@ export function getHeaders(page: DocsRenderContext) {
 }
 
 export function getStructuredData(page: DocsRenderContext) {
-  const { description, isErrorPage } = getHeaders(page);
+  const { isErrorPage } = getHeaders(page);
   if (!ssg.site || isErrorPage) return undefined;
+  const person = {
+    "@type": "Person",
+    "@id": "https://www.cjean.fr/#person",
+    name: "Christophe Jean",
+    url: "https://www.cjean.fr/",
+  };
   return {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: page.config.title,
-    description,
-    url: fullUrl("/", ssg.site),
-    inLanguage: "en",
+    "@graph": [
+      person,
+      {
+        "@type": "SoftwareSourceCode",
+        "@id": fullUrl("/#project", ssg.site),
+        name: "Vincle",
+        url: fullUrl("/", ssg.site),
+        codeRepository: "https://github.com/cjean-fr/vincle",
+        author: { "@id": person["@id"] },
+      },
+      {
+        "@type": "WebSite",
+        "@id": fullUrl("/#website", ssg.site),
+        name: page.config.title,
+        description: page.config.description,
+        url: fullUrl("/", ssg.site),
+        inLanguage: "en",
+        creator: { "@id": person["@id"] },
+        about: { "@id": fullUrl("/#project", ssg.site) },
+      },
+    ],
   };
 }
 

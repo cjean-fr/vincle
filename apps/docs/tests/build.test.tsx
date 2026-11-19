@@ -18,6 +18,35 @@ beforeAll(() => {
 }, 120_000);
 
 describe("SSG build", () => {
+  it("publishes MIME-sniffing protection without overriding asset content types", async () => {
+    const headers = await readFile(path.join(DIST_DIR, "_headers"), "utf8");
+    expect(headers).toContain("/*\n  X-Content-Type-Options: nosniff");
+    expect(headers).not.toContain("Content-Type: text/plain");
+  });
+
+  it("keeps one main per page and connects the project to its author", async () => {
+    for (const route of ["index", "guide/views"]) {
+      const html = await readFile(path.join(DIST_DIR, `${route}.html`), "utf8");
+      expect(html.match(/<main\b/g)).toHaveLength(1);
+      expect(html.match(/<h1\b/g)).toHaveLength(1);
+      const nodes = [
+        ...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
+      ].flatMap((match) => {
+        const data = JSON.parse(match[1]!);
+        return data["@graph"] ?? [data];
+      });
+      const person = nodes.find((node) => node["@type"] === "Person");
+      const project = nodes.find((node) => node["@type"] === "SoftwareSourceCode");
+      const website = nodes.find((node) => node["@type"] === "WebSite");
+      expect(person).toMatchObject({ name: "Christophe Jean", url: "https://www.cjean.fr/" });
+      expect(project.codeRepository).toBe("https://github.com/cjean-fr/vincle");
+      expect(project.author["@id"]).toBe(person["@id"]);
+      expect(website.creator["@id"]).toBe(person["@id"]);
+      expect(website.about["@id"]).toBe(project["@id"]);
+      expect(nodes.filter((node) => node["@type"] === "Person")).toHaveLength(1);
+    }
+  });
+
   it("distinguishes the Flow and SSG overview titles in page metadata and discovery", async () => {
     const index = JSON.parse(await readFile(path.join(DIST_DIR, "search-index.json"), "utf8"));
     for (const [section, title] of [

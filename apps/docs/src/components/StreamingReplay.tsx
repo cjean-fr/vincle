@@ -26,12 +26,12 @@ async function Results() {
 
 function Page() {
   return (
-    <main>
-      <h1>Search results</h1>
+    <div>
+      <h3>Search results</h3>
       <Defer fallback={<p>Loading results…</p>}>
         <Results />
       </Defer>
-    </main>
+    </div>
   );
 }
 
@@ -44,7 +44,7 @@ async function captureWire(): Promise<string> {
 
 export default async function StreamingReplay() {
   const wire = await captureWire();
-  const shell = /<main>[\s\S]*?<\/main>/.exec(wire)?.[0] ?? "";
+  const shell = /<div>[\s\S]*?<\/div>/.exec(wire)?.[0] ?? "";
   const patches = [...wire.matchAll(/<template data-for="([^"]+)">([\s\S]*?)<\/template>/g)];
   let after = shell;
   for (const patch of patches) {

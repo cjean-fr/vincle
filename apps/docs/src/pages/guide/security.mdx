@@ -229,7 +229,7 @@ and content opened through `raw()` or a template stays trusted author bytes.
 
 A common question: if the JSX compiler already turned `<div>` into a `jsx()`
 call, why re-escape anything? Because **there is no semantic specification of
-the JSX transform.** The [JSX spec](https://facebook.github.io/jsx/) defines
+the JSX transform.** The [JSX spec](https://react.github.io/jsx/) defines
 _syntax_ only. It opens with _"JSX is an XML-like syntax extension to
 ECMAScript without any defined semantics."_ The `jsx`/`jsxs` protocol is a
 React convention (RFC #107). Toolchains such as TypeScript, esbuild, SWC,
@@ -633,6 +633,6 @@ privately rather than in a public issue. The steps are in
 
 - [OWASP ASVS 5.0](https://asvs.dev/)
 - [V1: Encoding and Sanitization](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x10-V1-Encoding-and-Sanitization.md)
-- [V15: Secure Coding](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x1B-V15-Secure-Coding-and-Architecture.md)
-- [V16: Error Handling](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x1C-V16-Logging-and-Error-Handling.md)
+- [V15: Secure Coding](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x24-V15-Secure-Coding-and-Architecture.md)
+- [V16: Error Handling](https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x25-V16-Security-Logging-and-Error-Handling.md)
 - [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
