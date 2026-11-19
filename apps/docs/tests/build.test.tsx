@@ -18,6 +18,22 @@ beforeAll(() => {
 }, 120_000);
 
 describe("SSG build", () => {
+  it("keeps the homepage marker phrasing-only and gives links and tables contextual names", async () => {
+    const dist = DIST_DIR;
+    const home = await readFile(path.join(dist, "index.html"), "utf8");
+    expect(home).toContain('<span class="docs-example-mark" aria-hidden="true">&lt;/&gt;</span>');
+    const overview = await readFile(path.join(dist, "integration/flow/overview.html"), "utf8");
+    expect(overview).toMatch(/href="\/integration\/flow\/overview"[^>]*>Flow overview<\/a>/);
+    expect(overview).toMatch(/href="\/integration\/ssg\/overview"[^>]*>SSG overview<\/a>/);
+    const intro = await readFile(path.join(dist, "guide/introduction.html"), "utf8");
+    expect(intro).toContain('<table aria-label="Add packages as you need them">');
+    const security = await readFile(path.join(dist, "guide/security.html"), "utf8");
+    expect(security).toMatch(
+      /<div class="docs-table-wrapper">\s*<table aria-label="Auto-escaping contexts and functions">/,
+    );
+    expect(security).toContain('<th scope="col">Characters escaped</th>');
+  });
+
   it("publishes MIME-sniffing protection without overriding asset content types", async () => {
     const headers = await readFile(path.join(DIST_DIR, "_headers"), "utf8");
     expect(headers).toContain("/*\n  X-Content-Type-Options: nosniff");
@@ -538,14 +554,21 @@ describe("page footer", () => {
     expect(broken).toEqual([]);
   });
 
-  it("shows the Git modification date for the content directory only on the homepage", async () => {
+  it("shows the tracked revision date of each document, not a shared deployment date", async () => {
     const latest = await lastModified(config.pages);
     const home = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
     if (latest) expect(home).toContain(`datetime="${latest}"`);
     else expect(home).not.toContain("docs-page-footer-updated");
-    for (const file of contentPages().filter((candidate) => candidate !== "index.html")) {
-      const html = await readFile(path.join(DIST_DIR, file), "utf-8");
-      expect(html, file).not.toContain("docs-page-footer-updated");
+    for (const source of ["guide/introduction.mdx", "guide/views.mdx"]) {
+      const date = await lastModified(path.join(config.pages, source));
+      const html = await readFile(path.join(DIST_DIR, source.replace(/\.mdx$/, ".html")), "utf-8");
+      if (date) {
+        expect(html).toContain(`datetime="${date}"`);
+        expect(html).toContain(`"dateModified":"${date}"`);
+      } else {
+        expect(html).not.toContain("docs-page-footer-updated");
+        expect(html).not.toContain('"dateModified"');
+      }
     }
   });
 

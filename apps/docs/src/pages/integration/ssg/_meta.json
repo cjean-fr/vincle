@@ -1,5 +1,5 @@
 {
-  "overview": { "title": "Overview", "order": 1 },
+  "overview": { "title": "SSG overview", "order": 1 },
   "pages": { "title": "Pages & layouts", "order": 2 },
   "configuration": { "title": "Configuration", "order": 3 },
   "images": { "title": "Images", "order": 4 },

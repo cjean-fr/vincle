@@ -14,12 +14,23 @@ import { setToc, type TocEntry } from "./toc.js";
  */
 function headingPlugin(ids: readonly string[], toc: TocEntry[]) {
   let index = 0;
+  let sectionTitle: string | undefined;
   const label = t("sectionLink");
   return defineHastPlugin({
     name: "heading-ids",
     element: {
-      filter: ["h1", "h2", "h3", "h4", "h5", "h6"],
+      filter: ["h1", "h2", "h3", "h4", "h5", "h6", "table"],
       visit(node, ctx) {
+        if (node.tagName === "table") {
+          if (
+            sectionTitle &&
+            !node.properties["aria-label"] &&
+            !node.properties["aria-labelledby"] &&
+            !node.children.some((child) => child.type === "element" && child.tagName === "caption")
+          )
+            ctx.setProperty(node, "aria-label", sectionTitle);
+          return;
+        }
         const text = ctx.textContent(node);
         const id =
           ids[index++] ??
@@ -31,6 +42,7 @@ function headingPlugin(ids: readonly string[], toc: TocEntry[]) {
             .replace(/^-+|-+$/g, "");
         if (!id) return;
         ctx.setProperty(node, "id", id);
+        sectionTitle = text.replace(/\s+/g, " ").trim();
         // A visually hidden heading (GFM footnotes) is neither listed nor linked.
         const className = node.properties["className"];
         if (Array.isArray(className) ? className.includes("sr-only") : className === "sr-only")

@@ -1,5 +1,5 @@
 {
-  "overview": { "title": "Overview", "order": 1 },
+  "overview": { "title": "Flow overview", "order": 1 },
   "components": { "title": "Components", "order": 2 },
   "streaming": { "title": "Streaming", "order": 3 },
   "static": { "title": "Static generation", "order": 4 },

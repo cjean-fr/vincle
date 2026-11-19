@@ -46,6 +46,14 @@ export function getStructuredData(page: DocsRenderContext) {
         author: { "@id": person["@id"] },
       },
       {
+        "@type": "WebPage",
+        "@id": fullUrl(`${page.currentPage}#webpage`, ssg.site),
+        url: fullUrl(page.currentPage, ssg.site),
+        name: page.meta.title,
+        isPartOf: { "@id": fullUrl("/#website", ssg.site) },
+        ...(page.lastUpdated ? { dateModified: page.lastUpdated } : {}),
+      },
+      {
         "@type": "WebSite",
         "@id": fullUrl("/#website", ssg.site),
         name: page.config.title,

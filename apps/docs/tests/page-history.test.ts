@@ -51,6 +51,15 @@ it("uses the last content commit, including nested pages, and ignores unrelated 
     git(["add", "unrelated.txt"]);
     git(["commit", "--quiet", "-m", "Other work"], "2022-04-05T12:00:00Z");
     expect(Date.parse((await lastModified(pages)) ?? "")).toBe(Date.parse("2021-02-03T12:00:00Z"));
+    expect(Date.parse((await lastModified(path.join(pages, "index.mdx"))) ?? "")).toBe(
+      Date.parse("2020-01-01T12:00:00Z"),
+    );
+    expect(Date.parse((await lastModified(path.join(pages, "guide/page.mdx"))) ?? "")).toBe(
+      Date.parse("2021-02-03T12:00:00Z"),
+    );
+    const shallow = path.join(root, "shallow");
+    git(["clone", "--quiet", "--depth=1", `file://${root}`, shallow]);
+    expect(await lastModified(path.join(shallow, "pages/index.mdx"))).toBeNull();
   } finally {
     await rm(root, { recursive: true, force: true });
   }

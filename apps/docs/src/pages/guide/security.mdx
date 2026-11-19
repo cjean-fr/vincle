@@ -42,79 +42,81 @@ Every value embedded in JSX, whether text content, an attribute, or a style valu
 HTML-escaped before it reaches the output. This is not a mode you enable; it
 is the only mode.
 
-<table>
-  <thead>
-    <tr>
-      <th>Context</th>
-      <th>Characters escaped</th>
-      <th>Function</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Text content</td>
-      <td>
-        <code>&amp;</code> <code>&lt;</code> <code>&gt;</code>
-      </td>
-      <td>
-        <code>escapeContent</code>
-      </td>
-    </tr>
-    <tr>
-      <td>Attribute values</td>
-      <td>
-        <code>&amp;</code> <code>&lt;</code> <code>&quot;</code>
-        <br />
-        <small>
-          <code>&gt;</code> is deliberately skipped. It can't end a double-quoted value
-        </small>
-      </td>
-      <td>
-        <code>escapeAttr</code>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        URL attributes
-        <br />
-        <small>
-          <code>href</code>, <code>src</code>, <code>action</code>, <code>formaction</code>,{" "}
-          <code>xlink:href</code>, <code>data</code>, <code>cite</code>, <code>poster</code>,{" "}
-          <code>background</code>, <code>manifest</code> (and four more on SVG animation elements)
-        </small>
-      </td>
-      <td>
-        Any scheme outside the allowlist replaced with <code>#blocked</code>
-        <br />
-        <small>
-          Allowed: relative URLs, <code>http:</code>, <code>https:</code>, <code>mailto:</code>,{" "}
-          <code>tel:</code>, <code>sms:</code>, image <code>data:</code>
-        </small>
-      </td>
-      <td>
-        <code>isSafeScheme</code>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        Rawtext content
-        <br />
-        <small>
-          (<code>script</code>, <code>style</code>)
-        </small>
-      </td>
-      <td>
-        <code>\u003c/script&gt;</code> in <code>script</code>, <code>&lt;\/style&gt;</code> in{" "}
-        <code>style</code>
-        <br />
-        <small>scripts escaped (unlike Preact), styles too (unlike React)</small>
-      </td>
-      <td>
-        <code>escapeRawTagContent</code>
-      </td>
-    </tr>
-  </tbody>
-</table>
+<div class="docs-table-wrapper">
+  <table aria-label="Auto-escaping contexts and functions">
+    <thead>
+      <tr>
+        <th scope="col">Context</th>
+        <th scope="col">Characters escaped</th>
+        <th scope="col">Function</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Text content</td>
+        <td>
+          <code>&amp;</code> <code>&lt;</code> <code>&gt;</code>
+        </td>
+        <td>
+          <code>escapeContent</code>
+        </td>
+      </tr>
+      <tr>
+        <td>Attribute values</td>
+        <td>
+          <code>&amp;</code> <code>&lt;</code> <code>&quot;</code>
+          <br />
+          <small>
+            <code>&gt;</code> is deliberately skipped. It can't end a double-quoted value
+          </small>
+        </td>
+        <td>
+          <code>escapeAttr</code>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          URL attributes
+          <br />
+          <small>
+            <code>href</code>, <code>src</code>, <code>action</code>, <code>formaction</code>,{" "}
+            <code>xlink:href</code>, <code>data</code>, <code>cite</code>, <code>poster</code>,{" "}
+            <code>background</code>, <code>manifest</code> (and four more on SVG animation elements)
+          </small>
+        </td>
+        <td>
+          Any scheme outside the allowlist replaced with <code>#blocked</code>
+          <br />
+          <small>
+            Allowed: relative URLs, <code>http:</code>, <code>https:</code>, <code>mailto:</code>,{" "}
+            <code>tel:</code>, <code>sms:</code>, image <code>data:</code>
+          </small>
+        </td>
+        <td>
+          <code>isSafeScheme</code>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          Rawtext content
+          <br />
+          <small>
+            (<code>script</code>, <code>style</code>)
+          </small>
+        </td>
+        <td>
+          <code>\u003c/script&gt;</code> in <code>script</code>, <code>&lt;\/style&gt;</code> in{" "}
+          <code>style</code>
+          <br />
+          <small>scripts escaped (unlike Preact), styles too (unlike React)</small>
+        </td>
+        <td>
+          <code>escapeRawTagContent</code>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 The functions named in the table are internal implementation details, not
 public API. `isSafeScheme`, for example, is exported from nowhere; the scheme

@@ -31,6 +31,14 @@ async function documentationContexts(pages: Page[]): Promise<Navigation> {
   const siteLastUpdated = pages.some((page) => page.url === "/")
     ? await lastModified(configuration.pages)
     : null;
+  const pageDates = new Map(
+    await Promise.all(
+      pages.map(
+        async (page) =>
+          [page.file, page.file.endsWith(".mdx") ? await lastModified(page.file) : null] as const,
+      ),
+    ),
+  );
   const published = pages.filter((page) => !page.meta.draft);
   if (new Set(published.map((page) => page.url)).size !== published.length) {
     throw new Error("[@vincle/docs] duplicate page URLs detected.");
@@ -64,6 +72,7 @@ async function documentationContexts(pages: Page[]): Promise<Navigation> {
         pages: pages.map((page) => [page.file, page.url, page.meta]),
         navigation,
         siteLastUpdated,
+        pageDates: [...pageDates],
       }),
     )
     .digest("hex");
@@ -81,7 +90,7 @@ async function documentationContexts(pages: Page[]): Promise<Navigation> {
         sidebar,
         currentTab: tabFor(configuration.tabs, page.url),
         resolvedTabs,
-        lastUpdated: page.url === "/" ? siteLastUpdated : null,
+        lastUpdated: page.url === "/" ? siteLastUpdated : (pageDates.get(page.file) ?? null),
         editUrl: editUrlFor(configuration.editUrl, page.file),
         prev,
         next,
