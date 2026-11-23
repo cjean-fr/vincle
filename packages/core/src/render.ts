@@ -211,15 +211,19 @@ export function settleConcurrent(parts: Array<string | Promise<string>>): Promis
       resolve(values);
       return;
     }
-    parts.forEach((part, i) => {
-      Promise.resolve(part).then(
-        (value) => {
-          values[i] = value;
-          if (--remaining === 0) resolve(values);
-        },
-        (reason: unknown) => reject(reason),
-      );
-    });
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]!;
+      if (typeof part === "string") {
+        values[i] = part;
+        remaining--;
+        continue;
+      }
+      part.then((value) => {
+        values[i] = value;
+        if (--remaining === 0) resolve(values);
+      }, reject);
+    }
+    if (remaining === 0) resolve(values);
   });
 }
 

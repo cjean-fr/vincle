@@ -10,6 +10,7 @@
 ### Changed
 
 - Handle primitive template holes directly while preserving escaping and deferred object evaluation.
+- Join synchronous siblings without allocating a promise for each string after a sibling suspends.
 
 ### Fixed
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { jsx, jsxEscape, jsxTemplate } from "../src/jsx-runtime.js";
-import { renderToString } from "../src/render.js";
+import { settleConcurrent, renderToString } from "../src/render.js";
 import { Scope } from "../src/scope.js";
 
 /**
@@ -311,4 +311,28 @@ test("precompiled async tails remove only absent attribute separators", async ()
       ),
     ),
   ).toBe('<div title="a  ">a  b</div>');
+});
+
+describe("mixed concurrent parts", () => {
+  test("keeps synchronous gaps in document order", async () => {
+    const first = Promise.withResolvers<string>();
+    const last = Promise.withResolvers<string>();
+    const rendered = settleConcurrent([first.promise, "", "middle", last.promise, "tail"]);
+    last.resolve("last");
+    first.resolve("first");
+    expect(await rendered).toEqual(["first", "", "middle", "last", "tail"]);
+    expect(await settleConcurrent(["a", "", "b"])).toEqual(["a", "", "b"]);
+    expect(await settleConcurrent([])).toEqual([]);
+  });
+
+  test("rejects before an earlier pending part settles and handles late failures", async () => {
+    const first = Promise.withResolvers<string>();
+    const last = Promise.withResolvers<string>();
+    const failure = new Error("first failure");
+    const rendered = settleConcurrent([first.promise, "middle", last.promise]);
+    last.reject(failure);
+    await expect(rendered).rejects.toBe(failure);
+    first.reject(new Error("late failure"));
+    await Promise.resolve();
+  });
 });
