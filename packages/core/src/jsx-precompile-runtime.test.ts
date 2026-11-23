@@ -692,3 +692,15 @@ describe("jsxTemplate judges an animation from its start tag, as jsx does", () =
     );
   });
 });
+
+describe("primitive template holes", () => {
+  test("escapes strings and preserves numeric text next to trusted markup", async () => {
+    const value = jsxTemplate`<p>${"<&>"}${0}${-0}${NaN}${Infinity}${42n}${raw("<b>ok</b>")}</p>`;
+    expect(await renderToString(value)).toBe("<p>&lt;&amp;&gt;00NaNInfinity42<b>ok</b></p>");
+  });
+
+  test("keeps empty text spacing outside attribute separators", async () => {
+    expect(await renderToString(jsxTemplate`<p>a ${""}b ${null}c</p>`)).toBe("<p>a b c</p>");
+    expect(await renderToString(jsxTemplate`<input ${""}>`)).toBe("<input>");
+  });
+});

@@ -290,8 +290,12 @@ function renderTemplate(templates: ArrayLike<string>, values: unknown[]): RawStr
   let out = templates[0] ?? "";
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
-    // `RawString` first: almost every hole is one, and the taxonomy below needs ten tests to reach it.
-    if (v instanceof RawString) {
+    // Primitive holes need no iterable or deferred-value classification.
+    if (typeof v === "string") {
+      out = appendHole(out, escapeContent(v));
+    } else if (typeof v === "number" || typeof v === "bigint") {
+      out += v;
+    } else if (v instanceof RawString) {
       out = appendHole(out, v.value);
     } else if (v === null || v === undefined || typeof v === "boolean") {
       out = appendHole(out, "");
