@@ -1,5 +1,11 @@
 # @vincle/flow
 
+## Unreleased
+
+### Changed
+
+- Encode streaming events directly into the output stream, preserving framing, cancellation and backpressure without an intermediate transform stream.
+
 ## 0.12.0 — 2026-11-01
 
 ### Fixed

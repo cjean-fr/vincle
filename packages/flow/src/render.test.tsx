@@ -691,3 +691,60 @@ describe("shell buffering", () => {
     expect(html).not.toContain("vincle:style");
   });
 });
+
+describe("directly encoded stream lifecycle", () => {
+  it("bounds buffering and returns an abandoned fragment generator", async () => {
+    let produced = 0;
+    const closed = Promise.withResolvers<void>();
+    async function* chunks() {
+      try {
+        for (let i = 0; i < 1000; i++) {
+          produced++;
+          yield `chunk-${i}`;
+        }
+      } finally {
+        closed.resolve();
+      }
+    }
+    const reader = renderToStream(
+      () => (
+        <Defer target="feed" merge="append">
+          {chunks()}
+        </Defer>
+      ),
+      TurboAdapter,
+    ).getReader();
+    try {
+      await reader.read();
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+      expect(produced).toBeLessThanOrEqual(3);
+      await reader.cancel();
+      await closed.promise;
+      expect((await reader.read()).done).toBe(true);
+    } finally {
+      await reader.cancel();
+      reader.releaseLock();
+    }
+  });
+
+  it("closes the encoded stream when a pending shell is aborted", async () => {
+    const started = Promise.withResolvers<void>();
+    const request = new AbortController();
+    function Pending() {
+      started.resolve();
+      return new Promise<never>(() => {});
+    }
+    const reader = renderToStream(() => <Pending />, TurboAdapter, {
+      signal: request.signal,
+    }).getReader();
+    const next = reader.read();
+    await started.promise;
+    request.abort();
+    try {
+      expect((await next).done).toBe(true);
+    } finally {
+      await reader.cancel();
+      reader.releaseLock();
+    }
+  });
+});

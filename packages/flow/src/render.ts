@@ -47,7 +47,10 @@ function splitClosingTags(shell: string): { body: string; closingTag: string } {
  * separator is written once, when the first non-shell event proves the run is
  * over.
  */
-function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent, string> {
+function encodeWith(
+  adapter: Pick<Adapter, "Patch">,
+  emit: (html: string) => Promise<void>,
+): { write: (ev: FlowEvent) => Promise<void>; flush: () => Promise<void> } {
   let inShell = false;
   // The boundaries this response has already patched. The first patch of one is
   // where the placeholder's fallback is still in place, and the adapter is the
@@ -56,11 +59,11 @@ function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent,
   // patches in the order they were written.
   const patched = new Set<string>();
 
-  return new TransformStream<FlowEvent, string>({
-    async transform(ev, c) {
+  return {
+    async write(ev) {
       if (ev.type === "shell") {
         inShell = true;
-        c.enqueue(ev.html);
+        await emit(ev.html);
         return;
       }
       // Ride the separator on the next write rather than enqueuing it alone, so
@@ -81,16 +84,16 @@ function encodeWith(adapter: Pick<Adapter, "Patch">): TransformStream<FlowEvent,
             first,
           }),
         );
-        c.enqueue(prefix + wire + "\n");
+        await emit(prefix + wire + "\n");
       } else {
-        c.enqueue(prefix + ev.html + "\n");
+        await emit(prefix + ev.html + "\n");
       }
     },
-    flush(c) {
+    async flush() {
       // Shell-only stream (no fragments, no closing tag): the separator still owes.
-      if (inShell) c.enqueue("\n");
+      if (inShell) await emit("\n");
     },
-  });
+  };
 }
 
 /**
@@ -210,5 +213,12 @@ export function renderToStream(
       ERR_FLOW_NO_STREAMING,
     );
   }
-  return renderToFlowEvents(node, adapter, opts).pipeThrough(encodeWith(adapter));
+  return createStream<string>(
+    async (emit, signal) => {
+      const encoder = encodeWith(adapter, emit);
+      await runSequence(encoder.write, signal, node, adapter, opts ?? {});
+      await encoder.flush();
+    },
+    { signal: opts?.signal },
+  );
 }
