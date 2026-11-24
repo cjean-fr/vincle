@@ -1,5 +1,11 @@
 # @vincle/flow
 
+> **Experimental.** Flow explores deferred fragments and streaming on top of
+> `@vincle/core`. Its API and wire format track the
+> [declarative partial updates](https://github.com/WICG/declarative-partial-updates)
+> specification and will change with it, with breaking changes between
+> releases.
+
 Deferred fragments and streaming for `@vincle/core`. Send the page shell first,
 then patch in content as it becomes ready. Also supports static generation
 with separate fragment files.

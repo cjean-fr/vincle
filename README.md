@@ -10,43 +10,58 @@ hidden.
 
 **Short version:** you keep your server, your routing, your database.
 You replace the React/Next.js component → HTML pipeline with one that
-doesn't ship a 150 KB runtime to the browser.
+doesn't ship a 150 KB runtime to the browser. And when the whole site can be
+files, `@vincle/ssg` renders it at build time.
 
 **Documentation:** [vincle.cjean.fr](https://vincle.cjean.fr)
 
 ## Getting started
 
-Start with `@vincle/core` to render JSX to HTML. Add `@vincle/flow` when
-you want the page to load before all its data is ready — the shell renders
-immediately, fragments stream in and patch the DOM via HTMX, Turbo, or
-vanilla browser APIs.
+Start with `@vincle/core` to render JSX to HTML. Building a site, a blog or
+a docs page set? Go straight to `@vincle/ssg` (beta): a directory of pages
+and Markdown becomes static HTML at build time — layouts, assets, RSS and
+sitemap included. This documentation site is built with it.
 
-Core is SSR. Flow is progressive enhancement on top of it. They work
-together, but core is a complete product on its own.
+## Experimental: Flow
+
+`@vincle/flow` explores deferred fragments and streaming on top of core: the
+page shell renders immediately, fragments arrive later and patch the DOM via
+a small native polyfill, HTMX, Turbo, or ESI.
+
+Its future is tied to the
+[declarative partial updates](https://github.com/WICG/declarative-partial-updates)
+specification: as the proposal moves, Flow's API and wire format will move
+with it, with breaking changes between releases. Try it, give feedback, but
+don't build anything you can't refactor on it.
 
 ## Packages
 
 ### Core
 
-| Package                                         | Description                                                                                                                |
-| :---------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
-| [`@vincle/core`](./packages/core)               | JSX-to-HTML string renderer. Zero dependencies. **Start here.**                                                            |
-| [`@vincle/flow`](./packages/flow)               | Deferred fragments, streaming, and DOM patching: `<Slot>`, `<Defer>` + Turbo / HTMX / Native / WebPlatform / ESI adapters. |
-| [`@vincle/vite-plugin`](./packages/vite-plugin) | Vite asset integration: `<Asset>`, `assetUrl`, manifest resolution.                                                        |
+| Package                                         | Description                                                                                |
+| :---------------------------------------------- | :----------------------------------------------------------------------------------------- |
+| [`@vincle/core`](./packages/core)               | JSX-to-HTML string renderer. Zero dependencies. **Start here.**                            |
+| [`@vincle/ssg`](./packages/ssg)                 | Static site generator (beta): layouts, JSX/MDX, multiple outputs, plugins and Vite assets. |
+| [`@vincle/vite-plugin`](./packages/vite-plugin) | Vite asset integration: `<Asset>`, `assetUrl`, manifest resolution.                        |
 
 ### Tooling
 
-| Package                                             | Description                                                                                |
-| :-------------------------------------------------- | :----------------------------------------------------------------------------------------- |
-| [`@vincle/eslint-plugin`](./packages/eslint-plugin) | ESLint rules for safe @vincle/core usage.                                                  |
-| [`@vincle/precompile`](./packages/precompile)       | Deno-style JSX precompile transform, with Vite and Bun adapters.                           |
-| [`@vincle/ssg`](./packages/ssg)                     | File-based static generation: layouts, JSX/MDX, multiple outputs, plugins and Vite assets. |
+| Package                                             | Description                                                      |
+| :-------------------------------------------------- | :--------------------------------------------------------------- |
+| [`@vincle/eslint-plugin`](./packages/eslint-plugin) | ESLint rules for safe @vincle/core usage.                        |
+| [`@vincle/precompile`](./packages/precompile)       | Deno-style JSX precompile transform, with Vite and Bun adapters. |
+
+### Experimental
+
+| Package                           | Description                                                                                                                                                             |
+| :-------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@vincle/flow`](./packages/flow) | Deferred fragments, streaming, and DOM patching: `<Slot>`, `<Defer>` + Turbo / HTMX / Native / WebPlatform / ESI adapters. Tracks the declarative partial updates spec. |
 
 ### Apps (internal)
 
 | App                     | Description                                                                             |
 | :---------------------- | :-------------------------------------------------------------------------------------- |
-| [`docs`](./apps/docs)   | Documentation site for `@vincle/core`.                                                  |
+| [`docs`](./apps/docs)   | Documentation site, built with `@vincle/ssg`.                                           |
 | [`bench`](./apps/bench) | Benchmarks vs @kitajs/html, React, Preact, hono/jsx + A/B revision comparison protocol. |
 
 ## Development

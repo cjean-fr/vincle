@@ -97,11 +97,11 @@ describe("SSG build", () => {
       expect(page.text).not.toMatch(/^\s*(?:<!doctype html|<html(?:\s|>))/i);
     }
     expect(await readFile(path.join(DIST_DIR, "llms-full.txt"), "utf8")).toContain(data[0].title);
-    const adapters = data.find((d: { url: string }) => d.url === "/integration/flow/adapters");
-    expect(adapters?.text).toContain("Browsers with declarative partial updates");
-    const streaming = data.find((d: { url: string }) => d.url === "/integration/flow/streaming");
-    expect(streaming?.keywords).toEqual(["suspense", "out-of-order", "progressive rendering"]);
-    expect(adapters).not.toHaveProperty("keywords");
+    const recipes = data.find((d: { url: string }) => d.url === "/integration/flow/recipes");
+    expect(recipes?.text).toContain("Browsers with declarative partial updates");
+    expect(recipes?.keywords).toEqual(["suspense", "out-of-order", "progressive rendering"]);
+    const flowOverview = data.find((d: { url: string }) => d.url === "/integration/flow/overview");
+    expect(flowOverview).not.toHaveProperty("keywords");
     const deployment = data.find((d: { url: string }) => d.url === "/integration/ssg/deployment");
     expect(deployment?.trail).toEqual(["Integration", "SSG"]);
     const intro = data.find((d: { url: string }) => d.url === "/guide/introduction");
@@ -142,7 +142,7 @@ describe("SSG build", () => {
   });
 
   it("emits meta keywords for a page that declares them", async () => {
-    const html = await readFile(path.join(DIST_DIR, "integration/flow/streaming.html"), "utf-8");
+    const html = await readFile(path.join(DIST_DIR, "integration/flow/recipes.html"), "utf-8");
     expect(html).toContain(
       '<meta name="keywords" content="suspense, out-of-order, progressive rendering">',
     );
@@ -196,7 +196,7 @@ describe("SSG build", () => {
     for (const page of [
       "guide/getting-started/installation.mdx",
       "api/core/rendertostring.mdx",
-      "integration/flow/adapters.mdx",
+      "integration/flow/recipes.mdx",
     ]) {
       const twin = await readFile(path.join(DIST_DIR, `${page.replace(/\.mdx$/, ".md")}`), "utf-8");
       const source = await readFile(path.join(PROJECT_DIR, "src/pages", page), "utf-8");
@@ -366,7 +366,7 @@ describe("breadcrumb JSON-LD", () => {
   });
 
   it("only links pages that exist and matches each page's canonical URL", async () => {
-    for (const file of ["api/flow/components.html", "integration/ssg/deployment.html"]) {
+    for (const file of ["api/flow/reference.html", "integration/ssg/deployment.html"]) {
       const html = await readFile(path.join(DIST_DIR, file), "utf-8");
       const [list] = await breadcrumbs(file);
       const urls: string[] = list.itemListElement.map((step: { item: string }) => step.item);
@@ -417,7 +417,14 @@ describe("everything a page declares exists", () => {
   }
 
   it("no local path leads nowhere", async () => {
+    // Edge Function routes are served dynamically at deploy time: they have
+    // no file in dist, but netlify.toml declares them.
+    const netlifyToml = await readFile(path.join(PROJECT_DIR, "netlify.toml"), "utf-8");
+    const edgeRoutes = new Set(
+      [...netlifyToml.matchAll(/^path\s*=\s*"([^"]+)"/gm)].map((match) => match[1]),
+    );
     const resolves = async (url: string): Promise<boolean> =>
+      edgeRoutes.has(url) ||
       (await Bun.file(path.join(DIST_DIR, url)).exists()) ||
       (await Bun.file(path.join(DIST_DIR, `${url}.html`)).exists()) ||
       (await Bun.file(path.join(DIST_DIR, url, "index.html")).exists());

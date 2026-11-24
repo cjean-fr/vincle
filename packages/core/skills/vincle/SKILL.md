@@ -63,13 +63,14 @@ esbuild: {
 
 If the request is unclear, ask one clarifying question.
 
-| Need                                                  | Use                                                       |
-| ----------------------------------------------------- | --------------------------------------------------------- |
-| HTML strings only                                     | `renderToString()`                                        |
-| Component itself must await data before returning JSX | async components                                          |
-| Shared state in the render tree                       | `createContext()` + `<Context.Provider>` + `useContext()` |
-| Mutable state for one async execution                 | `Scope`                                                   |
-| DOM streaming, islands, or browser patching           | `@vincle/flow`                                            |
+| Need                                                  | Use                                                                     |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| A whole static site (pages, blog, docs)               | `@vincle/ssg`                                                           |
+| HTML strings only                                     | `renderToString()`                                                      |
+| Component itself must await data before returning JSX | async components                                                        |
+| Shared state in the render tree                       | `createContext()` + `<Context.Provider>` + `useContext()`               |
+| Mutable state for one async execution                 | `Scope`                                                                 |
+| DOM streaming, islands, or browser patching           | `@vincle/flow` (experimental, API tracks the WICG partial updates spec) |
 
 If the user wants browser DOM updates, hydration, hooks, event handlers, or client-side interactivity, do not use this package for that task; explain that `@vincle/core` is for HTML-string generation and server-side rendering only.
 
@@ -105,7 +106,7 @@ component took. A `Scope.set` before a component's first `await` is visible to
 later siblings; one placed after an `await` races with them. To overlap
 independent I/O inside one component, `await Promise.all` (below); to send a
 first response before slow parts finish, use `<Defer>` / `<Slot>` from
-`@vincle/flow`, which puts the boundary in the markup.
+`@vincle/flow` (experimental), which puts the boundary in the markup.
 
 ```tsx
 // ✅ Async component: await inside, return JSX

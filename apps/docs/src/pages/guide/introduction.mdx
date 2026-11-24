@@ -1,6 +1,6 @@
 ---
 title: Introduction to Vincle
-description: "Compose typed, async JSX views in your existing server, return HTML from a route, and add @vincle/flow only when slow parts should arrive later."
+description: "Compose typed, async JSX views in your existing server, return HTML from a route, and generate a whole static site with @vincle/ssg."
 ---
 
 # Your views in JSX. Your app in HTML.
@@ -67,48 +67,39 @@ Async siblings start in document order and overlap as soon as one awaits;
 the output is joined in document order, and the string response waits for the
 whole tree.
 
-## Let slower parts arrive later
+## Build a whole site
 
-Add `@vincle/flow` when a page should appear before all its data is ready.
-Wrap a slow component in `Defer`, provide a fallback, and use the streaming
-renderer to send the surrounding page before its deferred fragments. An
-[adapter](/integration/flow/adapters) decides how fragments update the page: natively,
-or through HTMX or Turbo.
+When every visitor gets the same HTML, skip the server: `@vincle/ssg` renders a
+directory of pages and Markdown content to static files at build time, with
+layouts, assets and multiple outputs. It is in beta: usable and used in
+production on this very site, with an architecture still being refined.
 
-```tsx
-import { renderToStream, Defer } from "@vincle/flow";
-import { NativeAdapter } from "@vincle/flow/adapters";
-
-const stream = renderToStream(
-  () => (
-    <html>
-      <body>
-        <h1>Page visible immediately</h1>
-        <Defer target="comments" fallback={<p>Loading comments…</p>}>
-          <Comments />
-        </Defer>
-      </body>
-    </html>
-  ),
-  NativeAdapter,
-);
-// → ReadableStream<string>. Pipe it to the HTTP response.
+```bash tab="npm" sync="pkg-manager"
+npm install @vincle/ssg
 ```
 
-[Follow a view from a route to streaming HTML](/guide/views).
+```bash tab="pnpm" sync="pkg-manager"
+pnpm add @vincle/ssg
+```
+
+```bash tab="bun" sync="pkg-manager"
+bun add @vincle/ssg
+```
+
+[Build your first static site](/guide/static-site).
 
 ## Add packages as you need them
 
 Start with the core; each other package builds on it alone, so add one when
 its need shows up.
 
-| Package                 | What it adds                                                       | Documented in                                                                 |
-| ----------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `@vincle/core`          | Components rendered to an HTML string                              | [Guide](/guide/introduction)                                                  |
-| `@vincle/flow`          | `<Defer>`: parts of a page that arrive later, streamed or as files | [Integration › Flow](/integration/flow/overview)                              |
-| `@vincle/ssg`           | A static site generator: a directory of pages becomes HTML files   | [Integration › SSG](/integration/ssg/overview)                                |
-| `@vincle/precompile`    | A build transform that turns JSX into template literals            | [Integration › Precompile](/integration/precompile)                           |
-| `@vincle/eslint-plugin` | Lint rules for what escaping cannot judge, such as `on*` handlers  | [README](https://github.com/cjean-fr/vincle/tree/main/packages/eslint-plugin) |
+| Package                       | What it adds                                                                                        | Documented in                                                                 |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `@vincle/core`                | Components rendered to an HTML string                                                               | [Guide](/guide/introduction)                                                  |
+| `@vincle/ssg` (beta)          | A static site generator: a directory of pages becomes HTML files                                    | [Integration › SSG](/integration/ssg/overview)                                |
+| `@vincle/precompile`          | A build transform that turns JSX into template literals                                             | [Integration › Precompile](/integration/precompile)                           |
+| `@vincle/eslint-plugin`       | Lint rules for what escaping cannot judge, such as `on*` handlers                                   | [README](https://github.com/cjean-fr/vincle/tree/main/packages/eslint-plugin) |
+| `@vincle/flow` (experimental) | `<Defer>`: parts of a page that arrive later, streamed or as files; tracks the partial updates spec | [Integration › Flow](/integration/flow/overview)                              |
 
 ## What the core gives you
 
@@ -135,6 +126,6 @@ reaches the browser. Add client-side behavior with the tools of your choice.
 
 - [Installation](/guide/getting-started/installation): install and configure JSX
 - [First render](/guide/getting-started/first-render): write a component
-- [From a view to progressive HTML](/guide/views): integrate a route and defer results
+- [From a view to HTML](/guide/views): connect a view to your server
 - [Building a static site](/guide/static-site): render pages at build time
 - [Elements & attributes](/guide/jsx/elements-attributes): JSX conventions

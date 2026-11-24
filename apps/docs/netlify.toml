@@ -1,0 +1,6 @@
+# The documentation site is generated statically (`bun run generate` into
+# `dist/`). Its only dynamic piece is the live Flow demo embedded in the Flow
+# overview page, streamed by an Edge Function on each request.
+[[edge_functions]]
+path = "/flow-demo"
+function = "flow-demo"

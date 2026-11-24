@@ -1,12 +1,12 @@
 ---
-title: From a view to progressive HTML
-description: "Take a Vincle component from a route response to progressive HTML: renderToString first, then Defer and renderToStream when results are slow."
+title: From a view to HTML
+description: "Take a Vincle component from a route response to a full page: renderToString, layouts, and when to go further with a static site or deferred fragments."
 ---
 
-# From a view to progressive HTML
+# From a view to HTML
 
-Start with a component and an HTTP response. When part of the page becomes slow,
-defer that component and send the surrounding HTML first.
+Start with a component and an HTTP response. The renderer awaits the whole
+tree; you send the string.
 
 ## Set up JSX
 
@@ -68,67 +68,25 @@ The response waits for the complete tree. Async siblings start in document
 order and overlap as soon as one awaits; their output is joined in document
 order whatever the completion order.
 
-## Let the results arrive later
+## A whole site instead
 
-Install the optional streaming package:
+When every visitor gets the same HTML, a server route per page is more
+infrastructure than the content needs. [`@vincle/ssg`](/integration/ssg/overview)
+renders a directory of pages like this one to static files at build time:
+same components, same layouts, no server to run. See
+[Building a static site](/guide/static-site).
 
-```bash tab="npm" sync="pkg-manager"
-npm install @vincle/flow
-```
+## When the page should not wait
 
-```bash tab="pnpm" sync="pkg-manager"
-pnpm add @vincle/flow
-```
-
-```bash tab="bun" sync="pkg-manager"
-bun add @vincle/flow
-```
-
-Keep Results unchanged and wrap it in Defer. Use renderToStream instead of
-renderToString to send the surrounding markup and fallback before the results.
-
-```tsx
-import { Defer, renderToStream } from "@vincle/flow";
-import { NativeAdapter } from "@vincle/flow/adapters";
-import { Results } from "./results";
-
-function Page() {
-  return (
-    <main>
-      <h1>Search results</h1>
-      <Defer fallback={<p>Loading results…</p>}>
-        <Results />
-      </Defer>
-    </main>
-  );
-}
-
-const stream = renderToStream(() => <Page />, NativeAdapter);
-```
-
-The stream contains strings. In a server that accepts Web Streams, return it as a
-byte stream from your route:
-
-```tsx
-return new Response(stream.pipeThrough(new TextEncoderStream()), {
-  headers: { "Content-Type": "text/html; charset=utf-8" },
-});
-```
-
-Your server and proxy must pass chunks through without buffering the whole
-response.
-
-The Native adapter supplies the browser patching script. If your application
-already uses HTMX or Turbo, choose the corresponding
-[adapter](/integration/flow/adapters) and load its client library.
-
-To cancel a deferred component's work, use a function child: it receives an
-AbortSignal to forward to `fetch`. See [Streaming](/integration/flow/streaming) for
-cancellation and timeouts.
+A string response waits for the slowest component. If one query dominates the
+page's time-to-first-byte, the experimental
+[`@vincle/flow`](/integration/flow/overview) package can send the shell first
+and patch the slow part in when it resolves. Its API tracks the declarative
+partial updates specification and will change with it, so treat it as an
+exploration, not a foundation.
 
 ## Continue from here
 
-- [Streaming](/integration/flow/streaming): fragment delivery
-- [HTTP serving](/integration/flow/http-serving): response helpers and request negotiation
-- [Adapters](/integration/flow/adapters): choose how fragments reach the page
+- [Building a static site](/guide/static-site): render pages at build time
+- [SSG overview](/integration/ssg/overview): conventions and URLs
 - [Security](/guide/security): escaping rules and trusted HTML

@@ -1,4 +1,4 @@
 {
   "core": { "label": "Core", "order": 1 },
-  "flow": { "label": "Flow API", "order": 100 }
+  "flow": { "label": "Flow API (experimental)", "order": 100 }
 }

@@ -1,10 +1,3 @@
 {
-  "components": { "title": "Components", "order": 1 },
-  "adapters": { "title": "Adapters", "order": 2 },
-  "renderToStream": { "title": "renderToStream", "order": 3 },
-  "renderToStatic": { "title": "renderToStatic", "order": 4 },
-  "renderFragment": { "title": "renderFragment", "order": 5 },
-  "serve": { "title": "serve", "order": 6 },
-  "renderToFlowEvents": { "title": "renderToFlowEvents", "order": 7 },
-  "utils": { "title": "Utils", "order": 8 }
+  "reference": { "title": "Flow API reference", "order": 1 }
 }

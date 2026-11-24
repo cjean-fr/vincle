@@ -1,20 +1,20 @@
 {
-  "flow": {
-    "title": "Flow",
-    "collapsed": false,
-    "order": 1
-  },
   "ssg": {
     "title": "SSG",
     "collapsed": false,
-    "order": 2
+    "order": 1
   },
   "precompile": {
     "title": "Precompile transform",
-    "order": 3
+    "order": 2
   },
   "tsrx": {
     "title": "TSRX",
+    "order": 3
+  },
+  "flow": {
+    "title": "Flow (experimental)",
+    "collapsed": true,
     "order": 4
   }
 }

@@ -14,4 +14,32 @@
 /integration/adapters.md /integration/flow/adapters.md 301
 /integration/http-serving /integration/flow/http-serving 301
 /integration/http-serving.md /integration/flow/http-serving.md 301
+# Flow documentation condensed into overview + recipes + one API reference.
+/integration/flow/components /integration/flow/overview 301
+/integration/flow/components.md /integration/flow/overview.md 301
+/integration/flow/streaming /integration/flow/recipes#streaming 301
+/integration/flow/streaming.md /integration/flow/recipes.md 301
+/integration/flow/static /integration/flow/recipes#static-generation 301
+/integration/flow/static.md /integration/flow/recipes.md 301
+/integration/flow/adapters /integration/flow/recipes#adapters 301
+/integration/flow/adapters.md /integration/flow/recipes.md 301
+/integration/flow/http-serving /integration/flow/recipes#http-serving 301
+/integration/flow/http-serving.md /integration/flow/recipes.md 301
+/api/flow/components /api/flow/reference#components 301
+/api/flow/components.md /api/flow/reference.md 301
+/api/flow/adapters /api/flow/reference#adapters 301
+/api/flow/adapters.md /api/flow/reference.md 301
+/api/flow/rendertostream /api/flow/reference#rendertostream 301
+/api/flow/rendertostream.md /api/flow/reference.md 301
+/api/flow/rendertostatic /api/flow/reference#rendertostatic 301
+/api/flow/rendertostatic.md /api/flow/reference.md 301
+/api/flow/renderfragment /api/flow/reference#renderfragment 301
+/api/flow/renderfragment.md /api/flow/reference.md 301
+/api/flow/serve /api/flow/reference#serve 301
+/api/flow/serve.md /api/flow/reference.md 301
+/api/flow/rendertoflowevents /api/flow/reference#rendertoflowevents 301
+/api/flow/rendertoflowevents.md /api/flow/reference.md 301
+/api/flow/utils /api/flow/reference#utils 301
+/api/flow/utils.md /api/flow/reference.md 301
+
 /* /404.html 404

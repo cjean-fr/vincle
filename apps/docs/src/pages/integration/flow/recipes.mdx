@@ -1,0 +1,278 @@
+---
+title: Flow recipes
+description: "Streaming, static generation, adapter choice, and HTTP serving with @vincle/flow: renderToStream, renderToStatic, serve, and the five built-in adapters."
+keywords: [suspense, out-of-order, progressive rendering]
+---
+
+# Recipes
+
+<div class="my-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+  <p>
+    <strong>Experimental.</strong> @vincle/flow tracks the{" "}
+    <a href="https://github.com/WICG/declarative-partial-updates">declarative partial updates</a>{" "}
+    proposal; its API and wire format will change with that specification.
+  </p>
+</div>
+
+## Streaming
+
+Send the HTML shell immediately and stream deferred fragments inline in the
+same HTTP response. One connection, progressive delivery: no client-side fetch
+logic required.
+
+`renderToStream` returns a `ReadableStream<string>`. The adapter is required:
+pass a streaming adapter (e.g. `NativeAdapter`) as the second argument.
+`NativeAdapter` injects its small polyfill only when fragments are present.
+
+```tsx
+import type { JSX } from "@vincle/core";
+
+import { Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+declare function Page(): JSX.Element;
+
+const stream = renderToStream(() => <Page />, NativeAdapter);
+```
+
+The shell is rendered fully, then sent as a single chunk. Each fragment follows
+as soon as it resolves. `renderToStream` returns the stream only: headers are
+yours to set, or use [`serve()`](#http-serving), which sets them.
+
+Streaming is the right choice when time-to-first-byte matters, fragments depend
+on request-time data, or you want a single HTTP connection from shell through
+last fragment. If your content is known at build time, use
+[static generation](#static-generation) instead.
+
+## Adapters
+
+An adapter controls how placeholders and patches are encoded in the HTML, in
+the markup a specific client (a library, the browser, a CDN) recognises and
+acts on.
+
+```ts
+import {
+  TurboAdapter, // Turbo Streams: <turbo-frame> / <turbo-stream>, morph on Turbo >= 8
+  HtmxAdapter, // HTMX: hx-get / hx-swap-oob, morph on htmx >= 4
+  NativeAdapter, // <template data-for> + inline polyfill, all 6 positions
+  WebPlatformAdapter, // WICG declarative partial updates, native support required
+  EsiAdapter, // CDN edge composition via esi:include
+} from "@vincle/flow/adapters";
+```
+
+| Adapter                | Client runtime                            | Streaming | Merge types     | Best for                                  |
+| ---------------------- | ----------------------------------------- | --------- | --------------- | ----------------------------------------- |
+| **NativeAdapter**      | ~1.5 kB polyfill, gzipped (auto-injected) | Yes       | all 6 positions | General purpose, no extra JS              |
+| **TurboAdapter**       | Hotwire Turbo                             | Yes       | all 7           | Rails / Hotwire stack                     |
+| **HtmxAdapter**        | HTMX                                      | Yes       | all 7           | Django / Laravel / any backend            |
+| **WebPlatformAdapter** | None (native browser support required)    | Yes       | replace only    | Browsers with declarative partial updates |
+| **EsiAdapter**         | None (CDN-level)                          | No        | replace only    | Varnish / CDN edge composition            |
+
+`morph` needs a diffing client (Turbo, HTMX); an adapter refuses a merge type it
+does not support.
+
+**NativeAdapter** is recommended for most applications. It uses the WICG
+declarative partial updates format, with a polyfill injected automatically when
+fragments or active `<template src>` / `<template for>` elements are present.
+Once target browsers support both WICG patching and Fragment Include, switch
+the render call to `WebPlatformAdapter` with `merge="replace"`: same JSX, same
+generated URLs, no JavaScript.
+
+**WebPlatformAdapter** is the standard WICG format with no polyfill: the initial
+HTML holds a named range with fallback content, and a matching
+`<template for="…">` later in the response replaces it as the browser parses
+it. It needs native browser support; Google's
+[declarative partial updates article](https://developer.chrome.com/docs/web-platform/declarative-partial-updates)
+covers the motivation and browser support.
+
+**EsiAdapter** encodes placeholders as `<esi:include>` elements, resolved by an
+ESI-capable CDN or reverse proxy (Varnish, Akamai, Fastly) before the page
+reaches the browser. Static only, `replace` only.
+
+Build your own with `createAdapter` from `@vincle/flow/adapters`:
+
+```tsx
+import { createAdapter } from "@vincle/flow/adapters";
+
+const MyAdapter = createAdapter({
+  Placeholder: ({ id, children }) => <div data-defer={id}>{children}</div>,
+  Patch: ({ id, children, merge }) => (
+    <div data-patch={id} data-merge={merge}>
+      {children}
+    </div>
+  ),
+  Frame: ({ id, children }) => <div data-frame={id}>{children}</div>,
+  capabilities: { streaming: true, merges: ["replace", "append"] },
+});
+```
+
+`Patch` receives `first`, `true` on the boundary's first patch while the
+placeholder's `fallback` is still in place: replace the placeholder's content on
+that patch instead of inserting next to it, or the fallback stands next to the
+content for the rest of the page's life. `transformShell` can post-process the
+shell HTML; it receives a `ShellContext` with `ctx.fragments.size`, so scripts
+are injected only when fragments are actually pending.
+
+## Static generation
+
+Build HTML files at compile time. `renderToStatic` gives you a context to
+render all your pages, then emit fragment files if any page uses `<Defer>` with
+a lazy factory. The browser fetches fragments after the shell page loads: no
+streaming connection required.
+
+```tsx
+import type { JSX } from "@vincle/core";
+
+import { renderToStatic } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+import { writeFile } from "node:fs/promises";
+
+declare const pages: { Component: () => JSX.Element; out: string }[];
+
+await renderToStatic(
+  async (ctx) => {
+    for (const page of pages) {
+      const html = await ctx.renderPage(() => <page.Component />);
+      await writeFile(page.out, "<!DOCTYPE html>\n" + html);
+      await ctx.emitFragments((_id, url, html) => writeFile("./dist" + url, html));
+    }
+  },
+  { adapter: NativeAdapter },
+);
+```
+
+No lazy `<Defer>` in your pages? Call `renderToStatic` without an adapter and
+skip `emitFragments`. The `generatePath` option sets each fragment's URL
+(default ``(id) => `/fragments/${id}.html` ``).
+
+`emitFragments` drains the pending fragment registry, so a shared layout can
+reuse a target on the next page. Rendering multiple pages before draining
+requires targets unique across those pages, otherwise
+`ERR_VINCLE_FLOW_DUP_FRAGMENT` is thrown.
+
+### On-demand regeneration
+
+Because each fragment is a standalone file at a predictable URL, only that file
+needs to change when one piece of data changes. `renderFragment` produces
+exactly the bytes a full build would have written for one `id`:
+
+```tsx
+import { renderFragment } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+declare function fetchPrice(symbol: string): Promise<{ value: number }>;
+
+// Any standard Request → Response handler (e.g. an edge function).
+export default async function handler(req: Request): Promise<Response> {
+  const symbol = new URL(req.url).searchParams.get("symbol");
+  if (!symbol || !/^[A-Za-z0-9_-]+$/.test(symbol)) {
+    return new Response("Invalid symbol", { status: 400 });
+  }
+  const price = await fetchPrice(symbol);
+  const { url, html } = await renderFragment(
+    `price-${symbol}`,
+    <span>{price.value.toFixed(2)}</span>,
+    {
+      adapter: NativeAdapter,
+    },
+  );
+  // Upload `html` at `url` (blob store, CDN purge + PUT…).
+  // The shell page that includes it never needs rebuilding.
+  return Response.json({ url, html });
+}
+```
+
+Fragment ids must start with a letter and contain only ASCII letters, digits,
+hyphens and underscores.
+
+## HTTP serving
+
+The `serve()` helper creates a `Response` from a page component and an adapter.
+It handles streaming, headers, and content negotiation in one call:
+
+```tsx
+import { serve } from "@vincle/flow/http";
+import { NativeAdapter } from "@vincle/flow/adapters";
+
+declare function Page(): JSX.Element;
+
+Bun.serve({
+  port: 3000,
+  idleTimeout: 60, // the stream pauses between fragments while data loads
+  async fetch(req) {
+    return serve(req, () => <Page />, NativeAdapter);
+  },
+});
+```
+
+Your server must tolerate an idle streaming connection, or a slow data source
+resets the response mid-page.
+
+Useful options: `signal`, `onError`, `defaultTimeout`, `negotiate`, `mode`
+(`"full"` or `"fragment"`: render only the targeted fragment), plus the
+`ResponseInit` fields `headers`, `status`, `statusText`. See
+[`serve()`](/api/flow/reference#serve) for the full signature.
+
+### Node.js `http`
+
+For environments where `Response` is not available, write each chunk of
+`renderToStream` to the response as it comes. The same pattern works with
+Express, Fastify, Hono, or anything built on `node:http`:
+
+```tsx
+import type { JSX } from "@vincle/core";
+
+import { renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
+import http from "node:http";
+
+declare function Page(): JSX.Element;
+
+http
+  .createServer(async (_req, res) => {
+    const stream = renderToStream(() => <Page />, NativeAdapter);
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Transfer-Encoding": "chunked",
+    });
+    for await (const chunk of stream) {
+      res.write(chunk);
+    }
+    res.end();
+  })
+  .listen(3000);
+```
+
+### HTMX negotiation
+
+HTMX sends headers like `HX-Target` to indicate which fragment a request
+expects. `negotiateHtmx` handles this automatically, and the response includes
+`Vary: HX-Target` so shared caches never serve a fragment response to a
+full-page navigation:
+
+```tsx
+import type { JSX } from "@vincle/core";
+
+import { serve, negotiateHtmx } from "@vincle/flow/http";
+import { HtmxAdapter } from "@vincle/flow/adapters";
+
+declare function Page(): JSX.Element;
+
+Bun.serve({
+  port: 3000,
+  async fetch(req) {
+    return serve(req, () => <Page />, HtmxAdapter, { negotiate: negotiateHtmx });
+  },
+});
+```
+
+Write your own negotiator for any client library that uses custom headers:
+
+```tsx
+import type { Negotiate } from "@vincle/flow";
+
+const negotiateMyLib: Negotiate = (req) => {
+  const fragment = req.headers.get("X-Fragment-Id") ?? undefined;
+  return { headers: { Vary: "X-Fragment-Id" }, target: fragment };
+};
+```

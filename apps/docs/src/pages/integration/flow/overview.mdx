@@ -5,6 +5,16 @@ description: "How @vincle/flow sends the page shell immediately and delivers def
 
 # @vincle/flow
 
+<div class="my-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+  <p>
+    <strong>Experimental.</strong> Flow explores deferred fragments and streaming on top of
+    @vincle/core. What it becomes depends on the{" "}
+    <a href="https://github.com/WICG/declarative-partial-updates">declarative partial updates</a>{" "}
+    proposal: as that specification moves, Flow's API and wire format will move with it, with
+    breaking changes between releases. Try it, but don't build anything you can't refactor on it.
+  </p>
+</div>
+
 **The shell is instant. Slow parts wait.**
 
 `@vincle/core` returns the page once every `await` has resolved: the slowest
@@ -30,77 +40,6 @@ bun add @vincle/flow
 ```
 
 ## How it works
-
-<div class="not-prose my-8 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
-  <div class="border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-medium text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-    Page response
-  </div>
-  <div class="grid grid-cols-1 divide-y divide-gray-100 dark:divide-gray-800 sm:grid-cols-[1fr_auto_1fr] sm:divide-x sm:divide-y-0">
-    <div class="space-y-2 p-5">
-      <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 dark:border-blue-900 dark:bg-blue-950">
-        <p class="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-          Shell: immediate
-        </p>
-        <p class="mt-1.5 font-mono text-xs text-gray-600 dark:text-gray-400">
-          &lt;nav&gt;, &lt;header&gt;, layout…
-        </p>
-      </div>
-      <div class="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-3 dark:border-amber-800 dark:bg-amber-950/40">
-        <p class="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-          Fragment: deferred
-        </p>
-        <p class="mt-1.5 font-mono text-xs text-gray-500 dark:text-gray-500">
-          &lt;Slot&gt; placeholder
-        </p>
-      </div>
-      <div class="rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-3 dark:border-amber-800 dark:bg-amber-950/40">
-        <p class="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-          Fragment: deferred
-        </p>
-        <p class="mt-1.5 font-mono text-xs text-gray-500 dark:text-gray-500">
-          &lt;Slot&gt; placeholder
-        </p>
-      </div>
-    </div>
-    <div class="flex items-center justify-center px-4 py-4 sm:py-0">
-      <svg
-        class="h-6 w-6 rotate-90 text-gray-300 dark:text-gray-700 sm:rotate-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.5"
-          d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
-        />
-      </svg>
-    </div>
-    <div class="flex flex-col justify-center gap-2 p-5">
-      <div class="flex items-start gap-2">
-        <div class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-blue-500"></div>
-        <p class="text-xs text-gray-600 dark:text-gray-400">
-          Shell flushed → browser starts painting
-        </p>
-      </div>
-      <div class="ml-1 h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
-      <div class="flex items-start gap-2">
-        <div class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400"></div>
-        <p class="text-xs text-gray-600 dark:text-gray-400">
-          Fragment A resolves → injected into placeholder
-        </p>
-      </div>
-      <div class="ml-1 h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
-      <div class="flex items-start gap-2">
-        <div class="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400"></div>
-        <p class="text-xs text-gray-600 dark:text-gray-400">
-          Fragment B resolves → injected independently
-        </p>
-      </div>
-    </div>
-  </div>
-</div>
 
 ```tsx
 import { Slot, Defer, renderToStream } from "@vincle/flow";
@@ -140,31 +79,102 @@ function Page() {
 const stream = renderToStream(() => <Page />, NativeAdapter);
 ```
 
-## Two rendering modes
+- Everything outside a `<Defer>` belongs to the shell. An `await` there delays
+  the shell, so keep slow work inside a `<Defer>`.
+- Each `<Defer>` runs on its own, and patches are sent in the order they finish,
+  not the order they appear in the page.
+- A `<Defer>` nested in another one is sent after its parent.
 
-<div class="not-prose mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-  <Card title="Streaming">
-    <p class="text-sm text-gray-600 dark:text-gray-400">
-      Fragments arrive in the{" "}
-      <strong class="text-gray-900 dark:text-white">same HTTP response</strong> after the shell. One
-      connection, progressive delivery.
-    </p>
-    <p class="font-mono text-xs text-gray-500 dark:text-gray-500">renderToStream()</p>
-  </Card>
-  <Card title="Static generation">
-    <p class="text-sm text-gray-600 dark:text-gray-400">
-      Fragments are emitted as{" "}
-      <strong class="text-gray-900 dark:text-white">separate HTML files</strong> at build time. The
-      browser fetches them on load.
-    </p>
-    <p class="font-mono text-xs text-gray-500 dark:text-gray-500">renderToStatic()</p>
-  </Card>
+## See it live
+
+The frame below is not a replay: a Netlify Edge Function runs this exact code
+and streams a real response on every load. The shell arrives first; the
+results patch in about a second later. (In a local static preview the frame
+has nothing to serve; it is live on vincle.cjean.fr.)
+
+<div class="docs-flow-demo">
+  <div>
+    <p class="docs-flow-demo-label">Live, streamed by an Edge Function</p>
+    <div class="docs-flow-demo-frame">
+      <div class="docs-flow-demo-chrome" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <iframe
+        src="/flow-demo"
+        title="Live demo: the shell arrives first, the deferred results patch in"
+        loading="lazy"
+      ></iframe>
+    </div>
+  </div>
 </div>
 
-## Adapters
+## `<Defer>` and `<Slot>`
 
-An adapter controls how placeholders and patches are encoded in the HTML shell:
-for Turbo, HTMX, the browser's native partial updates, or a CDN's ESI (Edge Side Includes). See
-[Adapters](/integration/flow/adapters) for the five built-in ones and how to choose.
+- **`<Defer>`**: defers content into a placeholder. It renders its own
+  placeholder, so it is self-sufficient
+- **`<Slot>`**: a named placeholder, filled by a `<Defer>` that renders
+  elsewhere in the tree: typically a layout reserving a spot, filled by a page
+  component that cannot reach into that layout
+
+`Defer` renders `fallback` (empty when omitted) until the content is ready, and
+its first patch replaces that fallback. Pass a factory to receive an
+`AbortSignal`: it fires when the client disconnects or the fragment's `timeout`
+elapses, so you can forward it to cancelable work (e.g. `fetch(url, { signal })`).
+
+```tsx
+<Defer fallback={<p>Loading dashboard…</p>} timeout={5000}>
+  {(signal) => <HeavyDashboard signal={signal} />}
+</Defer>
+```
+
+| Prop       | Applies to | Meaning                                                             |
+| ---------- | ---------- | ------------------------------------------------------------------- |
+| `name`     | `Slot`     | id of the placeholder (required)                                    |
+| `target`   | `Defer`    | optional placeholder id; generated automatically when omitted       |
+| `fallback` | `Defer`    | placeholder content shown in the shell, replaced by the first patch |
+| `merge`    | `Defer`    | how content applies to its target (default `"replace"`)             |
+| `timeout`  | `Defer`    | per-fragment render timeout in ms                                   |
+| `onError`  | `Defer`    | per-fragment error handler, overriding the renderer's one           |
+
+`merge` is one of `"replace"`, `"update"`, `"append"`, `"prepend"`, `"before"`,
+`"after"` or `"morph"` (diffed in place, keeps focus and form state). An adapter
+rejects a merge type it does not support. Without `onError`, a failed fragment
+is logged and the placeholder keeps its fallback.
+
+`Defer` children are a value, or a factory returning one: a `JSX.Element` or
+`string` renders one patch; an `AsyncIterable<JSX.Element>` streams one patch
+per yielded item, until the iterable ends or the client disconnects.
+
+```tsx
+import { Defer } from "@vincle/flow";
+
+declare function fetchRows(page: number): Promise<{ id: number; name: string }[]>;
+
+<Defer target="feed" merge="append">
+  {async function* () {
+    let page = 1;
+    while (true) {
+      const rows = await fetchRows(page++);
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        yield <tr key={row.id}>{row.name}</tr>;
+      }
+    }
+  }}
+</Defer>;
+```
+
+## Two rendering modes
+
+- **Streaming**: fragments arrive in the same HTTP response after the shell,
+  via `renderToStream()` or `serve()`. One connection, progressive delivery.
+- **Static generation**: fragments are emitted as separate HTML files at build
+  time via `renderToStatic()`. The browser fetches them on load.
+
+Both, plus adapter choice and HTTP integration, are covered in
+[Recipes](/integration/flow/recipes), and the full signatures in the
+[Flow API reference](/api/flow/reference).
 
 For a quick answer, see [Can I use Vincle for streaming HTML?](/guide/faq#can-i-use-vincle-for-streaming-html).

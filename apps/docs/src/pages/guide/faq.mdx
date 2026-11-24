@@ -85,7 +85,23 @@ description: "Answers on what Vincle is for, SSR versus SSG, React and template-
         name: "Can I use Vincle for streaming HTML?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes, with the @vincle/flow package. It adds deferred fragments, streaming, and DOM patching: the shell is sent immediately while heavy fragments render concurrently. Adapters are available for Turbo Streams, HTMX, the browser's declarative partial updates (a WICG proposal), and CDN composition with ESI (Edge Side Includes).",
+          text: "Yes, with the experimental @vincle/flow package. It adds deferred fragments, streaming, and DOM patching: the shell is sent immediately while heavy fragments render concurrently. Flow tracks the WICG declarative partial updates specification and its API will change with it.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How do I generate a whole static site?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "With @vincle/ssg (beta). A directory of TSX, MD and MDX pages becomes static HTML at build time, with shared layouts, build-time data, images, RSS and sitemap.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How does Vincle compare to Astro or 11ty for static sites?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Astro and 11ty are full-featured, established site generators. @vincle/ssg is younger and still in beta: it reuses the Vincle renderer and your TypeScript components as is, with no new templating language. Astro is the safer choice if you need a plugin ecosystem today.",
         },
       },
       {
@@ -186,7 +202,7 @@ top-level loader and no prop-drilling. `renderToString` awaits every async
 component and resolves when the whole tree has rendered. Siblings start in
 document order and overlap as soon as one awaits; their output is joined in
 document order. To send a first render before slow parts finish, use
-[`Defer` and `Slot`](/integration/flow/components) from `@vincle/flow`.
+[`Defer` and `Slot`](/integration/flow/overview) from `@vincle/flow`.
 
 ```tsx
 async function Page({ id }: { id: string }) {
@@ -217,18 +233,31 @@ scheme. See the [Security model](/guide/security).
 
 ## Can I use Vincle for streaming HTML?
 
-Yes. The [`@vincle/flow`](/integration/flow/overview) package adds deferred
-fragments and streaming. The shell is sent immediately while slow
-components render concurrently. Five adapters let you choose your
-client mechanism:
+Yes, with the experimental [`@vincle/flow`](/integration/flow/overview) package.
+It adds deferred fragments and streaming: the shell is sent immediately while
+slow components render concurrently, and an adapter decides how each fragment
+patches the page (a small native polyfill, Turbo Streams, HTMX, the browser's
+declarative partial updates, or CDN composition with ESI).
 
-- **NativeAdapter**: the declarative partial updates proposal from the WICG
-  (Web Incubator Community Group), with a small polyfill
-- **TurboAdapter**: Hotwire Turbo Streams
-- **HtmxAdapter**: HTMX out-of-band (OOB) swaps
-- **WebPlatformAdapter**: native browser support, no JS
-- **EsiAdapter**: composition at the CDN with ESI (Edge Side Includes), static
-  generation only
+Flow tracks the [declarative partial updates](https://github.com/WICG/declarative-partial-updates)
+specification: its API and wire format will change with it, so treat it as an
+experiment, not a stable foundation.
+
+## How do I generate a whole static site?
+
+With [`@vincle/ssg`](/integration/ssg/overview) (beta). A directory of TSX, MD
+and MDX pages becomes static HTML at build time, with shared layouts,
+build-time data, images, RSS and sitemap. Start with
+[Building a static site](/guide/static-site).
+
+## How does Vincle compare to Astro or 11ty for static sites?
+
+Astro and 11ty are full-featured, established site generators with large
+ecosystems. `@vincle/ssg` is younger and smaller: it reuses the Vincle renderer
+and your TypeScript components as is, with no new templating language, and it
+is still in beta. If you need a plugin ecosystem and turnkey themes today,
+Astro is the safer choice; if you already write Vincle views or want a minimal
+JSX-to-HTML pipeline, `@vincle/ssg` keeps everything in one tool.
 
 ## Can I catch rendering errors without crashing the whole page?
 

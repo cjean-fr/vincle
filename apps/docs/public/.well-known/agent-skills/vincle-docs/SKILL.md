@@ -19,8 +19,8 @@ this site is public and fully machine-readable.
 ## Page map
 
 - `/guide/`: concepts: getting started, JSX, components, views, security
-- `/integration/`: `@vincle/flow` under `/integration/flow/` (deferred fragments, streaming, static generation, adapters, HTTP serving), the precompile transform, TSRX
-- `/api/`: reference: `@vincle/core` and `@vincle/flow`
+- `/integration/`: `@vincle/ssg` under `/integration/ssg/` (static sites: pages, layouts, images, blog, deployment), the precompile transform, TSRX, and the experimental `@vincle/flow` under `/integration/flow/` (deferred fragments and streaming: overview + recipes)
+- `/api/`: reference: `@vincle/core`, and the experimental `@vincle/flow` as a single page
 
 ## Notes
 

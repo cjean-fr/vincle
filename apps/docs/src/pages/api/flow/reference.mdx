@@ -1,0 +1,293 @@
+---
+title: Flow API reference
+description: "API reference for @vincle/flow: Defer, Slot, Style, Script, the five adapters, createAdapter, renderToStream, renderToStatic, renderFragment, serve, renderToFlowEvents, and utils."
+---
+
+# Flow API reference
+
+<div class="my-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+  <p>
+    <strong>Experimental.</strong> @vincle/flow tracks the{" "}
+    <a href="https://github.com/WICG/declarative-partial-updates">declarative partial updates</a>{" "}
+    proposal; these APIs will change with that specification.
+  </p>
+</div>
+
+Options of every render function are validated at the call, before anything
+renders: see [Error handling](/api/core/error-handling).
+
+## Components
+
+Components for deferring content in the HTML shell. Imported from `@vincle/flow`.
+
+### Defer
+
+Renders a placeholder holding `fallback`, and patches it later with its
+`children`:
+
+```tsx
+import { Defer } from "@vincle/flow";
+
+async function HeavyDashboard() {
+  const data = await fetch("https://api.example.com/dashboard");
+  const json = await data.json();
+  return <pre>{JSON.stringify(json, null, 2)}</pre>;
+}
+
+// fallback is shown in the shell immediately.
+<Defer target="dashboard" fallback={<p>Loading dashboard…</p>}>
+  <HeavyDashboard />
+</Defer>;
+```
+
+`children` is plain JSX, a promise, or an `AsyncIterable` (one patch per
+item), or a factory `(signal: AbortSignal) => …` returning any of those. The
+signal aborts when the request is cancelled or the `timeout` expires.
+`target` is optional: without it, Vincle generates the placeholder id.
+
+**Props:**
+
+| Prop       | Type                                                                                                                                                     | Default      | Description                                             |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------- |
+| `target`   | `string`                                                                                                                                                 | Generated id | Optional placeholder id; match a `Slot` name to fill it |
+| `fallback` | `JSX.Element`                                                                                                                                            | N/A          | Content rendered in the placeholder                     |
+| `children` | `JSX.Element \| string \| ((signal: AbortSignal) => JSX.Element) \| AsyncIterable<JSX.Element> \| ((signal: AbortSignal) => AsyncIterable<JSX.Element>)` | N/A          | Content: plain JSX, a factory, or an async iterable     |
+| `merge`    | `"replace" \| "update" \| "append" \| "prepend" \| "before" \| "after" \| "morph"`                                                                       | `"replace"`  | How content applies to the target                       |
+| `timeout`  | `number`                                                                                                                                                 | N/A          | Per-fragment render timeout in ms                       |
+| `onError`  | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void`                                                                                           | N/A          | Per-fragment error handler                              |
+
+### Slot
+
+A placeholder declared apart from its `Defer`: typically a layout reserving a
+spot that a page fills later, by matching `target` to `name`. Its children are
+shown until the matching `Defer` patches them. The `Slot` is the placeholder:
+its `Defer` emits none of its own, wherever the two sit in the page.
+
+```tsx
+import { Slot, Defer } from "@vincle/flow";
+
+function Page() {
+  return (
+    <html>
+      <body>
+        <Slot name="comments">
+          <p>Loading comments…</p>
+        </Slot>
+        <Defer target="comments" timeout={5000}>
+          <LiveComments />
+        </Defer>
+      </body>
+    </html>
+  );
+}
+```
+
+**Props:**
+
+| Prop       | Type     | Default | Description                                        |
+| ---------- | -------- | ------- | -------------------------------------------------- |
+| `name`     | `string` | N/A     | Fragment id, required                              |
+| `children` | `VNode`  | N/A     | Fallback content rendered immediately in the shell |
+
+### Style / Script: asset emission
+
+`<Style>` and `<Script>` emit their tag where they stand, once per `name`: the
+first occurrence _in the document_ wins, later ones render nothing, even when a
+later occurrence finishes rendering first (siblings are concurrent). Only the
+winning occurrence's content factory is evaluated.
+
+```tsx
+import { Style, Script } from "@vincle/flow/components";
+
+const Page = () => (
+  <>
+    <Style name="page.css" media="screen">
+      {`.hero { color: red; }`}
+    </Style>
+    <Script name="page.js" defer src="/page.js" />
+    <main>…</main>
+  </>
+);
+```
+
+Both take `name` (asset id, dedup key) and `children` (text or a factory,
+evaluated only if this occurrence emits); `Script` also takes `src`, `module`
+and `defer`. Fragment files written by `emitFragments` carry no
+`<style>`/`<script>`: the shell that includes them already has the assets.
+
+## Adapters
+
+An adapter controls how placeholders and patches are encoded in the HTML shell.
+It is a required argument of `renderToStream` and `renderToStatic`: there is no
+implicit default.
+
+All exported from `@vincle/flow/adapters`:
+
+| Adapter              | Target                                             | Merge support                           | Size                       |
+| -------------------- | -------------------------------------------------- | --------------------------------------- | -------------------------- |
+| `NativeAdapter`      | Inline polyfill via `<template data-for>`          | replace, append, prepend, before, after | ~1.5 kB polyfill (gzipped) |
+| `TurboAdapter`       | Turbo Streams (`<turbo-frame>` / `<turbo-stream>`) | the six above + morph (Turbo >= 8)      | N/A                        |
+| `HtmxAdapter`        | HTMX (`hx-swap-oob`)                               | the six above + morph (htmx >= 4)       | N/A                        |
+| `WebPlatformAdapter` | Declarative partial updates (WICG proposal)        | replace only                            | N/A                        |
+| `EsiAdapter`         | CDN edge composition via `esi:include`             | replace                                 | N/A                        |
+
+Merge types: `"replace"` (target replaced), `"update"` (target's content
+replaced, element kept), `"append"`, `"prepend"`, `"before"`, `"after"`, and
+`"morph"` (diffed in place, keeps focus and form state). A merge the adapter
+does not support is rejected at registration.
+
+`createAdapter` builds a custom adapter from `Placeholder` (shell placeholder),
+`Patch` (resolved fragment wrapper), `Frame` (static fragment file wrapper),
+`capabilities` (supported merge types and streaming support) and an optional
+`transformShell`. See [Recipes › Adapters](/integration/flow/recipes#adapters).
+
+## renderToStream
+
+Returns a `ReadableStream<string>`: the shell first, as a single chunk, then one
+chunk per fragment as each resolves.
+
+```tsx
+import { renderToStream } from "@vincle/flow";
+
+function renderToStream(
+  node: () => JSX.Element,
+  adapter: StreamingAdapter,
+  opts?: FlowOptions & { mode?: "full" | "fragment" },
+): ReadableStream<string>;
+```
+
+| Option           | Type                     | Default  | Description                                 |
+| ---------------- | ------------------------ | -------- | ------------------------------------------- |
+| `signal`         | `AbortSignal`            | N/A      | Signal to abort the stream                  |
+| `onError`        | `FlowOptions["onError"]` | N/A      | Handler for fragment / stream render errors |
+| `defaultTimeout` | `number`                 | N/A      | Per-fragment render timeout in ms           |
+| `mode`           | `"full" \| "fragment"`   | `"full"` | `"fragment"` emits neither shell nor close  |
+
+`FlowOptions` is `{ signal?, onError?, defaultTimeout? }`. The shell is never
+streamed progressively: it is rendered in full, `<head>` and all, and only then
+emitted. Only fragments arrive later. It returns the stream only: headers are
+yours to set, or use [`serve()`](#serve).
+
+## renderToStatic
+
+Builds HTML files at compile time: renders your pages, then emits a fragment
+file per lazy `Defer`.
+
+```tsx
+import { renderToStatic } from "@vincle/flow";
+
+// Pure static: no adapter, no emitFragments
+function renderToStatic<T>(fn: (ctx: PureStaticContext) => T): Promise<T>;
+
+// With deferred fragments: adapter required
+function renderToStatic<T>(fn: (ctx: StaticContext) => T, options: StaticOptions): Promise<T>;
+```
+
+| Option         | Type                     | Default                              | Description                              |
+| -------------- | ------------------------ | ------------------------------------ | ---------------------------------------- |
+| `adapter`      | `Adapter`                | Required                             | Wire-format adapter for fragment framing |
+| `generatePath` | `(id: string) => string` | ``(id) => `/fragments/${id}.html` `` | URL path for each fragment               |
+
+| Context method  | Signature                                                                                   | Description                                              |
+| --------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `renderPage`    | `(node: () => JSX.Element) => Promise<string>`                                              | Renders a page returning the full HTML string            |
+| `emitFragments` | `(emit: (id: string, url: string, html: string) => void \| Promise<void>) => Promise<void>` | Materializes deferred fragments, passes each to callback |
+
+Called without options, the handler receives a `PureStaticContext`: it has no
+`emitFragments`, so the type system prevents calling it. Each placeholder's
+`src` defaults to `generatePath(id)`, so the browser finds each fragment.
+
+## renderFragment
+
+Renders a single fragment on demand, outside a full site build: the exact bytes
+`emitFragments` would have written for that `id`, at the same URL.
+
+```tsx
+import { renderFragment } from "@vincle/flow";
+
+function renderFragment(
+  id: string,
+  content: DeferContent,
+  options: RenderFragmentOptions,
+): Promise<{ url: string; html: string }>;
+```
+
+| Option         | Type                                                           | Default                              | Description                                           |
+| -------------- | -------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------------- |
+| `adapter`      | `Adapter`                                                      | Required                             | Wire-format adapter: the same one the full build uses |
+| `generatePath` | `(id: string) => string`                                       | ``(id) => `/fragments/${id}.html` `` | Must match the full build's convention                |
+| `timeout`      | `number`                                                       | N/A                                  | Forwarded to the underlying `<Defer>`                 |
+| `onError`      | `(error: unknown, info: FlowErrorInfo) => JSX.Element \| void` | N/A                                  | Forwarded to the underlying `<Defer>`                 |
+
+Call it wherever your data changes (a webhook, a queue consumer, a scheduled
+function); writing `html` to `url` is your platform's job. `content` accepts
+anything `<Defer>` does, but resolves once, to the last value produced: for
+content over time, use [streaming](/integration/flow/recipes#streaming).
+Fragment ids must start with a letter and contain only ASCII letters, digits,
+hyphens and underscores. See the
+[on-demand regeneration recipe](/integration/flow/recipes#on-demand-regeneration).
+
+## serve
+
+Builds a `Response` from a page function, through `renderToStream`, with
+optional content negotiation (HTMX). Imported from `@vincle/flow/http`.
+
+```tsx
+import { serve } from "@vincle/flow/http";
+
+function serve(
+  req: Request,
+  page: (n: Negotiation) => JSX.Element,
+  adapter: StreamingAdapter,
+  opts?: FlowOptions & ResponseInit & { negotiate?: Negotiate; mode?: "full" | "fragment" },
+): Promise<Response>;
+```
+
+| Option           | Type                                   | Default  | Description                       |
+| ---------------- | -------------------------------------- | -------- | --------------------------------- |
+| `signal`         | `AbortSignal`                          | N/A      | Abort all pending renders         |
+| `onError`        | `(error, info) => JSX.Element \| void` | N/A      | Per-fragment error handler        |
+| `defaultTimeout` | `number`                               | N/A      | Per-fragment timeout (ms)         |
+| `negotiate`      | `(req: Request) => Negotiation`        | N/A      | Extract per-request hints         |
+| `mode`           | `"full" \| "fragment"`                 | `"full"` | Render full page or fragment-only |
+| `headers`        | `HeadersInit`                          | N/A      | Additional response headers       |
+| `status`         | `number`                               | `200`    | Response status code              |
+| `statusText`     | `string`                               | N/A      | Response status text              |
+
+The `content-type` header is set to `text/html; charset=utf-8` automatically.
+With `negotiateHtmx`, the response includes `Vary: HX-Target`, unioned with
+existing `Vary` values so shared caches never mix full-page and fragment
+responses. Usage examples: [Recipes › HTTP serving](/integration/flow/recipes#http-serving).
+
+## renderToFlowEvents
+
+The primitive under `renderToStream`: a `ReadableStream<FlowEvent>` of raw
+events instead of adapter-encoded HTML, for a wire format the built-in adapters
+don't cover. Same arguments as `renderToStream`; a non-streaming adapter
+(`EsiAdapter`) is rejected at compile time and at runtime.
+
+`FlowEvent` is a discriminated union:
+
+| Event      | Shape                                                              | Emitted when                                                       |
+| ---------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `shell`    | `{ type: "shell"; html: string }`                                  | The page shell is fully rendered (one event)                       |
+| `fragment` | `{ type: "fragment"; id: string; html: string; merge: MergeType }` | A deferred fragment is ready (one per item for an `AsyncIterable`) |
+| `close`    | `{ type: "close"; html: string }`                                  | The closing `</body></html>` tags, after all fragments             |
+
+`mode: "fragment"` suppresses the `shell` and `close` events. The stream
+handles backpressure; cancelling it (or aborting `opts.signal`) aborts pending
+renders.
+
+## Utils
+
+Helpers for shell post-processing and fragment ids. Imported from `@vincle/flow/utils`.
+
+- `composeShell(...transforms)`: chains `transformShell` functions left to
+  right, each receiving the previous one's output and the active
+  `ShellContext`. Falsy entries are skipped, so an adapter's own (possibly
+  `undefined`) transform can be passed as is.
+- `injectIntoHead(html, content)`: injects `content` immediately before
+  `</head>`, opening a `<head>` if the shell has none.
+- `assertFragmentId(id, label)`: throws unless `id` is letters, digits, hyphens
+  and underscores, starting with a letter. `Defer` calls it when registering;
+  call it yourself on ids from untrusted input.

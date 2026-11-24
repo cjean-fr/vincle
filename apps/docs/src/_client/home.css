@@ -304,15 +304,15 @@
   }
 }
 
-/* Streaming replay: the real wire output of the example above, no mockup. */
+/* Home sections: SSG spotlight and, before it, the streaming demo. */
 .docs-stream {
   display: block;
   border-top: 1px solid var(--docs-color-border);
 }
 .docs-stream-grid {
   display: grid;
-  /* minmax(0, …) here and in the replay: long code or markup must never widen
-     its column. */
+  /* minmax(0, …) here and in the demo frame: long code or markup must never
+     widen its column. */
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap: 3rem;
   align-items: start;
@@ -321,16 +321,14 @@
 .docs-stream-grid .docs-hero-example {
   margin-top: 0;
 }
-.docs-stream-replay {
+/* The Flow overview embeds the live streaming demo as a miniature browser
+   frame; the Edge Function behind it streams a real response on each load. */
+.docs-flow-demo {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  justify-items: stretch;
-  /* Steps separate more than a label from its frame (0.35rem). */
   gap: 1.5rem;
-  position: sticky;
-  top: 5rem;
 }
-.docs-stream-label {
+.docs-flow-demo-label {
   margin: 0 0 0.35rem;
   font-size: 0.72rem;
   font-weight: 600;
@@ -338,9 +336,7 @@
   text-transform: uppercase;
   color: var(--docs-color-text-secondary);
 }
-/* The frame is demo chrome: a miniature browser card around the exact
-   HTML the wire carried. */
-.docs-stream-frame {
+.docs-flow-demo-frame {
   border: 1px solid var(--docs-color-border);
   border-radius: 0.6rem;
   background: var(--docs-color-bg);
@@ -348,77 +344,29 @@
   font-size: 0.85rem;
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
 }
-.docs-stream-chrome {
+.docs-flow-demo-chrome {
   display: flex;
   gap: 5px;
   padding: 8px 12px;
   background: var(--docs-color-code-bg, rgb(15 23 42 / 0.03));
   border-bottom: 1px solid var(--docs-color-border);
 }
-.docs-stream-chrome span {
+.docs-flow-demo-chrome span {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--docs-color-border);
 }
-.docs-stream-view {
-  padding: 0.9rem 1.1rem 1.1rem;
-}
-.docs-stream-view h3 {
-  margin: 0 0 0.55rem;
-  font-size: 1.02rem;
-  letter-spacing: -0.01em;
-  color: var(--docs-color-text);
-}
-.docs-stream-view p {
-  margin: 0;
-  color: var(--docs-color-text-secondary);
-}
-.docs-stream-view ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.docs-stream-view li a {
-  display: inline-block;
-  padding: 0.45rem 0.75rem;
-  border: 1px solid var(--docs-color-border);
-  border-radius: 0.45rem;
-  color: var(--docs-color-accent);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.docs-stream-wire {
-  grid-column: 1 / -1;
-  font-size: 0.8rem;
-  color: var(--docs-color-text-secondary);
-}
-.docs-stream-wire summary {
-  cursor: pointer;
-}
-.docs-stream-wire pre {
-  margin: 0.5rem 0 0;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid var(--docs-color-border);
-  border-radius: 0.4rem;
-  font-size: 0.75rem;
-  /* One long line of markup: wrap it rather than show a scrollbar. */
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-@media (max-width: 640px) {
-  .docs-stream-replay {
-    grid-template-columns: 1fr;
-  }
+.docs-flow-demo-frame iframe {
+  display: block;
+  width: 100%;
+  height: 9rem;
+  border: 0;
 }
 
 @media (max-width: 900px) {
   .docs-stream-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
-  }
-  .docs-stream-replay {
-    position: static;
   }
 }
