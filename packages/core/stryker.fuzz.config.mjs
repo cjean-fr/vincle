@@ -1,4 +1,4 @@
-// Mutation run scoped to the three differential fuzzers.
+// Mutation run scoped to the two differential fuzzers.
 //
 // `stryker.config.json` measures the whole suite. This one runs *only* the
 // fuzzers, so a surviving mutant means one thing: the generated inputs never
@@ -19,7 +19,6 @@ export default {
   commandRunner: {
     command: [
       "bun test",
-      "tests/path-equivalence.test.ts",
       "tests/precompile-equivalence.test.ts",
       "tests/attr-equivalence.test.ts",
     ].join(" "),

@@ -11,17 +11,17 @@ import {
 import { escapeContent, isAsyncIterable, isIterable, valueToText } from "./escape.js";
 import { ownChildren } from "./props.js";
 import { renderNode, settleConcurrent } from "./render.js";
-import { isVoidElement, serializeStatic, voidChildrenMessage } from "./serialize.js";
+import { isVoidElement, voidChildrenMessage } from "./serialize.js";
 import { invalidTagMessage, isValidTag } from "./tag.js";
 import { renderElementAttr } from "./template-attrs.js";
 import { VNode, raw, RawString, TemplateNode } from "./types.js";
 
-// ── Hybrid JSX: serialize static trees in one pass; keep dynamic trees as VNodes ──
+// ── One renderer: every element becomes a VNode; the tree walk renders it ──
 
 function jsx(
   tag: string | ((props: any) => any),
   attributes: Record<string, unknown> | null,
-): VNode | RawString | Promise<RawString> {
+): VNode {
   const props = attributes ?? {};
 
   // The only place a string tag is validated: every exit below inherits a
@@ -40,11 +40,6 @@ function jsx(
   const dsih = (
     dsihValue != null && Object.hasOwn(props, "dangerouslySetInnerHTML") ? dsihValue : undefined
   ) as { __html: string | null | undefined } | undefined;
-
-  if (isStringTag && dsih === undefined) {
-    const html = serializeStatic(tag, props);
-    if (html !== null) return html;
-  }
 
   // `dangerouslySetInnerHTML` is trusted HTML: `raw` keeps it unescaped.
   let children = ownChildren(props);
@@ -70,9 +65,8 @@ function jsx(
       );
   }
 
-  // A void element takes neither children nor `__html`. Checked again here
-  // because the static path reads `children` separately and a props getter may
-  // answer differently each time; this is the read the `VNode` keeps.
+  // A void element takes neither children nor `__html`. Read once, here:
+  // this is the read the `VNode` keeps.
   if (isStringTag && isVoidElement(tag) && children !== undefined) {
     throw vincleTypeError(voidChildrenMessage(tag), ERR_VOID_CHILDREN);
   }
@@ -91,7 +85,7 @@ export function createElement(
   tag: string | ((props: any) => any),
   attributes: Record<string, unknown> | null,
   ...children: unknown[]
-): VNode | RawString | Promise<RawString> {
+): VNode {
   if (children.length === 0) return jsx(tag, attributes);
   const props = { ...attributes };
   props["children"] = children.length === 1 ? children[0] : children;

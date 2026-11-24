@@ -106,13 +106,6 @@ const AUDITED: RawSite[] = [
       "Static templates joined with holes rendered by `renderAt` (attribute, tree walk, leaf).",
   },
   {
-    file: "src/serialize.ts",
-    scope: "serializeStatic",
-    kind: "new",
-    count: 2,
-    origin: "A validated tag, `buildAttrs` output and `serializeContent` children: one element.",
-  },
-  {
     file: "src/attrs.ts",
     scope: "serializeAttr",
     kind: "new",

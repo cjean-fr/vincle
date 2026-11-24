@@ -161,9 +161,8 @@ describe("promised attribute values are awaited", () => {
     );
   });
 
-  test("on an element with static children: the subtree still serializes", async () => {
+  test("on an element with static children", async () => {
     const node = jsx("a", { href: Promise.resolve("/p"), children: "click" });
-    expect(node).toBeInstanceOf(Promise);
     expect(await renderToString(node)).toBe('<a href="/p">click</a>');
   });
 

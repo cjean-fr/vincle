@@ -5,48 +5,40 @@ import { createContext, useContext } from "./provider.js";
 import { renderToString } from "./render.js";
 import { VNode, RawString } from "./types.js";
 
-// The hybrid model serializes fully-static subtrees to a RawString at jsx() time;
-// anything dynamic (component, dSIH, promise or function child) stays a VNode for
-// the tree-walk render. These tests pin that contract via the return type of
-// jsx() plus the rendered markup.
+// One renderer: `jsx()` always builds a `VNode` and the tree walk renders it.
+// These tests pin the rendered markup for the shapes the retired static path
+// used to take, so the single path cannot change a byte of their output.
 //
-// A style object and a class array are *not* dynamic, though they used to leave
-// the static path as if they were: `buildAttrs` serializes both, and the static path calls
-// `buildAttrs`. See `serialize.ts`.
+// A style object and a class array are plain attributes: `buildAttrs`
+// serializes both during the walk. See `attrs.ts`.
 
-describe("static subtree serialization", () => {
-  test("simple static div with text child serializes to RawString", async () => {
+describe("element rendering pins", () => {
+  test("simple div with text child", async () => {
     const node = jsx("div", { class: "foo", children: "hello" });
-    expect(node).toBeInstanceOf(RawString);
     expect(await renderToString(node)).toBe('<div class="foo">hello</div>');
   });
 
-  test("static div with number child serializes", async () => {
+  test("div with number child", async () => {
     const node = jsx("span", { children: 42 });
-    expect(node).toBeInstanceOf(RawString);
     expect(await renderToString(node)).toBe("<span>42</span>");
   });
 
-  test("void element serializes", async () => {
+  test("void element", async () => {
     const br = jsx("br", {});
-    expect(br).toBeInstanceOf(RawString);
     expect(await renderToString(br)).toBe("<br>");
   });
 
-  test("nested static elements serialize", async () => {
+  test("nested elements", async () => {
     const inner = jsx("span", { class: "inner", children: "text" });
     const outer = jsx("div", { class: "outer", children: inner });
-    expect(inner).toBeInstanceOf(RawString);
-    expect(outer).toBeInstanceOf(RawString);
     expect(await renderToString(outer)).toBe(
       '<div class="outer"><span class="inner">text</span></div>',
     );
   });
 
-  test("static element with array children serializes", async () => {
+  test("element with array children", async () => {
     const items = [jsx("li", { key: "1", children: "a" }), jsx("li", { key: "2", children: "b" })];
     const ul = jsx("ul", { children: items });
-    expect(ul).toBeInstanceOf(RawString);
     expect(await renderToString(ul)).toBe("<ul><li>a</li><li>b</li></ul>");
   });
 
@@ -56,25 +48,14 @@ describe("static subtree serialization", () => {
     expect(node).toBeInstanceOf(VNode);
   });
 
-  test("object style serializes: buildAttrs handles it on both paths", async () => {
+  test("object style", async () => {
     const node = jsx("div", { style: { color: "red" }, children: "x" });
-    expect(node).toBeInstanceOf(RawString);
     expect(await renderToString(node)).toBe('<div style="color:red">x</div>');
   });
 
-  test("class array serializes: buildAttrs handles it on both paths", async () => {
+  test("class array", async () => {
     const node = jsx("div", { class: ["foo", "bar"], children: "x" });
-    expect(node).toBeInstanceOf(RawString);
     expect(await renderToString(node)).toBe('<div class="foo bar">x</div>');
-  });
-
-  // The static path and the tree walk must not merely both work: they must agree.
-  test("serialized attributes are byte-identical to the tree-walk's", async () => {
-    const props = { style: { backgroundColor: "red", "--x": 1 }, class: ["a", "", "b"], id: "i" };
-    const serialized = jsx("p", { ...props, children: "t" });
-    const walked = new VNode("p", { ...props }, "t");
-    expect(serialized).toBeInstanceOf(RawString);
-    expect(await renderToString(serialized)).toBe(await renderToString(walked));
   });
 
   test("dangerouslySetInnerHTML is NOT serialized", () => {
@@ -82,9 +63,8 @@ describe("static subtree serialization", () => {
     expect(node).toBeInstanceOf(VNode);
   });
 
-  test("rawtext tag still serializes", async () => {
+  test("rawtext tag", async () => {
     const node = jsx("script", { children: "const x = 1;" });
-    expect(node).toBeInstanceOf(RawString);
     expect(await renderToString(node)).toBe("<script>const x = 1;</script>");
   });
 

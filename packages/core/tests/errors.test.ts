@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import { jsx } from "../src/jsx-runtime.js";
+import { renderToString } from "../src/render.js";
 import { Scope } from "../src/scope.js";
 
 describe("error codes", () => {
@@ -16,9 +17,9 @@ describe("error codes", () => {
     );
   });
 
-  it("names a function passed as an attribute value", () => {
-    // Thrown by `jsx()` on the static path, before any render is awaited.
-    expect(() => jsx("div", { title: () => "x" })).toThrow(
+  it("names a function passed as an attribute value", async () => {
+    // Thrown by the tree walk when the attribute is serialized, at render time.
+    await expect(renderToString(jsx("div", { title: () => "x" }))).rejects.toThrow(
       expect.objectContaining({ code: "ERR_VINCLE_FUNCTION_ATTR" }),
     );
   });
