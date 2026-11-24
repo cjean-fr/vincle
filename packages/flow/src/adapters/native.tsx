@@ -1,5 +1,5 @@
 import { raw, renderToString, type JSX } from "@vincle/core";
-import { escapeAttr } from "@vincle/core/html";
+import { escapeAttr, escapeRawTagContent } from "@vincle/core/html";
 
 import { injectIntoHead } from "../utils.js";
 import { NATIVE_POLYFILL } from "./native-polyfill.js";
@@ -92,7 +92,12 @@ export function withPolyfill<T extends Adapter>(
       const transformed = adapter.transformShell ? adapter.transformShell(shell, ctx) : shell;
       const prepared = prepareNativeTemplates(transformed);
       if (ctx.fragments.size === 0 && !prepared.active) return transformed;
-      return injectIntoHead(prepared.html, String(<script>{NATIVE_POLYFILL}</script>));
+      // The renderer emits rawtext children through escapeRawTagContent; emit
+      // the tag by hand, the same way, to stay synchronous here.
+      return injectIntoHead(
+        prepared.html,
+        `<script>${escapeRawTagContent(NATIVE_POLYFILL, "script")}</script>`,
+      );
     },
   };
 }
