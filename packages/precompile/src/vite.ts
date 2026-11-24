@@ -101,13 +101,24 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
   let renderEscape: RenderEscape | null = null;
 
   /**
+   * Whether the build-wide runtime exports `jsxStatic`. False on an older
+   * runtime declaring the dialect: hole-less templates then stay `jsxTemplate`
+   * calls instead of becoming an import the runtime does not have.
+   */
+  let jsxStatic = false;
+
+  /**
    * Cache of per-file runtimes loaded on demand when a file's pragma names a
    * source different from the one configured for this build. Keyed by the
    * runtime module path; `null` means "tried and incompatible / unloadable".
    */
   const perFileRuntimeCache = new Map<
     string,
-    { renderAttr: RenderAttr | null; renderEscape: RenderEscape | null } | null
+    {
+      renderAttr: RenderAttr | null;
+      renderEscape: RenderEscape | null;
+      jsxStatic: boolean;
+    } | null
   >();
 
   /**
@@ -244,6 +255,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       }
       renderAttr = helpers?.jsxAttr ?? null;
       renderEscape = helpers?.jsxEscape ?? null;
+      jsxStatic = helpers?.jsxStatic ?? false;
     },
 
     async transform(code: string, id: string) {
@@ -260,6 +272,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
       let resolvedRuntimeSourceForFile = runtimeSourceForTransform;
       let renderAttrForFile: RenderAttr | null = renderAttr;
       let renderEscapeForFile: RenderEscape | null = renderEscape;
+      let jsxStaticForFile: boolean = jsxStatic;
 
       const declared = detectJsxImportSource(code);
       if (declared !== null) {
@@ -273,6 +286,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
             let loaded: {
               renderAttr: RenderAttr | null;
               renderEscape: RenderEscape | null;
+              jsxStatic: boolean;
             } | null = null;
             try {
               const mod = (await import(/* @vite-ignore */ runtimePath)) as Record<string, unknown>;
@@ -286,6 +300,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
                 loaded = {
                   renderAttr: helpers?.jsxAttr ?? null,
                   renderEscape: helpers?.jsxEscape ?? null,
+                  jsxStatic: helpers?.jsxStatic ?? false,
                 };
               }
             } catch {
@@ -302,6 +317,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
           resolvedRuntimeSourceForFile = runtimePath;
           renderAttrForFile = cached.renderAttr;
           renderEscapeForFile = cached.renderEscape;
+          jsxStaticForFile = cached.jsxStatic;
         }
       }
 
@@ -311,6 +327,7 @@ export default function vitePrecompile(config?: PluginConfig): Plugin {
         { runtimeSource: resolvedRuntimeSourceForFile },
         renderAttrForFile ?? undefined,
         renderEscapeForFile ?? undefined,
+        jsxStaticForFile,
       );
 
       // The transform returns null for a `.tsx` that carries only a less-than

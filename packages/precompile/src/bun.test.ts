@@ -48,7 +48,9 @@ describe("the bun adapter", () => {
 
     const result = (await load({ path })) as { contents: string; loader: string };
 
-    expect(result.contents).toContain("jsxTemplate");
+    // A hole-less template folds to jsxStatic: the adapter detected the real
+    // runtime exports it.
+    expect(result.contents).toContain("jsxStatic");
     expect(result.contents).toContain('<div class="x">hi</div>');
     expect(result.loader).toBe("tsx");
   });

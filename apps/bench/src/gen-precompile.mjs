@@ -1,5 +1,10 @@
-import { jsxAttr, jsxEscape } from "@vincle/core/jsx-precompile-runtime";
+import * as precompileRuntime from "@vincle/core/jsx-precompile-runtime";
 import precompileTransform from "@vincle/precompile";
+
+const { jsxAttr, jsxEscape } = precompileRuntime;
+// The same contract the build adapters apply: `jsxStatic` is additive, so its
+// presence is detected, not assumed. A runtime that has it gets the fold.
+const hasJsxStatic = typeof precompileRuntime.jsxStatic === "function";
 /**
  * Generate `realworld/shared.precompiled.mjs` from `realworld/shared.tsx` with
  * the real `@vincle/precompile` transform (vincle-dialect serializers, so the
@@ -26,7 +31,14 @@ const PURCHASES = generatePurchases(1_000);
 
 const srcUrl = new URL("./realworld/shared.tsx", import.meta.url);
 const source = readFileSync(srcUrl, "utf8");
-const result = precompileTransform(source, fileURLToPath(srcUrl), undefined, jsxAttr, jsxEscape);
+const result = precompileTransform(
+  source,
+  fileURLToPath(srcUrl),
+  undefined,
+  jsxAttr,
+  jsxEscape,
+  hasJsxStatic,
+);
 if (!result) throw new Error("precompileTransform returned null - no JSX found?");
 
 const dir = mkdtempSync(join(tmpdir(), "vincle-precompile-"));

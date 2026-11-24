@@ -259,6 +259,30 @@ export function jsxTemplate(
   return renderTemplate(templates, values);
 }
 
+/**
+ * A fully static element, folded once: the transform emits `jsxStatic` only
+ * for a template with no holes, so the whole result is known at compile time.
+ *
+ * The tagged-template call site hands over the same `templates` array on every
+ * evaluation (a spec guarantee), which makes it a cache key: the `RawString`
+ * is built on the first render of the site and shared by every later one, per
+ * site for the life of the module. This is the static-leaf collapse the
+ * dynamic `jsx()` path dropped: owned here by the precompile contract, where
+ * the staticness is proven by the compiler rather than re-derived per call.
+ *
+ * Vincle-only: Deno's contract has no such helper, so compatibility mode never
+ * emits it, and a runtime that declares the dialect without exporting it keeps
+ * the plain `jsxTemplate` emission (the transform checks at build time).
+ */
+const staticCache = new WeakMap<object, RawString>();
+export function jsxStatic(templates: ArrayLike<string>): RawString {
+  const cached = staticCache.get(templates as object);
+  if (cached !== undefined) return cached;
+  const folded = new RawString(templates[0] ?? "");
+  staticCache.set(templates as object, folded);
+  return folded;
+}
+
 /** The body `jsxTemplate` and `jsxTemplateDeferred` share. */
 function renderTemplate(templates: ArrayLike<string>, values: unknown[]): RawString | TemplateNode {
   if (values.length === 1 && values[0] instanceof RawString && values[0].value !== "")

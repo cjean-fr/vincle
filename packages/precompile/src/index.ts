@@ -26,6 +26,7 @@ export default function precompileTransform(
   config?: PluginConfig,
   renderAttr?: RenderAttr,
   renderEscape?: RenderEscape,
+  jsxStatic?: boolean,
 ): TransformResult | null {
   assertRuntimeSource(config);
   const rtSource = config?.runtimeSource ?? RUNTIME_SOURCE;
@@ -54,7 +55,7 @@ export default function precompileTransform(
   }
 
   const program = result.program as Program;
-  const helpers = normalizeRuntimeHelpers(renderAttr, renderEscape);
+  const helpers = normalizeRuntimeHelpers(renderAttr, renderEscape, jsxStatic);
   const ctx: TransformContext = {
     source: code,
     used: new Set<string>(),

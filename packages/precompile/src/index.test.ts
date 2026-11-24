@@ -31,7 +31,7 @@ function transform(code: string, id = "/src/app.tsx"): string {
 
 /** A runtime declaring the `"vincle"` dialect: corrected, sanitized output. */
 function transformVincle(code: string, id = "/src/app.tsx"): string {
-  const result = precompileTransform(code, id, { runtimeSource: RT }, jsxAttr, staticEscape);
+  const result = precompileTransform(code, id, { runtimeSource: RT }, jsxAttr, staticEscape, true);
   if (!result) throw new Error("expected a transform result, got null");
   return result.code;
 }
@@ -335,12 +335,38 @@ describe("precompileTransform", () => {
       expect(out).toContain("jsxTemplateDeferred");
     });
 
+    it("folds a hole-less template to jsxStatic when the runtime exports it", () => {
+      const out = transformVincle(`const a = <div class="x">hello</div>;`);
+      expect(out).toContain('jsxStatic`<div class="x">hello</div>`');
+      expect(out).toContain("jsxStatic");
+    });
+
+    it("keeps jsxTemplate for a hole-less template when the runtime predates jsxStatic", () => {
+      // The additive-helper rule: an older runtime that declares the dialect
+      // without exporting jsxStatic gets the emission it can import.
+      const result = precompileTransform(
+        `const a = <div class="x">hello</div>;`,
+        "/src/app.tsx",
+        { runtimeSource: RT },
+        jsxAttr,
+        staticEscape,
+      );
+      expect(result!.code).toContain('jsxTemplate`<div class="x">hello</div>`');
+      expect(result!.code).not.toContain("jsxStatic");
+    });
+
+    it("never emits jsxStatic in compatibility mode", () => {
+      const out = transform(`const a = <div class="x">hello</div>;`);
+      expect(out).toContain('jsxTemplate`<div class="x">hello</div>`');
+      expect(out).not.toContain("jsxStatic");
+    });
+
     it("escapes static text content using the runtime's own jsxEscape", () => {
       const out = transformVincle(`const a = <div>hello & world</div>;`);
       // jsxEscape from @vincle/core escapes & < >: same as escapeContent
       // for Vincle. For other runtimes (Preact, Hono) the escaping differs;
       // using the runtime's own jsxEscape guarantees byte-identity.
-      expect(out).toContain("jsxTemplate`<div>hello &amp; world</div>`");
+      expect(out).toContain("jsxStatic`<div>hello &amp; world</div>`");
     });
 
     it("decodes rawtext entities then escapeRawText (matches the dynamic runtime)", () => {
@@ -349,9 +375,9 @@ describe("precompileTransform", () => {
       // a real `>` and the output is valid CSS/JS. Unlike compatibility mode
       // where rawtext entities stay as-is.
       const style = transformVincle("const a = <style>.a &gt; .b</style>;");
-      expect(style).toContain("jsxTemplate`<style>.a > .b</style>`");
+      expect(style).toContain("jsxStatic`<style>.a > .b</style>`");
       const script = transformVincle("const a = <script>a &amp;&amp; b</script>;");
-      expect(script).toContain("jsxTemplate`<script>a && b</script>`");
+      expect(script).toContain("jsxStatic`<script>a && b</script>`");
       // The element's own closing tag is neutralized (breakout guard).
       const guard = transformVincle("const a = <script>x &lt;/script&gt; y</script>;");
       expect(guard).not.toContain("</script> y");
@@ -579,7 +605,7 @@ describe("precompileTransform", () => {
       // `escapeRawTagContent` applies: entities are decoded, so the CSS and JS
       // are what the author wrote, and the closing tag is neutralised.
       expect(transformVincle("const a = <style>.a &gt; .b</style>;")).toContain(
-        "jsxTemplate`<style>.a > .b</style>`",
+        "jsxStatic`<style>.a > .b</style>`",
       );
       expect(transformVincle("const a = <script>x &lt;/script&gt; y</script>;")).toContain(
         "\\u003c/script>",
@@ -1336,16 +1362,18 @@ describe("precompileTransform", () => {
         runtimePath,
         `/** @jsxImportSource @vincle/core */\nexport const html = ${body};`,
       );
-      const rtMod = (await import(runtimePath)) as { html: { value: string } };
+      const rtMod = (await import(runtimePath)) as { html: unknown };
 
       const preSrc = precompileTransform(`export const html = ${body};`, "/src/app.tsx", {
         runtimeSource: RT,
       })!.code;
       const prePath = join(TMP, `pre-${rand()}.ts`);
       writeFileSync(prePath, preSrc);
-      const preMod = (await import(prePath)) as { html: { value: string } };
+      const preMod = (await import(prePath)) as { html: unknown };
 
-      expect(preMod.html.value).toBe(rtMod.html.value);
+      // The dynamic path answers a VNode (the single renderer), the precompiled
+      // one a RawString: bytes are the comparison, and they are the invariant.
+      expect(await renderToString(preMod.html)).toBe(await renderToString(rtMod.html));
     });
 
     it("rawtext: a static <style> stays precompiled, byte-identical to the runtime path", async () => {
@@ -1357,7 +1385,7 @@ describe("precompileTransform", () => {
         runtimePath,
         `/** @jsxImportSource @vincle/core */\nexport const html = ${body};`,
       );
-      const rtMod = (await import(runtimePath)) as { html: { value: string } };
+      const rtMod = (await import(runtimePath)) as { html: unknown };
 
       const preSrc = precompileTransform(
         `export const html = ${body};`,
@@ -1370,9 +1398,9 @@ describe("precompileTransform", () => {
       expect(preSrc).toContain("jsxTemplate");
       const prePath = join(TMP, `pre-${rand()}.ts`);
       writeFileSync(prePath, preSrc);
-      const preMod = (await import(prePath)) as { html: { value: string } };
+      const preMod = (await import(prePath)) as { html: unknown };
 
-      expect(preMod.html.value).toBe(rtMod.html.value);
+      expect(await renderToString(preMod.html)).toBe(await renderToString(rtMod.html));
     });
 
     it("rawtext: a <style> with a dynamic hole is handed to the runtime, not templated", async () => {
@@ -1451,6 +1479,8 @@ describe("precompileTransform", () => {
    * rawtext holes: every unit test passed the runtime source explicitly, and the
    * plugin's virtual module, which must re-export the full set, was not tested.
    */
+  // `jsxStatic` is the dialect's additive member: emitted only when the
+  // runtime is known to export it, so the import can never dangle.
   const CONTRACT = new Set(["jsx", "jsxAttr", "jsxEscape", "jsxTemplate"]);
 
   describe("a runtime that answers outside the contract", () => {
@@ -1499,11 +1529,13 @@ describe("precompileTransform", () => {
             "/src/app.tsx",
             { runtimeSource: RT },
             compatibility ? undefined : jsxAttr,
+            undefined,
+            !compatibility,
           );
           if (!out) continue;
           const allowed = compatibility
             ? CONTRACT
-            : new Set([...CONTRACT, "jsxTemplateDeferred", "jsxEscapeDeferred"]);
+            : new Set([...CONTRACT, "jsxTemplateDeferred", "jsxEscapeDeferred", "jsxStatic"]);
           const outside = importedHelpers(out.code).filter((h) => !allowed.has(h));
           expect(outside, `compatibility: ${compatibility}`).toEqual([]);
         }

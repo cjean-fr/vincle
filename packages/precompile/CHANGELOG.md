@@ -1,5 +1,9 @@
 # @vincle/precompile
 
+## Unreleased
+
+- Emit `jsxStatic` for a hole-less template when the runtime exports it: the static-leaf collapse the core's `jsx()` no longer performs, recovered at compile time — one `RawString` per call site instead of one `jsxTemplate` call and allocation per render. Compatibility mode is unchanged (Deno's contract has no such helper), and a runtime that declares the `"vincle"` dialect without exporting `jsxStatic` keeps the `jsxTemplate` emission: the helper's presence is detected, never assumed.
+
 ## 0.10.0 — 2026-11-01
 
 - Lower components and non-template host elements to Deno-style direct `jsx` calls instead of leaving JSX for a later compiler. Preserve spread props, explicit `key` as a third argument, and Deno child grouping, with native Deno 2.9.8 call-oracle regressions. Keep Vincle's runtime host-prop policies and pass the explicit key there too.

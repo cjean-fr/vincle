@@ -36,6 +36,12 @@ export type RenderEscape = (
 export interface RuntimeHelpers {
   jsxAttr: (name: string, value: string | true) => string;
   jsxEscape: (text: string) => string;
+  /**
+   * Whether the runtime exports `jsxStatic`, the fold for hole-less
+   * templates. Absent on an older runtime that declares the dialect: the
+   * transform degrades to `jsxTemplate` there, never to a missing import.
+   */
+  jsxStatic: boolean;
 }
 
 export interface TransformResult {

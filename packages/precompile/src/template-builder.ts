@@ -35,10 +35,16 @@ export class TemplateBuilder {
     // Deferred holes render under the eventual Provider context; compatibility
     // mode keeps the reference runtime contract even when holes are deferred.
     const helper = !ctx.compatibility && this.#deferred ? "jsxTemplateDeferred" : "jsxTemplate";
-    ctx.used.add(helper);
     if (this.#exprs.length === 0) {
-      return `${helper}\`${this.#parts[0] ?? ""}\``;
+      // No holes: the whole template is one compile-time string. A runtime
+      // that exports `jsxStatic` gets it folded once per call site instead of
+      // once per render; anything else (compatibility mode, an older runtime
+      // that declares the dialect without the helper) keeps `jsxTemplate`.
+      const staticHelper = ctx.helpers?.jsxStatic === true ? "jsxStatic" : helper;
+      ctx.used.add(staticHelper);
+      return `${staticHelper}\`${this.#parts[0] ?? ""}\``;
     }
+    ctx.used.add(helper);
 
     let result = `${helper}\`${this.#parts[0] ?? ""}`;
     for (let i = 0; i < this.#exprs.length; i++) {

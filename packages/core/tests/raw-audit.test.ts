@@ -85,6 +85,14 @@ const AUDITED: RawSite[] = [
   },
   {
     file: "src/jsx-runtime.ts",
+    scope: "jsxStatic",
+    kind: "new",
+    count: 1,
+    origin:
+      "A compiler-emitted hole-less template: build-time-escaped static text, folded once per call site.",
+  },
+  {
+    file: "src/jsx-runtime.ts",
     scope: "jsxTemplateDeferred",
     kind: "new",
     count: 2,

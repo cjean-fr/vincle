@@ -1,11 +1,37 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildAttrs, serializeAttr } from "./attrs.js";
-import { jsxTemplate, jsxAttr, jsxEscape } from "./jsx-precompile-runtime.js";
+import { jsxTemplate, jsxStatic, jsxAttr, jsxEscape } from "./jsx-precompile-runtime.js";
 import { jsx } from "./jsx-runtime.js";
 import { renderToString } from "./render.js";
 import { Scope } from "./scope.js";
 import { raw, RawString, VNode } from "./types.js";
+
+describe("jsxStatic", () => {
+  test("folds a hole-less template to a RawString", () => {
+    expect((jsxStatic`<div class="x">hello</div>` as RawString).value).toBe(
+      '<div class="x">hello</div>',
+    );
+  });
+
+  test("returns the same RawString on every evaluation of the site", () => {
+    // One allocation per call site, ever: the tagged-template spec hands the
+    // same strings array to every call at the site, and it keys the cache.
+    const site = () => jsxStatic`<b>bold</b>`;
+    expect(site()).toBe(site());
+  });
+
+  test("two sites with identical text do not share their RawString", () => {
+    const a = () => jsxStatic`<b>bold</b>`;
+    const b = () => jsxStatic`<b>bold</b>`;
+    expect(a()).not.toBe(b());
+    expect((a() as RawString).value).toBe((b() as RawString).value);
+  });
+
+  test("an empty template folds to an empty RawString", () => {
+    expect((jsxStatic`` as RawString).value).toBe("");
+  });
+});
 
 describe("jsxTemplate", () => {
   test("static template", () => {

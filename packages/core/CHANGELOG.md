@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `jsxStatic` in `@vincle/core/jsx-precompile-runtime`: the static-leaf collapse, back where it belongs after `jsx()` dropped it. The precompile transform emits it for a hole-less template — proven static at compile time — and the helper folds it to one `RawString` per call site for the life of the module, cached on the tagged-template strings array. Additive to the contract: the transform detects it at build time and keeps the `jsxTemplate` emission for a runtime that does not export it.
+
 ### Fixed
 
 - Keep the keyword literals of the generated CSS unions visible to editor completions: length types now take their open string arm as `string & {}` instead of a bare `string`, which absorbed literals like `"auto"` and left value positions without suggestions. Accepted values are unchanged.

@@ -5,9 +5,9 @@ import { ERR_PRECOMPILE_CONFIG, ERR_PRECOMPILE_HELPER, vincleError } from "./err
 
 /** Validate the dialect promise once for both build adapters. */
 export function declaredRuntimeHelpers(
-  mod: { precompileDialect?: unknown; jsxAttr?: unknown; jsxEscape?: unknown },
+  mod: { precompileDialect?: unknown; jsxAttr?: unknown; jsxEscape?: unknown; jsxStatic?: unknown },
   source: string,
-): { jsxAttr: RenderAttr; jsxEscape: RenderEscape } | null {
+): { jsxAttr: RenderAttr; jsxEscape: RenderEscape; jsxStatic: boolean } | null {
   if (mod.precompileDialect !== "vincle") return null;
   if (typeof mod.jsxAttr !== "function" || typeof mod.jsxEscape !== "function") {
     throw vincleError(
@@ -18,7 +18,13 @@ export function declaredRuntimeHelpers(
       ERR_PRECOMPILE_CONFIG,
     );
   }
-  return { jsxAttr: mod.jsxAttr as RenderAttr, jsxEscape: mod.jsxEscape as RenderEscape };
+  return {
+    jsxAttr: mod.jsxAttr as RenderAttr,
+    jsxEscape: mod.jsxEscape as RenderEscape,
+    // Additive and optional: an older runtime that declares the dialect but
+    // predates `jsxStatic` stays valid, it just gets no static fold.
+    jsxStatic: typeof mod.jsxStatic === "function",
+  };
 }
 
 /**
@@ -65,6 +71,7 @@ function unwrapSerialized(
 export function normalizeRuntimeHelpers(
   renderAttr: RenderAttr | undefined,
   renderEscape: RenderEscape | undefined,
+  jsxStatic = false,
 ): RuntimeHelpers | null {
   if (renderAttr === undefined) return null;
   return {
@@ -73,5 +80,6 @@ export function normalizeRuntimeHelpers(
     jsxEscape: renderEscape
       ? (text) => unwrapSerialized(renderEscape(text), "jsxEscape", "of a text node")
       : escapeContent,
+    jsxStatic,
   };
 }

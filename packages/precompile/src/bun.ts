@@ -88,10 +88,15 @@ export default function precompileBun(config?: PluginConfig): BunPrecompilePlugi
       const helpers = declaredRuntimeHelpers(mod, runtimeSource);
       const renderAttr = helpers?.jsxAttr;
       const renderEscape = helpers?.jsxEscape;
+      const jsxStatic = helpers?.jsxStatic ?? false;
 
       const perFileCache = new Map<
         string,
-        { renderAttr: RenderAttr | undefined; renderEscape: RenderEscape | undefined } | null
+        {
+          renderAttr: RenderAttr | undefined;
+          renderEscape: RenderEscape | undefined;
+          jsxStatic: boolean;
+        } | null
       >();
 
       build.onLoad({ filter: JSX_FILE }, async ({ path }) => {
@@ -104,6 +109,7 @@ export default function precompileBun(config?: PluginConfig): BunPrecompilePlugi
         let runtimeSourceForFile = runtimeSource;
         let renderAttrForFile = renderAttr;
         let renderEscapeForFile = renderEscape;
+        let jsxStaticForFile = jsxStatic;
 
         const declared = detectJsxImportSource(code);
         if (
@@ -115,6 +121,7 @@ export default function precompileBun(config?: PluginConfig): BunPrecompilePlugi
             let loaded: {
               renderAttr: RenderAttr | undefined;
               renderEscape: RenderEscape | undefined;
+              jsxStatic: boolean;
             } | null = null;
             try {
               const fileMod = (await import(/* @vite-ignore */ runtimePath)) as Record<
@@ -131,6 +138,7 @@ export default function precompileBun(config?: PluginConfig): BunPrecompilePlugi
                 loaded = {
                   renderAttr: fileHelpers?.jsxAttr ?? undefined,
                   renderEscape: fileHelpers?.jsxEscape ?? undefined,
+                  jsxStatic: fileHelpers?.jsxStatic ?? false,
                 };
               }
             } catch {
@@ -145,6 +153,7 @@ export default function precompileBun(config?: PluginConfig): BunPrecompilePlugi
           runtimeSourceForFile = runtimePath;
           renderAttrForFile = cached.renderAttr;
           renderEscapeForFile = cached.renderEscape;
+          jsxStaticForFile = cached.jsxStatic;
         }
 
         const result = precompileTransform(
@@ -153,6 +162,7 @@ export default function precompileBun(config?: PluginConfig): BunPrecompilePlugi
           { runtimeSource: runtimeSourceForFile },
           renderAttrForFile,
           renderEscapeForFile,
+          jsxStaticForFile,
         );
         if (result === null || result.code === code) return undefined;
 
