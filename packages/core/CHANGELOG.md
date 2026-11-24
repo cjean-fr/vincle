@@ -2,11 +2,6 @@
 
 ## Unreleased
 
-### Added
-
-- Document the `jsx-precompile-runtime` subpath as the internal contract surface it is: the `ElementAttr` and `TemplateNode` returns are opaque, the third (`key`) argument of the emitted `jsx(tag, props, key)` fallback is accepted and ignored, and the dialect versioning rule is written down — additive helpers are detected, `"vincle"` becomes `"vincle/2"` only on a breaking helper change. A surface test freezes the export list.
-- `jsxStatic` in `@vincle/core/jsx-precompile-runtime`: the static-leaf collapse, back where it belongs after `jsx()` dropped it. The precompile transform emits it for a hole-less template — proven static at compile time — and the helper folds it to one `RawString` per call site for the life of the module, cached on the tagged-template strings array. Additive to the contract: the transform detects it at build time and keeps the `jsxTemplate` emission for a runtime that does not export it.
-
 ### Changed
 
 - Handle primitive template holes directly while preserving escaping and deferred object evaluation.
@@ -19,7 +14,7 @@
 
 ### Removed
 
-- **Breaking (behavior)**: the static construction path is gone. `jsx()` no longer pre-renders an all-static subtree to a `RawString`; every element becomes a `VNode` and renders through the tree walk, now the single renderer. Motivation is maintenance: one path instead of two judged at every element, and the path-equivalence fuzzer that kept them in agreement is retired with it. Output bytes are unchanged. Cost, measured on full site generation (`@vincle/ssg`, 431-page site, paired A/B, Node): proto/main ×0.9968 with 95% CI [0.9896, 1.0089] and byte-identical output — no cost beyond the test's resolution. Per-request SSR micro-benchmarks put the removal at 3% (`text`) to 17% (`stack`) of render time alone, and render is ~2% of a static build. One observable timing change: a function passed as an attribute value now throws `ERR_VINCLE_FUNCTION_ATTR` at render time instead of at `jsx()` time. `serializeStatic` was package-internal; the exported API is unchanged.
+- **Breaking (behavior)**: the static construction path is gone. `jsx()` no longer pre-renders an all-static subtree to a `RawString`; every element becomes a `VNode` and renders through the tree walk, now the single renderer. Output bytes are unchanged. One observable timing change: a function passed as an attribute value now throws `ERR_VINCLE_FUNCTION_ATTR` at render time instead of at `jsx()` time. `serializeStatic` was package-internal; the exported API is unchanged.
 - The provisional escape of `<script>`/`<style>` bodies inside `<svg>` is gone: it re-escaped `raw()` content, never covered `<math>`, and could not see precompiled templates. A plain `<script>` or `<style>` keeps the HTML rawtext rule everywhere. In foreign content (`<svg>`, `<math>`), where the parser reads that text as markup, ship the source pre-escaped as text instead: `raw(escapeContent(source))` with `escapeContent` from `@vincle/core/html`. The `@vincle/no-foreign-rawtext` lint rule flags the plain elements under an `<svg>` or `<math>` JSX subtree.
 
 ## 0.10.0 — 2026-11-01
