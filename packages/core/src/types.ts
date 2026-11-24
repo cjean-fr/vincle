@@ -77,7 +77,14 @@ export class RawUrl {
   declare private readonly __url: undefined;
 }
 
-/** Markup whose component holes must be evaluated at render time. */
+/**
+ * Markup whose component holes must be evaluated at render time.
+ *
+ * Part of the internal precompile contract (see `jsx-precompile-runtime.ts`):
+ * opaque to consumers. It implements `Promise<RawString>` so a template result
+ * can be awaited; no other member is public, and constructing one outside the
+ * runtime is not supported.
+ */
 export class TemplateNode implements Promise<RawString> {
   readonly [Symbol.toStringTag] = "Promise";
   readonly render: () => RawString | Promise<RawString>;

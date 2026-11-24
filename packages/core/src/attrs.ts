@@ -522,6 +522,10 @@ function soloFragment(key: string, meta: AttrMeta, value: unknown): string {
  * the name-only serialization: what a precompile transform inlines at build
  * time, which is exact there because `@vincle/precompile` hands every element
  * the rule applies to back to the runtime instead.
+ *
+ * Part of the internal precompile contract (see `jsx-precompile-runtime.ts`):
+ * opaque to consumers. The only supported move is to hand it back to the
+ * runtime through the template it arrived in.
  */
 export class ElementAttr {
   readonly name: string;
