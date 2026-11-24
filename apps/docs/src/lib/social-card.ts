@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
 /** Every published page gets a social card, except error pages. */
 export function hasSocialCard(url: string): boolean {
   return url !== "/404";
@@ -118,12 +122,49 @@ export function socialCardSvg({ title, section, summary }: SocialCard): string {
 </svg>`;
 }
 
-export async function socialCardPng(card: SocialCard): Promise<Uint8Array> {
+/**
+ * Rendered cards survive the build that made them, keyed by the SVG they
+ * rasterize: a card is re-rendered only when its own content (or this
+ * template) changes. `node_modules/.cache` persists across Netlify builds,
+ * so unchanged pages skip the sharp render there too. Every cache operation
+ * is best-effort: a missing or unusable cache never fails the build, it just
+ * costs one render.
+ */
+export const SOCIAL_CARD_CACHE_DIR = join("node_modules", ".cache", "vincle-social-cards");
+
+const PNG_SIGNATURE = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+
+const looksLikePng = (bytes: Uint8Array): boolean =>
+  PNG_SIGNATURE.every((byte, i) => bytes[i] === byte);
+
+export async function socialCardPng(
+  card: SocialCard,
+  cacheDir: string = SOCIAL_CARD_CACHE_DIR,
+): Promise<Uint8Array> {
+  const svg = socialCardSvg(card);
+  const cachePath = join(
+    cacheDir,
+    `${createHash("sha256").update(svg).digest("hex").slice(0, 16)}.png`,
+  );
+  try {
+    const cached = new Uint8Array(await readFile(cachePath));
+    // A corrupt or truncated entry heals itself on the next build.
+    if (looksLikePng(cached)) return cached;
+  } catch {
+    // No entry: render below.
+  }
   // Loaded on demand: page rendering imports this module for the path alone.
   const { default: sharp } = await import("sharp");
-  return new Uint8Array(
-    await sharp(Buffer.from(socialCardSvg(card)))
-      .png()
-      .toBuffer(),
-  );
+  const png = new Uint8Array(await sharp(Buffer.from(svg)).png().toBuffer());
+  try {
+    await mkdir(cacheDir, { recursive: true });
+    // Cards render concurrently; a unique temp file renamed over the entry
+    // keeps concurrent writers and interrupted builds from leaving half a PNG.
+    const tempPath = join(cacheDir, `.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);
+    await writeFile(tempPath, png);
+    await rename(tempPath, cachePath);
+  } catch {
+    // Caching is an optimization; the render stands on its own.
+  }
+  return png;
 }
