@@ -1,0 +1,33 @@
+name: Formatter diff
+
+# Temporary: prints what oxfmt changes on the landing page files, then goes away.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    name: oxfmt diff
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format
+        run: bunx oxfmt . || true
+
+      - name: Diff
+        run: |
+          git --no-pager diff --no-color -U2 -- apps/docs/src/_client/home.css apps/docs/src/pages/index.mdx
