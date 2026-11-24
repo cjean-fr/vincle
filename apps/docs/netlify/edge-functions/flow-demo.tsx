@@ -1,6 +1,6 @@
-/** @jsxImportSource npm:@vincle/core@0.10.0 */
-import { Defer, renderToStream } from "npm:@vincle/flow@0.12.0";
-import { NativeAdapter } from "npm:@vincle/flow@0.12.0/adapters";
+/** @jsxImportSource @vincle/core */
+import { Defer, renderToStream } from "@vincle/flow";
+import { NativeAdapter } from "@vincle/flow/adapters";
 
 /**
  * Live demo embedded in the Flow overview (/integration/flow/overview).
