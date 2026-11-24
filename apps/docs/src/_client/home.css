@@ -1,13 +1,17 @@
 /* The source/result example is the visual centre of the landing page. */
 .docs-home {
   padding-top: 2rem;
+  background:
+    radial-gradient(90rem 38rem at 8% -12%, var(--docs-color-accent-soft), transparent 62%),
+    radial-gradient(64rem 30rem at 92% -8%, var(--docs-color-surface), transparent 60%);
+  background-repeat: no-repeat;
 }
 .docs-home-hero {
   display: grid;
-  grid-template-columns: 1fr 1.12fr;
-  align-items: center;
+  grid-template-columns: 1fr 1.08fr;
+  align-items: start;
   gap: 3rem;
-  padding-block: 2rem 5rem;
+  padding-block: 1.75rem 4rem;
 }
 .docs-product-label {
   display: flex;
@@ -22,25 +26,25 @@
   font-family: var(--docs-font-mono);
 }
 .docs-home h1 {
-  font-size: clamp(3rem, 5vw, 4.5rem);
-  line-height: 1.06;
+  font-size: clamp(2.5rem, 4.2vw, 3.6rem);
+  line-height: 1.08;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.032em;
   text-wrap: balance;
 }
 .docs-hero-description {
-  max-width: 36ch;
+  max-width: 38ch;
   text-wrap: pretty;
-  margin-top: 1.5rem;
-  font-size: 1.125rem;
-  line-height: 1.75;
+  margin-top: 1.25rem;
+  font-size: 1.0625rem;
+  line-height: 1.7;
   color: var(--docs-color-text-body);
 }
 .docs-home-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
 }
 .docs-button {
   display: inline-flex;
@@ -52,21 +56,34 @@
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
-  transition: background-color var(--docs-transition-fast);
+  transition:
+    background-color var(--docs-transition-fast),
+    border-color var(--docs-transition-fast),
+    transform var(--docs-transition-fast);
+}
+.docs-button:hover {
+  transform: translateY(-1px);
 }
 .docs-button-primary {
   color: white;
   background: #245bd6;
   border-color: #245bd6;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12), 0 10px 24px -14px rgb(36 91 214 / 0.8);
 }
 .docs-button-primary:hover {
   background: #1945a8;
+  border-color: #1945a8;
+}
+.docs-button-secondary {
+  background: var(--docs-color-bg);
 }
 .docs-button-secondary:hover {
   background: var(--docs-color-surface);
+  border-color: var(--docs-color-text-secondary);
 }
 .docs-install-tabs {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
+  max-width: 30rem;
 }
 .docs-install-tabs .docs-tabs {
   margin-block: 0;
@@ -80,6 +97,7 @@
   border: 1px solid var(--docs-color-border);
   border-radius: calc(0.25rem + 0.5rem + 1px);
   background: var(--docs-color-surface);
+  box-shadow: 0 24px 48px -32px rgb(15 23 42 / 0.4);
 }
 .docs-example-heading {
   display: flex;
@@ -119,14 +137,35 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-
-/* A single rendering cue: the HTML appears after its source, without looping. */
+/* One connector between the source and its output, then a single reveal. */
+.docs-example-arrow {
+  display: grid;
+  place-items: center;
+  height: 1.35rem;
+}
+.docs-example-arrow span {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(var(--docs-color-border), var(--docs-color-accent));
+}
+.docs-example-arrow span::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-right: 1px solid var(--docs-color-accent);
+  border-bottom: 1px solid var(--docs-color-accent);
+  transform: translate(-50%, 1px) rotate(45deg);
+}
 @media (prefers-reduced-motion: no-preference) {
-  .docs-hero-example .docs-code-block + .docs-code-block pre code {
+  .docs-hero-example .docs-code-block + .docs-example-arrow + .docs-code-block pre code {
     animation: docs-html-reveal 900ms steps(24, end) 350ms both;
   }
 }
-
 @keyframes docs-html-reveal {
   from {
     clip-path: inset(0 100% 0 0);
@@ -135,8 +174,8 @@
     clip-path: inset(0 0 0 0);
   }
 }
-
 .docs-example-note {
+  margin: 0;
   padding: 0.85rem 0.65rem 0.35rem;
   font-size: 0.75rem;
   color: var(--docs-color-text-secondary);
@@ -146,26 +185,45 @@
   justify-content: space-between;
   align-items: center;
   gap: 1.5rem;
-  padding-block: 1.5rem;
+  padding-block: 1.35rem;
   border-block: 1px solid var(--docs-color-border);
   font-size: 0.875rem;
 }
 .docs-runtime-strip > span {
   color: var(--docs-color-text-secondary);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .docs-runtime-strip ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem 2rem;
-  font-weight: 600;
+  align-items: center;
+  gap: 0.75rem 1.75rem;
+  font-family: var(--docs-font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.docs-runtime-strip li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.docs-runtime-strip li::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--docs-color-accent);
+  opacity: 0.55;
 }
 .docs-home-section {
   padding-block: 4.5rem;
 }
 .docs-home h2 {
   text-wrap: balance;
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  line-height: 1.2;
+  font-size: clamp(1.7rem, 2.8vw, 2.2rem);
+  line-height: 1.18;
   font-weight: 600;
   letter-spacing: -0.035em;
 }
@@ -173,92 +231,315 @@
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 2rem;
-  margin-bottom: 2.5rem;
+  gap: 3rem;
 }
 .docs-section-heading p {
-  max-width: 38ch;
-}
-.docs-section-heading p + p {
-  margin-top: 0.75rem;
-}
-/* The streaming intro is longer than a side note: it reads under its title,
-   at a prose measure, and the demo takes the full width below. */
-.docs-stream .docs-section-heading {
-  flex-direction: column;
-  align-items: start;
-  gap: 1rem;
-}
-.docs-stream .docs-section-heading p {
-  max-width: 60ch;
+  max-width: 40ch;
+  margin: 0;
 }
 .docs-home-section p {
   color: var(--docs-color-text-body);
   line-height: 1.75;
 }
-.docs-use-cases {
+/* The diagram carries the product model: one tree, one string, two outlets. */
+.docs-diagram {
+  margin: 3rem 0 0;
+  padding: 1.75rem 1rem;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 0.875rem;
+  background: var(--docs-color-bg);
+}
+.docs-diagram-track {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.docs-diagram-col {
+  flex: 0 0 auto;
+}
+.docs-diagram-tree {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.docs-diagram-node {
+  position: relative;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 0.45rem;
+  background: var(--docs-color-bg);
+  color: var(--docs-color-text);
+  font-family: var(--docs-font-mono);
+  font-size: 0.7rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.docs-diagram-node-root::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -0.9rem;
+  width: 0.9rem;
+  height: 1px;
+  background: var(--docs-color-border);
+}
+.docs-diagram-children {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2.5rem;
+  gap: 0.4rem;
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--docs-color-border);
 }
-.docs-use-cases article {
-  padding-left: 1.25rem;
-  border-left: 2px solid var(--docs-color-border);
+.docs-diagram-children > .docs-diagram-node::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -0.9rem;
+  width: 0.9rem;
+  height: 1px;
+  background: var(--docs-color-border);
 }
-.docs-use-case-symbol {
-  display: block;
-  margin-bottom: 1.25rem;
+.docs-diagram-core {
+  display: grid;
+  gap: 0.15rem;
+  justify-items: center;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--docs-color-accent);
+  border-radius: 0.6rem;
+  background: var(--docs-color-accent-soft);
   color: var(--docs-color-accent);
-  font: 500 1.5rem var(--docs-font-mono);
+  font-family: var(--docs-font-mono);
+  line-height: 1.2;
+  white-space: nowrap;
 }
-.docs-home h3 {
-  font-size: 1rem;
+.docs-diagram-core strong {
+  font-size: 0.8rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
 }
-.docs-use-cases p,
-.docs-feature-link p {
+.docs-diagram-core span {
+  color: var(--docs-color-text-secondary);
+  font-size: 0.62rem;
+}
+.docs-diagram-outcomes {
+  position: relative;
+  display: grid;
+  gap: 0.55rem;
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--docs-color-border);
+}
+.docs-diagram-out {
+  position: relative;
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 0.45rem;
+  background: var(--docs-color-bg);
+  font-family: var(--docs-font-mono);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.docs-diagram-out::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -0.9rem;
+  width: 0.9rem;
+  height: 1px;
+  background: var(--docs-color-border);
+}
+.docs-diagram-out strong {
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+.docs-diagram-out span {
+  color: var(--docs-color-text-secondary);
+  font-size: 0.62rem;
+}
+.docs-diagram-link {
+  position: relative;
+  flex: 1 1 2rem;
+  min-width: 1.5rem;
+  height: 1px;
+  background: linear-gradient(to right, var(--docs-color-border), var(--docs-color-accent));
+}
+.docs-diagram-link::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -1px;
+  width: 6px;
+  height: 6px;
+  border-top: 1px solid var(--docs-color-accent);
+  border-right: 1px solid var(--docs-color-accent);
+  transform: translateY(-50%) rotate(45deg);
+}
+.docs-diagram-caption {
+  margin: 1.5rem 0 0;
+  color: var(--docs-color-text-secondary);
+  font-size: 0.75rem;
+  text-align: center;
+}
+.docs-path-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+}
+.docs-path-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.5rem;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 0.875rem;
+  background: var(--docs-color-bg);
+}
+.docs-path-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--docs-color-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.docs-badge {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--docs-color-accent-soft);
+  color: var(--docs-color-accent);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+}
+.docs-path-card h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.docs-path-card p {
+  margin: 0;
   font-size: 0.9375rem;
+}
+.docs-path-card .docs-code-block {
+  margin-block: 0.4rem;
+}
+.docs-path-card .docs-text-link {
+  margin-top: auto;
+}
+.docs-paths-note {
+  margin-top: 1.5rem;
+  font-size: 0.8125rem;
+  color: var(--docs-color-text-secondary);
 }
 .docs-foundations {
   display: grid;
-  grid-template-columns: 1fr 1.4fr;
+  grid-template-columns: 1fr 1.45fr;
   gap: 4rem;
   border-top: 1px solid var(--docs-color-border);
 }
-.docs-independent {
-  border-top: 1px solid var(--docs-color-border);
-}
-.docs-independent .docs-use-cases {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.docs-foundations > div > p {
+.docs-foundations-intro > p {
   margin-top: 1rem;
 }
 .docs-text-link {
   display: inline-block;
-  color: var(--docs-color-accent);
   margin-top: 1.5rem;
+  color: var(--docs-color-accent);
   font-size: 0.875rem;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+.docs-feature-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
 .docs-feature-link {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
   align-items: start;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding-block: 1.5rem;
-  border-bottom: 1px solid var(--docs-color-border);
+  padding: 1.15rem;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 0.75rem;
+  background: var(--docs-color-bg);
+  transition:
+    border-color var(--docs-transition-fast),
+    background-color var(--docs-transition-fast);
 }
-.docs-feature-link:first-child {
-  padding-top: 0;
+.docs-feature-link:hover {
+  border-color: var(--docs-color-accent);
+  background: var(--docs-color-accent-soft);
 }
-.docs-feature-link > span {
+.docs-feature-icon {
+  display: grid;
+  place-items: center;
+  min-width: 2.35rem;
+  height: 1.7rem;
+  padding: 0 0.45rem;
+  border-radius: 0.4rem;
+  background: var(--docs-color-accent-soft);
   color: var(--docs-color-accent);
+  font-family: var(--docs-font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
-.docs-feature-link:hover h3 {
+.docs-home h3 {
+  margin-bottom: 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.docs-feature-body p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+.docs-trust {
+  border-top: 1px solid var(--docs-color-border);
+  padding-block: 3.5rem 4rem;
+}
+.docs-trust h2 {
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+.docs-trust-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+  margin-top: 1.75rem;
+  padding: 0;
+  list-style: none;
+}
+.docs-trust-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.docs-trust-list a {
+  color: var(--docs-color-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--docs-color-border);
+  text-underline-offset: 4px;
+}
+.docs-trust-list a:hover {
   color: var(--docs-color-accent);
+  text-decoration-color: currentColor;
+}
+.docs-trust-list span {
+  color: var(--docs-color-text-body);
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+.docs-trust-note {
+  max-width: 78ch;
+  margin-top: 2rem;
+  font-size: 0.8125rem;
+  color: var(--docs-color-text-secondary);
 }
 @media (max-width: 900px) {
   .docs-home-hero {
@@ -273,13 +554,48 @@
   .docs-section-heading {
     align-items: start;
     flex-direction: column;
+    gap: 1rem;
   }
-  .docs-use-cases {
-    gap: 1.5rem;
+  .docs-section-heading p {
+    max-width: 60ch;
   }
   .docs-foundations {
+    grid-template-columns: 1fr;
     gap: 2rem;
-    grid-template-columns: 1fr 1.2fr;
+  }
+  .docs-trust-list {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+@media (max-width: 760px) {
+  .docs-diagram-track {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .docs-diagram-link {
+    flex: 0 0 auto;
+    width: 1px;
+    height: 1.5rem;
+    min-width: 0;
+    background: linear-gradient(to bottom, var(--docs-color-border), var(--docs-color-accent));
+  }
+  .docs-diagram-link::after {
+    top: auto;
+    right: auto;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%) rotate(135deg);
+  }
+  .docs-diagram-core {
+    justify-items: center;
+  }
+}
+@media (max-width: 700px) {
+  .docs-path-grid,
+  .docs-feature-list {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 600px) {
@@ -289,38 +605,17 @@
   .docs-home-hero {
     padding-top: 1rem;
   }
-  .docs-use-cases,
-  .docs-foundations {
-    grid-template-columns: 1fr;
-  }
-  .docs-independent .docs-use-cases {
-    grid-template-columns: 1fr;
-  }
   .docs-home-section {
     padding-block: 3rem;
   }
   .docs-example-language {
     display: none;
   }
+  .docs-diagram {
+    padding: 1.25rem 0.5rem;
+  }
 }
 
-/* Home sections: SSG spotlight and, before it, the streaming demo. */
-.docs-stream {
-  display: block;
-  border-top: 1px solid var(--docs-color-border);
-}
-.docs-stream-grid {
-  display: grid;
-  /* minmax(0, …) here and in the demo frame: long code or markup must never
-     widen its column. */
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 3rem;
-  align-items: start;
-  margin-top: 2.5rem;
-}
-.docs-stream-grid .docs-hero-example {
-  margin-top: 0;
-}
 /* The Flow overview embeds the live streaming demo as a miniature browser
    frame; the Edge Function behind it streams a real response on each load. */
 .docs-flow-demo {
@@ -362,11 +657,4 @@
   width: 100%;
   height: 9rem;
   border: 0;
-}
-
-@media (max-width: 900px) {
-  .docs-stream-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2rem;
-  }
 }
