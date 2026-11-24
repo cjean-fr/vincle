@@ -8,7 +8,7 @@ import type { Page } from "./types.js";
 
 import config from "../../docs.config.js";
 import { t } from "./messages.js";
-import { editUrlFor, lastModified } from "./page-history.js";
+import { editUrlFor, readPageHistory } from "./page-history.js";
 import { discoverPages } from "./pages.js";
 import {
   resolveSidebar,
@@ -28,14 +28,18 @@ let navigationSnapshot: Navigation | undefined;
 /** Equal catalogs share a snapshot; changed catalogs never overwrite existing contexts. */
 async function documentationContexts(pages: Page[]): Promise<Navigation> {
   const configuration = { ...config };
+  const history = await readPageHistory();
   const siteLastUpdated = pages.some((page) => page.url === "/")
-    ? await lastModified(configuration.pages)
+    ? await history.lastModified(configuration.pages)
     : null;
   const pageDates = new Map(
     await Promise.all(
       pages.map(
         async (page) =>
-          [page.file, page.file.endsWith(".mdx") ? await lastModified(page.file) : null] as const,
+          [
+            page.file,
+            page.file.endsWith(".mdx") ? await history.lastModified(page.file) : null,
+          ] as const,
       ),
     ),
   );
