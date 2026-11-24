@@ -1,0 +1,60 @@
+---
+title: Coming from Astro or 11ty
+description: "What carries over from Astro or Eleventy to @vincle/ssg, what changes, and when each tool fits better."
+---
+
+# Coming from Astro or 11ty
+
+Astro, Eleventy (11ty) and `@vincle/ssg` share the same bet: render once at
+build time, ship static files, send no JavaScript the page does not ask for.
+Most of what you know carries over.
+
+## What carries over
+
+| You know                 | In `@vincle/ssg`                                                           |
+| ------------------------ | -------------------------------------------------------------------------- |
+| File-based routes        | Files under `src/pages/` map to URLs the same way                          |
+| Frontmatter              | Markdown and MDX frontmatter feeds `meta`, like 11ty's data cascade        |
+| Layouts                  | `src/_layout.tsx` wraps every page; closest match wins, like Astro layouts |
+| Collections / data files | Pages are async functions: read files or fetch APIs directly at build time |
+| Zero JS by default       | No JavaScript reaches the browser unless you add a client entry            |
+| `.md` and `.mdx` content | Both are first-class page formats                                          |
+
+## What changes
+
+**One component model.** Astro mixes `.astro` components with React, Vue or
+Svelte islands; 11ty mixes template languages. Vincle pages, layouts and
+partials are all JSX/TSX (or Markdown/MDX): one syntax, full TypeScript, no
+template-language quirks. If you already write JSX, there is nothing new to
+learn.
+
+**Data is just code.** Instead of 11ty's data cascade or Astro's content
+collections API, a page is an `async` function: `await` a file, a database or
+an API inside the component. The published HTML holds the result, not the
+query.
+
+**Islands are explicit.** Astro ships component islands with a hydration
+directive. Vincle ships no component hydration: interactivity is a small
+client script (`src/_client/main.ts`) you write, built with Vite. For pages
+that need per-request rendering instead, [Flow](/integration/flow/overview)
+(experimental) streams deferred fragments from a server.
+
+**TypeScript end to end.** `meta`, plugin contexts and page props are typed.
+Configuration is `ssg.config.ts`, typed as well.
+
+## Choosing between them
+
+Stay with Astro if you rely on its island architecture or its ecosystem of
+integrations. Stay with 11ty if you want template languages and a plugin
+catalog over typed code. Choose `@vincle/ssg` when you want a small, typed,
+JSX-only static generator with no framework in the output, and especially if
+your pages share components with server-rendered views: the same JSX runs at
+build time with `@vincle/ssg` and per request with
+[`renderToString`](/guide/views).
+
+## Where to next
+
+- [Build your first site](/guide/getting-started/first-site): the ten-minute parcours
+- [SSG overview](/integration/ssg/overview): conventions and URLs
+- [Concepts](/integration/ssg/concepts): producers, plugins, publication
+- [Build a blog](/integration/ssg/blog): listings, tags and a feed

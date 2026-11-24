@@ -8,6 +8,14 @@ keywords: [pre-rendering]
 
 **A directory of components in, a directory of HTML out.**
 
+<div class="my-6 rounded-lg border border-sky-300 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
+  <p>
+    <strong>Beta.</strong> @vincle/ssg already builds this documentation site, but the API keeps
+    improving and small breaking changes are still possible between releases. Pin the exact version
+    you install.
+  </p>
+</div>
+
 `@vincle/ssg` turns the files under `src/pages/` into a static site. Each file
 is a route; each route becomes a file in `dist/` that any static host serves.
 Pages are Vincle components, Markdown or MDX. No JavaScript reaches the browser
@@ -100,6 +108,7 @@ adds a `sitemap.xml`.
 
 ## Next
 
+- [Concepts](/integration/ssg/concepts): producers, plugins, publication
 - [Pages & layouts](/integration/ssg/pages): formats, metadata, layouts, client assets
 - [Configuration](/integration/ssg/configuration): `ssg.config.ts`, CLI options, plugins
 - [Images](/integration/ssg/images): generated variants, `<Picture>`, converters

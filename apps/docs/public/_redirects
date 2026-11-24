@@ -42,4 +42,7 @@
 /api/flow/utils /api/flow/reference#utils 301
 /api/flow/utils.md /api/flow/reference.md 301
 
+/guide/static-site.html /guide/getting-started/first-site.html 301
+/guide/static-site.md /guide/getting-started/first-site.md 301
+/guide/static-site /guide/getting-started/first-site 301
 /* /404.html 404

@@ -1,5 +1,18 @@
 {
-  "installation": { "title": "Installation", "order": 1 },
-  "first-render": { "title": "First render", "order": 2 },
-  "typescript-setup": { "title": "TypeScript setup", "order": 3 }
+  "installation": {
+    "title": "Installation",
+    "order": 1
+  },
+  "first-render": {
+    "title": "First render",
+    "order": 2
+  },
+  "typescript-setup": {
+    "title": "TypeScript setup",
+    "order": 3
+  },
+  "first-site": {
+    "title": "Build your first site",
+    "order": 4
+  }
 }

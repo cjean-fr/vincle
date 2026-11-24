@@ -1,8 +1,30 @@
 {
-  "overview": { "title": "SSG overview", "order": 1 },
-  "pages": { "title": "Pages & layouts", "order": 2 },
-  "configuration": { "title": "Configuration", "order": 3 },
-  "images": { "title": "Images", "order": 4 },
-  "blog": { "title": "Build a blog", "order": 5 },
-  "deployment": { "title": "Deployment", "order": 6 }
+  "overview": {
+    "title": "SSG overview",
+    "order": 1
+  },
+  "pages": {
+    "title": "Pages & layouts",
+    "order": 2
+  },
+  "configuration": {
+    "title": "Configuration",
+    "order": 3
+  },
+  "images": {
+    "title": "Images",
+    "order": 4
+  },
+  "blog": {
+    "title": "Build a blog",
+    "order": 5
+  },
+  "deployment": {
+    "title": "Deployment",
+    "order": 6
+  },
+  "concepts": {
+    "title": "Concepts",
+    "order": 1.5
+  }
 }

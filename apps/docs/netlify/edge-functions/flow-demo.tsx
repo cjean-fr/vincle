@@ -13,7 +13,7 @@ async function findResults() {
   await new Promise((resolve) => setTimeout(resolve, 1200));
   return [
     { title: "Getting started", href: "/guide/getting-started/installation" },
-    { title: "Building a static site", href: "/guide/static-site" },
+    { title: "Building a static site", href: "/guide/getting-started/first-site" },
   ];
 }
 

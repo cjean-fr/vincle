@@ -13,7 +13,7 @@ async function findResults() {
   await new Promise((resolve) => setTimeout(resolve, 20));
   return [
     { title: "Getting started", href: "/guide/getting-started/installation" },
-    { title: "Building a static site", href: "/guide/static-site" },
+    { title: "Building a static site", href: "/guide/getting-started/first-site" },
   ];
 }
 
@@ -58,5 +58,5 @@ it("sends the shell with its fallback before the deferred results patch", async 
   // Later: a patch carries the results for the placeholder.
   expect(rest).toContain("<template data-for=");
   expect(rest).toContain("Getting started");
-  expect(rest).toContain("/guide/static-site");
+  expect(rest).toContain("/guide/getting-started/first-site");
 });

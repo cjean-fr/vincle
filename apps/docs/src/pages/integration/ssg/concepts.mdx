@@ -1,0 +1,157 @@
+---
+title: Concepts
+description: "How @vincle/ssg works under the hood: discovery, producers and multiple outputs, plugin phases, publication guarantees, errors, and custom runtimes or handlers."
+---
+
+# Concepts
+
+The [SSG overview](/integration/ssg/overview) covers the conventions. This page
+explains the machinery: what a producer is, how plugins fit in, what the build
+guarantees, and how to extend the formats.
+
+## Discovery
+
+`build()` reads the source directory and maps every file to a route. A name
+starting with `_` or `.` is never a route, and test or declaration files are
+skipped. Discovery follows symbolic links to files and directories: routes and
+layout lookup use the link's location, module imports use the bundler's native
+resolution. Directory cycles and broken links fail discovery rather than being
+silently omitted.
+
+## Producers and multiple outputs
+
+Every source file is a producer. JS/TS modules export text, bytes, an output,
+an iterable of outputs, or a function returning them; functions can be async
+and async generators are supported. Text or bytes use the route's existing
+suffix (`data.json.ts`) or HTML otherwise. Explicit outputs choose relative
+file paths independently of their source route:
+
+```tsx title="src/images/photo.ts"
+import type { PageContext } from "@vincle/ssg";
+
+import { resizePhoto } from "./_resize.js";
+
+export const meta = { title: "Photo", sitemap: false };
+
+export default async function* ({ route }: PageContext) {
+  for (const width of [320, 640, 1280]) {
+    yield {
+      path: `${route.slice(1)}-${width}.jpg`,
+      content: () => resizePhoto(width), // returns Uint8Array/ArrayBuffer
+    };
+  }
+}
+```
+
+JSX/TSX and MDX files can also export `outputs` alongside their default
+component to emit additional files, for example a JSON metadata twin:
+
+```ts
+export const outputs = ({ outputPath, meta }) => ({
+  path: outputPath(".json"),
+  content: JSON.stringify(meta),
+});
+```
+
+`content` is a string, `Uint8Array` or `ArrayBuffer`, or a function returning
+one. Output paths cannot escape `dist/`, and copied or generated file
+collisions are errors. Module text/binary producers are not JSX components and
+do not apply layouts.
+
+## Plugins
+
+Plugins run in configuration order within four explicit phases:
+
+1. `metadata(context)` enriches shared metadata before layouts and rendering.
+2. `render(output, context)` adjusts lazy output producers before evaluation.
+3. `transform(output, context)` receives concrete text/binary content after rendering.
+4. `publish(site)` inspects prepared files and can emit derived files before any
+   published output is replaced; it can read every page's metadata through
+   `site.pages`.
+
+A failing hook aborts publication and identifies the plugin and phase in its
+diagnostic. `SsgMeta` is common to all formats, supports custom fields, and can
+be extended with TypeScript module augmentation. See
+[Configuration](/integration/ssg/configuration) for the plugin examples.
+
+## Sitemap
+
+Setting `site` enables `sitemap.xml`. Generated HTML outputs are included by
+default; other outputs are excluded unless a source or output sets `sitemap`.
+Set `meta.sitemap: false` per source to exclude it. Sitemaps split
+automatically at 50,000 URLs or 52,428,800 uncompressed UTF-8 bytes, with
+`sitemap.xml` becoming an index of `sitemap-1.xml`, `sitemap-2.xml`, etc. To
+serve the site under a prefix, set `site` to the origin and `base` to the
+prefix; `build({ sitemap: false })` disables generation globally.
+
+## Publication and errors
+
+All output production, compilation and validation finish before replacing the
+published files. Failed builds retain the previous pages and Vite assets;
+successful builds remove obsolete files. `preserve` protects top-level files or
+directories owned by another tool. Publication uses filesystem moves and is not
+atomic: concurrent builds to the same output directory are unsupported.
+
+Errors are `SsgError` instances carrying `code: "ERR_VINCLE_SSG_BUILD"`, a
+stable `reason`, a human-readable `message`, a corrective `hint`, a diagnostic
+`context`, and the original `cause`. `JSON.stringify(error)` serializes the
+same diagnostic for loggers and LLM tools. Classify errors by `code` and
+`reason`, not by matching their message text:
+
+```ts
+import { build, SsgError } from "@vincle/ssg";
+
+try {
+  await build();
+} catch (error) {
+  if (error instanceof SsgError) {
+    console.error(error.message); // problem, context, corrective action
+    console.error(JSON.stringify(error)); // structured diagnostic
+  }
+  throw error;
+}
+```
+
+A missing source directory raises `SOURCE_MISSING`; a file used as a source
+root raises `SOURCE_NOT_DIRECTORY`. Both abort before assets or publication and
+leave the previous site untouched. An existing empty directory is a valid
+input.
+
+## Custom runtimes
+
+Vincle is the default JSX runtime. A runtime override supplies both its
+automatic JSX import source and a renderer; the same choice compiles JSX, TSX,
+MDX and layouts, including imported local components:
+
+```ts
+await build({
+  runtime: {
+    importSource: "react",
+    render: async (create) => renderToStaticMarkup(await create()),
+  },
+});
+```
+
+Install and import the alternate runtime and its server renderer in the
+consumer. Vincle-specific components require the Vincle runtime.
+
+## Custom handlers
+
+Add or override a format with `handlers`; `false` disables a built-in
+extension. Handlers receive source paths, their inferred route,
+`outputPath(extension)`, and the runtime, and return metadata plus a renderer
+that can emit multiple outputs. Markdown and MDX use Sätteri by default;
+`createMdxHandler` from `@vincle/ssg/mdx` configures that same pipeline for
+custom transforms, and `MdxCache` from the same entry caches compiled pages for
+custom producers.
+
+There is one handler API: `PageHandler.load(SourceContext)` returns metadata
+and `render(PageContext)`, which produces one or more outputs. `build()` and
+`discoverPages()` use this same contract; `renderPage()` exposes the same
+lifecycle for specialized consumers, and `generateSite` remains available for
+existing output pipelines.
+
+## Next
+
+- [Configuration](/integration/ssg/configuration): `ssg.config.ts`, CLI options, plugins
+- [Deployment](/integration/ssg/deployment): hosts, error page, content types, caching
