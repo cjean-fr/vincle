@@ -1,8 +1,8 @@
-import { raw, snapshotContext, Scope, type JSX } from "@vincle/core";
+import { raw, snapshotContext, type JSX } from "@vincle/core";
 
 import type { DeferContent, MergeType, OnError } from "../types.js";
 
-import { Flow, pendingMarks, renderPlaceholder } from "../context.js";
+import { flowContext, pendingMarks, renderPlaceholder } from "../context.js";
 
 export interface DeferProps {
   target?: string;
@@ -14,7 +14,7 @@ export interface DeferProps {
 }
 
 export function Defer(props: DeferProps): JSX.Element | null {
-  const { registerFragment, nextId, slots } = Scope.get(Flow);
+  const { registerFragment, nextId, slots } = flowContext("<Defer>");
   const { children, merge, timeout, onError, fallback } = props;
   const target = props.target ?? nextId();
 

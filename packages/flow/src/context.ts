@@ -9,7 +9,7 @@ import {
   type AssetState,
 } from "./assets.js";
 import { assertFlowConfig, PREFIX } from "./config.js";
-import { ERR_FLOW_NO_ADAPTER, vincleError } from "./errors.js";
+import { ERR_FLOW_NO_ADAPTER, ERR_FLOW_NO_RENDER, vincleError } from "./errors.js";
 import { createFragmentStore, type FragmentEntry, type FragmentStore } from "./fragment-store.js";
 
 export type { FlowConfig } from "./types.js";
@@ -33,6 +33,24 @@ export interface FlowContext {
 }
 
 export const Flow: ScopeKey<FlowContext> = Scope.key<FlowContext>("@vincle/flow:flow");
+
+/**
+ * The flow render a component runs in. Outside one, core's error points at
+ * Scope.with(), which does not set flow up: this one names the renderers.
+ */
+export function flowContext(component: string): FlowContext {
+  try {
+    return Scope.get(Flow);
+  } catch (error) {
+    const code = (error as { code?: unknown }).code;
+    if (code !== "ERR_VINCLE_NO_SCOPE" && code !== "ERR_VINCLE_CONTEXT_UNSET") throw error;
+    throw vincleError(
+      `${PREFIX} ${component} runs outside a flow render: render the page with renderToStream(), ` +
+        "renderToStatic() or renderFragment() from @vincle/flow, not renderToString() from @vincle/core.",
+      ERR_FLOW_NO_RENDER,
+    );
+  }
+}
 
 /**
  * The single adapter negotiation for deferred-fragment placeholders. Defer

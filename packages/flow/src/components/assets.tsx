@@ -2,7 +2,7 @@ import { Scope, snapshotContext, type JSX, type Awaitable } from "@vincle/core";
 import { raw } from "@vincle/core";
 
 import { claimAsset } from "../assets.js";
-import { Flow } from "../context.js";
+import { flowContext } from "../context.js";
 
 // `<Style>` and `<Script>` emit their tag at their own position, once per
 // name. Concurrent siblings reach occurrences in completion order, so the
@@ -30,7 +30,7 @@ export interface ScriptProps extends BaseAssetProps {
 }
 
 export function Style(props: StyleProps): JSX.Element | null {
-  const { assets } = Scope.get(Flow);
+  const { assets } = flowContext("<Style>");
   const { name, media, children: content } = props;
 
   const attrs: Record<string, string> = {};
@@ -46,7 +46,7 @@ export function Style(props: StyleProps): JSX.Element | null {
 }
 
 export function Script(props: ScriptProps): JSX.Element | null {
-  const { assets } = Scope.get(Flow);
+  const { assets } = flowContext("<Script>");
   const { name, src, module: isModule, defer: isDefer, children: content } = props;
 
   const attrs: Record<string, string | boolean> = {};

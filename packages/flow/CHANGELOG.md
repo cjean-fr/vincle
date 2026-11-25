@@ -1,5 +1,12 @@
 # @vincle/flow
 
+## Unreleased
+
+### Fixed
+
+- Name the flow renderers when `<Defer>`, `<Slot>`, `<Style>` or `<Script>` render outside one (for example through `renderToString()` from `@vincle/core`), with the new code `ERR_VINCLE_FLOW_NO_RENDER`: the error pointed to `Scope.with()`, which does not set flow up.
+- Reject a missing adapter in `renderToStream()` and `renderToFlowEvents()` before rendering, with `ERR_VINCLE_FLOW_NO_ADAPTER`, instead of a `TypeError` on `capabilities`.
+
 ## 0.12.0 — 2026-11-01
 
 ### Fixed

@@ -384,3 +384,16 @@ describe("one target, one fragment per render", () => {
     ).rejects.toThrow("already registered");
   });
 });
+
+describe("Defer: outside a flow render", () => {
+  it.each([
+    ["with no scope", () => renderToString(<Defer>{"x"}</Defer>)],
+    ["in a plain Scope.with()", () => Scope.with(() => renderToString(<Defer>{"x"}</Defer>))],
+  ])("names the flow renderers %s", async (_, render) => {
+    const error = await Promise.resolve()
+      .then(render)
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: "ERR_VINCLE_FLOW_NO_RENDER" });
+    expect((error as Error).message).toContain("<Defer> runs outside a flow render");
+  });
+});

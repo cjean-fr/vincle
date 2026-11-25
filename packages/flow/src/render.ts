@@ -8,7 +8,7 @@ import { abortable } from "./abortable.js";
 import { assertAdapter, assertFlowOptions } from "./config.js";
 import { renderFlow, withFlow } from "./context.js";
 import { createStream } from "./create-stream.js";
-import { ERR_FLOW_NO_STREAMING, vincleError } from "./errors.js";
+import { ERR_FLOW_NO_ADAPTER, ERR_FLOW_NO_STREAMING, vincleError } from "./errors.js";
 import { flushFragments } from "./flushFragments.js";
 
 /**
@@ -170,6 +170,13 @@ export async function runSequence(
  */
 function assertStreamInput(source: string, adapter: Adapter, opts: FlowOptions | undefined): void {
   assertFlowOptions(opts, source);
+  if (adapter === undefined) {
+    throw vincleError(
+      `[vincle/flow] ${source}(): no adapter: streaming needs one to write placeholders and patches. ` +
+        "Pass it as the second argument: renderToStream(() => <Page />, NativeAdapter).",
+      ERR_FLOW_NO_ADAPTER,
+    );
+  }
   assertAdapter(adapter, source);
 }
 

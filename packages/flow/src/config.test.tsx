@@ -269,3 +269,13 @@ describe("entry-point fail-fast", () => {
     );
   });
 });
+
+describe("streaming entries without an adapter", () => {
+  it.each([
+    ["renderToStream", renderToStream],
+    ["renderToFlowEvents", renderToFlowEvents],
+  ])("%s names the missing adapter before rendering", (name, entry) => {
+    const call = () => (entry as (node: () => null) => unknown)(() => null);
+    expect(call).toThrow(`${name}(): no adapter`);
+  });
+});
