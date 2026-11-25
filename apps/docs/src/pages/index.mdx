@@ -65,7 +65,7 @@ prose: false
 
   <section class="docs-home-section docs-paths" aria-labelledby="paths-title">
     <div class="docs-section-heading">
-      <h2 id="paths-title">One renderer.<br />Two ways to ship.</h2>
+      <h2 id="paths-title">One renderer.<br />Two ways to ship<span class="docs-h2-dot">.</span></h2>
       <p>The same components produce the same HTML. Choose per page: answer a request now, or write the result to a file at build time.</p>
     </div>
 
@@ -86,11 +86,11 @@ prose: false
         </div>
         <div class="docs-diagram-link" aria-hidden="true"></div>
         <div class="docs-diagram-outcomes">
-          <div class="docs-diagram-out">
+          <div class="docs-diagram-out docs-diagram-out--constant">
             <strong>HTTP response</strong>
             <span>one HTML string</span>
           </div>
-          <div class="docs-diagram-out">
+          <div class="docs-diagram-out docs-diagram-out--string">
             <strong>dist/index.html</strong>
             <span>one file per page</span>
           </div>
@@ -100,7 +100,7 @@ prose: false
     </figure>
 
     <div class="docs-path-grid">
-      <article class="docs-path-card">
+      <article class="docs-path-card docs-path-card--serve">
         <p class="docs-path-kicker">In your server</p>
         <h3>Return the HTML from a route</h3>
         <p>Keep your router, your middleware and your handler. Render the view and send the string.</p>
@@ -112,7 +112,7 @@ prose: false
         ```
         <a class="docs-text-link" href="/guide/views">Connect a view to your server</a>
       </article>
-      <article class="docs-path-card">
+      <article class="docs-path-card docs-path-card--generate">
         <p class="docs-path-kicker">At build time <span class="docs-badge">beta</span></p>
         <h3>Write a whole site to files</h3>
         <p>@vincle/ssg renders a directory of pages, with layouts, Markdown and assets, to static files.</p>
@@ -134,7 +134,9 @@ prose: false
 
 <section class="docs-home-section docs-foundations" aria-labelledby="features-title">
   <div class="docs-foundations-intro">
-    <h2 id="features-title">Built into the renderer.</h2>
+    <h2 id="features-title">
+      Built into the renderer<span class="docs-h2-dot">.</span>
+    </h2>
     <p>Typed views, predictable rendering, explicit HTML boundaries.</p>
     <a class="docs-text-link" href="https://github.com/cjean-fr/vincle">
       View source on GitHub
@@ -142,7 +144,7 @@ prose: false
   </div>
   <div class="docs-feature-list">
     <a href="/guide/jsx/components" class="docs-feature-link">
-      <span class="docs-feature-icon" aria-hidden="true">
+      <span class="docs-feature-icon docs-feature-icon--keyword" aria-hidden="true">
         await
       </span>
       <span class="docs-feature-body">
@@ -151,7 +153,7 @@ prose: false
       </span>
     </a>
     <a href="/api/core/scope" class="docs-feature-link">
-      <span class="docs-feature-icon" aria-hidden="true">
+      <span class="docs-feature-icon docs-feature-icon--constant" aria-hidden="true">
         ctx
       </span>
       <span class="docs-feature-body">
@@ -163,7 +165,7 @@ prose: false
       </span>
     </a>
     <a href="/guide/security" class="docs-feature-link">
-      <span class="docs-feature-icon" aria-hidden="true">
+      <span class="docs-feature-icon docs-feature-icon--parameter" aria-hidden="true">
         &amp;
       </span>
       <span class="docs-feature-body">
@@ -175,7 +177,7 @@ prose: false
       </span>
     </a>
     <a href="/guide/jsx/elements-attributes" class="docs-feature-link">
-      <span class="docs-feature-icon" aria-hidden="true">
+      <span class="docs-feature-icon docs-feature-icon--function" aria-hidden="true">
         TS
       </span>
       <span class="docs-feature-body">
@@ -187,7 +189,7 @@ prose: false
 </section>
 
   <section class="docs-home-section docs-trust" aria-labelledby="trust-title">
-    <h2 id="trust-title">Small, readable, checkable.</h2>
+    <h2 id="trust-title">Small, readable, checkable<span class="docs-h2-dot">.</span></h2>
     <ul class="docs-trust-list">
       <li><a href="/guide/comparison">Scope kept small</a> <span>HTML rendering without a virtual DOM, hydration or a reconciler.</span></li>
       <li><a href="https://github.com/cjean-fr/vincle/actions">Checks in the open</a> <span>Tests, differential fuzzers, mutation testing and benchmarks, method included.</span></li>
