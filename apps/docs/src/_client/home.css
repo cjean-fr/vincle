@@ -4,8 +4,8 @@
 }
 .docs-home-hero {
   display: grid;
-  grid-template-columns: 1fr 1.12fr;
-  align-items: center;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: start;
   gap: 3rem;
   padding-block: 2rem 5rem;
 }
@@ -22,7 +22,7 @@
   font-family: var(--docs-font-mono);
 }
 .docs-home h1 {
-  font-size: clamp(3rem, 5vw, 4.5rem);
+  font-size: clamp(2.5rem, 4.4vw, 3.75rem);
   line-height: 1.06;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -81,43 +81,43 @@
   border-radius: calc(0.25rem + 0.5rem + 1px);
   background: var(--docs-color-surface);
 }
-.docs-example-heading {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.5rem 0.65rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-.docs-example-mark {
-  font-family: var(--docs-font-mono);
-  color: var(--docs-color-accent);
-}
-.docs-example-language {
-  margin-left: auto;
-  font-weight: 400;
-  color: var(--docs-color-text-secondary);
-}
 .docs-hero-example .docs-code-block {
   margin-block: 0;
+}
+/* The output reads as the result of the source above it. */
+.docs-hero-example .docs-code-block + .docs-code-block {
+  overflow: visible;
+  margin-top: 2rem;
+}
+.docs-hero-example .docs-code-block + .docs-code-block::before {
+  content: "↓" / "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  translate: -50% 0;
+  font-size: 1.125rem;
+  line-height: 2rem;
+  color: var(--docs-color-accent);
+}
+/* overflow stays visible for the arrow, so the caption rounds its own corners. */
+.docs-hero-example .docs-code-block + .docs-code-block .docs-code-caption {
+  border-radius: 0.25rem 0.25rem 0 0;
 }
 .dark .docs-hero-example .docs-code-block {
   --docs-code-header: #272c30;
 }
-/* Keep the complete example readable even on narrow screens, with the first
-   line clear of the copy button. */
+/* Lines keep their shape on narrow screens and scroll instead of wrapping;
+   the scrolled end stays clear of the copy button. */
 .docs-hero-example .docs-code-block pre {
   padding-right: 3rem;
 }
-/* Marked rows still reach the pre's padding edge on the right. */
+/* Marked rows span the scrolled width and reach the pre's padding edge. */
+.docs-hero-example .docs-code-block pre code {
+  min-width: max-content;
+}
 .docs-hero-example .docs-code-block.has-marks pre code .line {
   margin-right: -3rem;
   padding-right: 3rem;
-}
-.docs-hero-example .docs-code-block pre,
-.docs-hero-example .docs-code-block pre code {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
 
 /* A single rendering cue: the HTML appears after its source, without looping. */
@@ -136,11 +136,6 @@
   }
 }
 
-.docs-example-note {
-  padding: 0.85rem 0.65rem 0.35rem;
-  font-size: 0.75rem;
-  color: var(--docs-color-text-secondary);
-}
 .docs-runtime-strip {
   display: flex;
   justify-content: space-between;
@@ -298,9 +293,6 @@
   }
   .docs-home-section {
     padding-block: 3rem;
-  }
-  .docs-example-language {
-    display: none;
   }
 }
 

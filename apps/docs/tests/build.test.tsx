@@ -21,7 +21,9 @@ describe("SSG build", () => {
   it("keeps the homepage marker phrasing-only and gives links and tables contextual names", async () => {
     const dist = DIST_DIR;
     const home = await readFile(path.join(dist, "index.html"), "utf8");
-    expect(home).toContain('<span class="docs-example-mark" aria-hidden="true">&lt;/&gt;</span>');
+    expect(home).toContain(
+      '<div class="docs-product-label"><span aria-hidden="true">&lt;/&gt;</span>',
+    );
     const overview = await readFile(path.join(dist, "integration/flow/overview.html"), "utf8");
     expect(overview).toMatch(/href="\/integration\/flow\/overview"[^>]*>Flow overview<\/a>/);
     expect(overview).toMatch(/href="\/integration\/ssg\/overview"[^>]*>SSG overview<\/a>/);

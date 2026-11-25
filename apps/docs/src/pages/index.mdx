@@ -43,11 +43,6 @@ import StreamingReplay from "../components/StreamingReplay";
       </div>
     </div>
     <div class="docs-hero-example">
-      <div class="docs-example-heading">
-        <span class="docs-example-mark" aria-hidden="true">{"</>"}</span>
-        <span>From JSX to HTML</span>
-        <span class="docs-example-language">TypeScript</span>
-      </div>
       ```tsx {1,8} title="hello.tsx"
       import { renderToString } from "@vincle/core";
 
@@ -59,11 +54,9 @@ import StreamingReplay from "../components/StreamingReplay";
       const html = await renderToString(page);
       ```
 
-      ```html
+      ```html title="output.html"
       <h1>Hello, world!</h1>
       ```
-
-      <p class="docs-example-note">The rendered output is a plain HTML string.</p>
     </div>
 
   </section>
@@ -169,7 +162,7 @@ import StreamingReplay from "../components/StreamingReplay";
         <h3>Async components</h3>
         <p>Fetch data inside the component that needs it. Vincle awaits the tree.</p>
       </div>
-      <span aria-hidden="true">↗</span>
+      <span aria-hidden="true">→</span>
     </a>
     <a href="/api/core/scope" class="docs-feature-link">
       <div>
@@ -179,7 +172,7 @@ import StreamingReplay from "../components/StreamingReplay";
           state in a Scope.
         </p>
       </div>
-      <span aria-hidden="true">↗</span>
+      <span aria-hidden="true">→</span>
     </a>
     <a href="/guide/security" class="docs-feature-link">
       <div>
@@ -189,14 +182,14 @@ import StreamingReplay from "../components/StreamingReplay";
           attributes are refused.
         </p>
       </div>
-      <span aria-hidden="true">↗</span>
+      <span aria-hidden="true">→</span>
     </a>
     <a href="/guide/jsx/elements-attributes" class="docs-feature-link">
       <div>
         <h3>TypeScript support</h3>
         <p>Write components and HTML attributes with TypeScript checking your work.</p>
       </div>
-      <span aria-hidden="true">↗</span>
+      <span aria-hidden="true">→</span>
     </a>
   </div>
 </section>

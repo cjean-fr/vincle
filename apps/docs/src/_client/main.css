@@ -893,7 +893,7 @@ html[data-docs-package-manager="bun"]
 .docs-body :is(h4, h5, h6) {
   text-wrap: balance;
 }
-.docs-body :is(.docs-page-footer, .docs-example-note) {
+.docs-body .docs-page-footer {
   text-wrap: pretty;
 }
 .docs-search-dialog {
