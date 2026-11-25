@@ -3,6 +3,11 @@
   padding-top: 2rem;
   background:
     radial-gradient(90rem 38rem at 8% -12%, var(--docs-color-accent-soft), transparent 62%),
+    radial-gradient(
+      46rem 22rem at 78% -4%,
+      color-mix(in srgb, var(--docs-color-accent) 12%, transparent),
+      transparent 70%
+    ),
     radial-gradient(64rem 30rem at 92% -8%, var(--docs-color-surface), transparent 60%);
   background-repeat: no-repeat;
 }
@@ -31,6 +36,9 @@
   font-weight: 700;
   letter-spacing: -0.032em;
   text-wrap: balance;
+}
+.docs-hero-accent {
+  color: var(--docs-color-accent);
 }
 .docs-hero-description {
   max-width: 38ch;
@@ -66,14 +74,14 @@
 }
 .docs-button-primary {
   color: white;
-  background: #245bd6;
+  background: linear-gradient(180deg, #2e66e8, #245bd6);
   border-color: #245bd6;
   box-shadow:
     0 1px 2px rgb(15 23 42 / 0.12),
     0 10px 24px -14px rgb(36 91 214 / 0.8);
 }
 .docs-button-primary:hover {
-  background: #1945a8;
+  background: linear-gradient(180deg, #245bd6, #1945a8);
   border-color: #1945a8;
 }
 .docs-button-secondary {
@@ -96,10 +104,12 @@
 .docs-hero-example {
   min-width: 0;
   padding: 0.5rem;
-  border: 1px solid var(--docs-color-border);
+  border: 1px solid color-mix(in srgb, var(--docs-color-accent) 30%, var(--docs-color-border));
   border-radius: calc(0.25rem + 0.5rem + 1px);
   background: var(--docs-color-surface);
-  box-shadow: 0 24px 48px -32px rgb(15 23 42 / 0.4);
+  box-shadow:
+    0 24px 48px -32px rgb(15 23 42 / 0.4),
+    0 0 80px -32px color-mix(in srgb, var(--docs-color-accent) 45%, transparent);
 }
 .docs-example-heading {
   display: flex;
@@ -210,6 +220,10 @@
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 999px;
+  background: var(--docs-color-surface);
 }
 .docs-runtime-strip li::before {
   content: "";
@@ -396,6 +410,13 @@
   border: 1px solid var(--docs-color-border);
   border-radius: 0.875rem;
   background: var(--docs-color-bg);
+  transition:
+    border-color var(--docs-transition-fast),
+    transform var(--docs-transition-fast);
+}
+.docs-path-card:hover {
+  border-color: color-mix(in srgb, var(--docs-color-accent) 45%, var(--docs-color-border));
+  transform: translateY(-2px);
 }
 .docs-path-kicker {
   display: flex;
