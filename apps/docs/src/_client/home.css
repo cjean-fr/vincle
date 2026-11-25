@@ -139,7 +139,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* One connector between the source and its output, then a single reveal. */
+/* One connector between the source and its output. */
 .docs-example-arrow {
   display: grid;
   place-items: center;
@@ -162,19 +162,6 @@
   border-right: 1px solid var(--docs-color-accent);
   border-bottom: 1px solid var(--docs-color-accent);
   transform: translate(-50%, 1px) rotate(45deg);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .docs-hero-example .docs-code-block + .docs-example-arrow + .docs-code-block pre code {
-    animation: docs-html-reveal 900ms steps(24, end) 350ms both;
-  }
-}
-@keyframes docs-html-reveal {
-  from {
-    clip-path: inset(0 100% 0 0);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
 }
 .docs-example-note {
   margin: 0;
