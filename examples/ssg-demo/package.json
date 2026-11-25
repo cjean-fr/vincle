@@ -1,0 +1,16 @@
+{
+  "name": "vincle-ssg-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ssg dev",
+    "build": "ssg generate"
+  },
+  "dependencies": {
+    "@vincle/core": "0.10.0",
+    "@vincle/ssg": "0.5.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}
