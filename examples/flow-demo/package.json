@@ -1,0 +1,19 @@
+{
+  "name": "vincle-flow-demo",
+  "private": true,
+  "type": "module",
+  "main": "dev.js",
+  "scripts": {
+    "dev": "tsx server.tsx",
+    "start": "tsx server.tsx"
+  },
+  "dependencies": {
+    "@vincle/core": "0.10.0",
+    "@vincle/flow": "0.12.0",
+    "tsx": "^4.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0"
+  }
+}

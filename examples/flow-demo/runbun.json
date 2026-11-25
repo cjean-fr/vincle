@@ -1,0 +1,6 @@
+{
+  "$schema": "https://runbun.dev/schema/runbun.json",
+  "run": { "entry": "dev.js" },
+  "open": ["server.tsx"],
+  "preview": { "path": "/" }
+}
