@@ -2,6 +2,7 @@
   "name": "vincle-ssg-demo",
   "private": true,
   "type": "module",
+  "main": "dev.js",
   "scripts": {
     "dev": "ssg dev",
     "build": "ssg generate"
