@@ -15,6 +15,14 @@
   --docs-color-find: #ffdf6b;
   --docs-color-find-text: #241a00;
 
+  /* The page palette is the syntax theme's: the site's colors come from its
+     own code, verbatim from src/_client/highlight/style.css. */
+  --docs-token-keyword: #cf222e;
+  --docs-token-string: #116329;
+  --docs-token-function: #8250df;
+  --docs-token-constant: #0550ae;
+  --docs-token-parameter: #953800;
+
   --docs-code-bg: #030712;
   --docs-code-text: #edf2f8;
   --docs-code-border: #293b53;
@@ -54,6 +62,12 @@
   /* Deepened on dark: the same amber at full strength would glare. */
   --docs-color-find: #e8b53c;
   --docs-color-find-text: #241a00;
+
+  --docs-token-keyword: #ff7b72;
+  --docs-token-string: #7ee787;
+  --docs-token-function: #d2a8ff;
+  --docs-token-constant: #79c0ff;
+  --docs-token-parameter: #ffa657;
 
   --docs-code-bg: #152b47;
   --docs-code-border: #293b53;
