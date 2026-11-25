@@ -11,3 +11,8 @@ npm install
 npm run build   # writes dist/
 npm run dev     # development server
 ```
+
+## In a browser playground
+
+- StackBlitz: opens, installs and starts `npm run dev` on its own.
+- runbun.dev: choose "Install dependencies" in the menu next to Run, then press Run (`dev.js` starts the same server).
