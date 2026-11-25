@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Type-check every file of the generated project, not only `server.tsx`: the Bun and Node `tsconfig.json` no longer restrict `include`, and the Deno `check` task runs `deno check` on the whole project.
 - Print the package version with `--version`: it printed 0.9.0 while the package is 0.10.0. A test now compares it with `package.json`.
 
 ## 0.10.0 — 2026-10-11

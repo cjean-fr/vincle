@@ -91,6 +91,8 @@ describe("Bun template", () => {
       jsxImportSource: "@vincle/core",
       types: ["bun"],
     });
+    // Files the user adds must be type-checked too.
+    expect(config["include"]).toBeUndefined();
     expect(packageFile["scripts"]).toMatchObject({ dev: "bun --watch server.tsx" });
   });
 });
@@ -167,6 +169,7 @@ describe("Node template", () => {
       jsxImportSource: "@vincle/core",
       types: ["node"],
     });
+    expect(config["include"]).toBeUndefined();
     expect(packageFile["scripts"]).toMatchObject({ dev: "tsx watch server.tsx" });
   });
 });
@@ -229,7 +232,7 @@ describe("Deno template", () => {
       jsxImportSource: `npm:@vincle/core@${CORE_VERSION}`,
     });
     expect(config["imports"]).toEqual({ "@vincle/core": `npm:@vincle/core@${CORE_VERSION}` });
-    expect(config["tasks"]).toMatchObject({ check: "deno check server.tsx" });
+    expect(config["tasks"]).toMatchObject({ check: "deno check" });
   });
 });
 
