@@ -77,12 +77,21 @@ interface Resvg {
   };
 }
 
-/** Only a genuinely absent package gets the install hint; anything else surfaces as-is. */
-function isMissingPackage(error: unknown, name: string): boolean {
+/** How Node and Bun phrase an unresolvable import: the requested specifier, quoted. */
+const REQUESTED_MODULE = /Cannot find (?:module|package) ["']([^"']+)["']/;
+
+/**
+ * Only a genuinely absent package gets the install hint; anything else
+ * surfaces as-is. The requested specifier must be the targeted package
+ * exactly: a nested companion ("@resvg/resvg-js-linux-x64-gnu" under npm,
+ * "@resvg+resvg-js@…" store paths under Bun's isolated installs) contains
+ * the name as a substring but is a different failure.
+ */
+export function isMissingPackage(error: unknown, name: string): boolean {
   return (
     error instanceof Error &&
     (error as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND" &&
-    error.message.includes(name)
+    REQUESTED_MODULE.exec(error.message)?.[1] === name
   );
 }
 

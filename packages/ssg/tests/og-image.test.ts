@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import path from "node:path";
 
 import { build, SsgError } from "../src/index.js";
-import { ogImagePath } from "../src/og-image.js";
+import { isMissingPackage, ogImagePath } from "../src/og-image.js";
 
 async function fixture(
   run: (root: string, put: (name: string, content: string) => Promise<void>) => Promise<void>,
@@ -260,4 +260,69 @@ test("the caches short-circuit the engine and the encoder on unchanged markup", 
     );
     await build({ root, assets: false });
     expect((await readdir(cacheDirectory)).length).toBeGreaterThan(first.length);
+  }));
+
+test("only the targeted missing package gets the install hint", () => {
+  const nodeMissing = Object.assign(
+    new Error(
+      "Cannot find package 'satori' imported from /app/node_modules/@vincle/ssg/dist/og-image.js",
+    ),
+    { code: "ERR_MODULE_NOT_FOUND" },
+  );
+  expect(isMissingPackage(nodeMissing, "satori")).toBe(true);
+  // Bun's isolated installs phrase the same absence with the importing file.
+  const bunMissing = Object.assign(
+    new Error("Cannot find package 'satori' imported from /repo/packages/ssg/[eval]"),
+    { code: "ERR_MODULE_NOT_FOUND" },
+  );
+  expect(isMissingPackage(bunMissing, "satori")).toBe(true);
+  // npm layout: the absent native companion shares the scope, a different failure.
+  const npmNested = Object.assign(
+    new Error(
+      "Cannot find module '@resvg/resvg-js-linux-x64-gnu' imported from /app/node_modules/@resvg/resvg-js/js-binding.js",
+    ),
+    { code: "ERR_MODULE_NOT_FOUND" },
+  );
+  expect(isMissingPackage(npmNested, "@resvg/resvg-js")).toBe(false);
+  // Bun isolated layout: the store path mentions the package, a different failure.
+  const bunNested = Object.assign(
+    new Error(
+      "Cannot find module '/repo/node_modules/.bun/@resvg+resvg-js-linux-x64-gnu@2.6.2/node_modules/@resvg/resvg-js-linux-x64-gnu/resvgjs.linux-x64-gnu.node'. Please verify that the package.json has a valid \"main\" entry",
+    ),
+    { code: "ERR_MODULE_NOT_FOUND" },
+  );
+  expect(isMissingPackage(bunNested, "@resvg/resvg-js")).toBe(false);
+  // Anything else (a syntax error inside the package, a non-Error) is not an absence.
+  expect(isMissingPackage(new SyntaxError("Unexpected token"), "satori")).toBe(false);
+  expect(isMissingPackage("satori", "satori")).toBe(false);
+});
+
+test("each translated page gets its own card", () =>
+  fixture(async (root, put) => {
+    await put("_layout.tsx", LAYOUT);
+    await put("_og-image.tsx", CARD);
+    await put(
+      "about.tsx",
+      'export const meta = { title: "About", locale: "en", translationKey: "about" }\nexport default () => <main>About</main>',
+    );
+    await put(
+      "fr/about.tsx",
+      'export const meta = { title: "À propos", locale: "fr", translationKey: "about" }\nexport default () => <main>À propos</main>',
+    );
+    await build({
+      root,
+      assets: false,
+      site: "https://example.com",
+      i18n: { locales: ["en", "fr"], defaultLocale: "en" },
+    });
+    const en = await readFile(path.join(root, "dist", "about", "index.html"), "utf8");
+    const fr = await readFile(path.join(root, "dist", "fr", "about", "index.html"), "utf8");
+    expect(en).toContain('content="https://example.com/about/og.png"');
+    expect(fr).toContain('content="https://example.com/fr/about/og.png"');
+    const enPng = new Uint8Array(await readFile(path.join(root, "dist", "about", "og.png")));
+    const frPng = new Uint8Array(await readFile(path.join(root, "dist", "fr", "about", "og.png")));
+    expectPng(enPng);
+    expectPng(frPng);
+    // Localized titles make distinct cards.
+    expect(Buffer.from(enPng).equals(Buffer.from(frPng))).toBe(false);
   }));
