@@ -100,14 +100,14 @@ const fetchHandler = `async function handleRequest(request: Request): Promise<Re
 
 const bunServer = `${page}
 ${fetchHandler}
-const server = Bun.serve({ port: 3000, fetch: handleRequest });
+const server = Bun.serve({ port: 3000, hostname: "localhost", fetch: handleRequest });
 
 console.log("Listening on " + server.url);
 `;
 
 const denoServer = `${page}
 ${fetchHandler}
-const server = Deno.serve({ port: 3000 }, handleRequest);
+const server = Deno.serve({ port: 3000, hostname: "localhost" }, handleRequest);
 
 console.log("Listening on http://localhost:" + server.addr.port);
 `;
@@ -149,7 +149,7 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(3000, () => {
+server.listen(3000, "127.0.0.1", () => {
   console.log("Listening on http://localhost:3000");
 });
 `;

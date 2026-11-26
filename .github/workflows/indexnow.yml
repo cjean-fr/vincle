@@ -4,12 +4,17 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   indexnow:
     name: Notify IndexNow
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

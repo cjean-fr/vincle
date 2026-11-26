@@ -24,7 +24,7 @@
     "@types/bun": "catalog:",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "hono": "^4.13.14",
+    "hono": "^4.13.22",
     "mitata": "^1.0.34",
     "oxfmt": "catalog:",
     "preact": "^11.1.0",

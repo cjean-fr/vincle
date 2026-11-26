@@ -27,6 +27,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -126,6 +128,9 @@ jobs:
         env:
           PACKAGE_NAME: ${{ steps.meta.outputs.package_name }}
           REPOSITORY: ${{ github.repository }}
+          # The checkout keeps no credential (`persist-credentials: false`), so
+          # the token is given to this step only, for the tag push below.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           VERSION="$(jq -r '.version' "${{ steps.meta.outputs.package_dir }}/package.json")"
           TAG="$PACKAGE_NAME@$VERSION"
@@ -159,4 +164,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Release $PACKAGE_NAME $VERSION"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPOSITORY}.git"
           git push origin "refs/tags/$TAG"

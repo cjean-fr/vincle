@@ -9,6 +9,7 @@
 ### Fixed
 
 - Print the package version with `--version`: it printed 0.9.0 while the package is 0.10.0. A test now compares it with `package.json`.
+- Generated dev servers listen on localhost only, not on all network interfaces (the default of `Bun.serve`, `Deno.serve` and Node's `listen`).
 
 ## 0.10.0 — 2026-10-11
 
