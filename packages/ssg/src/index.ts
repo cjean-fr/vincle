@@ -34,6 +34,13 @@ export {
 } from "./outputs.js";
 export { discoverPages } from "./handlers.js";
 export { renderPage } from "./lifecycle.js";
+export type {
+  OgImageContext,
+  OgImageFont,
+  OgImageRender,
+  OgImageSize,
+  OgImageVariant,
+} from "./og-image.js";
 
 export { SsgError, ERR_SSG_BUILD, type SsgErrorReason, type SsgErrorDetails } from "./errors.js";
 

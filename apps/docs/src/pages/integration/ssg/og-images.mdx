@@ -1,0 +1,106 @@
+---
+title: Social cards
+description: "Generate each page's og:image at build time with a colocated _og-image module: pure Vincle JSX, layout-like inheritance, variants, fonts and a content-addressed cache, in one build pass."
+---
+
+# Social cards
+
+A colocated `_og-image.tsx` module gives every page in its subtree a social
+card, emitted at build time as `<route>/og.png`. The build sets `meta.image`
+and `meta.imageSize` on each covered page, so your layout's existing head
+helper publishes `og:image`, its dimensions and `twitter:card` with no extra
+wiring. One file at the root covers the whole site.
+
+The authoring model is plain Vincle JSX: a pure, stateless component with
+style objects. The rendering engine is internal and loaded on demand; a site
+without any `_og-image` file pays nothing for the feature.
+
+```tsx title="src/pages/_og-image.tsx"
+import type { OgImageContext } from "@vincle/ssg";
+
+export default function Card({ title, meta }: OgImageContext) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        boxSizing: "border-box",
+        width: "100%",
+        height: "100%",
+        padding: 80,
+        background: "#0b0d10",
+        color: "#f5f7fa",
+        fontFamily: "Inter",
+      }}
+    >
+      <span style={{ fontSize: 64, fontWeight: 700 }}>{title ?? "Vincle"}</span>
+      <span style={{ fontSize: 28, color: "#9aa4b2" }}>{meta.description}</span>
+    </div>
+  );
+}
+```
+
+```bash
+bun add satori @resvg/resvg-js   # or: npm install satori @resvg/resvg-js
+```
+
+The two rendering dependencies are optional peers: add them when you adopt the
+feature. The build points at this install line if they are missing.
+
+## Inheritance and overrides
+
+Lookup mirrors `_layout`: the nearest `_og-image.{tsx,jsx,ts,js}` ancestor
+wins, a nested module replaces its ancestor for its subtree, and page metadata
+adjusts the choice per page.
+
+| Metadata             | Effect                                                                   |
+| -------------------- | ------------------------------------------------------------------------ |
+| `ogImage: "./x.tsx"` | Use this module instead, resolved relative to the page's source file.    |
+| `ogImage: false`     | No card for this page, and `meta.image` is left alone.                   |
+| `image: "/own.png"`  | Keep your own image; the card is still emitted but metadata stays yours. |
+
+## Size and variants
+
+`size` overrides the default 1200 × 630. Named `variants` emit extra cards as
+`og-<name>.png` next to the default `og.png`, each a component or
+`{ size, render }`.
+
+```tsx title="src/pages/_og-image.tsx"
+export const size = { width: 1200, height: 630 };
+
+export const variants = {
+  square: { size: { width: 600, height: 600 }, render: SquareCard },
+};
+```
+
+Variant names become file names: lowercase letters, digits and dashes.
+
+## Fonts
+
+A card needs real font files. Out of the box the package ships Inter (regular
+and bold, Latin subset, OFL-licensed) so a minimal module works immediately.
+For a brand font or other scripts, declare `fonts`; each `path` resolves
+relative to the `_og-image` file, and font files are watched in dev.
+
+```tsx title="src/pages/_og-image.tsx"
+export const fonts = [
+  { name: "Brand", path: "./assets/brand-regular.woff2", weight: 400 },
+  { name: "Brand", path: "./assets/brand-bold.woff2", weight: 700 },
+];
+```
+
+## What the build guarantees
+
+- **One pass.** Cards render in the same build as the pages; no second step.
+- **Cached.** A card re-renders only when its generated markup changes; the
+  content-addressed cache lives in `node_modules/.cache/vincle-og-images`.
+- **Fail loud.** A missing default export, a bad size, an unreadable font or
+  raw HTML in the tree fails the build as `OG_IMAGE_FAILED` with the fix.
+- **No surprises in the tree.** Cards render to an image: components, async
+  components and fragments are fine; `dangerouslySetInnerHTML` and template
+  nodes are refused with a hint.
+
+One styling note: the engine follows the CSS default `box-sizing: content-box`,
+so a full-size container with padding overflows unless it sets
+`boxSizing: "border-box"` (as in the example above).

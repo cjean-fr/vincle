@@ -25,6 +25,7 @@
   "files": [
     "bin.js",
     "dist",
+    "fonts",
     "README.md",
     "LICENSE"
   ],
@@ -65,9 +66,23 @@
     "vite": "catalog:"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^26.6.6",
+    "satori": "^0.63.2",
     "tsdown": "^0.23.4",
     "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "satori": "^0.63.2"
+  },
+  "peerDependenciesMeta": {
+    "@resvg/resvg-js": {
+      "optional": true
+    },
+    "satori": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=22.12.0"

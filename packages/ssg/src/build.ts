@@ -19,6 +19,13 @@ import { failure, diagnose, contextualError } from "./errors.js";
 import { resolveHandlers, vincleRuntime } from "./formats.js";
 import { discoverPages } from "./handlers.js";
 import { createPageRenderer } from "./lifecycle.js";
+import {
+  ogImageLoader,
+  ogImagePath,
+  ogImageResolver,
+  renderOgImages,
+  type OgImageWork,
+} from "./og-image.js";
 import { generateSite, generateSiteCached, type PublicationCache } from "./outputs.js";
 import { fullUrl, urlForPath } from "./routes.js";
 import { sitemapOutputs } from "./sitemap.js";
@@ -238,12 +245,31 @@ async function buildInternal(
       const renderPage = createPageRenderer();
       const contexts: PageContext[] = [];
       const pageCache = cache;
+      const resolveOgImage = ogImageResolver();
+      const loadOgImage = ogImageLoader();
+      const ogImages: OgImageWork[] = [];
       async function* produce(): AsyncGenerator<SsgOutput> {
         // Drop rendered page closures as we advance; publication only needs their contexts.
         while (pages.length) {
           const page = pages.pop()!;
           try {
             const hit = pageCache?.rendered(page);
+            // Social cards: resolve the colocated _og-image module before the
+            // render so layouts read meta.image/imageSize from the shared meta.
+            const ogSource = hit?.context ?? page.source;
+            const ogMeta = hit?.context?.meta ?? page.meta;
+            const ogFile = await resolveOgImage(ogSource, ogMeta);
+            if (ogFile) {
+              const module = await loadOgImage(
+                ogFile,
+                ogSource.runtime.importSource,
+                ogSource.modules,
+              );
+              for (const font of module.fontFiles) ogSource.watch(font);
+              ogMeta.image ??= `/${ogImagePath(ogSource.route)}`;
+              ogMeta.imageSize ??= module.size;
+              ogImages.push({ file: ogFile, module, route: ogSource.route, meta: ogMeta });
+            }
             let context: PageContext | undefined;
             const rendered: RenderedOutput[] = [];
             if (hit?.context) contexts.push(hit.context);
@@ -293,6 +319,17 @@ async function buildInternal(
         ],
         preserve: options.preserve,
         async beforePublish(prepared) {
+          if (ogImages.length) {
+            await diagnose(
+              () => renderOgImages(ogImages, root, (output) => prepared.emit(output)),
+              "Social card generation failed",
+              {
+                reason: "OG_IMAGE_FAILED",
+                hint: "Fix the named _og-image module, its fonts or its components.",
+                context: { out },
+              },
+            );
+          }
           const context = {
             ...prepared,
             get files() {

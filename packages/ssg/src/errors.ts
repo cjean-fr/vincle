@@ -18,6 +18,7 @@ export type SsgErrorReason =
   | "COPY_FAILED"
   | "COMPILATION_FAILED"
   | "LAYOUT_FAILED"
+  | "OG_IMAGE_FAILED"
   | "PLUGIN_FAILED"
   | "ASSETS_FAILED"
   | "PREPARATION_FAILED"

@@ -15,6 +15,10 @@
     "title": "Images",
     "order": 4
   },
+  "og-images": {
+    "title": "Social cards",
+    "order": 4.5
+  },
   "blog": {
     "title": "Build a blog",
     "order": 5

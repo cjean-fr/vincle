@@ -19,6 +19,15 @@ export interface SsgMeta {
   renderKey?: string;
   /** Override the nearest _layout.tsx; relative to the source file. */
   layout?: string | false;
+  /**
+   * Site-relative path of the page's social card ("/guide/og.png"). Set
+   * automatically when an _og-image module applies, unless already provided.
+   */
+  image?: string;
+  /** Pixel dimensions of meta.image. */
+  imageSize?: { width: number; height: number };
+  /** Override the nearest _og-image module; relative to the source file. */
+  ogImage?: string | false;
   [key: string]: unknown;
 }
 
