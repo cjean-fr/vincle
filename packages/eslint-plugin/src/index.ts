@@ -1,6 +1,5 @@
 import { noAmbiguousHtmlChildren } from "./rules/no-ambiguous-html-children.js";
 import { noContext } from "./rules/no-context.js";
-import { noForeignRawtext } from "./rules/no-foreign-rawtext.js";
 import { noGlobalJsxNamespace } from "./rules/no-global-jsx-namespace.js";
 import { noJavascriptUrls } from "./rules/no-javascript-urls.js";
 import { noReactHooks } from "./rules/no-react-hooks.js";
@@ -14,7 +13,6 @@ const rules = {
   "no-unsafe-event-handlers": noUnsafeEventHandlers,
   "no-javascript-urls": noJavascriptUrls,
   "no-context": noContext,
-  "no-foreign-rawtext": noForeignRawtext,
   "no-ambiguous-html-children": noAmbiguousHtmlChildren,
   "no-refs": noRefs,
   "no-global-jsx-namespace": noGlobalJsxNamespace,
@@ -52,7 +50,6 @@ const configs = {
       [`${PREFIX}/no-unsafe-event-handlers`]: "warn",
       [`${PREFIX}/no-javascript-urls`]: "error",
       [`${PREFIX}/no-context`]: "error",
-      [`${PREFIX}/no-foreign-rawtext`]: "warn",
       [`${PREFIX}/no-ambiguous-html-children`]: "error",
       [`${PREFIX}/no-refs`]: "error",
       [`${PREFIX}/no-global-jsx-namespace`]: "error",

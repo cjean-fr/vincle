@@ -11,6 +11,26 @@ which is what took async rendering out of the bench: half of what it measured
 was the engine's promise machinery, not our code. Its correctness is held by the
 tests, not by a measurement.
 
+## Where the cases come from
+
+`text`, `stack` and `realworld` are not ours. They are ports of the benchmarks
+of two other projects, kept close to the original on purpose so that the
+comparison is neutral. They are deliberately unrealistic as applications:
+`text` is one large text node, `stack` is a very deep tree, and `realworld` has
+no advanced features (no context, no async, no raw or unsafe content). They
+bound the renderer from two ends; they do not describe a typical page.
+
+| case        | original                                                                                                                                                                                                                            | what differs here                                                                                                                                                                                        |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text`      | [`benchmarks/text.js`](https://github.com/preactjs/preact-render-to-string/blob/main/benchmarks/text.js) in preact-render-to-string (MIT): 1000 `Bavaria` components, each a `div` with two `span`s holding two Bavarian paragraphs | The same tree for every library, components included. The paragraphs are the original's (checked after normalising whitespace and the typographic apostrophes, which are straight here).                 |
+| `stack`     | [`benchmarks/stack.js`](https://github.com/preactjs/preact-render-to-string/blob/main/benchmarks/stack.js) in preact-render-to-string (MIT): 10 trees of depth 1000, one `PassThrough` component per level, ending in a `Leaf`      | The same tree for every library, components included. The output is byte-identical across the five libraries.                                                                                            |
+| `realworld` | [`benchmarks/kitajs/index.tsx`](https://github.com/kitajs/html/blob/next/benchmarks/kitajs/index.tsx) in @kitajs/html (MIT): `RealWorldPage`, with 1000 purchases                                                                   | The same page, written once in `src/realworld/shared.js` and built with each library's own `jsx`. The page text is the original's. @kitajs/html escapes only where `safe` is written; the others always. |
+
+The Preact, React and Hono renderings of `realworld` are built from that same
+`shared.js` tree; they are not copies of the files those projects ship.
+
+Both originals were read on 2026-11-27 from the links above.
+
 ## The rule
 
 **One run is not a measurement.** The noise between two runs of the same binary

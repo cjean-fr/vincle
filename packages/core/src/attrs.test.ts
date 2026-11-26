@@ -13,7 +13,7 @@ import {
 import { valueToText } from "./escape.js";
 import { jsx } from "./jsx-runtime.js";
 import { renderNode, renderToString } from "./render.js";
-import { isAnimationTag } from "./tag.js";
+import { isAnimationTag, NS_HTML } from "./tag.js";
 import { raw, rawUrl } from "./types.js";
 
 // ── serializeAttr: the value taxonomy, pinned once ─────────────────────────
@@ -833,7 +833,7 @@ describe("Date values", () => {
         process.env.TZ = zone;
         const expected = String(instant);
         expect(valueToText(instant)).toBe(expected);
-        expect(String(renderNode(instant))).toBe(expected);
+        expect(String(renderNode(instant, NS_HTML))).toBe(expected);
         expect(String(buildAttrs({ dateTime: instant }, "time"))).toContain(
           `datetime="${expected}"`,
         );

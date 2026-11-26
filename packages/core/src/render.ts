@@ -10,6 +10,7 @@ import {
   valueToText,
 } from "./escape.js";
 import { isVoidElement, serializeElement, serializeVoidElement } from "./serialize.js";
+import { childNamespace, NS_HTML, type Namespace } from "./tag.js";
 import { providerMarker, RawString, VNode, type ProvideFn } from "./types.js";
 import { TemplateNode } from "./types.js";
 
@@ -42,7 +43,7 @@ import { TemplateNode } from "./types.js";
  */
 export function renderToString(node: unknown): Promise<string> {
   try {
-    return Promise.resolve(renderNode(node));
+    return Promise.resolve(renderNode(node, NS_HTML));
   } catch (error) {
     // A synchronous throw would escape the caller's `.catch()`.
     return Promise.reject(error);
@@ -56,21 +57,30 @@ function writeChildless(tag: string, attrStr: string): string {
     : serializeElement(tag, attrStr, "");
 }
 
-export function renderNode(vnode: unknown): string | Promise<string> {
+/**
+ * `ns`: the parsing rules of the element this node sits in. Only a `<script>`
+ * or `<style>` asks (HTML reads its text as raw text, foreign content as
+ * markup), but the answer comes from an ancestor, so it travels with the walk.
+ * Template holes get it through `TemplateNode.render(ns)`.
+ *
+ * `ns` has no default: a default parameter on this recursive function cost 5% on
+ * a tree of components (measured, 5 runs each), so every caller says where it is.
+ */
+export function renderNode(vnode: unknown, ns: Namespace): string | Promise<string> {
   // Fast path for leaves and `RawString`: saves 3.5 to 7.6% on `text`, `stack`, `realworld`.
   if (typeof vnode !== "object" || vnode === null) return renderLeaf(vnode, undefined);
   if (vnode instanceof RawString) return vnode.value;
 
   if (vnode instanceof Promise) {
-    return vnode.then(renderNode);
+    return vnode.then((v) => renderNode(v, ns));
   }
-  if (Array.isArray(vnode)) return renderChildrenAsync(vnode);
+  if (Array.isArray(vnode)) return renderChildrenAsync(vnode, undefined, ns);
   if (vnode instanceof VNode) {
     if (typeof vnode.tag === "function") {
       const comp = vnode.tag;
       const provide = (comp as unknown as { [providerMarker]?: ProvideFn })[providerMarker];
       if (provide) {
-        return provide(vnode.attrs["value"], () => renderNode(vnode.children));
+        return provide(vnode.attrs["value"], () => renderNode(vnode.children, ns));
       }
       let result: unknown;
       try {
@@ -80,35 +90,50 @@ export function renderNode(vnode: unknown): string | Promise<string> {
       }
       // By reference: a wrapper would allocate a closure per component.
       if (result instanceof Promise) {
-        return result.then(renderNode, (error: unknown) => {
-          throw annotate(error, comp);
-        });
+        return result.then(
+          (v) => renderNode(v, ns),
+          (error: unknown) => {
+            throw annotate(error, comp);
+          },
+        );
       }
       if (isAsyncIterable(result)) {
-        return collectAsyncIterable(result, renderNode).catch((error: unknown) => {
-          throw annotate(error, comp);
-        });
+        return collectAsyncIterable(result, (chunk) => renderNode(chunk, ns)).catch(
+          (error: unknown) => {
+            throw annotate(error, comp);
+          },
+        );
       }
-      return renderNode(result);
+      return renderNode(result, ns);
     }
 
     // The tag is validated in `jsx()`, the only way an element is built.
     const { tag, attrs, children } = vnode;
 
     const attrStr = buildAttrs(attrs, tag);
-    const childTag = isRawtextTag(tag) ? tag : undefined;
+    // The rawtext rule is the HTML parser's. Under `<svg>` and `<math>` the text
+    // of a script or style is markup, so it takes the ordinary escape.
+    // Only `svg` and `math` leave HTML, in any case: the length and the second
+    // letter ('v', 'a') keep every other tag off the call.
+    let childNs: Namespace = NS_HTML;
+    if (ns !== NS_HTML) childNs = childNamespace(tag, attrs, ns);
+    else if (tag.length === 3 || tag.length === 4) {
+      const c1 = tag.charCodeAt(1) | 32;
+      if (c1 === 118 || c1 === 97) childNs = childNamespace(tag, attrs, ns);
+    }
+    const childTag = ns === NS_HTML && isRawtextTag(tag) ? tag : undefined;
 
     // Promised attribute value, e.g. `<a href={resolveUrl()}>`.
     if (typeof attrStr !== "string") {
       return attrStr.then(async (resolved) =>
         children === undefined
           ? writeChildless(tag, resolved)
-          : serializeElement(tag, resolved, await renderChildrenAsync(children, childTag)),
+          : serializeElement(tag, resolved, await renderChildrenAsync(children, childTag, childNs)),
       );
     }
 
     if (children !== undefined) {
-      const content = renderChildrenAsync(children, childTag);
+      const content = renderChildrenAsync(children, childTag, childNs);
       if (content instanceof Promise) {
         return content.then((c) => serializeElement(tag, attrStr, c));
       }
@@ -117,36 +142,41 @@ export function renderNode(vnode: unknown): string | Promise<string> {
     return writeChildless(tag, attrStr);
   }
   if (vnode instanceof TemplateNode) {
-    const result = vnode.render();
+    const result = vnode.render(ns);
     return result instanceof Promise ? result.then((value) => value.value) : result.value;
   }
   // Arrays and VNodes are never async iterables: only the rest pays for the protocol tests.
-  if (isAsyncIterable(vnode)) return collectAsyncIterable(vnode, renderNode);
-  if (isIterable(vnode)) return renderChildrenAsync(Array.from(vnode));
+  if (isAsyncIterable(vnode)) return collectAsyncIterable(vnode, (chunk) => renderNode(chunk, ns));
+  if (isIterable(vnode)) return renderChildrenAsync(Array.from(vnode), undefined, ns);
   return valueToText(vnode);
 }
 
-function renderChildrenAsync(children: unknown, rawtextTag?: string): string | Promise<string> {
+function renderChildrenAsync(
+  children: unknown,
+  rawtextTag?: string,
+  ns: Namespace = NS_HTML,
+): string | Promise<string> {
   // A lone child needs the rawtext rule too (`<script>{promise}</script>`).
-  if (!Array.isArray(children)) return renderChild(children, rawtextTag);
+  if (!Array.isArray(children)) return renderChild(children, rawtextTag, ns);
   if (children.length === 0) return "";
 
   // Concatenate directly: an intermediate array costs 35% on `realworld`.
   let out = "";
   if (rawtextTag === undefined) {
     for (let i = 0; i < children.length; i++) {
-      const part = renderChild(children[i], undefined);
+      const part = renderChild(children[i], undefined, ns);
       if (typeof part !== "string")
-        return renderChildrenFrom(out, part, children, i + 1, undefined);
+        return renderChildrenFrom(out, part, children, i + 1, undefined, ns);
       out += part;
     }
     return out;
   }
 
   for (let i = 0; i < children.length; i++) {
-    const part = renderChild(children[i], rawtextTag);
+    const part = renderChild(children[i], rawtextTag, ns);
     // First child that suspends: start the rest and join in document order.
-    if (typeof part !== "string") return renderChildrenFrom(out, part, children, i + 1, rawtextTag);
+    if (typeof part !== "string")
+      return renderChildrenFrom(out, part, children, i + 1, rawtextTag, ns);
     out = joinRawTagContent(out, part, rawtextTag);
   }
   return out;
@@ -168,12 +198,13 @@ function renderChildrenFrom(
   children: unknown[],
   from: number,
   rawtextTag: string | undefined,
+  ns: Namespace,
 ): Promise<string> {
   const parts: Array<string | Promise<string>> = [pending];
   for (let i = from; i < children.length; i++) {
     let part: string | Promise<string>;
     try {
-      part = renderChild(children[i], rawtextTag);
+      part = renderChild(children[i], rawtextTag, ns);
     } catch (error) {
       // A synchronous throw becomes a rejection so the remaining siblings still start.
       part = Promise.reject(error);
@@ -256,14 +287,18 @@ export async function sequenceFrom<T>(
  * entities, so `<script>{await getCode()}</script>` must not be HTML-escaped.
  * Element `VNode`s stay on `renderNode`; a component's result carries the rule.
  */
-function renderChild(child: unknown, rawtextTag: string | undefined): string | Promise<string> {
+function renderChild(
+  child: unknown,
+  rawtextTag: string | undefined,
+  ns: Namespace,
+): string | Promise<string> {
   if (typeof child === "string") {
     return rawtextTag === undefined ? escapeContent(child) : escapeRawTagContent(child, rawtextTag);
   }
   if (rawtextTag !== undefined && !isElementNode(child)) {
     return renderRawtextChild(child, rawtextTag);
   }
-  return renderNode(child);
+  return renderNode(child, ns);
 }
 
 const isElementNode = (v: unknown): boolean => v instanceof VNode && typeof v.tag === "string";
@@ -271,12 +306,12 @@ const isElementNode = (v: unknown): boolean => v instanceof VNode && typeof v.ta
 /** `renderNode` with the rawtext rule attached, kept apart so the hot path has no `rawtextTag` parameter. */
 function renderRawtextChild(child: unknown, rawtextTag: string): string | Promise<string> {
   if (child instanceof Promise) return child.then((r) => renderRawtextChild(r, rawtextTag));
-  if (child instanceof TemplateNode) return renderNode(child);
+  if (child instanceof TemplateNode) return renderNode(child, NS_HTML);
   // Components are invoked here so their result keeps the rule.
   if (child instanceof VNode) {
     // `renderChild` only guards the direct child: an element arriving through a
     // promise, array or component return must not be called as a component.
-    if (typeof child.tag === "string") return renderNode(child);
+    if (typeof child.tag === "string") return renderNode(child, NS_HTML);
     const comp = child.tag as (props: Record<string, unknown>) => unknown;
     const provide = (comp as unknown as { [providerMarker]?: ProvideFn })[providerMarker];
     if (provide) {

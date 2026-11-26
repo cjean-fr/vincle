@@ -24,6 +24,10 @@ import {
   isRawtextTag,
   isVoidElement,
   remapAttrName,
+  childNamespace,
+  NS_HTML,
+  NS_SVG,
+  NS_MATH,
 } from "./core/index.js";
 import { ERR_PRECOMPILE_INTERNAL, vincleError } from "./errors.js";
 import { TemplateBuilder } from "./template-builder.js";
@@ -101,7 +105,22 @@ export function collectNode(
   });
 }
 
-function isEligibleElement(node: JSXElement, ctx: TransformContext): boolean {
+/**
+ * Is the element inside `<svg>` or `<math>` for sure, at the place this tree
+ * writes it? A tree is compiled without knowing where it will be placed, so
+ * an element is foreign only from an `<svg>` or `<math>` written in the same
+ * tree, and the answer goes back to "not known" at an integration point, where
+ * the parser may read HTML again.
+ */
+function foreignAfter(tag: string, foreign: boolean): boolean {
+  if (!foreign) return childNamespace(tag, undefined, NS_HTML) !== NS_HTML;
+  const html = { encoding: "text/html" };
+  return (
+    childNamespace(tag, html, NS_SVG) !== NS_HTML && childNamespace(tag, html, NS_MATH) !== NS_HTML
+  );
+}
+
+function isEligibleElement(node: JSXElement, ctx: TransformContext, foreign: boolean): boolean {
   const name = node.openingElement.name;
   if (name.type !== "JSXIdentifier") return false;
   const tag = name.name;
@@ -141,6 +160,24 @@ function isEligibleElement(node: JSXElement, ctx: TransformContext): boolean {
   if (!ctx.compatibility && isRawtextTag(tag) && node.children.some((c) => c.type !== "JSXText")) {
     return false;
   }
+  // - **A script or style with text, whose namespace this tree does not settle.** Its text
+  //   is raw text in HTML and markup in `<svg>` and `<math>`, and a component
+  //   may place this tree in either. Declined, the element reaches the runtime
+  //   as a call and is rendered by the walk, which knows where it sits. Inside
+  //   an `<svg>` or `<math>` written in the same tree the answer is known: the
+  //   text is escaped as ordinary text, at build time.
+  // Compatibility mode keeps Deno's call for a tree that does not settle it: the
+  // same template, with the text as written. Inside an `<svg>` or `<math>` written
+  // in the same tree it is escaped like any text, in both modes.
+  if (
+    !ctx.compatibility &&
+    isRawtextTag(tag) &&
+    !foreign &&
+    node.children.every((c) => c.type === "JSXText") &&
+    node.children.some(hasRenderableContent)
+  ) {
+    return false;
+  }
   if (isVoidElement(tag) && node.children.some(hasRenderableContent)) return false;
   return true;
 }
@@ -171,7 +208,9 @@ function attrName(attr: JSXAttribute): string {
 
 /** One expression for a whole element, with no downstream JSX lowering. */
 function emitElementExpression(node: JSXElement, ctx: TransformContext): string {
-  return isEligibleElement(node, ctx) ? transformElement(node, ctx) : transformCall(node, ctx);
+  return isEligibleElement(node, ctx, false)
+    ? transformElement(node, ctx)
+    : transformCall(node, ctx);
 }
 
 /** Deno's fallback contract: jsx(tag, props, explicitKey). Shared by both dialects. */
@@ -277,7 +316,7 @@ function callChildren(children: JSXChild[], ctx: TransformContext): string | und
       }
     } else if (child.type === "JSXElement") {
       flush();
-      if (isEligibleElement(child, ctx)) serializableCount++;
+      if (isEligibleElement(child, ctx, false)) serializableCount++;
       expressions.push(emitElementExpression(child, ctx));
     } else if (child.type === "JSXFragment") {
       flush();
@@ -326,7 +365,14 @@ function transformElement(node: JSXElement, ctx: TransformContext): string {
   // A void element that got here has no content: `isEligibleElement` declines
   // the ones that do, so there is nothing to skip and no closing tag to write.
   if (!isVoidElement(tag)) {
-    emitChildren(node.children, out, ctx, rawtextTagOf(tag), ctx.compatibility);
+    emitChildren(
+      node.children,
+      out,
+      ctx,
+      rawtextTagOf(tag, false, ctx),
+      ctx.compatibility,
+      foreignAfter(tag, false),
+    );
     out.static(`</${tag}>`);
   }
 
@@ -338,8 +384,9 @@ function transformElement(node: JSXElement, ctx: TransformContext): string {
  * reaches this for lowercase tags (`isEligibleElement`), so the name is a valid
  * key for the runtime's rawtext escape map as-is.
  */
-function rawtextTagOf(tag: string): string | undefined {
-  return isRawtextTag(tag) ? tag : undefined;
+function rawtextTagOf(tag: string, foreign: boolean, ctx: TransformContext): string | undefined {
+  // Compatibility mode keeps Deno's bytes: the text as written, wherever it sits.
+  return isRawtextTag(tag) && (ctx.compatibility || !foreign) ? tag : undefined;
 }
 
 function transformFragment(node: JSXFragment, ctx: TransformContext): string {
@@ -560,6 +607,7 @@ function emitChildren(
   ctx: TransformContext,
   rawtextTag: string | undefined,
   trimTrailingText = false,
+  foreign = false,
 ): void {
   const last = children[children.length - 1];
   for (const child of children) {
@@ -600,11 +648,18 @@ function emitChildren(
         );
       }
     } else if (child.type === "JSXElement") {
-      if (isEligibleElement(child, ctx)) {
+      if (isEligibleElement(child, ctx, foreign)) {
         const tag = (child.openingElement.name as JSXIdentifier).name;
         emitOpening(tag, child.openingElement.attributes, out, ctx);
         if (!isVoidElement(tag)) {
-          emitChildren(child.children, out, ctx, rawtextTagOf(tag), ctx.compatibility);
+          emitChildren(
+            child.children,
+            out,
+            ctx,
+            rawtextTagOf(tag, foreign, ctx),
+            ctx.compatibility,
+            foreignAfter(tag, foreign),
+          );
           out.static(`</${tag}>`);
         }
       } else {
@@ -617,7 +672,7 @@ function emitChildren(
         out.hole(replaced, true);
       }
     } else if (child.type === "JSXFragment") {
-      emitChildren(child.children, out, ctx, rawtextTag);
+      emitChildren(child.children, out, ctx, rawtextTag, false, foreign);
     } else if (child.type === "JSXSpreadChild") {
       const exprText = ctx.source.slice(child.expression.start, child.expression.end);
       out.hole(escapeCall(exprText, ctx), true);

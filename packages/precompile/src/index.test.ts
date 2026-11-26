@@ -369,18 +369,41 @@ describe("precompileTransform", () => {
       expect(out).toContain("jsxStatic`<div>hello &amp; world</div>`");
     });
 
-    it("decodes rawtext entities then escapeRawText (matches the dynamic runtime)", () => {
-      // Default: decode entities (like the JS compiler does) then
-      // escapeRawText: the same path renderChild takes, so `&gt;` becomes
-      // a real `>` and the output is valid CSS/JS. Unlike compatibility mode
-      // where rawtext entities stay as-is.
+    it("leaves a script or style to the runtime when the tree does not say where it sits", () => {
+      // Raw text in HTML, markup under <svg> and <math>: a component may place
+      // this tree in either, so the runtime walk decides, with the entities
+      // decoded the way the JS compiler does (`&gt;` is a real `>`).
       const style = transformVincle("const a = <style>.a &gt; .b</style>;");
-      expect(style).toContain("jsxStatic`<style>.a > .b</style>`");
+      expect(style).toContain('jsx("style", { children: (".a > .b") })');
+      expect(style).not.toContain("jsxStatic");
       const script = transformVincle("const a = <script>a &amp;&amp; b</script>;");
-      expect(script).toContain("jsxStatic`<script>a && b</script>`");
-      // The element's own closing tag is neutralized (breakout guard).
-      const guard = transformVincle("const a = <script>x &lt;/script&gt; y</script>;");
-      expect(guard).not.toContain("</script> y");
+      expect(script).toContain('jsx("script", { children: ("a && b") })');
+      const nested = transformVincle("const a = <div><script>a</script></div>;");
+      expect(nested).toContain('jsx("script"');
+      // No text, nothing for the namespace to change: `<script src>` stays templated.
+      const external = transformVincle('const a = <div><script src="/a.js"></script></div>;');
+      expect(external).toContain('<script src="/a.js"></script>');
+      expect(external).not.toContain('jsx("script"');
+    });
+
+    it("escapes a script or style written inside <svg> or <math> as text, at build time", () => {
+      const svg = transformVincle("const a = <svg><script>a &lt; b &amp;&amp; c</script></svg>;");
+      expect(svg).toContain("jsxStatic`<svg><script>a &lt; b &amp;&amp; c</script></svg>`");
+      const math = transformVincle("const a = <math><style>.a &gt; .b</style></math>;");
+      expect(math).toContain("jsxStatic`<math><style>.a &gt; .b</style></math>`");
+      // The closing tag cannot leave the element: it is text there.
+      const guard = transformVincle("const a = <svg><script>x &lt;/script&gt; y</script></svg>;");
+      expect(guard).toContain("jsxStatic`<svg><script>x &lt;/script&gt; y</script></svg>`");
+    });
+
+    it("hands the script of an integration point back to the runtime", () => {
+      for (const tag of ["foreignObject", "desc", "title"]) {
+        const out = transformVincle(`const a = <svg><${tag}><script>a</script></${tag}></svg>;`);
+        expect(out).toContain('jsx("script"');
+        expect(out).not.toContain("jsxStatic");
+      }
+      const math = transformVincle("const a = <math><mtext><style>a</style></mtext></math>;");
+      expect(math).toContain('jsx("style"');
     });
   });
 
@@ -601,14 +624,23 @@ describe("precompileTransform", () => {
       expect(guard).toContain("&lt;/script&gt;");
     });
 
-    it("…and decodes them for the vincle dialect", () => {
-      // `escapeRawTagContent` applies: entities are decoded, so the CSS and JS
-      // are what the author wrote, and the closing tag is neutralised.
-      expect(transformVincle("const a = <style>.a &gt; .b</style>;")).toContain(
-        "jsxStatic`<style>.a > .b</style>`",
+    it("writes a script or style inside <svg> as Deno does, the text as written", () => {
+      // Inside <svg> the parser reads the text as markup and decodes the
+      // entities, so the bytes Deno writes are the bytes the runtime writes.
+      expect(transform("const a = <svg><script>a &amp; b</script></svg>;")).toContain(
+        "jsxTemplate`<svg><script>a &amp; b</script></svg>`",
       );
+      expect(transform("const a = <math><style>a &lt; b</style></math>;")).toContain(
+        "jsxTemplate`<math><style>a &lt; b</style></math>`",
+      );
+    });
+
+    it("…and decodes them for the vincle dialect", () => {
+      // The entities are decoded so the CSS and JS are what the author wrote;
+      // the runtime then applies the rule of the place the element sits in.
+      expect(transformVincle("const a = <style>.a &gt; .b</style>;")).toContain('".a > .b"');
       expect(transformVincle("const a = <script>x &lt;/script&gt; y</script>;")).toContain(
-        "\\u003c/script>",
+        '"x </script> y"',
       );
     });
   });
@@ -658,6 +690,26 @@ describe("precompileTransform", () => {
       ["script statique", `<script>a &amp;&amp; b</script>`],
       ["rawtext hole", `<style>{css}</style>`],
       ["script hole", `<script>{js}</script>`],
+      ["svg script", `<svg><script>a &lt; b &amp;&amp; c</script></svg>`],
+      ["svg style", `<svg><style>.a &gt; .b</style></svg>`],
+      ["svg script closer", `<svg><script>x &lt;/script&gt;&lt;img&gt;</script></svg>`],
+      ["math style", `<math><style>.a &gt; .b</style></math>`],
+      [
+        "foreignObject script",
+        `<svg><foreignObject><script>a &lt; b</script></foreignObject></svg>`,
+      ],
+      ["svg title style", `<svg><title><style>a &lt; b</style></title></svg>`],
+      ["mtext script", `<math><mtext><script>a &lt; b</script></mtext></math>`],
+      [
+        "svg nested svg in object",
+        `<svg><foreignObject><svg><style>a &lt; b</style></svg></foreignObject></svg>`,
+      ],
+      ["svg element hole", `<svg>{<script>a &lt; b</script>}</svg>`],
+      ["svg component", `<svg><g><Foo x={1} /></g></svg>`],
+      [
+        "svg and html scripts",
+        `<div><svg><script>a &lt; b</script></svg><script>a &lt; b</script></div>`,
+      ],
       ["void au milieu", `<div>a<br />b</div>`],
       ["fragment", `<><li>one</li><li>two</li></>`],
       ["component", `<div><Foo x={1} /></div>`],
@@ -729,6 +781,50 @@ describe("precompileTransform", () => {
       for (const [i, [label]] of CASES.entries()) {
         const runtime = await outcome(rtMod[`c${i}`]);
         const precompiled = await outcome(preMod[`c${i}`]);
+        if (runtime !== precompiled) {
+          divergences.push(
+            `${label}\n  runtime:     ${JSON.stringify(runtime)}\n  precompiled: ${JSON.stringify(precompiled)}`,
+          );
+        }
+      }
+      expect(divergences).toEqual([]);
+    });
+
+    it("renders the svg and math script and style cases as the runtime does, in compatibility mode", async () => {
+      // Compatibility mode keeps Deno's bytes. Written inside <svg> or <math>,
+      // a script or style text is the same bytes as the runtime's. Not listed:
+      // a root script or style, and one under an integration point, where Deno
+      // keeps the entities of the JSX text and the runtime decodes them.
+      const LABELS = new Set([
+        "svg script",
+        "svg style",
+        "svg script closer",
+        "math style",
+        "svg nested svg in object",
+        "svg element hole",
+        "svg component",
+      ]);
+      const picked = CASES.filter(([label]) => LABELS.has(label));
+      expect(picked.length).toBe(LABELS.size);
+      const prelude = `const Foo = (p: { x: number }) => "[Foo]";`;
+      const body = picked.map(([, expr], i) => `export const c${i} = ${expr};`).join("\n");
+      const source = `${prelude}\n${body}`;
+      const id = Math.random().toString(36).slice(2);
+
+      const runtimePath = join(TMP, `compat-rt-${id}.tsx`);
+      writeFileSync(runtimePath, `/** @jsxImportSource @vincle/core */\n${source}`);
+      const rtMod = (await import(runtimePath)) as Record<string, unknown>;
+
+      // No helpers: compatibility mode.
+      const result = precompileTransform(source, "/src/app.tsx", { runtimeSource: RT });
+      const outputPath = join(TMP, `compat-pre-${id}.tsx`);
+      writeFileSync(outputPath, `/** @jsxImportSource @vincle/core */\n${result!.code}`);
+      const preMod = (await import(outputPath)) as Record<string, unknown>;
+
+      const divergences: string[] = [];
+      for (const [i, [label]] of picked.entries()) {
+        const runtime = await renderToString(rtMod[`c${i}`]);
+        const precompiled = await renderToString(preMod[`c${i}`]);
         if (runtime !== precompiled) {
           divergences.push(
             `${label}\n  runtime:     ${JSON.stringify(runtime)}\n  precompiled: ${JSON.stringify(precompiled)}`,
@@ -962,8 +1058,8 @@ describe("precompileTransform", () => {
       expect(transform("const a = <span>x </span>;")).toContain("`<span>x</span>`");
       expect(transform("const a = <div>  x  </div>;")).toContain("`<div>  x</div>`");
       expect(transform("const a = <div> </div>;")).toContain("`<div></div>`");
-      expect(transform("const a = <script>var a = 1; </script>;")).toContain(
-        "`<script>var a = 1;</script>`",
+      expect(transform("const a = <svg><script>var a = 1; </script></svg>;")).toContain(
+        "`<svg><script>var a = 1;</script></svg>`",
       );
       expect(transform(`const a = <div>${TAB}x${TAB}</div>;`)).toContain(`\`<div>${TAB}x</div>\``);
     });
@@ -1376,9 +1472,9 @@ describe("precompileTransform", () => {
       expect(await renderToString(preMod.html)).toBe(await renderToString(rtMod.html));
     });
 
-    it("rawtext: a static <style> stays precompiled, byte-identical to the runtime path", async () => {
+    it("rawtext: a static <style> is rendered by the runtime, byte-identical to the dynamic path", async () => {
       const rand = () => Math.random().toString(36).slice(2);
-      const body = `<style>.a &gt; .b, .c:not(.d)</style>`;
+      const body = `<div><style>.a &gt; .b, .c:not(.d)</style></div>`;
 
       const runtimePath = join(TMP, `rt-${rand()}.tsx`);
       writeFileSync(

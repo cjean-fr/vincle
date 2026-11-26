@@ -1,3 +1,4 @@
+import type { Namespace } from "./tag.js";
 // ── VNode ──────────────────────────────────────────────────────────────────
 //
 // Defined here (not in `jsx-runtime.ts`) because both `render.ts` and
@@ -87,8 +88,9 @@ export class RawUrl {
  */
 export class TemplateNode implements Promise<RawString> {
   readonly [Symbol.toStringTag] = "Promise";
-  readonly render: () => RawString | Promise<RawString>;
-  constructor(render: () => RawString | Promise<RawString>) {
+  /** `ns`: the parsing rules where the template is placed, for the holes that hold a `<script>` or `<style>`. */
+  readonly render: (ns?: Namespace) => RawString | Promise<RawString>;
+  constructor(render: (ns?: Namespace) => RawString | Promise<RawString>) {
     this.render = render;
   }
 
@@ -97,7 +99,9 @@ export class TemplateNode implements Promise<RawString> {
     onfulfilled?: ((value: RawString) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
-    return Promise.resolve().then(this.render).then(onfulfilled, onrejected);
+    return Promise.resolve()
+      .then(() => this.render())
+      .then(onfulfilled, onrejected);
   }
 
   catch<TResult = never>(

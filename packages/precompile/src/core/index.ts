@@ -9,6 +9,10 @@ import {
   escapeRawTagContent,
   isValidAttrName,
   attrMeta,
+  childNamespace,
+  NS_HTML,
+  NS_SVG,
+  NS_MATH,
 } from "@vincle/core/html";
 import { decodeHTMLStrict } from "entities";
 
@@ -27,6 +31,10 @@ export {
   escapeRawTagContent,
   isValidAttrName,
   attrMeta,
+  childNamespace,
+  NS_HTML,
+  NS_SVG,
+  NS_MATH,
 };
 
 export const RUNTIME_SOURCE = "@vincle/core/jsx-runtime";

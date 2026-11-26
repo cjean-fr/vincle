@@ -41,8 +41,8 @@ describe("the svg script recipe", () => {
     expect(out).toBe("<svg><script>a &amp;amp; b</script></svg>");
   });
 
-  test("a plain <script> under <svg> keeps the HTML rawtext rule", async () => {
+  test("a plain <script> under <svg> renders the recipe's bytes", async () => {
     const out = await renderToString(svg(jsx("script", { children: "if (a<b) {}" })));
-    expect(out).toBe("<svg><script>if (a<b) {}</script></svg>");
+    expect(out).toBe("<svg><script>if (a&lt;b) {}</script></svg>");
   });
 });

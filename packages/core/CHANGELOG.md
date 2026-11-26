@@ -9,13 +9,13 @@
 
 ### Fixed
 
+- Escape the text of a `<script>` or `<style>` under `<svg>` or `<math>` as ordinary text. The HTML parser reads that text as markup there, so under the raw-text rule a closing tag or an `<img onerror>` in it left the element. The renderer now follows the parser: raw text in HTML, text under `<svg>` and `<math>`, raw text again at the integration points (`foreignObject`, `desc`, `title`, MathML text elements, `annotation-xml` with an HTML encoding). The namespace is carried through components, async results, Providers and template holes, and `raw()` is not rewritten. A `<script>` in a template hole under an `<svg>` written in the template text is read from that text.
 - Keep the keyword literals of the generated CSS unions visible to editor completions: length types now take their open string arm as `string & {}` instead of a bare `string`, which absorbed literals like `"auto"` and left value positions without suggestions. Accepted values are unchanged.
 - Drop redundant arms from a few generated attribute unions: `download` and `inlist` are `any` without a `RawString` arm, and the native spelling of numeric attributes that already accept `string` (`frameborder`, `cellpadding`, `cellspacing`) no longer adds a `` `${number}` `` arm. Accepted values are unchanged.
 
 ### Removed
 
 - **Breaking (behavior)**: the static construction path is gone. `jsx()` no longer pre-renders an all-static subtree to a `RawString`; every element becomes a `VNode` and renders through the tree walk, now the single renderer. Output bytes are unchanged. One observable timing change: a function passed as an attribute value now throws `ERR_VINCLE_FUNCTION_ATTR` at render time instead of at `jsx()` time. `serializeStatic` was package-internal; the exported API is unchanged.
-- The provisional escape of `<script>`/`<style>` bodies inside `<svg>` is gone: it re-escaped `raw()` content, never covered `<math>`, and could not see precompiled templates. A plain `<script>` or `<style>` keeps the HTML rawtext rule everywhere. In foreign content (`<svg>`, `<math>`), where the parser reads that text as markup, ship the source pre-escaped as text instead: `raw(escapeContent(source))` with `escapeContent` from `@vincle/core/html`. The `@vincle/no-foreign-rawtext` lint rule flags the plain elements under an `<svg>` or `<math>` JSX subtree.
 
 ## 0.10.0 — 2026-11-01
 

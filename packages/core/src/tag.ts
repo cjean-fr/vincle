@@ -123,3 +123,94 @@ export function isAnimationTag(tag: string): boolean {
 export function voidChildrenMessage(tag: string): string {
   return `[vincle/core] <${tag}> is a void element and cannot have children: move the content next to it, not inside.`;
 }
+
+// ── Foreign content ──────────────────────────────────────────────────────
+
+/** Where an element's children are parsed: HTML, or the SVG or MathML foreign rules. */
+export const NS_HTML = 0;
+export const NS_SVG = 1;
+export const NS_MATH = 2;
+export type Namespace = typeof NS_HTML | typeof NS_SVG | typeof NS_MATH;
+
+/**
+ * Which parsing rules read the children of `<tag>`, given the rules that read
+ * the element itself.
+ *
+ * The HTML parser reads the text of a `<script>` or `<style>` as raw text, but
+ * only in the HTML namespace. Under `<svg>` and `<math>` the same text is read
+ * as markup: a `<` opens a tag and `&` starts a character reference. The
+ * renderer therefore has to know which side of that line an element is on. An
+ * element is foreign from the `<svg>` or `<math>` that opens it, back to HTML
+ * at an integration point, and foreign again at the next `<svg>` or `<math>`.
+ *
+ * Follows the tree builder, which only ever switches namespace in three ways:
+ *  - `<svg>` and `<math>` start foreign content, but only from the HTML rules.
+ *    Inside foreign content they are ordinary elements of the enclosing one;
+ *  - the SVG HTML integration points `foreignObject`, `desc`, `title`;
+ *  - the MathML text integration points `mi`, `mo`, `mn`, `ms`, `mtext`, and
+ *    `annotation-xml` when its `encoding` is `text/html` or `application/xhtml+xml`.
+ * The tokenizer lowercases tag names before any of this, so the comparison does.
+ *
+ * The one direction this may get wrong is over-escaping: an HTML element such
+ * as `<div>` inside `<svg>` makes the parser leave foreign content, and this
+ * keeps reading it as foreign. Escaped text in a rawtext element is wrong but
+ * inert. The reverse, rawtext where the parser reads markup, is the hole this
+ * exists to close, and it is never answered here.
+ *
+ * @param attrs only read for `annotation-xml`.
+ * @see https://html.spec.whatwg.org/multipage/parsing.html#tree-construction-dispatcher
+ */
+export function childNamespace(
+  tag: string,
+  attrs: Readonly<Record<string, unknown>> | undefined,
+  ns: Namespace,
+): Namespace {
+  if (ns === NS_HTML) {
+    // Char codes, not `toLowerCase`: this is asked of every 3 and 4 letter tag.
+    const n = tag.length;
+    if (n === 3) {
+      return (tag.charCodeAt(0) | 32) === 115 &&
+        (tag.charCodeAt(1) | 32) === 118 &&
+        (tag.charCodeAt(2) | 32) === 103
+        ? NS_SVG
+        : NS_HTML;
+    }
+    if (n === 4) {
+      return (tag.charCodeAt(0) | 32) === 109 &&
+        (tag.charCodeAt(1) | 32) === 97 &&
+        (tag.charCodeAt(2) | 32) === 116 &&
+        (tag.charCodeAt(3) | 32) === 104
+        ? NS_MATH
+        : NS_HTML;
+    }
+    return NS_HTML;
+  }
+  const lower = tag.toLowerCase();
+  if (ns === NS_SVG) {
+    return lower === "foreignobject" || lower === "desc" || lower === "title" ? NS_HTML : NS_SVG;
+  }
+  switch (lower) {
+    case "mi":
+    case "mo":
+    case "mn":
+    case "ms":
+    case "mtext":
+      return NS_HTML;
+    case "annotation-xml":
+      return hasHtmlEncoding(attrs) ? NS_HTML : NS_MATH;
+    default:
+      return NS_MATH;
+  }
+}
+
+function hasHtmlEncoding(attrs: Readonly<Record<string, unknown>> | undefined): boolean {
+  if (attrs === undefined) return false;
+  for (const key in attrs) {
+    if (key.toLowerCase() !== "encoding") continue;
+    const value = attrs[key];
+    if (typeof value !== "string") return false;
+    const v = value.toLowerCase();
+    return v === "text/html" || v === "application/xhtml+xml";
+  }
+  return false;
+}

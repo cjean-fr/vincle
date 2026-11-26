@@ -21,7 +21,6 @@ interface RuleContext {
   sourceCode: {
     ast: { body: Array<{ type: string; [key: string]: unknown }> };
     getText(node?: unknown): string;
-    getScope(node: unknown): unknown;
   };
   report(descriptor: {
     node: unknown;

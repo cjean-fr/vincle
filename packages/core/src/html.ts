@@ -9,7 +9,8 @@
  */
 
 export { isVoidElement, isValidTag } from "./serialize.js";
-export { isAnimationTag } from "./tag.js";
+export { isAnimationTag, childNamespace, NS_HTML, NS_SVG, NS_MATH } from "./tag.js";
+export type { Namespace } from "./tag.js";
 
 export {
   isRawtextTag,

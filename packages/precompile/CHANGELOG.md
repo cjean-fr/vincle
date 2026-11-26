@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Leave a `<script>` or `<style>` to the runtime when the tree does not place it in foreign content: its text is raw text in HTML and markup under `<svg>` and `<math>`, and a component may place the tree in either. Inside an `<svg>` or `<math>` written in the same tree, the text is escaped as ordinary text at build time, and a script or style under an integration point (`foreignObject`, `desc`, `title`, MathML text elements, `annotation-xml`) goes back to the runtime. Compatibility mode is unchanged: it keeps Deno's call and bytes, and the text of JSX is entity-encoded markup that is inert wherever the template lands.
 - Emit `jsxStatic` for a hole-less template when the runtime exports it: the static-leaf collapse the core's `jsx()` no longer performs, recovered at compile time — one `RawString` per call site instead of one `jsxTemplate` call and allocation per render. Compatibility mode is unchanged (Deno's contract has no such helper), and a runtime that declares the `"vincle"` dialect without exporting `jsxStatic` keeps the `jsxTemplate` emission: the helper's presence is detected, never assumed.
 
 ## 0.10.0 — 2026-11-01

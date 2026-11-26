@@ -209,23 +209,28 @@ the second one closes for real. The plain child form emits the same bytes fully
 neutralised. It is a `RawString`, so rule 2 applies: you are vouching for the
 whole string, element boundary included.
 
-**`<script>` and `<style>` under `<svg>` or `<math>`.** In an HTML document,
-the text of a `<script>` or `<style>` in foreign content is not raw text: the
-parser reads a `<` there as the start of a tag and `&` as a character reference.
-Ship that source pre-escaped as text, as trusted bytes:
-`raw(escapeContent(source))` with `escapeContent` from `@vincle/core/html`. The
-recipe belongs in `<svg>`/`<math>` subtrees only: in HTML, raw text never
-decodes entities, and the same holds under an HTML integration point
-(`foreignObject`, `desc`, `title`, MathML text elements, `annotation-xml`
-with `encoding="text/html"`), where the HTML rawtext rule already applies.
-A plain `<script>` or `<style>` keeps the HTML rawtext rule everywhere. The
-`@vincle/no-foreign-rawtext` lint rule flags the plain elements under an `<svg>`
-or `<math>` JSX subtree, integration points excluded; the recipe above,
-recognized through the file's direct imports, is not flagged. A barrel that
-re-exports the helpers is not followed: the recipe through it keeps the
-warning, the safe direction. The rule is lexical:
-a script assembled inside a component used under `<svg>` is invisible to it,
-and content opened through `raw()` or a template stays trusted author bytes.
+**`<script>` and `<style>` under `<svg>` or `<math>`.** The HTML parser reads the
+text of these elements as raw text in HTML only. Under `<svg>` and `<math>` it
+reads that text as markup: a `<` opens a tag and `&` starts a character
+reference. The renderer follows the parser. It knows which side an element is
+on, and escapes the text of a plain `<script>` or `<style>` as ordinary text
+under `<svg>` and `<math>`, and as raw text everywhere else, so a closing tag or
+an `<img onerror>` in that text stays text. It tracks the namespace through
+components, async results, iterables, Providers and template holes, including
+a hole in an `<svg>` written in a template's own text.
+
+Where the parser reads HTML again, the rawtext rule applies again: inside
+`foreignObject`, `desc` and `title` under `<svg>`, inside `mi`, `mo`, `mn`, `ms`
+and `mtext` under `<math>`, and inside `annotation-xml` whose `encoding` is
+`text/html` or `application/xhtml+xml`. A nested `<svg>` or `<math>` is foreign
+again. Tag names are compared lowercased, as the tokenizer does.
+
+`raw()` is never rewritten. `raw(escapeContent(source))` stays valid and gives
+the same bytes as the plain element; you vouch for what you pass. Two limits:
+an HTML element that makes the parser leave foreign content (a `<div>` inside
+an `<svg>`) is still read as foreign, which over-escapes the text of a
+`<script>` below it and cannot break out; and text inside `raw()` or a
+template's static text is the author's bytes.
 
 ## What the compiler guarantees (and what it doesn't)
 

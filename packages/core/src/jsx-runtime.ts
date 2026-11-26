@@ -12,8 +12,9 @@ import { escapeContent, isAsyncIterable, isIterable, valueToText } from "./escap
 import { ownChildren } from "./props.js";
 import { renderNode, settleConcurrent } from "./render.js";
 import { isVoidElement, voidChildrenMessage } from "./serialize.js";
-import { invalidTagMessage, isValidTag } from "./tag.js";
+import { invalidTagMessage, isValidTag, NS_HTML, type Namespace } from "./tag.js";
 import { renderElementAttr } from "./template-attrs.js";
+import { holeNamespace } from "./template-namespace.js";
 import { VNode, raw, RawString, TemplateNode } from "./types.js";
 
 // ── One renderer: every element becomes a VNode; the tree walk renders it ──
@@ -138,8 +139,8 @@ export function jsxEscapeDeferred(
   // the Provider and after earlier component siblings.
   if (v === null || (typeof v !== "object" && typeof v !== "function") || v instanceof RawString)
     return jsxEscape(v);
-  return new TemplateNode(() => {
-    const rendered = renderNode(v);
+  return new TemplateNode((ns = NS_HTML) => {
+    const rendered = renderNode(v, ns);
     return rendered instanceof Promise
       ? rendered.then((text) => new RawString(text))
       : new RawString(rendered);
@@ -169,7 +170,7 @@ function escapeArray(arr: unknown[]): RawString | Promise<RawString> {
       return escapeArrayFrom(out, part.then(renderEscaped), arr, i + 1);
     }
     if (part instanceof VNode || part instanceof TemplateNode) {
-      const rendered = renderNode(part);
+      const rendered = renderNode(part, NS_HTML);
       if (rendered instanceof Promise) {
         return escapeArrayFrom(out, rendered, arr, i + 1);
       }
@@ -301,10 +302,12 @@ function renderTemplate(templates: ArrayLike<string>, values: unknown[]): RawStr
       out = appendHole(out, "");
     } else if (isDeferredValue(v)) {
       if (!(v instanceof ElementAttr))
-        return new TemplateNode(() => renderTemplateAsync(out, v, values, i + 1, templates));
+        return new TemplateNode((ns = NS_HTML) =>
+          renderTemplateAsync(out, v, values, i + 1, templates, ns),
+        );
       const text = renderElementAttr(v, templates, values, i);
       if (typeof text !== "string")
-        return new TemplateNode(() => resumeAfter(out, text, values, i, templates));
+        return new TemplateNode((ns = NS_HTML) => resumeAfter(out, text, values, i, templates, ns));
       out = appendHole(out, text);
     } else {
       out = appendHole(out, valueToText(v));
@@ -323,8 +326,8 @@ export function jsxTemplateDeferred(
     const value = values[0];
     const prefix = templates[0] ?? "";
     const suffix = templates[1] ?? "";
-    return new TemplateNode(() => {
-      const rendered = renderNode(value);
+    return new TemplateNode((ns = NS_HTML) => {
+      const rendered = renderNode(value, holeNamespace(templates, ns, 0));
       const finish = (text: string) => new RawString(appendHole(prefix, text) + suffix);
       return rendered instanceof Promise ? rendered.then(finish) : finish(rendered);
     });
@@ -333,8 +336,8 @@ export function jsxTemplateDeferred(
     const value = values[0];
     const prefix = templates[0] ?? "";
     const suffix = templates[1] ?? "";
-    return new TemplateNode(() => {
-      const part = value.render();
+    return new TemplateNode((ns = NS_HTML) => {
+      const part = value.render(holeNamespace(templates, ns, 0));
       const finish = (result: RawString) =>
         new RawString(appendHole(prefix, result.value) + suffix);
       return part instanceof Promise ? part.then(finish) : finish(part);
@@ -374,8 +377,9 @@ function resumeAfter(
   values: unknown[],
   hole: number,
   templates: ArrayLike<string>,
+  ns: Namespace,
 ): RawString | Promise<RawString> {
-  return renderTemplateAsync(prefix, text.then(raw), values, hole + 1, templates);
+  return renderTemplateAsync(prefix, text.then(raw), values, hole + 1, templates, ns);
 }
 
 /**
@@ -401,13 +405,14 @@ function renderTemplateAsync(
   values: unknown[],
   from: number,
   templates: ArrayLike<string>,
+  ns: Namespace = NS_HTML,
 ): RawString | Promise<RawString> {
   const renderAt = (v: unknown, i: number): string | Promise<string> =>
     v instanceof ElementAttr
       ? renderElementAttr(v, templates, values, i)
       : v instanceof Promise
         ? v.then((r: unknown) => renderAt(r, i))
-        : renderValue(v);
+        : renderValue(v, holeNamespace(templates, ns, i));
   const firstPart = renderAt(first, from - 1);
   const finishFirst = (text: string) =>
     new RawString(appendHole(prefix, text) + (templates[from] ?? ""));
@@ -441,20 +446,20 @@ function renderTemplateAsync(
  * Containers delegate to `renderNode` so `jsxTemplate` and `jsxEscape` agree;
  * see `isDeferredValue`.
  */
-function renderValue(v: unknown): string | Promise<string> {
+function renderValue(v: unknown, ns: Namespace = NS_HTML): string | Promise<string> {
   if (v instanceof TemplateNode) {
-    const rendered = v.render();
+    const rendered = v.render(ns);
     return rendered instanceof Promise ? rendered.then((value) => value.value) : rendered.value;
   }
-  if (v instanceof Promise) return v.then(renderValue);
-  if (v instanceof VNode) return renderNode(v);
-  if (Array.isArray(v) || isIterable(v) || isAsyncIterable(v)) return renderNode(v);
+  if (v instanceof Promise) return v.then((r) => renderValue(r, ns));
+  if (v instanceof VNode) return renderNode(v, ns);
+  if (Array.isArray(v) || isIterable(v) || isAsyncIterable(v)) return renderNode(v, ns);
   return valueToText(v);
 }
 
 /** The two shapes `jsxEscape` can settle to, reduced to final text. */
 function renderEscaped(v: RawString | VNode | TemplateNode): string | Promise<string> {
-  return v instanceof RawString ? v.value : renderNode(v);
+  return v instanceof RawString ? v.value : renderNode(v, NS_HTML);
 }
 
 export { jsx, jsxs, Fragment };

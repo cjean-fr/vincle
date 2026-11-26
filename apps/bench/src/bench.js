@@ -1,11 +1,15 @@
 /**
  * bench.js: realistic SSR benchmark (JS port of bench.ts)
  *
- * Suites ported from the official benchmarks:
- *   - text: 1000× two-span text blocks (wide tree), from the preact-render-to-string bench
- *   - stack: 10× 1000-deep recursive trees, from the preact-render-to-string bench
+ * Suites ported from other projects' benchmarks (see README, "Where the cases
+ * come from", for the links and what differs):
+ *   - text: 1000× two-span text blocks (wide tree), from preact-render-to-string
+ *     benchmarks/text.js
+ *   - stack: 10× 1000-deep recursive trees, from preact-render-to-string
+ *     benchmarks/stack.js
  *   - realworld : full layout/head/header/footer/purchases/sidebar page,
  *                 a port of @kitajs/html's RealWorldPage
+ *                 (benchmarks/kitajs/index.tsx)
  *
  * Run: `NODE_ENV=production bun run src/bench.js`
  */
@@ -47,141 +51,54 @@ const STACK_DEPTH = 1_000;
 // Purchases for the realworld page
 const PURCHASES = generatePurchases(1_000);
 
-// 1. Text bench: 1000× Bavaria block (preact bench port)
+// 1. Text and 2. stack: the preact-render-to-string benchmarks, with their
+// components. `Bavaria` is a function component, `Leaf` and `PassThrough` too,
+// one `PassThrough` per level. The same trees are built for every library, each
+// with its own element function; only the attribute name for the class differs.
 
-const bavariaVincle = () =>
-  jsx("div", {
-    children: [
-      jsx("span", { class: "foo", "data-testid": "foo", children: BAVARIA_1 }),
-      jsx("span", { class: "bar", "data-testid": "bar", children: BAVARIA_2 }),
-    ],
-  });
-const bavariaReact = () =>
-  createElement(
-    "div",
-    null,
-    createElement("span", { className: "foo", "data-testid": "foo" }, BAVARIA_1),
-    createElement("span", { className: "bar", "data-testid": "bar" }, BAVARIA_2),
-  );
-const bavariaPreact = () =>
-  h(
-    "div",
-    null,
-    h("span", { class: "foo", "data-testid": "foo" }, BAVARIA_1),
-    h("span", { class: "bar", "data-testid": "bar" }, BAVARIA_2),
-  );
-const bavariaHono = () =>
-  honoJsx(
-    "div",
-    {},
-    honoJsx("span", { class: "foo", "data-testid": "foo" }, BAVARIA_1),
-    honoJsx("span", { class: "bar", "data-testid": "bar" }, BAVARIA_2),
-  );
-
-function makeKitaBuilders(k) {
-  const bavaria = () =>
-    k(
+function makeTrees(el, classAttr) {
+  const Bavaria = () =>
+    el(
       "div",
       null,
-      k("span", { class: "foo", "data-testid": "foo" }, BAVARIA_1),
-      k("span", { class: "bar", "data-testid": "bar" }, BAVARIA_2),
+      el("span", { [classAttr]: "foo", "data-testid": "foo" }, BAVARIA_1),
+      el("span", { [classAttr]: "bar", "data-testid": "bar" }, BAVARIA_2),
     );
+  const Leaf = () =>
+    el("div", null, el("span", { [classAttr]: "foo", "data-testid": "stack" }, "deep stack"));
+  const PassThrough = (props) => el("div", null, props.children);
+  const recursive = (n) => (n <= 0 ? el(Leaf, null) : el(PassThrough, null, recursive(n - 1)));
   const textApp = () => {
     const children = [];
-    for (let i = 0; i < TEXT_REPEATS; i++) children[i] = bavaria();
-    return k("div", null, children);
+    for (let i = 0; i < TEXT_REPEATS; i++) children[i] = el(Bavaria, null);
+    return el("div", null, children);
   };
-  const stack = (depth) =>
-    depth <= 0
-      ? k("div", null, k("span", { class: "foo", "data-testid": "stack" }, "deep stack"))
-      : k("div", null, stack(depth - 1));
   const stackApp = () => {
     const children = [];
-    for (let i = 0; i < STACK_REPEATS; i++) children[i] = stack(STACK_DEPTH);
-    return k("div", null, children);
+    for (let i = 0; i < STACK_REPEATS; i++) children[i] = recursive(STACK_DEPTH);
+    return el("div", null, children);
   };
   return { textApp, stackApp };
 }
-const kitaBench = makeKitaBuilders(kita);
 
-function textAppVincle() {
-  const children = [];
-  for (let i = 0; i < TEXT_REPEATS; i++) children[i] = bavariaVincle();
-  return jsx("div", { children });
-}
-function textAppReact() {
-  const children = [];
-  for (let i = 0; i < TEXT_REPEATS; i++) children[i] = bavariaReact();
-  return createElement("div", null, children);
-}
-function textAppPreact() {
-  const children = [];
-  for (let i = 0; i < TEXT_REPEATS; i++) children[i] = bavariaPreact();
-  return h("div", null, children);
-}
-function textAppHono() {
-  const children = [];
-  for (let i = 0; i < TEXT_REPEATS; i++) children[i] = bavariaHono();
-  return honoJsx("div", {}, children);
-}
+const vincleTrees = makeTrees(
+  (type, props, ...children) =>
+    jsx(type, { ...props, children: children.length === 1 ? children[0] : children }),
+  "class",
+);
+const reactTrees = makeTrees(createElement, "className");
+const preactTrees = makeTrees(h, "class");
+const honoTrees = makeTrees(honoJsx, "class");
+const kitaBench = makeTrees(kita, "class");
 
-// 2. Stack bench: 10× 1000-deep recursive tree (preact bench port)
-
-function stackVincle(depth) {
-  if (depth <= 0) {
-    return jsx("div", {
-      children: jsx("span", { class: "foo", "data-testid": "stack", children: "deep stack" }),
-    });
-  }
-  return jsx("div", { children: stackVincle(depth - 1) });
-}
-function stackReact(depth) {
-  if (depth <= 0) {
-    return createElement(
-      "div",
-      null,
-      createElement("span", { className: "foo", "data-testid": "stack" }, "deep stack"),
-    );
-  }
-  return createElement("div", null, stackReact(depth - 1));
-}
-function stackPreact(depth) {
-  if (depth <= 0) {
-    return h("div", null, h("span", { class: "foo", "data-testid": "stack" }, "deep stack"));
-  }
-  return h("div", null, stackPreact(depth - 1));
-}
-function stackHono(depth) {
-  if (depth <= 0) {
-    return honoJsx(
-      "div",
-      {},
-      honoJsx("span", { class: "foo", "data-testid": "stack" }, "deep stack"),
-    );
-  }
-  return honoJsx("div", {}, stackHono(depth - 1));
-}
-
-function stackAppVincle() {
-  const children = [];
-  for (let i = 0; i < STACK_REPEATS; i++) children[i] = stackVincle(STACK_DEPTH);
-  return jsx("div", { children });
-}
-function stackAppReact() {
-  const children = [];
-  for (let i = 0; i < STACK_REPEATS; i++) children[i] = stackReact(STACK_DEPTH);
-  return createElement("div", null, children);
-}
-function stackAppPreact() {
-  const children = [];
-  for (let i = 0; i < STACK_REPEATS; i++) children[i] = stackPreact(STACK_DEPTH);
-  return h("div", null, children);
-}
-function stackAppHono() {
-  const children = [];
-  for (let i = 0; i < STACK_REPEATS; i++) children[i] = stackHono(STACK_DEPTH);
-  return honoJsx("div", {}, children);
-}
+const textAppVincle = vincleTrees.textApp;
+const textAppReact = reactTrees.textApp;
+const textAppPreact = preactTrees.textApp;
+const textAppHono = honoTrees.textApp;
+const stackAppVincle = vincleTrees.stackApp;
+const stackAppReact = reactTrees.stackApp;
+const stackAppPreact = preactTrees.stackApp;
+const stackAppHono = honoTrees.stackApp;
 
 // 4. Precompile: the same list, both ways
 //
@@ -243,13 +160,13 @@ function providerStaticRuntime() {
     }),
   });
 }
+// A tagged template's strings are one array per call site, which is what the
+// transform emits: built once, not on each render.
+const providerStaticStrings = [`<main>${staticRows}`, "</main>"];
 function providerStaticPrecompile() {
   return jsx(Locale.Provider, {
     value: "en",
-    children: jsxTemplateDeferred(
-      [`<main>${staticRows}`, "</main>"],
-      jsx(PrecompiledStaticReader, {}),
-    ),
+    children: jsxTemplateDeferred(providerStaticStrings, jsx(PrecompiledStaticReader, {})),
   });
 }
 function providerTranslationsRuntime() {
