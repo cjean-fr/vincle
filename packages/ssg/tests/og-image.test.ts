@@ -91,7 +91,7 @@ test("a nested _og-image replaces its ancestor and meta.ogImage selects or disab
     expect(custom).toContain('content="/custom/og.png"');
   }));
 
-test("an explicit meta.image is preserved and variants emit og-<name>.png", () =>
+test("an explicit meta.image stays the author's and no card is generated", () =>
   fixture(async (root, put) => {
     await put("_layout.tsx", LAYOUT);
     await put(
@@ -104,10 +104,59 @@ export const variants = { square: { size: { width: 600, height: 600 }, render: (
       'export const meta = { title: "Home", image: "/own.png" }\nexport default () => <main>Home</main>',
     );
     await build({ root, assets: false });
-    expectPng(new Uint8Array(await readFile(path.join(root, "dist", "og.png"))));
-    expectPng(new Uint8Array(await readFile(path.join(root, "dist", "og-square.png"))));
+    expect(await readFile(path.join(root, "dist", "og.png")).catch(() => null)).toBeNull();
+    expect(await readFile(path.join(root, "dist", "og-square.png")).catch(() => null)).toBeNull();
     const html = await readFile(path.join(root, "dist", "index.html"), "utf8");
     expect(html).toContain('content="/own.png"');
+  }));
+
+test("variants emit og-<name>.png", () =>
+  fixture(async (root, put) => {
+    await put("_layout.tsx", LAYOUT);
+    await put(
+      "_og-image.tsx",
+      `export default ({ title }) => <div style={{ display: "flex" }}>{title}</div>
+export const variants = { square: { size: { width: 600, height: 600 }, render: () => <div style={{ display: "flex" }}>square</div> } }`,
+    );
+    await put(
+      "index.tsx",
+      'export const meta = { title: "Home" }\nexport default () => <main>Home</main>',
+    );
+    await build({ root, assets: false });
+    expectPng(new Uint8Array(await readFile(path.join(root, "dist", "og.png"))));
+    expectPng(new Uint8Array(await readFile(path.join(root, "dist", "og-square.png"))));
+  }));
+
+test("meta.image is an absolute, encoded URL when site and base are set", () =>
+  fixture(async (root, put) => {
+    await put("_layout.tsx", LAYOUT);
+    await put("_og-image.tsx", CARD);
+    await put(
+      "guide/\u00e9t\u00e9.tsx",
+      'export const meta = { title: "\u00c9t\u00e9" }\nexport default () => <main>\u00c9t\u00e9</main>',
+    );
+    await build({ root, assets: false, site: "https://example.com", base: "/docs/" });
+    const html = await readFile(
+      path.join(root, "dist", "guide", "\u00e9t\u00e9", "index.html"),
+      "utf8",
+    );
+    expect(html).toContain('content="https://example.com/docs/guide/%C3%A9t%C3%A9/og.png"');
+    expectPng(
+      new Uint8Array(await readFile(path.join(root, "dist", "guide", "\u00e9t\u00e9", "og.png"))),
+    );
+  }));
+
+test("a page emitting its own og.png wins over the generated card", () =>
+  fixture(async (root, put) => {
+    await put("_layout.tsx", LAYOUT);
+    await put("_og-image.tsx", CARD);
+    await put("index.tsx", "export default () => <main>Home</main>");
+    await put("og.png.ts", "export default () => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1])");
+    await build({ root, assets: false });
+    const png = new Uint8Array(await readFile(path.join(root, "dist", "og.png")));
+    expect(png.length).toBe(5); // the page's own file, not the generated card
+    const html = await readFile(path.join(root, "dist", "index.html"), "utf8");
+    expect(html).toContain('content="/og.png"');
   }));
 
 test("components, async components and fragments render inside cards", () =>
@@ -170,17 +219,45 @@ export default () => <div style={{ display: "flex", fontFamily: "Brand" }}>brand
     expectPng(new Uint8Array(await readFile(path.join(root, "dist", "og.png"))));
   }));
 
-test("the second build reuses the card cache and still emits identical cards", () =>
+test("the caches short-circuit the engine and the encoder on unchanged markup", () =>
   fixture(async (root, put) => {
     await put("_layout.tsx", LAYOUT);
     await put("_og-image.tsx", CARD);
     await put("index.tsx", "export default () => <main>Home</main>");
     await build({ root, assets: false });
-    const first = new Uint8Array(await readFile(path.join(root, "dist", "og.png")));
+    const cacheDirectory = path.join(root, "node_modules", ".cache", "vincle-og-images");
+    const first = await readdir(cacheDirectory);
+    const pngEntry = first.find((name) => name.endsWith(".png"))!;
+    const svgEntry = first.find((name) => name.endsWith(".svg"))!;
+    expect(pngEntry).toBeDefined();
+    expect(svgEntry).toBeDefined();
+    const firstPng = new Uint8Array(await readFile(path.join(root, "dist", "og.png")));
+
+    // A valid-signature fake PNG in the cache is served as-is: the encoder did not run.
+    const fakePng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+    await writeFile(path.join(cacheDirectory, pngEntry), fakePng);
     await build({ root, assets: false });
-    const second = new Uint8Array(await readFile(path.join(root, "dist", "og.png")));
-    expectPng(second);
-    expect(Buffer.from(second).equals(Buffer.from(first))).toBe(true);
-    const cached = await readdir(path.join(root, "node_modules", ".cache", "vincle-og-images"));
-    expect(cached.filter((name) => name.endsWith(".png")).length).toBeGreaterThan(0);
+    expect(
+      Buffer.from(new Uint8Array(await readFile(path.join(root, "dist", "og.png")))).equals(
+        Buffer.from(fakePng),
+      ),
+    ).toBe(true);
+
+    // A blank document in the layout cache yields a blank card: the engine did not run.
+    await writeFile(
+      path.join(cacheDirectory, svgEntry),
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"/>',
+    );
+    await build({ root, assets: false });
+    const blankPng = new Uint8Array(await readFile(path.join(root, "dist", "og.png")));
+    expect(Buffer.from(blankPng).equals(Buffer.from(firstPng))).toBe(false);
+    expectPng(blankPng);
+
+    // A markup change re-renders under new keys; old entries are kept.
+    await put(
+      "_og-image.tsx",
+      'export default () => <div style={{ display: "flex" }}>changed</div>',
+    );
+    await build({ root, assets: false });
+    expect((await readdir(cacheDirectory)).length).toBeGreaterThan(first.length);
   }));

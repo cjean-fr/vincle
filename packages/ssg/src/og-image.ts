@@ -77,10 +77,20 @@ interface Resvg {
   };
 }
 
+/** Only a genuinely absent package gets the install hint; anything else surfaces as-is. */
+function isMissingPackage(error: unknown, name: string): boolean {
+  return (
+    error instanceof Error &&
+    (error as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND" &&
+    error.message.includes(name)
+  );
+}
+
 /** The engine is an optional peer; load it once and explain how to add it. */
 function loadEngine<T>(name: string, file: string): Promise<T> {
   // A computed specifier keeps the bundler from resolving the optional peer.
   return (import(name) as Promise<T>).catch((error: unknown) => {
+    if (!isMissingPackage(error, name)) throw error;
     throw failure(
       `Social cards need the optional "${name}" dependency.`,
       {
@@ -118,9 +128,18 @@ function bundledFonts(): Promise<LoadedOgImage["fonts"]> {
   ));
 }
 
-/** Resolve the `_og-image` module for one page; the nearest ancestor wins. */
-export function ogImageResolver() {
+/**
+ * Resolve the `_og-image` module for one page; the nearest ancestor wins.
+ * The walk boundary comes from the discovery root: same convention as
+ * _layout, a src/pages sources directory keeps its root module one level
+ * up, beside pages.
+ */
+export function ogImageResolver(src: string) {
   const files = new Map<string, Promise<boolean>>();
+  const boundary =
+    path.basename(src) === "pages" && path.basename(path.dirname(src)) === "src"
+      ? path.dirname(src)
+      : src;
   function exists(file: string) {
     let pending = files.get(file);
     if (!pending) {
@@ -142,13 +161,9 @@ export function ogImageResolver() {
       source.watch(file);
       return file;
     }
-    const boundary =
-      path.basename(source.src) === "pages" && path.basename(path.dirname(source.src)) === "src"
-        ? path.dirname(source.src)
-        : source.src;
-    // Custom discovery may return a source outside the configured src. Automatic
-    // lookup must not probe its unrelated ancestors; an explicit meta.ogImage
-    // remains an intentional selection resolved from the source file.
+    // Custom discovery may return a source outside the discovery root.
+    // Automatic lookup must not probe its unrelated ancestors; an explicit
+    // meta.ogImage remains an intentional selection from the source file.
     const relative = path.relative(boundary, path.dirname(source.file));
     if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative))
       return undefined;
@@ -385,6 +400,8 @@ export interface OgImageWork {
   route: string;
   /** Shared page metadata; read at render time, once hooks have enriched it. */
   meta: SsgMeta;
+  /** Set false when the page emits its own default og.png. */
+  includeDefault?: boolean;
 }
 
 /** Render every pending card, reusing a content-hash cache across builds. */
@@ -424,17 +441,41 @@ export async function renderOgImages(
               children: element,
             },
           };
-    const svg = await satori(card, {
-      width: size.width,
-      height: size.height,
-      fonts: item.module.fonts,
-    });
+    // Cache before the engine too: layout is the expensive step, so an
+    // unchanged tree skips it entirely, not only the PNG encoding.
+    const layoutKey = createHash("sha256")
+      .update(CACHE_VERSION)
+      .update("\0")
+      .update(JSON.stringify(card))
+      .update("\0")
+      .update(`${size.width}x${size.height}`)
+      .update("\0")
+      .update(
+        item.module.fonts
+          .map((font) =>
+            createHash("sha256")
+              .update(font.name)
+              .update("\0")
+              .update(String(font.weight))
+              .update("\0")
+              .update(font.style)
+              .update("\0")
+              .update(font.data)
+              .digest("hex"),
+          )
+          .join(","),
+      )
+      .digest("hex");
+    const svg = await cachedText(cacheDirectory, layoutKey, async () =>
+      satori(card, { width: size.width, height: size.height, fonts: item.module.fonts }),
+    );
     const png = await cachedPng(cacheDirectory, svg, () => new Resvg(svg).render().asPng());
     await emit({ path: ogImagePath(item.route, name), content: png });
   };
   const tasks: Array<() => Promise<void>> = [];
   for (const item of work) {
-    tasks.push(() => renderCard(item, item.module.render, item.module.size, undefined));
+    if (item.includeDefault !== false)
+      tasks.push(() => renderCard(item, item.module.render, item.module.size, undefined));
     for (const [name, variant] of Object.entries(item.module.variants))
       tasks.push(() => renderCard(item, variant.render, variant.size, name));
   }
@@ -445,6 +486,35 @@ export async function renderOgImages(
       while ((task = tasks[next++])) await task();
     }),
   );
+}
+
+/**
+ * Content-addressed layout cache: the engine output is reused while the
+ * converted tree, fonts, size and cache version stay identical. Same
+ * best-effort contract as the PNG cache.
+ */
+async function cachedText(
+  directory: string,
+  key: string,
+  render: () => Promise<string>,
+): Promise<string> {
+  const target = path.join(directory, `${key}.svg`);
+  try {
+    const cached = await readFile(target, "utf8");
+    if (cached.startsWith("<svg")) return cached;
+  } catch {
+    // Cold cache or unreadable entry: render below.
+  }
+  const text = await render();
+  try {
+    await mkdir(directory, { recursive: true });
+    const temporary = `${target}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+    await writeFile(temporary, text);
+    await rename(temporary, target);
+  } catch {
+    // Caching is an optimization; the rendered card is still returned.
+  }
+  return text;
 }
 
 /**

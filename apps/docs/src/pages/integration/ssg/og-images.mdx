@@ -54,11 +54,19 @@ Lookup mirrors `_layout`: the nearest `_og-image.{tsx,jsx,ts,js}` ancestor
 wins, a nested module replaces its ancestor for its subtree, and page metadata
 adjusts the choice per page.
 
-| Metadata             | Effect                                                                   |
-| -------------------- | ------------------------------------------------------------------------ |
-| `ogImage: "./x.tsx"` | Use this module instead, resolved relative to the page's source file.    |
-| `ogImage: false`     | No card for this page, and `meta.image` is left alone.                   |
-| `image: "/own.png"`  | Keep your own image; the card is still emitted but metadata stays yours. |
+| Metadata             | Effect                                                                |
+| -------------------- | --------------------------------------------------------------------- |
+| `ogImage: "./x.tsx"` | Use this module instead, resolved relative to the page's source file. |
+| `ogImage: false`     | No card for this page, and `meta.image` is left alone.                |
+| `image: "/own.png"`  | Keep your own image: no card is generated for this page.              |
+
+Cards apply to page routes only: file routes (`robots.txt`, `feed.xml`, an
+`og.png` a route emits itself) never get a generated card. When a route emits
+its own `og.png`, that file wins over the generated card and `meta.image`
+points at it.
+
+`meta.image` is an absolute URL when `site` is set — including the `base`
+prefix, with every segment URL-encoded — and a root-relative path otherwise.
 
 ## Size and variants
 

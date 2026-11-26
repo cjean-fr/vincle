@@ -245,9 +245,10 @@ async function buildInternal(
       const renderPage = createPageRenderer();
       const contexts: PageContext[] = [];
       const pageCache = cache;
-      const resolveOgImage = ogImageResolver();
+      const resolveOgImage = ogImageResolver(src);
       const loadOgImage = ogImageLoader();
       const ogImages: OgImageWork[] = [];
+      const emittedPaths = new Set<string>();
       async function* produce(): AsyncGenerator<SsgOutput> {
         // Drop rendered page closures as we advance; publication only needs their contexts.
         while (pages.length) {
@@ -256,9 +257,14 @@ async function buildInternal(
             const hit = pageCache?.rendered(page);
             // Social cards: resolve the colocated _og-image module before the
             // render so layouts read meta.image/imageSize from the shared meta.
+            // An explicit meta.image stays the author's: no card is generated.
+            // File routes (robots.txt, og.png, …) are not pages: no card.
             const ogSource = hit?.context ?? page.source;
             const ogMeta = hit?.context?.meta ?? page.meta;
-            const ogFile = await resolveOgImage(ogSource, ogMeta);
+            const ogFile =
+              ogMeta.image === undefined && path.extname(ogSource.route) === ""
+                ? await resolveOgImage(ogSource, ogMeta)
+                : undefined;
             if (ogFile) {
               const module = await loadOgImage(
                 ogFile,
@@ -266,7 +272,7 @@ async function buildInternal(
                 ogSource.modules,
               );
               for (const font of module.fontFiles) ogSource.watch(font);
-              ogMeta.image ??= `/${ogImagePath(ogSource.route)}`;
+              ogMeta.image = fullUrl(urlForPath(`/${ogImagePath(ogSource.route)}`), site);
               ogMeta.imageSize ??= module.size;
               ogImages.push({ file: ogFile, module, route: ogSource.route, meta: ogMeta });
             }
@@ -283,6 +289,7 @@ async function buildInternal(
                 },
               });
             for await (const output of outputs) {
+              emittedPaths.add(output.path);
               const meta = { ...page.meta, ...output.meta };
               if (output.path.endsWith(".html"))
                 htmlOutputs.push({ path: output.path, url: publicUrl(output), meta });
@@ -320,15 +327,30 @@ async function buildInternal(
         preserve: options.preserve,
         async beforePublish(prepared) {
           if (ogImages.length) {
-            await diagnose(
-              () => renderOgImages(ogImages, root, (output) => prepared.emit(output)),
-              "Social card generation failed",
-              {
-                reason: "OG_IMAGE_FAILED",
-                hint: "Fix the named _og-image module, its fonts or its components.",
-                context: { out },
-              },
-            );
+            // A page emitting its own og.png wins over the generated card:
+            // meta.image already points at that path, so nothing is lost and
+            // no file is silently overwritten.
+            const generated = ogImages.flatMap((item) => {
+              const variants = Object.fromEntries(
+                Object.entries(item.module.variants).filter(
+                  ([name]) => !emittedPaths.has(ogImagePath(item.route, name)),
+                ),
+              );
+              const includeDefault = !emittedPaths.has(ogImagePath(item.route));
+              return includeDefault || Object.keys(variants).length
+                ? [{ ...item, includeDefault, module: { ...item.module, variants } }]
+                : [];
+            });
+            if (generated.length)
+              await diagnose(
+                () => renderOgImages(generated, root, (output) => prepared.emit(output)),
+                "Social card generation failed",
+                {
+                  reason: "OG_IMAGE_FAILED",
+                  hint: "Fix the named _og-image module, its fonts or its components.",
+                  context: { out },
+                },
+              );
           }
           const context = {
             ...prepared,
