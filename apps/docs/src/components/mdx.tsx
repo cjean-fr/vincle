@@ -1,6 +1,8 @@
 /** @jsxImportSource @vincle/core */
 import { raw, type JSX } from "@vincle/core";
 
+import corePackage from "../../../../packages/core/package.json" with { type: "json" };
+
 function RawHtml({ html }: { html: string }) {
   return raw(html);
 }
@@ -25,7 +27,12 @@ function AgentCallout({ title, children }: { title: string; children?: JSX.Eleme
   );
 }
 
-const base = { RawHtml, Card, AgentCallout };
+/** The @vincle/core version in the repository, read when the site is built. */
+function CoreVersion() {
+  return corePackage.version;
+}
+
+const base = { RawHtml, Card, AgentCallout, CoreVersion };
 
 export function useMDXComponents(
   components?: Readonly<Record<string, unknown>>,

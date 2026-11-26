@@ -26,14 +26,14 @@
   font-family: var(--docs-font-mono);
 }
 .docs-home h1 {
-  font-size: clamp(2.5rem, 4.2vw, 3.6rem);
+  font-size: clamp(2.4rem, 4.1vw, 3.4rem);
   line-height: 1.08;
   font-weight: 700;
   letter-spacing: -0.032em;
   text-wrap: balance;
 }
 .docs-hero-description {
-  max-width: 38ch;
+  max-width: 44ch;
   text-wrap: pretty;
   margin-top: 1.25rem;
   font-size: 1.0625rem;
@@ -418,11 +418,6 @@
 .docs-path-card .docs-text-link {
   margin-top: auto;
 }
-.docs-paths-note {
-  margin-top: 1.5rem;
-  font-size: 0.8125rem;
-  color: var(--docs-color-text-secondary);
-}
 .docs-foundations {
   display: grid;
   grid-template-columns: 1fr 1.45fr;
@@ -646,4 +641,257 @@
   width: 100%;
   height: 9rem;
   border: 0;
+}
+
+/* News badge above the title. */
+.docs-news-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 1.5rem;
+  padding: 0.25rem 0.8rem 0.25rem 0.3rem;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 999px;
+  background: var(--docs-color-bg);
+  color: var(--docs-color-text-body);
+  font-size: 0.8125rem;
+  text-decoration: none;
+  transition: border-color var(--docs-transition-fast);
+}
+.docs-news-badge:hover {
+  border-color: var(--docs-color-accent);
+  color: var(--docs-color-text);
+}
+.docs-news-badge > span:first-child {
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--docs-color-accent-soft);
+  color: var(--docs-color-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--docs-font-mono);
+}
+.docs-button .docs-badge {
+  margin-left: 0.5rem;
+}
+
+/* Three objections answered under the buttons. */
+.docs-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--docs-color-text-body);
+  font-size: 0.875rem;
+}
+.docs-checks li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.docs-checks li::before {
+  content: "";
+  width: 0.85rem;
+  height: 0.5rem;
+  margin-top: -0.2rem;
+  border-left: 2px solid var(--docs-color-accent);
+  border-bottom: 2px solid var(--docs-color-accent);
+  transform: rotate(-45deg) scale(0.85);
+}
+
+/* Numbers that each link to their source. */
+.docs-proof {
+  padding-block: 2.5rem 0;
+}
+.docs-proof-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 0.875rem;
+  background: var(--docs-color-surface);
+}
+.docs-proof-list li + li {
+  border-left: 1px solid var(--docs-color-border);
+}
+.docs-proof-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  height: 100%;
+  padding: 1.4rem 1.5rem;
+  color: inherit;
+  text-decoration: none;
+}
+.docs-proof-list a:hover strong {
+  color: var(--docs-color-accent);
+}
+.docs-proof-list strong {
+  color: var(--docs-color-text);
+  font-size: clamp(1.7rem, 2.6vw, 2.2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--docs-transition-fast);
+}
+.docs-proof-list span {
+  color: var(--docs-color-text-body);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+/* Start in ten minutes. */
+.docs-start-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: start;
+}
+.docs-start-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  height: 100%;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 0.875rem;
+  color: inherit;
+  text-decoration: none;
+  counter-increment: start;
+  transition: border-color var(--docs-transition-fast);
+}
+.docs-start-list a:hover {
+  border-color: var(--docs-color-accent);
+}
+.docs-start-list a::before {
+  content: counter(start, decimal-leading-zero);
+  color: var(--docs-color-accent);
+  font-family: var(--docs-font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.docs-start-list strong {
+  color: var(--docs-color-text);
+  font-size: 1.0625rem;
+}
+.docs-start-list span {
+  color: var(--docs-color-text-body);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .docs-proof-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .docs-proof-list li:nth-child(3) {
+    border-left: 0;
+  }
+  .docs-proof-list li:nth-child(n + 3) {
+    border-top: 1px solid var(--docs-color-border);
+  }
+  .docs-start-list {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .docs-news-badge,
+  .docs-proof-list strong,
+  .docs-start-list a {
+    transition: none;
+  }
+}
+
+/* Diagram, desktop only: a compact tree, one renderer, two labelled outputs. Mobile keeps its own layout. */
+.docs-diagram-out em {
+  display: none;
+}
+@media (min-width: 761px) {
+  .docs-diagram {
+    padding: 2.5rem 1.5rem 2rem;
+  }
+  .docs-diagram-track {
+    justify-content: center;
+    max-width: 58rem;
+    margin-inline: auto;
+  }
+  .docs-diagram-node {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.8125rem;
+    border-color: color-mix(in srgb, var(--docs-color-text-secondary) 40%, transparent);
+  }
+  .docs-diagram-node-root {
+    font-weight: 600;
+  }
+  .docs-diagram-node-root::after,
+  .docs-diagram-children > .docs-diagram-node::before {
+    background: color-mix(in srgb, var(--docs-color-text-secondary) 40%, transparent);
+  }
+  .docs-diagram-children {
+    gap: 0.5rem;
+    border-left-color: color-mix(in srgb, var(--docs-color-text-secondary) 40%, transparent);
+  }
+  .docs-diagram-core {
+    padding: 1.1rem 1.75rem;
+    border-width: 2px;
+  }
+  .docs-diagram-core strong {
+    font-size: 1.125rem;
+  }
+  .docs-diagram-core span {
+    font-size: 0.75rem;
+  }
+  .docs-diagram-link {
+    flex: 0 0 6rem;
+    height: 2px;
+    background: var(--docs-color-accent);
+  }
+  .docs-diagram-link::after {
+    width: 9px;
+    height: 9px;
+    border-width: 2px;
+    right: 0;
+  }
+  .docs-diagram-outcomes {
+    gap: 0.75rem;
+    padding-left: 1.5rem;
+    border-left: 2px solid var(--docs-color-accent);
+  }
+  .docs-diagram-out {
+    gap: 0.15rem;
+    padding: 0.6rem 0.9rem;
+    border-color: var(--docs-color-accent);
+  }
+  .docs-diagram-out::before {
+    left: -1.5rem;
+    width: 1.5rem;
+    height: 2px;
+    background: var(--docs-color-accent);
+  }
+  .docs-diagram-out strong {
+    font-size: 0.875rem;
+  }
+  .docs-diagram-out span {
+    font-size: 0.75rem;
+  }
+  .docs-diagram-out em {
+    display: block;
+    margin-top: 0.2rem;
+    color: var(--docs-color-accent);
+    font-size: 0.6875rem;
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .docs-diagram-caption {
+    font-size: 0.8125rem;
+  }
 }
