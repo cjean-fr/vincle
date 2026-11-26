@@ -478,7 +478,11 @@ export async function renderOgImages(
     const svg = await cachedText(cacheDirectory, layoutKey, async () =>
       satori(card, { width: size.width, height: size.height, fonts: item.module.fonts }),
     );
-    const png = await cachedPng(cacheDirectory, svg, () => new Resvg(svg).render().asPng());
+    const png = await cachedPng(cacheDirectory, svg, () =>
+      // The layout already holds the text as outlines, so the system fonts
+      // are never read; scanning them for every card costs ~70 ms each.
+      new Resvg(svg, { font: { loadSystemFonts: false } }).render().asPng(),
+    );
     await emit({ path: ogImagePath(item.route, name), content: png });
   };
   const tasks: Array<() => Promise<void>> = [];
