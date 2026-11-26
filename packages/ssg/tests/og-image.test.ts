@@ -292,6 +292,18 @@ test("only the targeted missing package gets the install hint", () => {
     { code: "ERR_MODULE_NOT_FOUND" },
   );
   expect(isMissingPackage(bunNested, "@resvg/resvg-js")).toBe(false);
+  // Plain npm, native binary missing: the CommonJS loader names the companion
+  // and cites the package only in the require stack.
+  const npmBrokenBinary = Object.assign(
+    new Error(
+      "Cannot find module '@resvg/resvg-js-linux-x64-gnu'\nRequire stack:\n- /app/node_modules/@resvg/resvg-js/js-binding.js\n- /app/node_modules/@resvg/resvg-js/index.js",
+    ),
+    { code: "MODULE_NOT_FOUND" },
+  );
+  expect(isMissingPackage(npmBrokenBinary, "@resvg/resvg-js")).toBe(false);
+  // The same message under the ESM code still names the companion, not the package.
+  npmBrokenBinary.code = "ERR_MODULE_NOT_FOUND";
+  expect(isMissingPackage(npmBrokenBinary, "@resvg/resvg-js")).toBe(false);
   // Anything else (a syntax error inside the package, a non-Error) is not an absence.
   expect(isMissingPackage(new SyntaxError("Unexpected token"), "satori")).toBe(false);
   expect(isMissingPackage("satori", "satori")).toBe(false);
