@@ -73,6 +73,12 @@ export interface FlowOptions {
   onError?: OnError;
   /** Render deadline in ms; error fallbacks receive a fresh deadline of the same duration. */
   defaultTimeout?: number;
+  /**
+   * Prefix of the generated fragment ids (default `"fragment-"`). Give a response that patches
+   * a page already carrying ids from its own render (a fragment fetched by htmx, say) a prefix
+   * of its own, so its ids cannot collide with the page's.
+   */
+  idPrefix?: string;
 }
 
 export type FlowConfig =

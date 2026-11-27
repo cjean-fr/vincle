@@ -85,6 +85,12 @@ export function assertFlowOptions(opts: FlowOptions | undefined, source: string)
       ERR_FLOW_CONFIG,
     );
   }
+  if (opts.idPrefix !== undefined && typeof opts.idPrefix !== "string") {
+    throw vincleError(
+      `${PREFIX} ${source}: idPrefix must be a string, got ${describeValue(opts.idPrefix)}.`,
+      ERR_FLOW_CONFIG,
+    );
+  }
   if (opts.signal !== undefined && !isAbortSignal(opts.signal)) {
     throw vincleError(
       `${PREFIX} ${source}: signal must be an AbortSignal, got ${describeValue(opts.signal)}. ` +

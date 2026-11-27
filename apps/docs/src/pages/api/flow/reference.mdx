@@ -156,14 +156,15 @@ function renderToStream(
 ): ReadableStream<string>;
 ```
 
-| Option           | Type                     | Default  | Description                                 |
-| ---------------- | ------------------------ | -------- | ------------------------------------------- |
-| `signal`         | `AbortSignal`            | N/A      | Signal to abort the stream                  |
-| `onError`        | `FlowOptions["onError"]` | N/A      | Handler for fragment / stream render errors |
-| `defaultTimeout` | `number`                 | N/A      | Per-fragment render timeout in ms           |
-| `mode`           | `"full" \| "fragment"`   | `"full"` | `"fragment"` emits neither shell nor close  |
+| Option           | Type                     | Default       | Description                                 |
+| ---------------- | ------------------------ | ------------- | ------------------------------------------- |
+| `signal`         | `AbortSignal`            | N/A           | Signal to abort the stream                  |
+| `onError`        | `FlowOptions["onError"]` | N/A           | Handler for fragment / stream render errors |
+| `defaultTimeout` | `number`                 | N/A           | Per-fragment render timeout in ms           |
+| `idPrefix`       | `string`                 | `"fragment-"` | Prefix of the generated fragment ids        |
+| `mode`           | `"full" \| "fragment"`   | `"full"`      | `"fragment"` emits neither shell nor close  |
 
-`FlowOptions` is `{ signal?, onError?, defaultTimeout? }`. The shell is never
+`FlowOptions` is `{ signal?, onError?, defaultTimeout?, idPrefix? }`. The shell is never
 streamed progressively: it is rendered in full, `<head>` and all, and only then
 emitted. Only fragments arrive later. It returns the stream only: headers are
 yours to set, or use [`serve()`](#serve).
@@ -243,16 +244,17 @@ function serve(
 ): Promise<Response>;
 ```
 
-| Option           | Type                                   | Default  | Description                       |
-| ---------------- | -------------------------------------- | -------- | --------------------------------- |
-| `signal`         | `AbortSignal`                          | N/A      | Abort all pending renders         |
-| `onError`        | `(error, info) => JSX.Element \| void` | N/A      | Per-fragment error handler        |
-| `defaultTimeout` | `number`                               | N/A      | Per-fragment timeout (ms)         |
-| `negotiate`      | `(req: Request) => Negotiation`        | N/A      | Extract per-request hints         |
-| `mode`           | `"full" \| "fragment"`                 | `"full"` | Render full page or fragment-only |
-| `headers`        | `HeadersInit`                          | N/A      | Additional response headers       |
-| `status`         | `number`                               | `200`    | Response status code              |
-| `statusText`     | `string`                               | N/A      | Response status text              |
+| Option           | Type                                   | Default       | Description                       |
+| ---------------- | -------------------------------------- | ------------- | --------------------------------- |
+| `signal`         | `AbortSignal`                          | N/A           | Abort all pending renders         |
+| `onError`        | `(error, info) => JSX.Element \| void` | N/A           | Per-fragment error handler        |
+| `defaultTimeout` | `number`                               | N/A           | Per-fragment timeout (ms)         |
+| `idPrefix`       | `string`                               | `"fragment-"` | Prefix of the fragment ids        |
+| `negotiate`      | `(req: Request) => Negotiation`        | N/A           | Extract per-request hints         |
+| `mode`           | `"full" \| "fragment"`                 | `"full"`      | Render full page or fragment-only |
+| `headers`        | `HeadersInit`                          | N/A           | Additional response headers       |
+| `status`         | `number`                               | `200`         | Response status code              |
+| `statusText`     | `string`                               | N/A           | Response status text              |
 
 The `content-type` header is set to `text/html; charset=utf-8` automatically,
 or to `text/event-stream` when the negotiation returns `transport: "sse"`

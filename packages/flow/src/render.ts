@@ -178,7 +178,11 @@ export async function runSequence(
         fragments.clear();
       }
     },
-    { adapter, mode: "streaming" },
+    {
+      adapter,
+      mode: "streaming",
+      ...(opts.idPrefix === undefined ? {} : { idPrefix: opts.idPrefix }),
+    },
   );
 }
 

@@ -4,6 +4,7 @@
 
 ### Added
 
+- Add the `idPrefix` option to `FlowOptions` (so to `renderToStream`, `renderToEventStream` and `serve`): the prefix of the generated fragment ids, so a response that patches a page already holding ids from its own render, such as a fragment fetched by htmx, cannot collide with them.
 - Add `renderToEventStream` and the `transport: "sse"` negotiation: the page is sent as `text/event-stream`, one event for the shell and one per patch. `negotiateHtmx` selects it for an htmx request that accepts `text/event-stream`, which is what htmx's `sse` extension sends, so `HtmxAdapter` patches now reach the page as they resolve. Without the extension htmx applies the response only when complete, and the patches find no placeholder to replace.
 
 ### Changed

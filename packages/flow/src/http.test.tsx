@@ -159,6 +159,16 @@ describe("HTTP negotiation (decoupled from the adapter)", () => {
       );
     });
 
+    it("serve gives its fragments the requested id prefix", async () => {
+      const res = await serve(sseReq(), page, HtmxAdapter, {
+        negotiate: negotiateHtmx,
+        idPrefix: "replies-",
+      });
+      const text = await res.text();
+      expect(text).toContain('id="replies-1"');
+      expect(text).not.toContain("fragment-1");
+    });
+
     it("serve keeps the plain HTML body when the extension is not in play", async () => {
       const res = await serve(
         new Request("http://localhost", { headers: { "HX-Request": "true" } }),
