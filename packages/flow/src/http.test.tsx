@@ -124,4 +124,50 @@ describe("HTTP negotiation (decoupled from the adapter)", () => {
     );
     expect(await res.text()).toContain("MutationObserver");
   });
+
+  describe("htmx with the sse extension", () => {
+    const sseReq = (extra: Record<string, string> = {}) =>
+      new Request("http://localhost", {
+        headers: { "HX-Request": "true", Accept: "text/html, text/event-stream", ...extra },
+      });
+    const page = () => (
+      <ul>
+        <Defer fallback={<li>wait</li>}>{async () => <li>done{"\n"}two lines</li>}</Defer>
+      </ul>
+    );
+
+    it("negotiateHtmx picks the event stream only for an htmx request that accepts it", () => {
+      expect(negotiateHtmx(sseReq()).transport).toBe("sse");
+      const vary = new Headers(negotiateHtmx(sseReq()).headers).get("Vary");
+      expect(vary).toContain("Accept");
+      const noAccept = new Request("http://localhost", { headers: { "HX-Request": "true" } });
+      expect(negotiateHtmx(noAccept).transport).toBeUndefined();
+      const plain = new Request("http://localhost", { headers: { Accept: "text/event-stream" } });
+      expect(negotiateHtmx(plain).transport).toBeUndefined();
+    });
+
+    it("serve answers with one event for the shell, then one per patch", async () => {
+      const res = await serve(sseReq(), page, HtmxAdapter, { negotiate: negotiateHtmx });
+      expect(res.headers.get("content-type")).toContain("text/event-stream");
+      expect(res.headers.get("cache-control")).toBe("no-cache");
+      const events = (await res.text()).split("\n\n").filter(Boolean);
+      expect(events).toHaveLength(2);
+      expect(events[0]).toBe('data: <ul><div id="fragment-1"><li>wait</li></div></ul>');
+      expect(events[1]).toBe(
+        'data: <div id="fragment-1" hx-swap-oob="outerHTML"><li>done\n' +
+          "data: two lines</li></div>",
+      );
+    });
+
+    it("serve keeps the plain HTML body when the extension is not in play", async () => {
+      const res = await serve(
+        new Request("http://localhost", { headers: { "HX-Request": "true" } }),
+        page,
+        HtmxAdapter,
+        { negotiate: negotiateHtmx },
+      );
+      expect(res.headers.get("content-type")).toContain("text/html");
+      expect(await res.text()).not.toContain("data: ");
+    });
+  });
 });

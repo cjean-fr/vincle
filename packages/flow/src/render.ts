@@ -97,6 +97,22 @@ function encodeWith(
 }
 
 /**
+ * Frame one chunk of HTML as a Server-Sent Event. Each line of the chunk is a
+ * `data:` line (the client joins them back with `\n`), and a blank line ends
+ * the event.
+ */
+function sseEvent(html: string): string {
+  return (
+    html
+      .replaceAll("\r\n", "\n")
+      .replaceAll("\r", "\n")
+      .split("\n")
+      .map((line) => `data: ${line}\n`)
+      .join("") + "\n"
+  );
+}
+
+/**
  * Render the page shell: run the node factory, strip closing `</body></html>`
  * tags, then apply `adapter.transformShell` if present.
  *
@@ -217,6 +233,52 @@ export function renderToStream(
     async (emit, signal) => {
       const encoder = encodeWith(adapter, emit);
       await runSequence(encoder.write, signal, node, adapter, opts ?? {});
+      await encoder.flush();
+    },
+    { signal: opts?.signal },
+  );
+}
+
+/**
+ * Render to a `ReadableStream<string>` of Server-Sent Events: one event for
+ * the shell, then one per fragment patch, in the adapter's wire format.
+ *
+ * This is the transport for clients that apply a response only when it is
+ * complete but can consume an event stream, such as htmx with its `sse`
+ * extension: each event is swapped as it arrives, so a patch finds the
+ * placeholder the shell event put in the page. The document-closing tags are
+ * left out, since an event is a piece of a page, never a whole one.
+ */
+export function renderToEventStream(
+  node: () => JSX.Element,
+  adapter: StreamingAdapter,
+  opts?: FlowOptions & { mode?: "full" | "fragment" },
+): ReadableStream<string> {
+  assertStreamInput("renderToEventStream", adapter, opts);
+  if (adapter.capabilities.streaming !== true) {
+    throw vincleError(
+      "[vincle/flow] renderToEventStream(): this adapter does not stream: capabilities.streaming is false, " +
+        "so it can only produce static output. Use renderToStatic() with this adapter, or pass a " +
+        "streaming adapter (TurboAdapter, NativeAdapter, HtmxAdapter, WebPlatformAdapter).",
+      ERR_FLOW_NO_STREAMING,
+    );
+  }
+  return createStream<string>(
+    async (emit, signal) => {
+      const encoder = encodeWith(adapter, async (html) => {
+        // `encodeWith` pads with newlines for the HTML wire; an event needs none.
+        const chunk = html.trim();
+        if (chunk !== "") await emit(sseEvent(chunk));
+      });
+      await runSequence(
+        async (ev) => {
+          if (ev.type !== "close") await encoder.write(ev);
+        },
+        signal,
+        node,
+        adapter,
+        opts ?? {},
+      );
       await encoder.flush();
     },
     { signal: opts?.signal },

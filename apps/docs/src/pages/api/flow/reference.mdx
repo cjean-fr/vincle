@@ -254,7 +254,10 @@ function serve(
 | `status`         | `number`                               | `200`    | Response status code              |
 | `statusText`     | `string`                               | N/A      | Response status text              |
 
-The `content-type` header is set to `text/html; charset=utf-8` automatically.
+The `content-type` header is set to `text/html; charset=utf-8` automatically,
+or to `text/event-stream` when the negotiation returns `transport: "sse"`
+(`negotiateHtmx` does for an htmx request that accepts it, see
+[Recipes › HTMX negotiation](/integration/flow/recipes#htmx-negotiation)).
 With `negotiateHtmx`, the response includes `Vary: HX-Target`, unioned with
 existing `Vary` values so shared caches never mix full-page and fragment
 responses. Usage examples: [Recipes › HTTP serving](/integration/flow/recipes#http-serving).

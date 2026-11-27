@@ -2,7 +2,7 @@ import type { JSX } from "@vincle/core";
 
 import type { FlowOptions, Negotiate, Negotiation, StreamingAdapter } from "./types.js";
 
-import { renderToStream } from "./render.js";
+import { renderToEventStream, renderToStream } from "./render.js";
 
 export type { Negotiate, Negotiation } from "./types.js";
 
@@ -67,13 +67,16 @@ export async function serve(
     },
 ): Promise<Response> {
   const negotiation = opts?.negotiate?.(req) ?? {};
-  const body = renderToStream(() => page(negotiation), adapter, {
+  const sse = negotiation.transport === "sse";
+  const body = (sse ? renderToEventStream : renderToStream)(() => page(negotiation), adapter, {
     ...opts,
     signal: opts?.signal ? AbortSignal.any([req.signal, opts.signal]) : req.signal,
     mode: opts?.mode ?? negotiation.mode,
   }).pipeThrough(new TextEncoderStream());
   const headers = mergeHeaders(
-    { "content-type": "text/html; charset=utf-8" },
+    sse
+      ? { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache" }
+      : { "content-type": "text/html; charset=utf-8" },
     opts?.headers,
     negotiation.headers,
   );
@@ -83,8 +86,19 @@ export async function serve(
 /**
  * HTMX negotiation: read `HX-Target`, and `Vary` on it so shared caches never
  * serve a fragment response to a full-page navigation.
+ *
+ * htmx applies an ordinary response only once it is complete, so a response
+ * that streams `<Defer>` fragments would show nothing until the last one. When
+ * the request comes from htmx with its `sse` extension (it adds
+ * `text/event-stream` to `Accept`), the answer is an event stream instead,
+ * which that extension swaps in event by event. `Vary` then includes `Accept`.
  */
 export function negotiateHtmx(req: Request): Negotiation {
   const target = req.headers.get("HX-Target") ?? undefined;
-  return { headers: { Vary: "HX-Target" }, target };
+  const sse =
+    req.headers.has("HX-Request") &&
+    (req.headers.get("Accept") ?? "").toLowerCase().includes("text/event-stream");
+  return sse
+    ? { headers: { Vary: "HX-Target, Accept" }, target, transport: "sse" }
+    : { headers: { Vary: "HX-Target" }, target };
 }

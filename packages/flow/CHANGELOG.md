@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Add `renderToEventStream` and the `transport: "sse"` negotiation: the page is sent as `text/event-stream`, one event for the shell and one per patch. `negotiateHtmx` selects it for an htmx request that accepts `text/event-stream`, which is what htmx's `sse` extension sends, so `HtmxAdapter` patches now reach the page as they resolve. Without the extension htmx applies the response only when complete, and the patches find no placeholder to replace.
+
 ### Changed
 
 - Encode streaming events directly into the output stream, preserving framing, cancellation and backpressure without an intermediate transform stream.

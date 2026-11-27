@@ -93,6 +93,11 @@ export interface Negotiation {
   headers?: HeadersInit;
   mode?: "full" | "fragment";
   target?: string;
+  /**
+   * `"sse"` answers with `text/event-stream`: one event for the shell, then one
+   * per patch. Default `"html"`.
+   */
+  transport?: "html" | "sse";
 }
 
 export type Negotiate = (req: Request) => Negotiation;
