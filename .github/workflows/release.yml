@@ -103,6 +103,7 @@ jobs:
       # `*.tgz` would publish whichever came first if the directory held another.
       - name: Publish to NPM
         env:
+          PACKAGE_NAME: ${{ steps.meta.outputs.package_name }}
           # Needed only to bootstrap packages that do not yet exist on npm.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -138,7 +139,7 @@ jobs:
           ENCODED="${PACKAGE_NAME/\//%2f}"
           URL="https://registry.npmjs.org/-/npm/v1/attestations/$ENCODED@$VERSION"
           PUBLISHED_SHA=""
-          for attempt in 1 2 3 4 5 6; do
+          for attempt in $(seq 1 18); do
             PUBLISHED_SHA="$(curl -fsSL "$URL" | jq -r '
               .attestations[]
               | select(.predicateType == "https://slsa.dev/provenance/v1")
