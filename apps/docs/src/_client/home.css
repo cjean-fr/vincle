@@ -787,6 +787,60 @@
   font-size: 0.9rem;
 }
 
+/* Hosts that serve the output. */
+.docs-hosts {
+  margin-top: 2.5rem;
+}
+.docs-hosts-title {
+  margin: 0 0 1rem;
+  color: var(--docs-color-text-secondary);
+  font-size: 0.875rem;
+}
+.docs-hosts-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.docs-hosts-list li,
+.docs-hosts-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--docs-color-text-body);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.docs-hosts-list a:hover {
+  color: var(--docs-color-accent);
+}
+.docs-host-logo {
+  display: inline-block;
+  width: 1.375rem;
+  height: 1.375rem;
+  background-color: currentColor;
+  -webkit-mask: var(--logo) center / contain no-repeat;
+  mask: var(--logo) center / contain no-repeat;
+}
+.docs-host-cloudflare {
+  --logo: url("/hosts/cloudflare.svg");
+}
+.docs-host-vercel {
+  --logo: url("/hosts/vercel.svg");
+}
+.docs-host-netlify {
+  --logo: url("/hosts/netlify.svg");
+}
+.docs-host-github-pages {
+  --logo: url("/hosts/github-pages.svg");
+}
+.docs-host-nginx {
+  --logo: url("/hosts/nginx.svg");
+}
+
 @media (max-width: 900px) {
   .docs-proof-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
