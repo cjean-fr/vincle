@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 — 2026-11-27
 
+- Add social cards. A `_og-image` module placed in `src/pages` gives every page of its subtree a card, written to `<route>/og.png` in the same build and published through `meta.image` and `meta.imageSize`. Lookup and overrides work like `_layout`; the module can export a size, named variants and fonts. `satori` and `@resvg/resvg-js` are optional peer dependencies, loaded only when a site has an `_og-image` module. See the Social cards guide.
 - Add dynamic routes. A page whose file or directory name has a `[name]` segment (`item/[id].tsx`) exports `paths`, a list of `{ params, meta? }`, and builds one page per entry with the same layout, plugins, sitemap and `outputs` as any page. `PageContext` gains `params` (empty for other pages). New types `SsgPath` and `SsgPaths`. A literal file name that contains `[name]` is now read as a dynamic route and needs `paths`.
 - Build and development load page, layout and compiled sources through one Vite module loader, with the same module identity, invalidation and diagnostics on both paths. A Markdown/MDX source reached through a symbolic link now resolves the relative imports of its compiled module from the link target in `ssg build` too, matching `ssg dev`.
 
