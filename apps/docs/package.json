@@ -22,7 +22,7 @@
     "@vincle/ssg": "workspace:*",
     "@vincle/vite-plugin": "workspace:*",
     "beautiful-mermaid": "^1.1.3",
-    "satteri": "^0.10.5",
+    "satteri": "^0.11.7",
     "sharp": "0.35.5"
   },
   "devDependencies": {

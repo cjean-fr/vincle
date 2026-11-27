@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Update the MDX compiler `satteri` from `^0.10.5` to `^0.11.7`. For a `0.x` package the old range did not accept 0.11, so installing `@vincle/ssg` now resolves satteri 0.11.
+
 ## 0.6.0 — 2026-11-27
 
 - Add social cards. A `_og-image` module placed in `src/pages` gives every page of its subtree a card, written to `<route>/og.png` in the same build and published through `meta.image` and `meta.imageSize`. Lookup and overrides work like `_layout`; the module can export a size, named variants and fonts. `satori` and `@resvg/resvg-js` are optional peer dependencies, loaded only when a site has an `_og-image` module. See the Social cards guide.
