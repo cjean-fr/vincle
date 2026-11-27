@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.1 — 2026-11-27
 
 - Update the MDX compiler `satteri` from `^0.10.5` to `^0.11.7`. For a `0.x` package the old range did not accept 0.11, so installing `@vincle/ssg` now resolves satteri 0.11.
 
