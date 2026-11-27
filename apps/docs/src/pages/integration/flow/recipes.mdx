@@ -60,13 +60,13 @@ import {
 } from "@vincle/flow/adapters";
 ```
 
-| Adapter                | Client runtime                            | Streaming | Merge types     | Best for                                  |
-| ---------------------- | ----------------------------------------- | --------- | --------------- | ----------------------------------------- |
-| **NativeAdapter**      | ~1.5 kB polyfill, gzipped (auto-injected) | Yes       | all 6 positions | General purpose, no extra JS              |
-| **TurboAdapter**       | Hotwire Turbo                             | Yes       | all 7           | Rails / Hotwire stack                     |
-| **HtmxAdapter**        | HTMX (`sse` extension)                    | Yes       | all 7           | Django / Laravel / any backend            |
-| **WebPlatformAdapter** | None (native browser support required)    | Yes       | replace only    | Browsers with declarative partial updates |
-| **EsiAdapter**         | None (CDN-level)                          | No        | replace only    | Varnish / CDN edge composition            |
+| Adapter                | Client runtime                                                            | Streaming | Merge types     | Best for                                  |
+| ---------------------- | ------------------------------------------------------------------------- | --------- | --------------- | ----------------------------------------- |
+| **NativeAdapter**      | ~1.5 kB polyfill, gzipped (auto-injected)                                 | Yes       | all 6 positions | General purpose, no extra JS              |
+| **TurboAdapter**       | Hotwire Turbo                                                             | Yes       | all 7           | Rails / Hotwire stack                     |
+| **HtmxAdapter**        | HTMX, with [official SSE plugin](https://four.htmx.org/extensions/hx-sse) | Yes       | all 7           | Django / Laravel / any backend            |
+| **WebPlatformAdapter** | None (native browser support required)                                    | Yes       | replace only    | Browsers with declarative partial updates |
+| **EsiAdapter**         | None (CDN-level)                                                          | No        | replace only    | Varnish / CDN edge composition            |
 
 `morph` needs a diffing client (Turbo, HTMX); an adapter refuses a merge type it
 does not support.
