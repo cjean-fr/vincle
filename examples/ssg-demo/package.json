@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@vincle/core": "0.10.0",
-    "@vincle/ssg": "0.5.1"
+    "@vincle/ssg": "0.6.1"
   },
   "devDependencies": {
     "typescript": "^5.9.0"
