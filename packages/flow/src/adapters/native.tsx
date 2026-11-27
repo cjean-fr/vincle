@@ -91,6 +91,7 @@ export function withPolyfill<T extends Adapter>(
     transformShell: (shell, ctx) => {
       const transformed = adapter.transformShell ? adapter.transformShell(shell, ctx) : shell;
       const prepared = prepareNativeTemplates(transformed);
+      if (ctx.partial) return prepared.html;
       if (ctx.fragments.size === 0 && !prepared.active) return transformed;
       // The renderer emits rawtext children through escapeRawTagContent; emit
       // the tag by hand, the same way, to stay synchronous here.

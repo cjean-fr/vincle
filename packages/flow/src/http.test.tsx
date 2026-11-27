@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 
 import { NativeAdapter, HtmxAdapter } from "./adapters/index.js";
-import { serve, negotiateHtmx } from "./http.js";
+import { serve, negotiateFetch, negotiateHtmx } from "./http.js";
 import { Defer } from "./index.js";
 
 describe("HTTP negotiation (decoupled from the adapter)", () => {
@@ -178,6 +178,98 @@ describe("HTTP negotiation (decoupled from the adapter)", () => {
       );
       expect(res.headers.get("content-type")).toContain("text/html");
       expect(await res.text()).not.toContain("data: ");
+    });
+  });
+
+  describe('serve with mode: "partial"', () => {
+    const page = () => (
+      <ul>
+        <Defer fallback={<li>wait</li>}>{async () => <li>done</li>}</Defer>
+      </ul>
+    );
+
+    it("sends the content, its placeholders and the patches, with no polyfill or document tags", async () => {
+      const res = await serve(new Request("http://localhost"), page, NativeAdapter, {
+        mode: "partial",
+      });
+      const text = await res.text();
+      expect(text).toStartWith("<ul><?start");
+      expect(text).toContain("wait");
+      expect(text).toContain("<template");
+      expect(text).toContain("done");
+      expect(text).not.toContain("<script");
+      expect(text).not.toContain("<head");
+    });
+
+    it("keeps the polyfill in a full render of the same page", async () => {
+      const res = await serve(new Request("http://localhost"), page, NativeAdapter);
+      expect(await res.text()).toContain("<script>");
+    });
+
+    it("drops the closing document tags", async () => {
+      const res = await serve(
+        new Request("http://localhost"),
+        () => (
+          <html>
+            <body>
+              <p>x</p>
+            </body>
+          </html>
+        ),
+        NativeAdapter,
+        { mode: "partial" },
+      );
+      expect(await res.text()).not.toContain("</html>");
+    });
+  });
+
+  describe("negotiateFetch", () => {
+    const page = () => (
+      <ul>
+        <Defer fallback={<li>wait</li>}>{async () => <li>done</li>}</Defer>
+      </ul>
+    );
+    const ask = (headers: Record<string, string>) =>
+      serve(new Request("http://localhost", { headers }), page, NativeAdapter, {
+        negotiate: negotiateFetch,
+      });
+
+    it("answers a request that asks for an event stream with a partial one", async () => {
+      const res = await ask({ Accept: "text/event-stream" });
+      expect(res.headers.get("content-type")).toContain("text/event-stream");
+      expect(res.headers.get("vary")).toBe("Accept");
+      const text = await res.text();
+      expect(text).toStartWith("data: <ul>");
+      expect(text).not.toContain("<script");
+    });
+
+    it("serves the page to a navigation and to a plain fetch, whatever Sec-Fetch says", async () => {
+      const requests: Record<string, string>[] = [
+        {
+          Accept: "text/html,application/xhtml+xml",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Dest": "document",
+        },
+        { Accept: "*/*", "Sec-Fetch-Mode": "cors", "Sec-Fetch-Dest": "empty" },
+        {},
+      ];
+      for (const headers of requests) {
+        const res = await ask(headers);
+        expect(res.headers.get("content-type")).toContain("text/html");
+        expect(res.headers.get("vary")).toBe("Accept");
+        expect(await res.text()).toContain("<script>");
+      }
+    });
+
+    it("lets explicit options override what the request asked for", async () => {
+      const res = await serve(
+        new Request("http://localhost", { headers: { Accept: "text/event-stream" } }),
+        page,
+        NativeAdapter,
+        { negotiate: negotiateFetch, mode: "full", transport: "html" },
+      );
+      expect(res.headers.get("content-type")).toContain("text/html");
+      expect(await res.text()).toContain("<script>");
     });
   });
 });

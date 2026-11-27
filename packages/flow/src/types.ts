@@ -95,9 +95,18 @@ export type FlowConfig =
       idPrefix?: string;
     };
 
+/**
+ * What a render emits. `"full"`: the page, its fragments' placeholders, the
+ * patches. `"fragment"`: the patches only (the shell is rendered to register the
+ * fragments but never sent). `"partial"`: the content with its placeholders and
+ * the patches, as a piece to insert into a page that already has its client
+ * runtime: no document-level additions (the Native polyfill) and no closing tags.
+ */
+export type RenderMode = "full" | "fragment" | "partial";
+
 export interface Negotiation {
   headers?: HeadersInit;
-  mode?: "full" | "fragment";
+  mode?: RenderMode;
   target?: string;
   /**
    * `"sse"` answers with `text/event-stream`: one event for the shell, then one

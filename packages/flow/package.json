@@ -47,6 +47,10 @@
       "types": "./dist/components/index.d.ts",
       "default": "./dist/components/index.js"
     },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
     "./http": {
       "types": "./dist/http.d.ts",
       "default": "./dist/http.js"

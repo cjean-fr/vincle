@@ -152,17 +152,17 @@ import { renderToStream } from "@vincle/flow";
 function renderToStream(
   node: () => JSX.Element,
   adapter: StreamingAdapter,
-  opts?: FlowOptions & { mode?: "full" | "fragment" },
+  opts?: FlowOptions & { mode?: "full" | "fragment" | "partial" },
 ): ReadableStream<string>;
 ```
 
-| Option           | Type                     | Default       | Description                                 |
-| ---------------- | ------------------------ | ------------- | ------------------------------------------- |
-| `signal`         | `AbortSignal`            | N/A           | Signal to abort the stream                  |
-| `onError`        | `FlowOptions["onError"]` | N/A           | Handler for fragment / stream render errors |
-| `defaultTimeout` | `number`                 | N/A           | Per-fragment render timeout in ms           |
-| `idPrefix`       | `string`                 | `"fragment-"` | Prefix of the generated fragment ids        |
-| `mode`           | `"full" \| "fragment"`   | `"full"`      | `"fragment"` emits neither shell nor close  |
+| Option           | Type                                | Default       | Description                                                                                                                          |
+| ---------------- | ----------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `signal`         | `AbortSignal`                       | N/A           | Signal to abort the stream                                                                                                           |
+| `onError`        | `FlowOptions["onError"]`            | N/A           | Handler for fragment / stream render errors                                                                                          |
+| `defaultTimeout` | `number`                            | N/A           | Per-fragment render timeout in ms                                                                                                    |
+| `idPrefix`       | `string`                            | `"fragment-"` | Prefix of the generated fragment ids                                                                                                 |
+| `mode`           | `"full" \| "fragment" \| "partial"` | `"full"`      | `"fragment"` emits neither shell nor close; `"partial"` emits the content and its placeholders, with no polyfill and no closing tags |
 
 `FlowOptions` is `{ signal?, onError?, defaultTimeout?, idPrefix? }`. The shell is never
 streamed progressively: it is rendered in full, `<head>` and all, and only then
@@ -240,21 +240,23 @@ function serve(
   req: Request,
   page: (n: Negotiation) => JSX.Element,
   adapter: StreamingAdapter,
-  opts?: FlowOptions & ResponseInit & { negotiate?: Negotiate; mode?: "full" | "fragment" },
+  opts?: FlowOptions &
+    ResponseInit & { negotiate?: Negotiate; mode?: "full" | "fragment" | "partial" },
 ): Promise<Response>;
 ```
 
-| Option           | Type                                   | Default       | Description                       |
-| ---------------- | -------------------------------------- | ------------- | --------------------------------- |
-| `signal`         | `AbortSignal`                          | N/A           | Abort all pending renders         |
-| `onError`        | `(error, info) => JSX.Element \| void` | N/A           | Per-fragment error handler        |
-| `defaultTimeout` | `number`                               | N/A           | Per-fragment timeout (ms)         |
-| `idPrefix`       | `string`                               | `"fragment-"` | Prefix of the fragment ids        |
-| `negotiate`      | `(req: Request) => Negotiation`        | N/A           | Extract per-request hints         |
-| `mode`           | `"full" \| "fragment"`                 | `"full"`      | Render full page or fragment-only |
-| `headers`        | `HeadersInit`                          | N/A           | Additional response headers       |
-| `status`         | `number`                               | `200`         | Response status code              |
-| `statusText`     | `string`                               | N/A           | Response status text              |
+| Option           | Type                                   | Default       | Description                                                                                                           |
+| ---------------- | -------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `signal`         | `AbortSignal`                          | N/A           | Abort all pending renders                                                                                             |
+| `onError`        | `(error, info) => JSX.Element \| void` | N/A           | Per-fragment error handler                                                                                            |
+| `defaultTimeout` | `number`                               | N/A           | Per-fragment timeout (ms)                                                                                             |
+| `idPrefix`       | `string`                               | `"fragment-"` | Prefix of the fragment ids                                                                                            |
+| `negotiate`      | `(req: Request) => Negotiation`        | N/A           | Extract per-request hints                                                                                             |
+| `transport`      | `"html" \| "sse"`                      | `"html"`      | `"sse"` frames each piece as a Server-Sent Event (`text/event-stream`), for `streamInto` and the htmx `sse` extension |
+| `mode`           | `"full" \| "fragment" \| "partial"`    | `"full"`      | Full page, patches only, or a piece for a page that already runs the client runtime (see below)                       |
+| `headers`        | `HeadersInit`                          | N/A           | Additional response headers                                                                                           |
+| `status`         | `number`                               | `200`         | Response status code                                                                                                  |
+| `statusText`     | `string`                               | N/A           | Response status text                                                                                                  |
 
 The `content-type` header is set to `text/html; charset=utf-8` automatically,
 or to `text/event-stream` when the negotiation returns `transport: "sse"`
@@ -263,6 +265,36 @@ or to `text/event-stream` when the negotiation returns `transport: "sse"`
 With `negotiateHtmx`, the response includes `Vary: HX-Target`, unioned with
 existing `Vary` values so shared caches never mix full-page and fragment
 responses. Usage examples: [Recipes › HTTP serving](/integration/flow/recipes#http-serving).
+
+### negotiateFetch
+
+Imported from `@vincle/flow/http`. A `Negotiate` for pages that load pieces of
+themselves with `fetch` and [`streamInto`](#streaminto): a request whose `Accept`
+includes `text/event-stream` gets `mode: "partial"` and `transport: "sse"`; any
+other request gets the page. The response carries `Vary: Accept`. Options passed to
+`serve` win over it.
+
+## streamInto
+
+Browser side of a partial response. Imported from `@vincle/flow/client`.
+
+```ts
+import { streamInto } from "@vincle/flow/client";
+
+function streamInto(
+  target: Element,
+  response: Response,
+  position?: InsertPosition, // default "beforeend"
+): Promise<void>;
+```
+
+Reads a `serve(..., { mode: "partial", transport: "sse" })` response as it arrives.
+The first event (the content with its placeholders) is inserted next to `target`
+at `position`; each later event (a patch) goes at the end of the body, where the
+`NativeAdapter` runtime applies and removes it. Events are `data:` lines, so any
+content, a `</template>` or a blank line included, crosses the wire unchanged.
+Rejects when the response is not an event stream (HTML, an error status) or the stream breaks. See
+[Recipes › Load content in place](/integration/flow/recipes#load-content-in-place).
 
 ## renderToFlowEvents
 
@@ -278,6 +310,12 @@ don't cover. Same arguments as `renderToStream`; a non-streaming adapter
 | `shell`    | `{ type: "shell"; html: string }`                                  | The page shell is fully rendered (one event)                       |
 | `fragment` | `{ type: "fragment"; id: string; html: string; merge: MergeType }` | A deferred fragment is ready (one per item for an `AsyncIterable`) |
 | `close`    | `{ type: "close"; html: string }`                                  | The closing `</body></html>` tags, after all fragments             |
+
+`mode: "partial"` is for a response that a page fetches and inserts into itself
+(a click that loads replies, say; [`streamInto`](#streaminto) is the client side): the
+content comes with its placeholders and then its patches, but without the document-level
+additions: the `NativeAdapter` polyfill script is not injected (the page already has it) and
+the closing `</body></html>` is dropped.
 
 `mode: "fragment"` suppresses the `shell` and `close` events. The stream
 handles backpressure; cancelling it (or aborting `opts.signal`) aborts pending

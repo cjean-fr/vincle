@@ -4,6 +4,9 @@
 
 ### Added
 
+- Add `negotiateFetch` to `@vincle/flow/http`: a request that asks for `text/event-stream` in `Accept` gets a partial render framed as events, any other request gets the page (`Vary: Accept`).
+- Add `streamInto(target, response, position?)` in the new `@vincle/flow/client` entry: the browser side of a response that a page fetches and inserts into itself. It reads a `mode: "partial"`, `transport: "sse"` response as it arrives, inserts the content next to `target` and hands each patch to the `NativeAdapter` runtime. It rejects a response that is not an event stream, so a caller can fall back to the link. `serve` takes `transport` as an option, not only from a negotiation.
+- Add `mode: "partial"` to `serve`, `renderToStream`, `renderToEventStream` and `renderToFlowEvents`: the content with its placeholders and then the patches, for a response that a page fetches and inserts into itself. Unlike `"full"` it adds nothing at document level (the `NativeAdapter` polyfill is not injected, `ShellContext.partial` tells a custom `transformShell`) and drops the closing document tags.
 - Add the `idPrefix` option to `FlowOptions` (so to `renderToStream`, `renderToEventStream` and `serve`): the prefix of the generated fragment ids, so a response that patches a page already holding ids from its own render, such as a fragment fetched by htmx, cannot collide with them.
 - Add `renderToEventStream` and the `transport: "sse"` negotiation: the page is sent as `text/event-stream`, one event for the shell and one per patch. `negotiateHtmx` selects it for an htmx request that accepts `text/event-stream`, which is what htmx's `sse` extension sends, so `HtmxAdapter` patches now reach the page as they resolve. Without the extension htmx applies the response only when complete, and the patches find no placeholder to replace.
 

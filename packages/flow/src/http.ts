@@ -1,6 +1,6 @@
 import type { JSX } from "@vincle/core";
 
-import type { FlowOptions, Negotiate, Negotiation, StreamingAdapter } from "./types.js";
+import type { FlowOptions, Negotiate, Negotiation, RenderMode, StreamingAdapter } from "./types.js";
 
 import { renderToEventStream, renderToStream } from "./render.js";
 
@@ -63,11 +63,13 @@ export async function serve(
   opts?: FlowOptions &
     ResponseInit & {
       negotiate?: Negotiate;
-      mode?: "full" | "fragment";
+      mode?: RenderMode;
+      /** `"sse"` answers with `text/event-stream`, the framing `streamInto` reads. Overrides the negotiation. */
+      transport?: "html" | "sse";
     },
 ): Promise<Response> {
   const negotiation = opts?.negotiate?.(req) ?? {};
-  const sse = negotiation.transport === "sse";
+  const sse = (opts?.transport ?? negotiation.transport) === "sse";
   const body = (sse ? renderToEventStream : renderToStream)(() => page(negotiation), adapter, {
     ...opts,
     signal: opts?.signal ? AbortSignal.any([req.signal, opts.signal]) : req.signal,
@@ -81,6 +83,26 @@ export async function serve(
     negotiation.headers,
   );
   return new Response(body, { ...opts, headers });
+}
+
+/**
+ * Negotiation for a page that loads pieces of itself with `fetch` and `streamInto`:
+ * a request that asks for `text/event-stream` in `Accept` is answered with a
+ * partial render framed as events (`mode: "partial"`, `transport: "sse"`); any
+ * other request, a navigation included, gets the page. `Vary: Accept` keeps shared
+ * caches from mixing the two.
+ *
+ * It reads `Accept` and not the `Sec-Fetch-*` headers on purpose: `fetch`, XHR,
+ * htmx and Turbo all send `Sec-Fetch-Dest: empty`, so those headers tell a
+ * navigation from a script, not one script from another, and a browser sends
+ * them only to secure origins. The client names what it wants:
+ * `fetch(url, { headers: { Accept: "text/event-stream" } })`.
+ */
+export function negotiateFetch(req: Request): Negotiation {
+  const headers = { Vary: "Accept" };
+  return (req.headers.get("Accept") ?? "").toLowerCase().includes("text/event-stream")
+    ? { headers, mode: "partial", transport: "sse" }
+    : { headers };
 }
 
 /**

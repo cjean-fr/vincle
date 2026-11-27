@@ -243,6 +243,63 @@ http
   .listen(3000);
 ```
 
+### Load content in place
+
+A link can load its content into the page it is on, with the streaming of a full
+page, and still be a normal link without JavaScript. The server answers a request
+for the piece in a partial render (the content and its placeholders, then the
+patches, with no polyfill and no closing tags), framed as Server-Sent Events so
+any content crosses the wire intact. The server picks that from the request:
+`negotiateFetch` answers a request that asks for `text/event-stream` in `Accept`
+that way, and every other request, a navigation included, gets the page, so the
+same URL serves both. `streamInto` reads the response as it arrives:
+
+```tsx
+import { NativeAdapter } from "@vincle/flow/adapters";
+import { serve, negotiateFetch } from "@vincle/flow/http";
+
+import type { JSX } from "@vincle/core";
+
+declare function Replies(props: { id: string }): JSX.Element;
+
+export function handleReplies(req: Request, id: string) {
+  return serve(req, () => <Replies id={id} />, NativeAdapter, {
+    negotiate: negotiateFetch,
+    idPrefix: `r${id}-`,
+  });
+}
+```
+
+```js
+import { streamInto } from "@vincle/flow/client";
+
+addEventListener("click", async (event) => {
+  const link = event.target.closest?.("a[data-replies]");
+  if (!link || event.defaultPrevented || event.button || event.metaKey || event.ctrlKey) return;
+  event.preventDefault();
+  try {
+    const response = await fetch(link.dataset.replies, {
+      headers: { Accept: "text/event-stream" },
+    });
+    await streamInto(link.closest("p"), response, "afterend");
+  } catch {
+    location.href = link.href; // the plain link, as without JavaScript
+  }
+});
+```
+
+The request has to say what it wants. The `Sec-Fetch-*` headers cannot: `fetch`,
+XHR, htmx and Turbo all send `Sec-Fetch-Dest: empty` (measured in Chrome), so they
+tell a navigation from a script, not one script from another, and a browser sends
+them only to secure origins. `Accept` works everywhere, and `mode` and `transport`
+passed to `serve` still override the negotiation.
+
+The page needs the `NativeAdapter` runtime, which it has as soon as it renders a
+`<Defer>`. Give the piece an `idPrefix` of its own: its fragment ids would
+otherwise collide with the page's own (`fragment-1`...). `streamInto` rejects
+when the response is not ok or the stream breaks, so the caller can fall back to
+following the link.
+
 ### HTMX negotiation
 
 HTMX sends headers like `HX-Target` to indicate which fragment a request

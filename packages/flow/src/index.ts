@@ -20,6 +20,7 @@ export type {
   FlowObservation,
   FlowConfig,
   Negotiation,
+  RenderMode,
   Negotiate,
   StreamingAdapter,
 } from "./types.js";

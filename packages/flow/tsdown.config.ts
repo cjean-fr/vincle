@@ -6,6 +6,7 @@ export default defineConfig({
     "src/adapters/index.ts",
     "src/components/index.ts",
     "src/http.ts",
+    "src/client.ts",
     "src/utils.ts",
     "src/context.ts",
   ],

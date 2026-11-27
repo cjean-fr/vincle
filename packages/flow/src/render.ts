@@ -2,7 +2,7 @@ import { raw, renderToString, type JSX } from "@vincle/core";
 
 import type { Adapter } from "./adapters/index.js";
 import type { ShellContext } from "./adapters/shared.js";
-import type { FlowEvent, FlowOptions, StreamingAdapter } from "./types.js";
+import type { FlowEvent, FlowOptions, RenderMode, StreamingAdapter } from "./types.js";
 
 import { abortable } from "./abortable.js";
 import { assertAdapter, assertFlowOptions } from "./config.js";
@@ -138,14 +138,15 @@ export async function renderShell(
 
 /**
  * Run the full streaming sequence: emit shell → drain fragments → emit close.
- * Skips shell/close when `opts.mode === "fragment"`.
+ * Skips shell/close when `opts.mode === "fragment"`; `"partial"` emits the shell with
+ * no document-level additions and skips close.
  */
 export async function runSequence(
   emit: (ev: FlowEvent) => Promise<void>,
   signal: AbortSignal,
   node: () => JSX.Element,
   adapter: Adapter,
-  opts: FlowOptions & { mode?: "full" | "fragment" },
+  opts: FlowOptions & { mode?: RenderMode },
 ): Promise<void> {
   await withFlow(
     async (ctx) => {
@@ -157,7 +158,13 @@ export async function runSequence(
         // the fragments we are about to drain, but none of it reaches the wire.
         let shell: Awaited<ReturnType<typeof renderShell>>;
         try {
-          shell = await abortable(renderShell(node, adapter, ctx), signal);
+          shell = await abortable(
+            renderShell(node, adapter, {
+              fragments: ctx.fragments,
+              partial: opts.mode === "partial",
+            }),
+            signal,
+          );
         } catch (error) {
           if (signal.aborted) return;
           throw error;
@@ -171,7 +178,7 @@ export async function runSequence(
         // render after it, so an asset the shell already emitted is suppressed at
         // the component and a new one is emitted: with no pass over their HTML.
         await flushFragments({ fragments }, emit, { ...opts, signal });
-        if (opts.mode !== "fragment" && closingTag) {
+        if (opts.mode !== "fragment" && opts.mode !== "partial" && closingTag) {
           await emit({ type: "close", html: closingTag });
         }
       } finally {
@@ -202,7 +209,7 @@ function assertStreamInput(source: string, adapter: Adapter, opts: FlowOptions |
 export function renderToFlowEvents(
   node: () => JSX.Element,
   adapter: StreamingAdapter,
-  opts: FlowOptions & { mode?: "full" | "fragment" } = {},
+  opts: FlowOptions & { mode?: RenderMode } = {},
 ): ReadableStream<FlowEvent> {
   assertStreamInput("renderToFlowEvents", adapter, opts);
   return createStream((emit, signal) => runSequence(emit, signal, node, adapter, opts), {
@@ -222,7 +229,7 @@ export function renderToFlowEvents(
 export function renderToStream(
   node: () => JSX.Element,
   adapter: StreamingAdapter,
-  opts?: FlowOptions & { mode?: "full" | "fragment" },
+  opts?: FlowOptions & { mode?: RenderMode },
 ): ReadableStream<string> {
   assertStreamInput("renderToStream", adapter, opts);
   if (adapter.capabilities.streaming !== true) {
@@ -256,7 +263,7 @@ export function renderToStream(
 export function renderToEventStream(
   node: () => JSX.Element,
   adapter: StreamingAdapter,
-  opts?: FlowOptions & { mode?: "full" | "fragment" },
+  opts?: FlowOptions & { mode?: RenderMode },
 ): ReadableStream<string> {
   assertStreamInput("renderToEventStream", adapter, opts);
   if (adapter.capabilities.streaming !== true) {

@@ -16,6 +16,11 @@ type Child = JSX.Element | RawString | string | null;
 export interface ShellContext {
   /** Pending `<Defer>`/`<Slot>` fragments, after the shell has rendered. */
   readonly fragments: { readonly size: number };
+  /**
+   * The render is a piece for a page that already has its client runtime
+   * (`mode: "partial"`): add nothing at document level, such as a script.
+   */
+  readonly partial?: boolean;
 }
 
 export type Adapter = {
