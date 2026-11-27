@@ -10,6 +10,7 @@ import type {
 } from "./types.js";
 
 import { sourceDirectory } from "./conventions.js";
+import { expandDynamicPage } from "./dynamic.js";
 import { failure, diagnose, contextualError } from "./errors.js";
 import { resolveHandlers, vincleRuntime } from "./formats.js";
 import { metadata } from "./metadata.js";
@@ -58,6 +59,7 @@ function sourceContext(
     file,
     src,
     route,
+    params: {},
     relativePath: path.relative(src, file).replace(/\\/g, "/"),
     outputPath: (extension) => outputPathForRoute(route, extension),
     runtime,
@@ -148,7 +150,7 @@ async function discover(options: DiscoverPagesOptions): Promise<DiscoveredPage[]
       `[vincle/ssg] No route files found in ${src}. Names starting with . or _ are skipped; set src if your pages live in another directory.`,
     );
   const modules = options.modules ?? defaultModules();
-  const pages: DiscoveredPage[] = [];
+  const loaded: DiscoveredPage[][] = [];
   let index = 0;
   let failed = false;
   async function worker() {
@@ -160,7 +162,12 @@ async function discover(options: DiscoverPagesOptions): Promise<DiscoveredPage[]
       try {
         const source = sourceContext(file, src, options.runtime ?? vincleRuntime, modules);
         const page = await handler.load(source);
-        pages[i] = { ...page, source, handler: handler.name, meta: metadata(page.meta, file) };
+        loaded[i] = await expandDynamicPage({
+          ...page,
+          source,
+          handler: handler.name,
+          meta: metadata(page.meta, file),
+        });
       } catch (error) {
         failed = true;
         throw contextualError(error, "Page handler failed", {
@@ -176,5 +183,5 @@ async function discover(options: DiscoverPagesOptions): Promise<DiscoveredPage[]
   );
   const rejected = settled.find((entry) => entry.status === "rejected");
   if (rejected?.status === "rejected") throw rejected.reason;
-  return pages;
+  return loaded.flat();
 }

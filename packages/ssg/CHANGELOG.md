@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add dynamic routes. A page whose file or directory name has a `[name]` segment (`item/[id].tsx`) exports `paths`, a list of `{ params, meta? }`, and builds one page per entry with the same layout, plugins, sitemap and `outputs` as any page. `PageContext` gains `params` (empty for other pages). New types `SsgPath` and `SsgPaths`. A literal file name that contains `[name]` is now read as a dynamic route and needs `paths`.
 - Build and development load page, layout and compiled sources through one Vite module loader, with the same module identity, invalidation and diagnostics on both paths. A Markdown/MDX source reached through a symbolic link now resolves the relative imports of its compiled module from the link target in `ssg build` too, matching `ssg dev`.
 
 - **Breaking**: compile pages, layouts and MDX through Vite in every build, and remove the esbuild fallback compiler along with the `esbuild` dependency. Sites without a `vite.config` or client entries build as before, and the consumer's tsconfig path aliases stay resolved. When `assets` disables the conventional integration, a project `vite.config` now also applies to page compilation, as it already did in `ssg dev`. `viteModules()` from `@vincle/ssg/vite` supplies the same compiler to custom pipelines.

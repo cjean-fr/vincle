@@ -92,6 +92,44 @@ export const outputs = ({ outputPath, meta }: PageContext) => ({
 });
 ```
 
+## Dynamic routes
+
+A `[name]` in a file or directory name stands for any value, and the page lists
+the values to build in a `paths` export. Each entry becomes one page, with its
+own URL, output file and sitemap entry, inside the same layout:
+
+```tsx title="src/pages/item/[id].tsx"
+import type { PageContext } from "@vincle/ssg";
+
+declare function listItems(): Promise<{ id: number; title: string }[]>;
+declare function loadItem(id: number): Promise<{ title: string; body: string }>;
+
+export const paths = async () =>
+  (await listItems()).map((item) => ({
+    params: { id: item.id },
+    meta: { title: item.title },
+  }));
+
+export default async function Item({ params }: PageContext) {
+  const item = await loadItem(Number(params.id));
+  return <article>{item.body}</article>;
+}
+```
+
+`src/pages/item/[id].tsx` builds `/item/1`, `/item/2` and so on. A `[lang]/[slug].json.ts`
+file works the same way for files that are not pages.
+
+- `paths` is a function, async or not, returning an array or an (async) iterable of
+  `{ params, meta? }`. An array can be exported directly.
+- `params` holds exactly the names in the file path, as strings or numbers. A value
+  fills one path segment: it cannot be empty, `.` or `..`, or contain `/`, `\`, `?` or `#`.
+- `meta` is merged over the page's `meta` for that page alone. The layout, the plugins
+  and `outputs` read the same `params`, `route` and `meta` from the page context.
+- A dynamic route needs a `.tsx`, `.jsx`, `.ts` or `.js` page. Markdown cannot be one.
+- Two entries, or a dynamic page and a static one, that build the same file fail the build.
+- Only whole `[name]` parameters are supported. A catch-all such as `[...path]` is not.
+- `paths` runs again at every rebuild of `ssg dev`, and these pages are rendered again each time.
+
 ## Metadata
 
 `meta` (or the frontmatter) reaches the page, its layout and the plugins. A few

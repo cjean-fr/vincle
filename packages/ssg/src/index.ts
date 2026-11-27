@@ -7,6 +7,8 @@ export type {
   SsgMeta,
   PageHandler,
   SsgPage,
+  SsgPath,
+  SsgPaths,
   SourceContext,
   PageContext,
   SsgOutput,

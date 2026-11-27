@@ -1,7 +1,14 @@
 import { renderToString, Scope, type Renderable } from "@vincle/core";
 import path from "node:path";
 
-import type { DiscoverPagesOptions, JsxRuntime, PageHandler, SiteContent } from "./types.js";
+import type {
+  DiscoverPagesOptions,
+  JsxRuntime,
+  PageHandler,
+  SiteContent,
+  SsgPath,
+  SsgPaths,
+} from "./types.js";
 
 import { failure } from "./errors.js";
 import { createMdxHandler } from "./mdx.js";
@@ -16,6 +23,21 @@ export const vincleRuntime: JsxRuntime = {
 
 function isContent(value: unknown): value is SiteContent {
   return typeof value === "string" || value instanceof Uint8Array || value instanceof ArrayBuffer;
+}
+
+function pathsOf(value: unknown, file: string): SsgPaths {
+  if (typeof value === "function") return value as SsgPaths;
+  if (
+    value &&
+    typeof value === "object" &&
+    (Symbol.iterator in value || Symbol.asyncIterator in value)
+  )
+    return () => value as Iterable<SsgPath>;
+  throw failure(`paths must be a function or an iterable: ${file}`, {
+    reason: "SOURCE_FAILED",
+    hint: "Export paths as a function returning entries like { params: { id: '1' } }, or as an array of them.",
+    context: { file },
+  });
 }
 
 function scriptHandler(name: "module" | "jsx"): PageHandler {
@@ -33,6 +55,7 @@ function scriptHandler(name: "module" | "jsx"): PageHandler {
         });
       return {
         meta: moduleMeta(mod, source.file),
+        ...(mod["paths"] === undefined ? {} : { paths: pathsOf(mod["paths"], source.file) }),
         render: withAdditionalOutputs(mod, async (context) => {
           const create = () => (typeof producer === "function" ? producer(context) : producer);
           if (name === "jsx")

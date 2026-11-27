@@ -42,8 +42,13 @@ export interface SourceContext {
   file: string;
   src: string;
   relativePath: string;
-  /** Extensionless route from the source hierarchy; index resolves to its parent. */
+  /**
+   * Extensionless route from the source hierarchy; index resolves to its parent.
+   * A dynamic page (`item/[id].tsx`) gets one concrete route per `paths` entry.
+   */
   route: string;
+  /** Values of the `[name]` segments of a dynamic route; empty for other pages. */
+  params: Readonly<Record<string, string>>;
   /** File path relative to dist. HTML uses directory indexes by default. */
   outputPath(extension?: string): string;
   runtime: JsxRuntime;
@@ -69,9 +74,21 @@ export interface SsgOutput extends SiteOutput {
 export type SsgOutputs = SsgOutput | Iterable<SsgOutput> | AsyncIterable<SsgOutput>;
 export type SsgProducer = (context: PageContext) => Awaitable<SsgOutputs>;
 
+/** One page built from a dynamic route: its parameters, and metadata for this page only. */
+export interface SsgPath {
+  params: Record<string, string | number>;
+  meta?: SsgMeta;
+}
+
+export type SsgPaths = (
+  context: SourceContext,
+) => Awaitable<Iterable<SsgPath> | AsyncIterable<SsgPath>>;
+
 export interface SsgPage {
   meta?: SsgMeta;
   render: SsgProducer;
+  /** Required for a route with `[name]` segments: the pages to build. */
+  paths?: SsgPaths;
 }
 
 export interface PageHandler {
