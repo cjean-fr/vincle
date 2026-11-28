@@ -50,6 +50,8 @@ export type FragmentStore = {
     outstanding(): Array<[string, FragmentEntry]>;
     hasOutstanding(): boolean;
   };
+  /** Resolves when the next entry registers. */
+  nextRegistration(): Promise<void>;
   /** Total registered entries (including processed ones). */
   readonly size: number;
   /** Purge all entries to eagerly release closures and references. */
@@ -58,6 +60,8 @@ export type FragmentStore = {
 
 export function createFragmentStore(config: FlowConfig): FragmentStore {
   const map = new Map<string, FragmentEntry>();
+  let wake: (() => void) | undefined;
+  let registered = new Promise<void>((r) => (wake = r));
   const merges: readonly string[] = config.adapter?.capabilities.merges ?? [];
   const store: FragmentStore = {
     register(id, entry) {
@@ -94,7 +98,11 @@ export function createFragmentStore(config: FlowConfig): FragmentStore {
         );
       }
       map.set(id, entry);
+      const w = wake!;
+      registered = new Promise<void>((r) => (wake = r));
+      w();
     },
+    nextRegistration: () => registered,
     get(id) {
       return map.get(id);
     },

@@ -98,7 +98,11 @@ export async function flushFragments(
       continue;
     }
     if (live.length === 0) break;
-    await settleOrThrow(live);
+    const settled = settleOrThrow(live).then(() => true);
+    settled.catch(() => {});
+    const reg = ctx.fragments.nextRegistration().then(() => false);
+    if (!(await Promise.race([settled, reg]))) continue;
+    await settled;
     live.length = 0;
     if (!cursor.hasOutstanding()) break;
   }

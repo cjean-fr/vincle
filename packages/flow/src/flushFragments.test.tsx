@@ -329,6 +329,49 @@ describe("flushFragments: timeout and AbortSignal wiring", () => {
     expect(fragments).toHaveLength(1);
     if (fragments[0]!.type === "fragment") expect(fragments[0]!.html).toContain("a");
   });
+
+  it("starts a fragment that a running stream registers, without waiting for the other streams", async () => {
+    const gate = Promise.withResolvers<void>();
+    const reader = renderToFlowEvents(
+      () => (
+        <div>
+          <Defer target="a">
+            {async function* () {
+              yield (
+                <p>
+                  first
+                  <Defer target="nested">{async () => <b>nested</b>}</Defer>
+                </p>
+              );
+            }}
+          </Defer>
+          <Defer target="idle">
+            {async function* () {
+              await gate.promise;
+              yield <p>late</p>;
+            }}
+          </Defer>
+        </div>
+      ),
+      TurboAdapter,
+    ).getReader();
+    const seen: string[] = [];
+    // without the fix the nested patch waits for the idle stream, so the gate opens on a timer
+    const timer = setTimeout(() => gate.resolve(), 1000);
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value.type !== "fragment") continue;
+      seen.push(value.id);
+      if (value.id === "nested") {
+        expect(seen).not.toContain("idle");
+        gate.resolve();
+      }
+    }
+    clearTimeout(timer);
+    expect(seen).toContain("nested");
+    expect(seen).toContain("idle");
+  });
 });
 
 it("limits active lazy factories and reports their lifecycle", async () => {
